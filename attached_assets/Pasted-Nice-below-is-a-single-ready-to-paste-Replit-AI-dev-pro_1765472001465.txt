@@ -1,0 +1,336 @@
+Nice — below is a single, ready-to-paste **Replit AI / dev prompt** that you can drop into Replit (or give to a developer) to generate a full-featured redesign of **[www.QuoteUs.ca](http://www.QuoteUs.ca)** focused on Ontarians saving money on insurance. It includes technology choices, clear feature specs, database schemas, UX/validation rules, security/privacy notes, and acceptance criteria so the generated site is production-ready.
+
+---
+
+# Replit prompt — Build QuoteUs.ca (Ontario insurance quoting site)
+
+**Project goal:**
+Build a responsive, accessible, secure redesign of **[www.QuoteUs.ca](http://www.QuoteUs.ca)** for Ontarians looking to save money on insurance. The site must provide dynamic quote forms and comparison tools for Auto, Home, Tenant (Renters), Travel, Life, Business, and Pet insurance. It must allow customer profiles, saved quotes, a broker/admin CRM, and an extensive vehicle database (North American makes/models/years 1990–present). Use modern web stack, ship ready-to-deploy code, and include tests and seed data.
+
+**Tech stack (recommended, but you may propose equivalent):**
+
+* Frontend: React (Vite or Next.js), Tailwind CSS (use Tailwind utility classes), TypeScript
+* Backend: Node.js + Express (or Next.js API routes) with TypeScript
+* Database: PostgreSQL (hosted via Supabase or a managed PG instance). Seed vehicle table from 1990–present.
+* Authentication: JWT + secure cookies + password reset; optional OAuth (Google) for convenience
+* File / image hosting: Cloud storage (Supabase storage or S3-compatible)
+* Email: SendGrid or similar for notifications and verification
+* Deployment: Replit run configuration / Dockerfile + environment variables
+* Optional: Redis for session/cache
+* Testing: Jest + React Testing Library for frontend; supertest for API.
+
+---
+
+# Requirements & features (detailed)
+
+## 1) Pages & Navigation
+
+* Home page (hero, quick quote entry, benefits for Ontarians, CTA)
+* Pages for each insurance type: **Auto, Home, Tenant, Travel, Life, Business, Pet**
+* Profile (My Account) / Saved Quotes
+* Comparison tool page (compare insurance cost of two cars by year/make/model)
+* Broker dashboard / CRM (admin only)
+* Quote result pages + confirmation
+* Privacy / Terms / Accessibility / Contact pages
+* Blog/Resources (optional) for SEO
+
+## 2) Dynamic Insurance Forms (for each insurance section)
+
+Each insurance type must have a dedicated **dynamic form** tailored to that product. Forms should:
+
+* Validate inputs client-side and server-side
+* Support conditional fields (e.g., for Auto: number of vehicles, add drivers per vehicle)
+* Provide user-friendly date pickers for driver license issue dates
+* Allow file uploads (e.g., proof of prior insurance, drivers licence image) — optional
+* After submit, create a lead/quote record in DB and return a quote estimate (mock or integrated with brokers)
+
+### Auto form (most important — detailed)
+
+* Collect: primary driver (name, DOB, email, phone), address (Ontario), G1/G2/G licensing type and date obtained, prior claims, annual mileage, usage (commute / pleasure / business), garaging postal code.
+* Vehicles: allow adding **multiple vehicles**. For each vehicle:
+
+  * Year (1990–present) — select from DB
+  * Make — select
+  * Model — select (dependent dropdown)
+  * Trim (optional), VIN (optional), annual kilometres, primary driver (link to drivers)
+* Drivers: allow adding **multiple additional drivers** per user/quote with:
+
+  * name, DOB, relationship, license type (G1/G2/G), license date, any infractions/claims
+  * **Optional** comment field where client may enter driver's licence number — must be clearly flagged as optional and encrypted in DB
+* Ability to add other drivers and other vehicles on the same quote
+* “Quote Now” button triggers server-side quote calculation (mock algorithm or broker integration)
+
+### For each insurance page:
+
+* Below the **Quote Now** button include **2–4 paragraphs** of descriptive content and an image that depicts the section (image placeholders ok). Keep content tailored to Ontario audiences (provincial hints like "Ontario residents", "G licence types", provincial regulations).
+
+## 3) Vehicle database
+
+* A seeded table (or supabase dataset) containing **North American vehicles** year/make/model from **1990 to present** (years inclusive). Provide an easy-to-query endpoint for dependent dropdowns.
+* Provide scripts to seed the DB (or instructions to import a CSV).
+* Schema: `vehicles (id, year, make, model, trim, source)`; index on (year,make,model).
+
+## 4) Comparison tool
+
+* Page where user can enter **Year/Make/Model** for **Car A** and **Car B** (support selects connected to vehicle DB).
+* System returns which is expected to be cheaper to insure for the submitted profiles and usage (use insurance-cost scoring algorithm based on vehicle risk factors and user data; if third-party data unavailable, produce a defensible mocked comparison and explain assumptions).
+* Show breakdown and reasoning (e.g., car A: higher theft rate, older age, cheaper premiums: $X vs $Y).
+
+## 5) Profiles & saved data
+
+* Users can create accounts and save personal data, drivers, vehicles, and quotes.
+* Users can log in, view previous quotes, request updates from a broker, and see status changes.
+* Implement email verification and password reset flows.
+
+## 6) Broker / CRM features (admin)
+
+* A CRM dashboard that:
+
+  * Receives leads/quotes automatically as they are entered
+  * Lists leads with filter/sort/search (by product, location, date)
+  * Shows full lead detail (user profile, drivers, vehicles, files, notes)
+  * Allows the broker to update lead status (New, Contacted, Quote Sent, Converted)
+  * Activity log, internal notes, and ability to send messages to client
+  * Export leads CSV
+  * Basic analytics: leads per day/week, conversion rate
+* Integrate email notifications/Slack/webhook for new leads.
+
+## 7) Quote results & broker workflow
+
+* On submitting a quote, store lead and optionally generate an estimated premium (mock algorithm).
+* Broker receives lead in CRM and may update quote; user sees updates after login.
+* Ticketing for follow-up, attachments, and chat-like message thread (optional).
+
+## 8) Privacy & security
+
+* All PII (including optional drivers license numbers) must be stored encrypted at rest. Keys from environment vars.
+* Comply with Canadian privacy best practices and mention PIPEDA considerations in admin docs.
+* TLS-only, CSRF protections, rate limiting on quote endpoints, logging with PII redaction.
+* Optional: user consent checkbox for storing driver's licence numbers (explicit opt-in).
+
+## 9) UX / Design / Accessibility
+
+* Responsive: desktop, tablet, mobile.
+* WCAG AA compliance for forms and navigation.
+* Use Tailwind + clear form layouts, progress indicators for multi-step quotes, autosave drafts.
+* Each insurance page below Quote Now: image + 2–4 paragraph description (SEO-friendly), with alt text.
+
+## 10) Integrations
+
+* Email (SendGrid), SMS (optional Twilio), analytics (Google Analytics or Matomo), payment (if broker charges online).
+* Optionally wire in comparison engine or insurer APIs (document where to plug provider credentials).
+
+## 11) Tests & scripts
+
+* Unit tests for critical functions and API endpoints.
+* Integration tests for quote flow and auth.
+* Database migration/seed scripts for vehicle DB.
+
+---
+
+# Database schema (suggested)
+
+Provide these models (TypeORM / Prisma / Knex examples acceptable).
+
+**users**
+
+* id (uuid)
+* email (unique)
+* password_hash
+* full_name
+* phone
+* role (user, broker, admin)
+* created_at, updated_at
+* email_verified_at
+
+**profiles**
+
+* user_id (FK)
+* address_line1, city, province (Ontario), postal_code
+* preferences (JSON)
+
+**vehicles**
+
+* id (pk)
+* year (int)
+* make (text)
+* model (text)
+* trim (text, nullable)
+* source (text)
+* created_at
+
+**user_vehicles**
+
+* id
+* user_id
+* vehicle_id (FK to vehicles) or custom fields if VIN/trim different
+* vin (nullable)
+* annual_km
+* primary_driver_id
+
+**drivers**
+
+* id
+* user_id
+* full_name
+* dob
+* license_type (enum: G1,G2,G)
+* license_date (date)
+* optional_encrypted_license_number (encrypted, nullable)
+* claims_history (JSON)
+* created_at
+
+**quotes**
+
+* id
+* user_id (nullable for guest)
+* product_type (auto, home, tenant, travel, life, business, pet)
+* payload (JSON of form fields)
+* estimated_premium (numeric, nullable)
+* status (new, contacted, quoted, converted)
+* created_at, updated_at
+
+**leads**
+
+* id
+* quote_id
+* assigned_to (broker user id)
+* lead_status
+* notes (text)
+* created_at
+
+**comparisons**
+
+* id
+* user_id
+* car_a (vehicle reference + profile)
+* car_b
+* result (explanation JSON)
+* created_at
+
+---
+
+# API endpoints (suggested)
+
+* `POST /api/auth/register` — create account, send verification
+* `POST /api/auth/login`
+* `POST /api/auth/reset-password`
+* `GET /api/vehicles?year=&make=` — for dynamic selects
+* `GET /api/vehicles/makes?year=`
+* `GET /api/vehicles/models?year=&make=`
+* `POST /api/quotes` — submit quote / create lead
+* `GET /api/quotes/:id`
+* `POST /api/quotes/:id/calculate` — server-side calculation
+* `GET /api/users/:id/saved-quotes`
+* `POST /api/comparisons` — compare two cars
+* `GET /api/admin/leads` — CRM listing (admin)
+* `PATCH /api/admin/leads/:id` — update lead status
+
+---
+
+# Seed data
+
+* Provide a seed script to populate `vehicles` with year/make/model combinations 1990–present for North American makes. If the full dataset cannot be included, provide instructions and sample CSV format and script to import it.
+* Provide example seed user (broker/admin) with secure password set via env var.
+
+---
+
+# Quote algorithm (minimal viable)
+
+* Implement a mocked premium estimator for Auto using weighted scoring:
+
+  * Base rate by vehicle risk class (age, make/model severity)
+  * +50% for claims record, +20% for young drivers, -10% for experience/license age
+  * +kilometres adjustment
+  * Return range: low / mid / high and an example monthly premium.
+* Document how to replace/mock with real insurer APIs.
+
+---
+
+# Security & privacy checklist (deliverables)
+
+* Encrypt sensitive data in DB (drivers license numbers).
+* Use TLS, secure cookies, rate limiting, input sanitization.
+* Admin-only routes protected by role-based auth.
+* Data retention policy configurable.
+* Provide privacy notice and explicit consent checkboxes for collecting optional sensitive fields.
+
+---
+
+# UX copy examples (for each insurance page, 2–4 paragraph sample)
+
+Include short sample copy for each page. Example for Auto (keep Ontario tone):
+
+> Save on auto insurance in Ontario without sacrificing coverage. QuoteUs connects you with licensed brokers who compare multiple carriers and find the best price for your driving profile. Our quoting tool supports multiple vehicles, G1/G2/G licenses, and additional drivers so your quote is accurate and Ontario-specific.
+>
+> Enter your vehicle year, make and model (we have North American vehicles back to 1990), add other drivers, and get an instant price estimate. All personal data is stored securely and optional fields (like driver’s licence numbers) are collected only with explicit consent.
+
+(Add similar 2–4 paragraph blocks for Home, Tenant, Travel, Life, Business, Pet.)
+
+---
+
+# Acceptance criteria (what “done” looks like)
+
+1. The site is responsive, accessible (WCAG AA), and branded for QuoteUs.ca.
+2. Each insurance page has a dynamic form with server validation and a working `Quote Now` flow that creates a lead and returns an estimated premium.
+3. Auto quoting supports multiple vehicles and drivers, G1/G2/G license types and license dates, and optional encrypted driver licence number.
+4. Vehicle DB exists and is seeded for 1990–present; dependent selects (year→make→model) function smoothly.
+5. Comparison tool compares two cars and returns a reasoned cheaper option.
+6. Users can register, save quotes, log in, and see updates from brokers.
+7. Broker CRM receives leads in real-time with lead management features.
+8. All PII is handled securely and encrypted where necessary; privacy notices present.
+9. Tests exist for core flows and seed scripts run correctly.
+10. Deployment instructions and environment variables documented; Replit run configuration included.
+
+---
+
+# Developer notes & Replit specifics to include
+
+* Provide `.replit` config or Dockerfile and `run` command.
+* Use environment variables for secrets: `DATABASE_URL`, `JWT_SECRET`, `SENDGRID_API_KEY`, `ENCRYPTION_KEY`.
+* Provide migration scripts (e.g., prisma migrate or knex migrate).
+* Provide `seed_vehicles.sh` and sample `vehicles.csv` schema.
+* Provide README with deployment steps and instructions for replacing mock quote algorithm with real provider integrations.
+* Include sample `.env.example`.
+
+---
+
+# Optional enhancements (future)
+
+* Real insurer API integration for live quotes
+* Phone/SMS verification and broker chat
+* Rate comparison vs competitors (publicly available data)
+* Telemetry and A/B testing for CTA improvements
+
+---
+
+## Ready-to-paste prompt (single block)
+
+You can paste the following into Replit AI or to your dev team. It contains the concise instruction pack:
+
+```
+Build a responsive, secure redesign of https://www.QuoteUs.ca for Ontarians saving money on insurance. Use React + Tailwind + TypeScript on the frontend and Node.js + TypeScript + Express (or Next.js API routes) on the backend with PostgreSQL (Supabase okay). Implement authentication (JWT + secure cookies), email verification, password reset. Key features:
+- Pages: Home, Auto, Home, Tenant, Travel, Life, Business, Pet, Comparison, Profile, Broker CRM, Privacy/Contact.
+- Dynamic quote forms for each insurance type with server-side validation. Each insurance page must have 2–4 paragraphs of descriptive copy and an image below the "Quote Now" button.
+- Auto quoting must support multiple vehicles and multiple drivers. Drivers must include license type (G1/G2/G), license date, DOB, claims history. Vehicles must come from a seeded vehicle DB (North American year/make/model 1990–present). Users can add other vehicles and drivers in the same quote. Add optional comment field for driver's licence number (explicit opt-in); store encrypted.
+- Provide a vehicle database and seed script (vehicles table: id, year, make, model, trim). Provide endpoints to query year→make→model for dependent selects.
+- Implement comparison tool to compare insurance cost of two cars (year/make/model) and explain which is cheaper with a breakdown.
+- Users can create profiles, save quotes, view status, and receive broker updates. Broker CRM must ingest leads automatically, allow lead status updates, internal notes, export CSV, and basic analytics.
+- Storage/encryption: encrypt sensitive fields in DB; use env vars for keys; TLS; rate limiting; CSRF protection.
+- Provide API endpoints for all flows, DB migrations, seed scripts, tests (unit & integration), README and Replit run config. Include .env.example variables.
+- Build a simple mocked insurer algorithm for estimates (document how to replace with live APIs).
+- Provide accessibility (WCAG AA) and responsive design.
+Deliver code, test, docs, seed data script and deployment instructions.
+
+Acceptance criteria: dynamic forms work, auto tool supports multiple drivers/vehicles and G licence types, vehicle DB seeded and selects work, comparison tool functions, broker CRM receives leads, PII encrypted, tests pass, README and Replit config included.
+```
+
+---
+
+If you’d like, I can:
+
+* produce the **exact 2–4 paragraph SEO-ready copy** for each insurance page (Auto, Home, Tenant, Travel, Life, Business, Pet),
+* create the **SQL seed example** for vehicle rows (sample CSV excerpt + script),
+* or generate a **starter file tree** (example `src/`, `api/`, `migrations/`) that you can paste into Replit.
+
+Which next step would you like me to do now?

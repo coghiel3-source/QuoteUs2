@@ -1,0 +1,378 @@
+Nice — I’ll deliver **all three** items you asked for in one response so you can paste straight into Replit or hand off to a dev:
+
+1. SEO-ready 2–4 paragraph copy for each insurance page (Auto, Home, Tenant, Travel, Life, Business, Pet) — Ontario-focused.
+2. SQL seed example: `vehicles` table DDL, a sample `vehicles.csv` excerpt (1990–present coverage), and a `psql` COPY import + small Node.js seed script.
+3. Starter project file tree with the most important files and short descriptions/snippets you can paste into Replit.
+
+---
+
+# 1) SEO-ready copy (2–4 paragraphs each)
+
+## Auto Insurance — QuoteUs.ca (Ontario)
+
+Save on auto insurance across Ontario without sacrificing coverage. QuoteUs.ca helps Ontario drivers compare multiple carriers and find the policy that fits their driving profile and budget. Our auto quoting tool supports G1, G2 and full G licences, multiple vehicles, and additional drivers — so your quote reflects your real risk and usage. Enter your vehicle year, make and model (we include North American models back to 1990), add drivers and licence dates, and get a fast, Ontario-specific estimate.
+
+We focus on transparency: each quote includes a clear breakdown of coverage types (liability, accident benefits, collision, comprehensive) and cost drivers like age, driving history, annual kilometres and garaging postal code. If you opt in, you can provide optional information such as driver licence numbers (stored securely) to speed up the broker review. Our brokers review each lead and can follow up to tailor coverage or identify discounts you may have missed.
+
+Whether you’re a new driver on a G2 license, insuring multiple household vehicles, or switching to a new insurer after a move, QuoteUs.ca makes comparison simple and local. We encrypt sensitive information and comply with Canadian privacy best practices to keep your data secure.
+
+---
+
+## Home Insurance — QuoteUs.ca (Ontario)
+
+Protecting your Ontario home starts with the right coverage and the right price. QuoteUs.ca connects homeowners with licensed brokers who compare offers across carriers to find the balance between comprehensive protection and affordable premiums. Our home insurance form collects property details, construction type, replacement cost estimates, and claims history so brokers can deliver precise quotes tailored to Ontario properties.
+
+We help you identify the coverages that matter: dwelling replacement, contents, additional living expenses, liability, and endorsements like sewer backup or overland flood options where available. For seasonal homes or rental properties in Ontario, we provide targeted guidance so you aren’t underinsured or paying for unnecessary coverage.
+
+Our platform saves your property details to a secure profile so you can request updated quotes when you renovate, purchase new valuables, or change mortgage terms. The QuoteUs.ca process is straightforward — fill the dynamic form, get an estimate, then review broker recommendations.
+
+---
+
+## Tenant (Renters) Insurance — QuoteUs.ca (Ontario)
+
+Tenant insurance gives Ontario renters affordable protection for personal belongings and liability. QuoteUs.ca makes it quick to compare renters policies from multiple insurers — whether you live in a student rental, condo, or apartment. Our tenant insurance form collects details about your unit, contents value, liability needs and loss history to produce tailored estimates.
+
+Renters policies can cover theft, fire, water damage from a neighbour, and personal liability if someone is injured in your rented space. Our brokers can advise on replacement cost versus actual cash value for contents, and help you choose deductibles and limits that match your situation and budget.
+
+A single renters policy can prevent a small loss from becoming a financial disaster — and QuoteUs.ca helps you find that right policy quickly and securely.
+
+---
+
+## Travel Insurance — QuoteUs.ca (Ontario)
+
+Heading out of Ontario? Travel insurance protects you from emergency medical bills, trip cancellation, lost baggage and other travel-related surprises. QuoteUs.ca helps Ontario travellers compare plans for single trips, annual multi-trip coverage, family policies and travel medical insurance for long stays abroad.
+
+When you use our travel form, provide trip dates, destinations, traveller ages and health questions so brokers can match you to plans that cover emergency medical care and evacuation — critical if you’ll be outside Canada. We also surface add-ons such as trip interruption, rental car coverage and pre-existing condition waivers where applicable.
+
+For frequent travellers and families, a quick comparison on QuoteUs.ca can save time and money while ensuring you’re covered when it counts.
+
+---
+
+## Life Insurance — QuoteUs.ca (Ontario)
+
+Life insurance provides financial protection for your loved ones and can be a cornerstone of long-term planning. QuoteUs.ca lets Ontarians compare term, permanent and mortgage-protection life insurance options from multiple providers. Our life insurance form asks about age, health history, smoking status and coverage goals so brokers can produce realistic quotes and recommend appropriate products.
+
+Whether you need short-term coverage for debt, mortgage protection, or long-term policies for estate planning, our brokers explain how term lengths, riders and underwriting factors affect cost. We also help you compare conversion options and whether a medical exam will be required for preferred rates.
+
+Get a clear picture of monthly premiums, policy features and the steps to apply — QuoteUs.ca helps simplify a complex decision with secure, personalised quotes.
+
+---
+
+## Business Insurance — QuoteUs.ca (Ontario)
+
+Businesses in Ontario need tailored insurance solutions — from small sole-proprietor liability to mid-size commercial property and E&O coverage. QuoteUs.ca provides brokers with the business details needed to compare quotes for general liability, commercial property, business interruption, professional liability and commercial auto.
+
+Our business insurance form collects industry type, revenue band, payroll, property address and claims history to generate accurate lead profiles for commercial insurers. Brokers use that data to identify policy options and risk management recommendations specific to Ontario regulations and market conditions.
+
+Whether you operate a storefront, consultancy, trades business or e-commerce company, QuoteUs.ca helps you understand exposures and find a policy that protects assets and supports growth.
+
+---
+
+## Pet Insurance — QuoteUs.ca (Ontario)
+
+Pet insurance helps Ontario pet owners manage the high cost of unexpected veterinary bills. QuoteUs.ca compares pet medical plans for dogs and cats across providers, covering accidents, illnesses and optional wellness care. Our pet form collects species, breed, age, pre-existing condition info and typical activity level to produce tailored premium estimates.
+
+Pet insurance plans vary by deductible, reimbursement level and waiting periods — our brokers can explain the tradeoffs and help you choose a plan that protects your pet while fitting your budget. For high-risk breeds or older pets, we show realistic options and next steps.
+
+Protect your companion and plan for the unexpected — quick comparison through QuoteUs.ca helps you make a confident choice.
+
+---
+
+# 2) SQL seed example for `vehicles` (DDL, CSV excerpt, psql COPY, Node seed script)
+
+### `vehicles` table DDL (Postgres)
+
+```sql
+-- vehicles DDL
+CREATE TABLE IF NOT EXISTS vehicles (
+  id BIGSERIAL PRIMARY KEY,
+  year INT NOT NULL,
+  make TEXT NOT NULL,
+  model TEXT NOT NULL,
+  trim TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- index to speed dependent selects
+CREATE INDEX IF NOT EXISTS idx_vehicles_year_make_model ON vehicles (year, make, model);
+```
+
+### `vehicles.csv` sample (header + 25 example rows)
+
+Create a CSV file `vehicles.csv` with the following sample rows (this is an excerpt — your full seed should include all makes/models from 1990–present):
+
+```
+year,make,model,trim
+1990,Ford,F-150,XL
+1995,Chevrolet,Impala,LS
+2000,Toyota,Camry,LE
+2005,Honda,Civic,EX
+2010,Nissan,Altima,2.5S
+2015,Hyundai,Elantra,GLS
+2018,Toyota,RAV4,LE
+2020,Honda,CR-V,EX-L
+2021,Ford,Escape,SE
+2022,Chevrolet,Equinox,LT
+1999,Subaru,Outback,Base
+2003,Mazda,3,GT
+2007,BMW,3 Series,325i
+2012,Audi,A4,Premium
+2016,Mercedes-Benz,C-Class,C300
+2019,Jeep,Wrangler,Sport
+2023,Tesla,Model 3,Standard Range Plus
+1994,Dodge,Caravan,SE
+2008,Kia,Sorento,EX
+2014,Volkswagen,Golf,TSI
+1997,Acura,Integra,LS
+2001,Volvo,S60,2.4T
+2006,Infiniti,G35,Base
+2011,MINI,Cooper,Hardtop
+2024,Subaru,Forester,Base
+```
+
+> **Note:** The full seed must include North American makes & models 1990–present. The sample above demonstrates CSV format and variety.
+
+### Import via `psql` (fastest)
+
+From the server where Postgres is running:
+
+1. Save the CSV as `vehicles.csv`.
+2. Run:
+
+```bash
+psql $DATABASE_URL -c "\copy vehicles(year,make,model,trim) FROM 'vehicles.csv' WITH (FORMAT csv, HEADER true)"
+```
+
+(Replace `$DATABASE_URL` or use `psql -h host -U user -d dbname` accordingly.)
+
+### Node.js seed script (bulk import from CSV using `pg` and `csv-parse`)
+
+Create `scripts/seed_vehicles.js`:
+
+```js
+// scripts/seed_vehicles.js
+const fs = require('fs');
+const { parse } = require('csv-parse');
+const { Pool } = require('pg');
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+async function seed() {
+  const parser = fs.createReadStream('vehicles.csv').pipe(parse({ columns: true, trim: true }));
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for await (const row of parser) {
+      const { year, make, model, trim } = row;
+      await client.query(
+        `INSERT INTO vehicles (year, make, model, trim) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+        [parseInt(year, 10), make, model, trim || null]
+      );
+    }
+    await client.query('COMMIT');
+    console.log('Vehicles seeded');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Seed failed', err);
+  } finally {
+    client.release();
+    pool.end();
+  }
+}
+
+seed();
+```
+
+Run:
+
+```bash
+DATABASE_URL=postgres://user:pass@host:5432/dbname node scripts/seed_vehicles.js
+```
+
+### Notes & best practices
+
+* If you have a large official vehicle dataset (recommended), import via `COPY` for speed.
+* Keep a `source` column if you import from multiple vendors. Add `trim`/`submodel` columns if needed.
+* Provide an API endpoint `GET /api/vehicles?year=&make=` that queries distinct makes/models for dependent selects (use indexed queries).
+
+---
+
+# 3) Starter file tree (Replit-ready) with key file snippets
+
+Paste this into your project root. I’ll show the tree and small content snippets to get you started.
+
+```
+quoteus/
+├─ .replit
+├─ README.md
+├─ package.json
+├─ .env.example
+├─ src/
+│  ├─ client/
+│  │  ├─ app/
+│  │  │  ├─ pages/
+│  │  │  │  ├─ index.tsx
+│  │  │  │  ├─ auto.tsx
+│  │  │  │  ├─ home.tsx
+│  │  │  │  ├─ tenant.tsx
+│  │  │  │  ├─ travel.tsx
+│  │  │  │  ├─ life.tsx
+│  │  │  │  ├─ business.tsx
+│  │  │  │  ├─ pet.tsx
+│  │  │  │  └─ compare.tsx
+│  │  │  └─ components/
+│  │  │     ├─ QuoteForm.tsx
+│  │  │     ├─ VehicleSelector.tsx
+│  │  │     └─ DriverFields.tsx
+│  │  └─ styles/
+│  │     └─ globals.css
+│  ├─ server/
+│  │  ├─ index.ts
+│  │  ├─ routes/
+│  │  │  ├─ auth.ts
+│  │  │  ├─ vehicles.ts
+│  │  │  ├─ quotes.ts
+│  │  │  └─ admin.ts
+│  │  ├─ db/
+│  │  │  ├─ migrations/
+│  │  │  └─ prisma.schema (or knexfile.js / typeorm)
+│  │  └─ utils/
+│  │     ├─ encryption.ts
+│  │     └─ quoteEstimator.ts
+│  └─ shared/
+│     └─ types.ts
+├─ scripts/
+│  ├─ seed_vehicles.js
+│  └─ seed_users.js
+└─ migrations/
+   └─ 001_create_vehicles.sql
+```
+
+### Important files — short snippets
+
+#### `.replit`
+
+```
+run = "npm run dev"
+```
+
+#### `package.json` (key scripts)
+
+```json
+{
+  "name": "quoteus",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "concurrently \"nodemon --watch src/server --exec ts-node src/server/index.ts\" \"vite\"",
+    "start": "node dist/server/index.js",
+    "build": "tsc && vite build",
+    "seed": "node scripts/seed_vehicles.js"
+  },
+  "dependencies": { "express": "^4.18.2", "pg": "^8.0.0", "cors": "^2.8.5" },
+  "devDependencies": { "typescript": "^5.0.0", "ts-node": "^10.0.0", "vite": "^4.0.0", "concurrently": "^7.0.0" }
+}
+```
+
+#### `src/server/index.ts` (minimal)
+
+```ts
+import express from 'express';
+import cors from 'cors';
+import vehiclesRouter from './routes/vehicles';
+import quotesRouter from './routes/quotes';
+import authRouter from './routes/auth';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.use('/api/vehicles', vehiclesRouter);
+app.use('/api/quotes', quotesRouter);
+app.use('/api/auth', authRouter);
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server running on ${port}`));
+```
+
+#### `src/server/routes/vehicles.ts` (example)
+
+```ts
+import { Router } from 'express';
+import { Pool } from 'pg';
+const router = Router();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+router.get('/', async (req, res) => {
+  const { year, make } = req.query;
+  try {
+    if (year && make) {
+      const r = await pool.query('SELECT DISTINCT model FROM vehicles WHERE year=$1 AND make=$2 ORDER BY model', [year, make]);
+      return res.json(r.rows);
+    } else if (year) {
+      const r = await pool.query('SELECT DISTINCT make FROM vehicles WHERE year=$1 ORDER BY make', [year]);
+      return res.json(r.rows);
+    } else {
+      const r = await pool.query('SELECT DISTINCT year FROM vehicles ORDER BY year DESC');
+      return res.json(r.rows);
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'DB error' });
+  }
+});
+
+export default router;
+```
+
+#### `src/client/app/pages/auto.tsx` (React page skeleton)
+
+```tsx
+import React from 'react';
+import QuoteForm from '../components/QuoteForm';
+export default function AutoPage() {
+  return (
+    <main className="max-w-4xl mx-auto p-4">
+      <h1 className="text-2xl font-bold">Auto Insurance Quotes — Ontario</h1>
+      <QuoteForm product="auto" />
+      <section className="mt-6">
+        <img src="/assets/auto.jpg" alt="Auto insurance Ontario" />
+        <p>Save on auto insurance across Ontario without sacrificing coverage…</p>
+        <p>We focus on transparency: each quote includes a clear breakdown…</p>
+      </section>
+    </main>
+  );
+}
+```
+
+#### `src/server/utils/quoteEstimator.ts` (mock scoring)
+
+```ts
+export function estimateAutoPremium(profile: any): { low:number, mid:number, high:number } {
+  // simple mock: base by vehicle age and adders for young drivers, claims, km
+  const base = 800 - Math.min(20 * (profile.vehicleYear ? (new Date().getFullYear() - profile.vehicleYear) : 0), 400);
+  let adj = 0;
+  if (profile.drivers.some((d:any)=> new Date().getFullYear() - new Date(d.licenseDate).getFullYear() < 2)) adj += 300;
+  if (profile.claims && profile.claims > 0) adj += 400;
+  adj += (profile.annualKm || 12000) / 1000 * 20;
+  const mid = Math.max(350, base + adj);
+  return { low: Math.round(mid*0.85), mid: Math.round(mid), high: Math.round(mid*1.25) };
+}
+```
+
+---
+
+# Quick next steps & practical tips
+
+* Use the `vehicles.csv` import to seed your DB with the full vehicle list. If you have a vendor dataset (e.g., NHTSA / manufacturer lists), import that for complete coverage.
+* Expand the `QuoteForm` component into sub-steps: drivers → vehicles → usage → review; autosave to profiles.
+* Implement encryption for optional driver license numbers using an application-level encryption util (`encryption.ts`) before writing to DB.
+* Add unit tests for `quoteEstimator` and route tests for `/api/vehicles` and `/api/quotes`.
+* For Replit deployment, set `DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `SENDGRID_API_KEY` in secrets.
+
+---
+
+If you want, I can now:
+
+* Generate the **full `vehicles.csv`** covering 1990–2025 for common North American makes (I can create a large CSV excerpt here), **or**
+* Expand any of the starter files into complete code files you can paste into Replit (e.g., a full `QuoteForm.tsx`, `DriverFields.tsx`, or the broker CRM admin routes).
+
+Which of those would you like next?
