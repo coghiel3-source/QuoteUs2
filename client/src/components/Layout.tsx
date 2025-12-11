@@ -27,8 +27,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="container mx-auto max-w-7xl flex justify-between">
           <span className="opacity-90">Serving Ontario Residents Since 2025</span>
           <div className="flex gap-6">
-            <a href="tel:1-800-QUOTE-US" className="flex items-center gap-2 hover:text-accent transition-colors">
-              <Phone size={14} /> 1-800-QUOTE-US
+            <a href="tel:1-877-253-2695" className="flex items-center gap-2 hover:text-accent transition-colors">
+              <Phone size={14} /> 1-877-253-2695
             </a>
             <Link href="/dashboard" className="flex items-center gap-2 hover:text-accent transition-colors">
                Broker Login
@@ -155,7 +155,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div>
               <h4 className="font-serif font-bold text-lg mb-4 text-white">Contact</h4>
               <ul className="space-y-2 text-sm text-primary-foreground/70">
-                <li className="flex items-center gap-2"><Phone size={14} /> 1-800-QUOTE-US</li>
+                <li className="flex items-center gap-2"><Phone size={14} /> 1-877-253-2695</li>
                 <li>Toronto, Ontario</li>
                 <li>support@quoteus.ca</li>
               </ul>
@@ -164,6 +164,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           
           <div className="border-t border-primary-foreground/10 pt-8 text-center text-xs text-primary-foreground/50">
             <p>&copy; 2025 QuoteUs.ca. All rights reserved. Brokerage License #12345.</p>
+            <p className="mt-2 text-primary-foreground/30">Compliant Ontario Canada Privacy Statement Included.</p>
           </div>
         </div>
       </footer>

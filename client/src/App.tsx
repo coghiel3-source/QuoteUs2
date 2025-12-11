@@ -8,6 +8,12 @@ import Layout from "@/components/Layout";
 import HomePage from "@/pages/Home";
 import AutoPage from "@/pages/Auto";
 import ComparePage from "@/pages/Compare";
+import HomeInsurancePage from "@/pages/HomeInsurance";
+import TenantPage from "@/pages/Tenant";
+import TravelPage from "@/pages/Travel";
+import LifePage from "@/pages/Life";
+import BusinessPage from "@/pages/Business";
+import PetPage from "@/pages/Pet";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -26,24 +32,12 @@ function Router() {
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/auto" component={AutoPage} />
-        <Route path="/home-insurance">
-           <PlaceholderPage title="Home" />
-        </Route>
-        <Route path="/tenant">
-           <PlaceholderPage title="Tenant" />
-        </Route>
-        <Route path="/travel">
-           <PlaceholderPage title="Travel" />
-        </Route>
-        <Route path="/life">
-           <PlaceholderPage title="Life" />
-        </Route>
-        <Route path="/business">
-           <PlaceholderPage title="Business" />
-        </Route>
-        <Route path="/pet">
-           <PlaceholderPage title="Pet" />
-        </Route>
+        <Route path="/home-insurance" component={HomeInsurancePage} />
+        <Route path="/tenant" component={TenantPage} />
+        <Route path="/travel" component={TravelPage} />
+        <Route path="/life" component={LifePage} />
+        <Route path="/business" component={BusinessPage} />
+        <Route path="/pet" component={PetPage} />
         <Route path="/compare" component={ComparePage} />
         <Route path="/profile">
            <PlaceholderPage title="My Profile" />

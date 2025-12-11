@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign } from "lucide-react";
-import heroImage from "@assets/generated_images/scenic_ontario_road_with_a_family_car_driving_safely..png";
+import heroImage from "@assets/generated_images/group_of_three_diverse_20-somethings_smiling_at_a_smartphone..png";
 
 export default function HomePage() {
   const products = [
@@ -21,7 +21,7 @@ export default function HomePage() {
       <section className="relative bg-primary text-white overflow-hidden">
         <div className="absolute inset-0 bg-primary/20 z-10" />
         <div className="absolute inset-0 z-0 opacity-40">
-           <img src={heroImage} alt="Ontario Road" className="w-full h-full object-cover" />
+           <img src={heroImage} alt="Happy customers looking at phone" className="w-full h-full object-cover" />
         </div>
         
         <div className="container mx-auto max-w-7xl px-4 py-24 md:py-32 relative z-20">

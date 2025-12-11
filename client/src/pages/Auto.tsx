@@ -5,14 +5,12 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { VehicleSelector } from "@/components/VehicleSelector";
-import { Loader2, Plus, Trash2, Shield, Info, Car, User } from "lucide-react";
+import { Loader2, Plus, Trash2, Shield, Info, Car, User, AlertTriangle, FileWarning, Ban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const autoSchema = z.object({
@@ -25,6 +23,9 @@ const autoSchema = z.object({
     postalCode: z.string().regex(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/, "Invalid Ontario postal code"),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
+    accidents: z.string(),
+    tickets: z.string(),
+    cancellations: z.string(),
   }),
   vehicles: z.array(z.object({
     year: z.number().min(1990),
@@ -34,9 +35,14 @@ const autoSchema = z.object({
     annualKm: z.number().min(0, "Kilometres required"),
   })).min(1, "At least one vehicle is required"),
   drivers: z.array(z.object({
-    name: z.string().min(2, "Name required"),
+    firstName: z.string().min(2, "First name required"),
+    lastName: z.string().min(2, "Last name required"),
+    dob: z.string().min(1, "Date of birth required"),
     relationship: z.string().min(1, "Relationship required"),
     licenseType: z.enum(["G1", "G2", "G"]),
+    accidents: z.string(),
+    tickets: z.string(),
+    cancellations: z.string(),
   })).optional(),
 });
 
@@ -52,6 +58,9 @@ export default function AutoPage() {
     defaultValues: {
       primaryDriver: {
         licenseType: "G",
+        accidents: "0",
+        tickets: "0",
+        cancellations: "0"
       },
       vehicles: [{ year: 2020, usage: "commute" }],
       drivers: [],
@@ -77,7 +86,18 @@ export default function AutoPage() {
     let baseRate = 150; // Base monthly
     baseRate += data.vehicles.length * 80;
     if (data.primaryDriver.licenseType !== "G") baseRate += 50;
-    if (data.drivers && data.drivers.length > 0) baseRate += data.drivers.length * 40;
+    
+    // Risk factors
+    if (parseInt(data.primaryDriver.accidents) > 0) baseRate += 100;
+    if (parseInt(data.primaryDriver.tickets) > 0) baseRate += 50;
+    if (parseInt(data.primaryDriver.cancellations) > 0) baseRate += 200;
+
+    if (data.drivers && data.drivers.length > 0) {
+      baseRate += data.drivers.length * 40;
+      data.drivers.forEach(driver => {
+         if (parseInt(driver.accidents) > 0) baseRate += 80;
+      });
+    }
     
     setQuoteResult(baseRate);
     setIsSubmitting(false);
@@ -219,6 +239,52 @@ export default function AutoPage() {
                      {form.formState.errors.primaryDriver?.licenseDate && <p className="text-destructive text-xs">{form.formState.errors.primaryDriver.licenseDate.message}</p>}
                   </div>
                 </div>
+
+                <div className="md:col-span-2 pt-4 border-t mt-2 space-y-4">
+                  <h4 className="font-semibold text-primary flex items-center gap-2"><AlertTriangle size={18} /> Driving History</h4>
+                  <div className="grid md:grid-cols-3 gap-6">
+                     <div className="space-y-2">
+                        <Label>Accidents (Last 6 Years)</Label>
+                        <Select onValueChange={(val) => form.setValue("primaryDriver.accidents", val)} defaultValue="0">
+                          <SelectTrigger>
+                            <SelectValue placeholder="0" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">None</SelectItem>
+                            <SelectItem value="1">1 Accident</SelectItem>
+                            <SelectItem value="2">2+ Accidents</SelectItem>
+                          </SelectContent>
+                        </Select>
+                     </div>
+                     <div className="space-y-2">
+                        <Label>Tickets (Last 3 Years)</Label>
+                        <Select onValueChange={(val) => form.setValue("primaryDriver.tickets", val)} defaultValue="0">
+                          <SelectTrigger>
+                            <SelectValue placeholder="0" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">None</SelectItem>
+                            <SelectItem value="1">1 Ticket</SelectItem>
+                            <SelectItem value="2">2 Tickets</SelectItem>
+                            <SelectItem value="3">3+ Tickets</SelectItem>
+                          </SelectContent>
+                        </Select>
+                     </div>
+                     <div className="space-y-2">
+                        <Label>Non-Payment Cancellations (3 Years)</Label>
+                         <Select onValueChange={(val) => form.setValue("primaryDriver.cancellations", val)} defaultValue="0">
+                          <SelectTrigger>
+                            <SelectValue placeholder="0" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">None</SelectItem>
+                            <SelectItem value="1">Yes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                     </div>
+                  </div>
+                </div>
+
               </CardContent>
             </Card>
 
@@ -303,7 +369,7 @@ export default function AutoPage() {
                 <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
                   <User size={20} /> Additional Drivers
                 </h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ name: "", relationship: "Spouse", licenseType: "G" })} className="gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ firstName: "", lastName: "", dob: "", relationship: "Spouse", licenseType: "G", accidents: "0", tickets: "0", cancellations: "0" })} className="gap-2">
                   <Plus size={16} /> Add Driver
                 </Button>
               </div>
@@ -319,7 +385,7 @@ export default function AutoPage() {
                   >
                     <Card className="shadow-md border-none relative overflow-hidden">
                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary-foreground/20"></div>
-                       <CardContent className="p-6 pt-8 grid md:grid-cols-3 gap-4">
+                       <CardContent className="p-6 pt-8 gap-4">
                           <Button 
                               type="button" 
                               variant="ghost" 
@@ -329,36 +395,92 @@ export default function AutoPage() {
                             >
                               <Trash2 size={16} />
                             </Button>
-                          <div className="space-y-2">
-                            <Label>Full Name</Label>
-                            <Input {...form.register(`drivers.${index}.name`)} placeholder="Driver Name" data-testid={`driver-name-${index}`} />
+                          
+                          <div className="grid md:grid-cols-3 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <Label>First Name</Label>
+                              <Input {...form.register(`drivers.${index}.firstName`)} placeholder="First Name" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Last Name</Label>
+                              <Input {...form.register(`drivers.${index}.lastName`)} placeholder="Last Name" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Date of Birth</Label>
+                              <Input type="date" {...form.register(`drivers.${index}.dob`)} />
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                             <Label>Relationship</Label>
-                             <Select onValueChange={(val) => form.setValue(`drivers.${index}.relationship`, val)} defaultValue="Spouse">
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Spouse">Spouse / Partner</SelectItem>
-                                  <SelectItem value="Child">Child</SelectItem>
-                                  <SelectItem value="Parent">Parent</SelectItem>
-                                  <SelectItem value="Other">Other</SelectItem>
-                                </SelectContent>
-                             </Select>
+
+                          <div className="grid md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                               <Label>Relationship</Label>
+                               <Select onValueChange={(val) => form.setValue(`drivers.${index}.relationship`, val)} defaultValue="Spouse">
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Spouse">Spouse / Partner</SelectItem>
+                                    <SelectItem value="Child">Child</SelectItem>
+                                    <SelectItem value="Parent">Parent</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                  </SelectContent>
+                               </Select>
+                            </div>
+                            <div className="space-y-2">
+                               <Label>License Type</Label>
+                               <Select onValueChange={(val: any) => form.setValue(`drivers.${index}.licenseType`, val)} defaultValue="G">
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="G">G</SelectItem>
+                                    <SelectItem value="G2">G2</SelectItem>
+                                    <SelectItem value="G1">G1</SelectItem>
+                                  </SelectContent>
+                               </Select>
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                             <Label>License Type</Label>
-                             <Select onValueChange={(val: any) => form.setValue(`drivers.${index}.licenseType`, val)} defaultValue="G">
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="G">G</SelectItem>
-                                  <SelectItem value="G2">G2</SelectItem>
-                                  <SelectItem value="G1">G1</SelectItem>
-                                </SelectContent>
-                             </Select>
+
+                          <div className="grid md:grid-cols-3 gap-4 border-t pt-4">
+                             <div className="space-y-2">
+                                <Label>Accidents (6 yrs)</Label>
+                                <Select onValueChange={(val) => form.setValue(`drivers.${index}.accidents`, val)} defaultValue="0">
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="0" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0">None</SelectItem>
+                                    <SelectItem value="1">1</SelectItem>
+                                    <SelectItem value="2">2+</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                             </div>
+                             <div className="space-y-2">
+                                <Label>Tickets (3 yrs)</Label>
+                                <Select onValueChange={(val) => form.setValue(`drivers.${index}.tickets`, val)} defaultValue="0">
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="0" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0">None</SelectItem>
+                                    <SelectItem value="1">1</SelectItem>
+                                    <SelectItem value="2">2</SelectItem>
+                                    <SelectItem value="3">3+</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                             </div>
+                             <div className="space-y-2">
+                                <Label>Cancellations (3 yrs)</Label>
+                                 <Select onValueChange={(val) => form.setValue(`drivers.${index}.cancellations`, val)} defaultValue="0">
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="0" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0">None</SelectItem>
+                                    <SelectItem value="1">Yes</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                             </div>
                           </div>
                        </CardContent>
                     </Card>
@@ -393,7 +515,7 @@ export default function AutoPage() {
             <div className="mt-16 prose prose-slate max-w-none">
               <h2 className="font-serif text-primary">Auto Insurance — QuoteUs.ca (Ontario)</h2>
               <p>
-                Save on auto insurance across Ontario without sacrificing coverage. QuoteUs.ca helps Ontario drivers compare multiple carriers and find the policy that fits their driving profile and budget. Our auto quoting tool supports G1, G2 and full G licences, multiple vehicles, and additional drivers — so your quote reflects your real risk and usage. Enter your vehicle year, make and model (we include North American models back to 1990), add drivers and licence dates, and get a fast, Ontario-specific estimate.
+                Save on auto insurance across Ontario without sacrificing coverage. QuoteUs.ca helps Ontario drivers compare multiple carriers and find the policy that fits your driving profile and budget. Our auto quoting tool supports G1, G2 and full G licences, multiple vehicles, and additional drivers — so your quote reflects your real risk and usage. Enter your vehicle year, make and model (we include North American models back to 1990), add drivers and licence dates, and get a fast, Ontario-specific estimate.
               </p>
               <p>
                 We focus on transparency: each quote includes a clear breakdown of coverage types (liability, accident benefits, collision, comprehensive) and cost drivers like age, driving history, annual kilometres and garaging postal code. If you opt in, you can provide optional information such as driver licence numbers (stored securely) to speed up the broker review. Our brokers review each lead and can follow up to tailor coverage or identify discounts you may have missed.
