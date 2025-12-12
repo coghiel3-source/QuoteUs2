@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Heart } from "lucide-react";
 import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function LifePage() {
   const { toast } = useToast();
@@ -87,8 +88,18 @@ export default function LifePage() {
                       <SelectItem value="term40">Term 40 Years</SelectItem>
                       <SelectItem value="whole">Whole Life (Lifetime with Cash Value)</SelectItem>
                       <SelectItem value="universal">Universal Life (Flexible Premium)</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
+              </div>
+
+              <div className="space-y-2">
+                 <Label>Additional Comments</Label>
+                 <Textarea 
+                   placeholder="Any specific health conditions or details we should know?" 
+                   {...register("comments")}
+                   className="resize-none"
+                 />
               </div>
 
               <div className="space-y-2">
