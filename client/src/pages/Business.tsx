@@ -5,14 +5,19 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase } from "lucide-react";
-import { useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
+import { UploadCloud } from "lucide-react";
 
 export default function BusinessPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
   const { register, handleSubmit } = useForm();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFileName(e.target.files[0].name);
+    }
+  };
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
@@ -94,6 +99,29 @@ export default function BusinessPage() {
                    placeholder="Describe any other coverage needs or specific risks..." 
                    className="resize-none"
                  />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Current Policy Upload (Optional)</Label>
+                <div className="border-2 border-dashed border-input rounded-lg p-6 hover:bg-secondary/5 transition-colors text-center cursor-pointer relative">
+                  <Input 
+                    type="file" 
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                    onChange={handleFileChange}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  />
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <UploadCloud size={32} />
+                    {fileName ? (
+                      <span className="text-primary font-medium">{fileName}</span>
+                    ) : (
+                      <>
+                        <span className="font-medium">Click to upload or drag and drop</span>
+                        <span className="text-xs">PDF, JPG or PNG (Max 10MB)</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
