@@ -176,6 +176,13 @@ export default function ComparePage() {
              </div>
           </motion.div>
         )}
+
+        <div className="mt-16 text-sm text-muted-foreground bg-secondary/20 p-6 rounded-lg">
+          <h4 className="font-bold mb-2 text-primary">Vehicle Comparison Tool Notes</h4>
+          <p>
+            Please note: our vehicle comparison tool provides general estimates only and is not an exact science. It’s designed to give you a rough idea of which vehicles may cost more or less to insure based on typical trends. Actual insurance rates can vary depending on your personal details and driving profile.
+          </p>
+        </div>
       </div>
     </div>
   );
