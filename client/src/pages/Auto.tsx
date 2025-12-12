@@ -21,6 +21,7 @@ const autoSchema = z.object({
     phone: z.string().min(10, "Valid phone number required"),
     dob: z.string().min(1, "Date of birth required"),
     postalCode: z.string().regex(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/, "Invalid Ontario postal code"),
+    address: z.string().min(5, "Valid mailing address required"),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
     accidents: z.string(),
@@ -217,6 +218,11 @@ export default function AutoPage() {
                   <Label htmlFor="postalCode">Postal Code (Ontario)</Label>
                   <Input id="postalCode" placeholder="M5V 2H1" className="uppercase" {...form.register("primaryDriver.postalCode")} data-testid="input-postal" />
                    {form.formState.errors.primaryDriver?.postalCode && <p className="text-destructive text-xs">{form.formState.errors.primaryDriver.postalCode.message}</p>}
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address">Mailing Address</Label>
+                  <Input id="address" placeholder="123 Maple Street, Apt 4B, Toronto, ON" {...form.register("primaryDriver.address")} data-testid="input-address" />
                 </div>
                 
                 <div className="md:col-span-2 grid md:grid-cols-2 gap-6 pt-4 border-t mt-2">

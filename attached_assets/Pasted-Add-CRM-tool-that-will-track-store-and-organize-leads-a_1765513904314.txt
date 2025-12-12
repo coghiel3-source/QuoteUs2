@@ -1,0 +1,357 @@
+Add CRM tool that will track store and organize leads and quote information.
+add mailing address to dynamic auto form.
+
+add this information to the privacy policy page.
+Last Updated: July 21, 2025
+Quoteus.ca (in this Policy, “Quoteus.ca ”/“we”/”us”) is committed to protecting your privacy. This
+privacy policy (the “Privacy Policy”) applies to the Quoteus.ca website, www.Quoteus.ca (the
+“Website”) together with our services as further described in our terms of use (the “Services”).
+The Privacy Policy describes our practices and procedures with respect to privacy and how we
+collect, store, use and distribute information about our users (“you”) through the Website and
+Services.
+Accountability
+We maintain internal practices and procedures to ensure that we comply with this Privacy Policy
+as well as update it as our offerings and activities change. We endeavour to maintain, and
+periodically update, practices and procedures that:
+Define the purposes of our collection of your Personal Information;
+Obtain valid and meaningful consent for that collection;
+Limit collection, use and disclosure of your Personal Information;
+Ensure your personal information is correct, complete and current;
+Ensure security measures are adequate to protect your Personal Information;
+Maintain a retention and destruction timetable;
+Respond to complaints, inquiries and requests to access your Personal Information;
+Address breach and incident-management protocols;
+Assess potential risks to your Personal Information;
+Identifying Purposes
+Ultimately, we use your Personal Information to provide you with the Services.
+We aim to collect, use and disclose only such information as is required to enable us to manage
+your account, to provide the Services, to maintain our customer/user lists, to respond to your
+inquiries or provide feedback, for identification and authentication purposes, and for service
+improvement.
+More specifically, the purposes for which we collect, use, and disclose your Personal
+Information are listed in the Use and Disclosure Section below. Generally, the purposes are to:
+provide you with our products and services, including through third-party suppliers;
+
+better understand your needs and preferences;
+maintain responsible commercial relations with you;
+determine your eligibility for products and services and recommend products and services to
+you;
+develop and enhance our products and services;
+market products and services that may be of interest to you;
+manage our business operations;
+detect, suppress or prevent fraud and manage and secure our networks; and
+meet our legal and regulatory obligations.
+Consent
+When you use the Service, your consent to the collection, use, and disclosure of Personal
+Information as described in this Privacy Policy will be implied in certain circumstances, most
+often when you willingly and intentionally provide us with your personal information, including
+directly in writing or electronically, for a specific stated purpose.
+We also rely on third parties for your consent when you access the Services using devices or
+software that you have disclosed your personal information to, and those services are permitted
+to disclose it to us.
+We may also seek your express consent to the collection, use or disclosure of your personal
+information. Most often, we will seek your express consent when it is highly sensitive or required
+for a new purpose. We may obtain your consent by your checking of a box, your acquiescence
+to an agreement or your taking another affirmative action by requesting service on our website.
+Information
+Two types of information may be collected through the Website and our Services: Personal
+Information and Website Information.
+“Personal Information” is personally identifiable information, such as your name, address, e-mail
+address, credit card information, address, birth date and gender etc. At the time of collection, we
+will identify the Personal Information being collected and the purposes for which it will be used.
+“Website Information” is information we collect when you visit our Website, such as an Internet
+Protocol Address (IP Address), the domain used to access the Website, and the type and
+version of browser or operating system being used by visitors to the Website.
+Collection
+
+We may collect Personal Information in respect of the Website through a registration process,
+request form submissions, financial product and service quote inquiries, communications with
+you, user support, online tools, and expert advice services.
+We also collect aggregate information, such as demographic statistics of our users (e.g.
+average age or geographical allocation of our users), number of visitors, what pages users
+access or visit, and average time spent on the Website. Similarly, business contact information
+such as the name, title, business address, or telephone number of a business or professional
+person or an employee of an organization is not considered Personal Information when such
+information is used for the purposes of contacting the individual in their business/professional
+capacity.
+In addition to the Personal information we collect directly from you, we also work with third
+parties to more fully understand your journey from requesting a quote to receiving a financial
+product. This information received from third parties is collected in accordance with that party’s
+privacy policies and may include: date of approval for the financial product, the policy type of
+product, the finalized value, and whether and what other products may have been bundled with
+the product you inquired about.
+Use and Disclosure
+We use and disclose your Personal Information for the following purposes:
+Account Registration: You may be asked to register for an account to use the Services. If you
+choose to register for an account you must provide certain Personal Information to us such as
+your full name, address and email address. Unless disclosure is necessary to provide you other
+aspects of the Services you request, or as otherwise detailed in this Privacy Policy, none of your
+account registration information will be disclosed to third-parties.
+Request Forms: If you request more information about a certain third-party product or service
+listed on our Website you may be required to input certain Personal Information, such as name,
+contact information, address, and certain other information depending on the nature of the third
+party product or service you are interested in. If you submit such a request form, we will send
+the information contained in the form to the applicable third party offering the product or service.
+Any Personal Information that we provide to third parties will be treated in accordance with the
+terms of such third party’s own privacy policies, which you should read.
+Online Tools: As part of the Services, we may offer tools such as a mortgage calculator,
+Canada child benefit calculator, RESP calculator, TFSA Room calculator, and credit card finder.
+If you use these tools, we collect the Personal Information you provide (such as your income,
+
+RESP balance, credit score, etc.) in order to provide you with the features and functions of the
+tools.
+Insurance Quotes: If you request an insurance quote, we collect either your postal code or
+province and may automatically redirect you to a third-party website, hosted by one of our
+insurance provider partners. Except for your location, any information you submit in the
+insurance quote process will be submitted directly to such third-party provider, and not to us.
+Your Personal Information will be treated in accordance with the privacy policy of the applicable
+third-party insurance provider. We may also offer you the ability to obtain an insurance quote
+directly from Quoteus.ca by providing Personal Information on the Website. We collect this
+information so that we can obtain an accurate quote from our third-party insurance partners, and
+to contact you about your quote.
+Auto Insurance: If you request a quote for auto insurance on the Website, we collect Personal
+Information related to the driver like date of birth, sex, marital status, job status, driving history,
+licence class, insurance status, name of current insurer, price of current insurance per month,
+details regarding any accidents or insurance violations the driver and details about the vehicle
+include the year, make and model, and number of kilometers driven per year in some case
+drivers licenses details. Necessarily, we will have to disclose this information to auto insurance
+companies, brokers, or other parties to get you a quote.
+Home Insurance: If you request a quote for home insurance, we collect information such as
+details regarding your property like address, type of property, and mortgages on the property;
+Personal Information about the occupant such as first and last name, date of birth, job status,
+years of property insurance, email address, and damage claims history, occupation and rental
+information); and property construction details like year property was built, type of exterior,
+number of bathrooms, property’s estimated replacement cost, and square footage.
+Life Insurance: If you request a quote for life insurance, we collect information such as details
+regarding the applicant’s coverage needs such as type of coverage, coverage amount, and
+optional insurance products; and Personal Information about the applicant like first and last
+name, date of birth, location, sex, smoking habits, email address, and phone number.
+Mortgage Application: If you complete a mortgage application form on the Website, we collect
+Personal Information including your first and last name, email address, phone number, province,
+date of birth, address history, annual income, financial institution, employment status and other
+employment-related information, and financial assets. We will also obtain your consent to obtain
+your credit report from a credit reporting agency. We share your credit report and other
+information provided on your application form with potential mortgage lenders so that they can
+assess your eligibility for a mortgage, and we may also share information with financial
+intermediaries and mortgage insurers as necessary to offer and provide services to you. Your
+credit report may include information such as the types and amounts of credit advanced to you,
+
+payment histories, negative banking items, collection actions, legal proceedings, previous
+bankruptcies and other information reported by your creditors. You will have authorized credit
+reporting agencies to provide such information to us. If we are unable to obtain your credit
+report based on your name, date of birth and mailing address alone, we may request you to
+provide other information, such as your social insurance number, on an optional basis which we
+will use to help us identify you with a credit reporting agency.
+Credit Reports: To obtain a free credit report, as detailed in the Terms of Service, you will be
+required to provide us certain Personal Information for the purpose of the generating the free
+credit report. The necessary Personal Information includes: your name, email address, date of
+birth, annual income, phone number, social insurance number, and address. We disclose this
+Personal Information to our partner Equifax. Equifax may use this Personal Information for their
+own purposes as detailed in Equifax’s terms of service and privacy policy. We will continue to
+use this Personal Information to update your credit report from time to time, and accordingly, will
+also use this Personal Information to provide updated credit reports, which you can find in your
+account.
+Credit Card Applications: We may also use and disclose your Personal Information to
+facilitate your applications for credit cards on our Website. We will collect Personal Information
+such as: first and last name, email address, phone number, date of birth, address and address
+history, annual income, employment status and other employment information, financial assets,
+and social insurance number. We may either collect this information and disclose it to a specific
+credit card provider, or use the information to assess the best credit card for you and provide the
+information to the applicable credit card providers.
+Location Information: Certain third-party products and services are only available in certain
+areas, and therefore we may ask for your location, either by requesting your postal code,
+province, city, and/or address or by using Website Information.
+Transactional Notifications: We provide notifications for certain activities relating to your use
+of our Services despite your indicated e-mail preferences, for example we may send you notices
+of any updates to our Terms of Use or Privacy Policy.
+Marketing Communications and Product Recommendations: If you sign-up to receive
+marketing communications from us, we collect your name and email address to send you
+information about our product and services and those of our partners that may be of interest to
+you. We may also use the information we have about you as well as information obtained from
+third parties to provide you with personalized product recommendations on the Website. You
+may withdraw your consent to receiving marketing communications or product
+recommendations from us at any time by following the opt-out instructions in each
+communication, or by contacting our customer service department at info@Quoteus.ca.
+
+Statistics: We also collect statistics about your use of third-party products and services that
+you request information about through the Website. This information will be kept confidential,
+however, aggregate statistics that do not personally identify an individual will be kept by us and
+such aggregate statistics may be made available to other members or third parties.
+Cookies and other Website Technologies: Cookies are used by us to track content usage and
+traffic on the Website. A cookie is a feature of your web browser that consists of a text file that is
+placed on your hard disk by a web server. The Website uses cookies to help it compile
+aggregate statistics about usage of this Website, such as how many users visit the Website,
+how long users spend viewing the Website, and what pages are viewed most often, and what
+pages users may visit directly after leaving the Website. This information is used to improve the
+content of the Website and to provide and improve the Services. You can set your browser to
+notify you when you are sent a cookie. This gives you the chance to decide whether or not to
+accept it. If you disable cookies, you may not be able to take advantage of all the features of the
+Website. Our Website may also use a technology called tracer tags, pixel tags or web beacons.
+This technology allows us to understand which pages you visit on our Website and are used to
+help us optimize and tailor our Website for you and other future visitors to our Website.
+IP address: Your IP address is reported by your web browser whenever you visit a page on
+the Website. This information is recorded together with your registration information on our
+databases. We use this information to improve our Services.
+Analytics: We may use third party software such as Google Analytics to help us gather and
+analyze information about the areas visited on the Website (such as the pages most read, time
+spent, search terms and other engagement data) in order to evaluate and improve the user
+experience and the Website. For more information or to opt-out using the Google Analytics
+opt-out browser add-on, see “How Google uses data when you use our partners’ sites or apps”
+and “Google Analytics and Privacy”.
+Interest-Based Advertising: Advertisements appearing on the Website may be delivered by us
+or one or more third-party web advertisers. We may allow these third-party web advertisers to
+set cookies or other similar technologies on the Website that collect information about you,
+including Website Information. As the information is collected on the Website, strictly speaking,
+we disclose this information to the advertiser. These cookies allow the advertisement server
+operated by that third party to recognize your computer each time they send you an online
+advertisement. Accordingly, advertisement servers may compile information about where or
+whether you viewed their advertisements and which advertisements you clicked on. This
+information allows web advertisers to deliver targeted advertisements that they believe will be of
+most interest to you.
+Improving our User Experience: We may also use the Personal Information you provide us to
+access other Personal Information available about you from third parties, in which case the
+
+information about you we access from third-parties was collected in accordance with that
+third-party’s privacy policies. For example, if you seek an auto insurance quote from us, we may
+access your driving and insurance history from a third-party provider. We also work with
+third-parties such as ad networks and other advertising companies that use their own tracking
+technologies, including cookies and pixel tags, on our Website in order to provide you with
+tailored advertisements on our Website and across the Internet. These companies may collect
+information about your activity on our Website and third-party websites (such as web pages you
+visit and your interaction with our advertising and other communications) and use this
+information to make predictions about your preferences, develop personalized content and
+deliver ads that are more relevant to you on third party websites. This information may also be
+used to evaluate the effectiveness of our online advertising campaigns.
+We disclose your Personal Information solely to carry out the purposes listed above. We engage
+third parties to directly provide the services underlying the above purposes as service providers
+to: improve our Website, host our Website, provide advertising services, provide email
+marketing services, provide cloud services, and engage in analytics for advertising services.
+These third parties may have limited access to databases of user information solely for those
+purposes and they will be subject to contractual restrictions prohibiting them from using the
+information for any other purpose.
+If we plan to use your Personal Information in the future for any other purposes not identified
+above, we will only do so after updating this Privacy Policy. See further the section of this
+Privacy Policy entitled ‘Amendment of this Policy’.
+We may disclose your Personal Information to third parties without your consent if we have
+reason to believe that disclosing this information is necessary to identify, contact, or bring legal
+action against someone who may be causing injury to or interference with (either intentionally or
+unintentionally) our rights or property, other Website users, other users of the Services, or
+anyone else that could be harmed by such activities. We may disclose Personal Information
+when we believe in good faith that such disclosure is required or permitted by and in
+accordance with applicable law.
+We may also disclose your Personal Information in connection with a corporate re-organization,
+a merger or amalgamation with another entity, a sale of all or a substantial portion of our assets
+or stock, including any due diligence exercise carried out in relation to the same, provided that
+the information disclosed continues to be used for the purposes permitted by this Privacy Policy
+by the entity acquiring the information (or as otherwise consented to).
+Opting Out
+
+You may withdraw your consent to our collection, use, or disclosure of your Personal
+Information at any time. However, withdrawing consent may result in your inability to continue
+using all the features available on the Website and/or the Services.
+For more information about interest-based advertising and to understand your options, including
+how you can opt-out of receiving behavioural ads from third-party advertising companies
+participating in the Digital Advertising Alliance of Canada, please visit the Digital Advertising
+Alliance of Canada website at http://youradchoices.ca/choices. Please note that even if you
+opt-out of interest-based advertising by a third party, these tracking technologies may still collect
+data for other purposes including analytics and you will still see ads from us, but the ads will not
+be targeted based on behavioural information about you and may therefore be less relevant to
+you and your interests. To opt out, you must have cookies enabled in your web browser. To do
+this, see your browser’s instructions for information on cookies and how to enable them. When
+you opt-out, it only applies to the web browser you use so you must opt-out of each web
+browser on each computer you use. Once you opt out, if you delete your browser’s saved
+cookies, you will need to opt-out again.
+Protecting your Information
+The security of your Personal Information is important to us. We have put in place contractual
+and other organizational safeguards with our agents and service providers to ensure a proper
+level of protection of your Personal Information. In addition to those measures, we will not
+disclose or transfer your Personal Information to third parties except as specified in this Privacy
+Policy.
+Our servers (and certain service providers) are also located in Canada and accordingly your
+Personal Information may be available to the Canadian government or its agencies under a
+lawful order, irrespective of the safeguards we have put in place for the protection of your
+Personal Information.
+We use commercially reasonable efforts to store and maintain your Personal Information in a
+secure environment. We take technical, contractual, administrative, and physical security steps
+designed to protect Personal Information that you provide to us. We have implemented
+procedures designed to limit the dissemination of your Personal Information to only such
+designated staff as are reasonably necessary to carry out the stated purposes we have
+communicated to you.
+
+You are also responsible for helping to protect the security of your Personal Information. For
+instance, never give out your email account information or your password for the Services to
+third parties.
+We will maintain the confidentiality of any contact information you provide to us when you sign
+up for our Services, marketing communications, or contact us with questions or for further
+information and we will use it only for the purposes for which we have collected it (subject to the
+exclusions and disclosures we have listed in this Privacy Policy), unless you agree that we may
+disclose it to other third parties.
+Retention
+We will keep your Personal Information for as long as it remains necessary for the purposes
+mentioned above or as required by law, which may extend beyond the termination of our
+relationship with you. We may retain certain data as necessary to prevent fraud or future abuse,
+or for legitimate business purposes, such as analysis of aggregated, non-personally-identifiable
+data, account recovery, or if required by law. All retained personal information will remain
+subject to the terms of this Privacy Policy. If you request that your name be removed from our
+databases, it may not be possible to completely delete all your Personal Information due to
+technological and legal constraints.
+Access and Accuracy
+You have the right to access the Personal Information we hold about you in order to verify the
+Personal Information we have collected in respect to you and to have a general account of our
+uses of that information. Upon receipt of your written request, we will provide you with a copy of
+your Personal Information although in certain limited circumstances, we may not be able to
+make all relevant information available to you such as where that information also pertains to
+another user. In such circumstances we will provide reasons for the denial to you upon request.
+We will endeavor to deal with all requests for access and modifications in a timely manner. We
+will make every reasonable effort to keep your Personal Information accurate and up-to-date,
+and we will provide you with mechanisms to update, correct, delete or add to your Personal
+Information as appropriate. This amended Personal Information will be transmitted to those
+parties to which we are permitted to disclose your information. Having accurate Personal
+Information about you enables us to give you the best possible service.
+Quebec Residents
+If you are a user who is also a resident of Quebec, you have specific rights with respect to your
+Personal Information by virtue of the Act Respecting the Protection of Personal Information in
+the Private Sector, as amended by Law 25 and we are committed to upholding those rights.
+
+Accordingly, we have appointed a Person in Charge of Personal Information (the “PCPI”), who
+can be contacted by emailing info@Quoteus.ca. The PCPI is the individual ultimately
+responsible for ensuring our compliance with all rules, regulations, and laws with respect to
+Personal Information in Quebec. In addition to the PCPI, we will be implementing Privacy
+Impact Assessments whenever we implement a new Information or Electronic Service Delivery
+System and whenever a new relationship is set up that could involve your Personal Information
+being disclosed to a third party outside Quebec. At present, the Personal Information of Quebec
+residents is disclosed outside Quebec in certain circumstances, these include:
+During normal business operations when Personal Information is accessed and used by us,
+for the purposes already identified in this Policy, but our workforce is located outside Quebec;
+and
+To share the Personal Information that you provide to us with a third party to offer you a
+product or service you have requested.
+We also recognize that Quebec users have certain rights with respect to their Personal
+Information. You are entitled to exercise these rights and they include:
+Access and Rectification: you may request access to any Personal Information in our
+possession and ask to correct it if it is inaccurate, incomplete, or equivocal.
+Control of Dissemination: you can request that we stop disseminating your Personal
+Information or de-index any hyperlink providing access to you Personal Information.
+Data Portability: by the Fall of 2024, you will have the right to request that we give you a copy
+of the computerized PI that we have in our possession.
+We will respond to these requests in the time allotted by the Commission – usually 30 days.
+Amendment of this Policy
+We reserve the right to change this Privacy Policy at any time. If we decide to change this
+Privacy Policy in the future, we may post an appropriate notice on the home page at
+www.Quoteus.ca, especially if the change is material. Any change to this Privacy Policy will
+become effective on the date the change is posted. Unless stated otherwise, our current Privacy
+Policy applies to all Personal Information that we have about you. The date on which the latest
+update was made is indicated below. We recommend that you print a copy of this Privacy Policy
+for your reference and revisit this policy from time to time to ensure you are aware of any
+changes.
+Contact Us
+
+You can help by keeping us informed of any changes such as a change of address or telephone
+number. If you would like to access your information, if you have any questions, comments or
+suggestions, if you find any errors in our information about you, or for more information on the
+manner in which we or our service providers use your Personal Information, please contact our
+customer service team at: info@Quoteus.ca.
+
+Add facebook link and Instagram links
+Facebook: https://www.facebook.com/people/QuoteUsca/100064074608534/
+Instagram: https://www.instagram.com/quoteus.ca/
