@@ -18,6 +18,7 @@ import AboutPage from "@/pages/About";
 import DashboardPage from "@/pages/Dashboard";
 import PrivacyPage from "@/pages/Privacy";
 import ContactPage from "@/pages/Contact";
+import ProfilePage from "@/pages/Profile";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -47,9 +48,7 @@ function Router() {
         <Route path="/contact" component={ContactPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/privacy" component={PrivacyPage} />
-        <Route path="/profile">
-           <PlaceholderPage title="My Profile" />
-        </Route>
+        <Route path="/profile" component={ProfilePage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

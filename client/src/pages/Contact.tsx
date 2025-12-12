@@ -1,16 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Send, CheckCircle, UserPlus, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { Link } from "wouter";
 
 export default function ContactPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const { register, handleSubmit, reset } = useForm();
 
   const onSubmit = async (data: any) => {
@@ -18,6 +20,7 @@ export default function ContactPage() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsSubmitting(false);
+    setIsSuccess(true);
     toast({
       title: "Message Sent",
       description: "We've received your message and will get back to you shortly.",
@@ -83,49 +86,81 @@ export default function ContactPage() {
           {/* Contact Form */}
           <div className="md:col-span-2">
             <Card className="shadow-xl border-none h-full">
-              <CardHeader>
-                <CardTitle className="text-2xl font-serif">Send us a Message</CardTitle>
-                <CardDescription>Fill out the form below and we'll direct your inquiry to the right department.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input id="name" {...register("name")} placeholder="John Doe" required autoComplete="name" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" type="email" {...register("email")} placeholder="john@example.com" required autoComplete="email" />
-                    </div>
+              {isSuccess ? (
+                <div className="flex flex-col items-center justify-center h-full p-12 text-center animate-in fade-in zoom-in duration-500">
+                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-6">
+                    <CheckCircle size={40} />
                   </div>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input id="phone" type="tel" {...register("phone")} placeholder="(555) 555-5555" autoComplete="tel" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Address</Label>
-                      <Input id="address" {...register("address")} placeholder="123 Main St, Toronto" autoComplete="street-address" />
-                    </div>
+                  <h2 className="text-3xl font-serif font-bold text-primary mb-2">Message Received!</h2>
+                  <p className="text-muted-foreground text-lg mb-8 max-w-md">
+                    Thank you for contacting us. One of our insurance specialists will be in touch with you shortly.
+                  </p>
+                  
+                  <div className="bg-secondary/20 p-6 rounded-xl w-full max-w-md">
+                    <h3 className="font-bold text-lg mb-2 flex items-center justify-center gap-2">
+                      <UserPlus size={20} className="text-accent" /> Create a Profile?
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Save time on future quotes and track your inquiries by creating a free account.
+                    </p>
+                    <Link href="/profile">
+                      <Button className="w-full bg-accent hover:bg-accent/90 text-white gap-2">
+                        Create Profile <ArrowRight size={16} />
+                      </Button>
+                    </Link>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Subject</Label>
-                    <Input id="subject" {...register("subject")} placeholder="Quote Inquiry" required />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="message">Message</Label>
-                    <Textarea id="message" {...register("message")} placeholder="How can we help you?" className="min-h-[150px]" required />
-                  </div>
-
-                  <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12 gap-2" disabled={isSubmitting}>
-                    {isSubmitting ? "Sending..." : <><Send size={18} /> Send Message</>}
+                  
+                  <Button variant="ghost" className="mt-4" onClick={() => setIsSuccess(false)}>
+                    Send Another Message
                   </Button>
-                </form>
-              </CardContent>
+                </div>
+              ) : (
+                <>
+                  <CardHeader>
+                    <CardTitle className="text-2xl font-serif">Send us a Message</CardTitle>
+                    <CardDescription>Fill out the form below and we'll direct your inquiry to the right department.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Full Name</Label>
+                          <Input id="name" {...register("name")} placeholder="John Doe" required autoComplete="name" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email Address</Label>
+                          <Input id="email" type="email" {...register("email")} placeholder="john@example.com" required autoComplete="email" />
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone Number</Label>
+                          <Input id="phone" type="tel" {...register("phone")} placeholder="(555) 555-5555" autoComplete="tel" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="address">Address</Label>
+                          <Input id="address" {...register("address")} placeholder="123 Main St, Toronto" autoComplete="street-address" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="subject">Subject</Label>
+                        <Input id="subject" {...register("subject")} placeholder="Quote Inquiry" required />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="message">Message</Label>
+                        <Textarea id="message" {...register("message")} placeholder="How can we help you?" className="min-h-[150px]" required />
+                      </div>
+
+                      <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12 gap-2" disabled={isSubmitting}>
+                        {isSubmitting ? "Sending..." : <><Send size={18} /> Send Message</>}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </>
+              )}
             </Card>
           </div>
 

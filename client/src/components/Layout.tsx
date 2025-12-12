@@ -128,7 +128,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                  <span className="text-xl font-serif font-bold">QuoteUs.ca</span>
               </div>
               <p className="text-primary-foreground/70 text-sm leading-relaxed">
-                Helping Ontarians save on insurance since 2025. We connect you with top rated brokers to find the best coverage for your needs.
+                Helping Ontarians save on insurance since 2016. We connect you with top rated brokers to find the best coverage for your needs.
               </p>
             </div>
             
