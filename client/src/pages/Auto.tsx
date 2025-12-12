@@ -27,6 +27,8 @@ const autoSchema = z.object({
     address: z.string().min(5, "Valid mailing address required"),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
+    licenseDateG2: z.string().optional(),
+    licenseDateG1: z.string().optional(),
     priorInsurance: z.enum(["yes", "no"], { required_error: "Please select if you have prior insurance" }),
     accidents: z.array(z.object({
       date: z.string(),
@@ -274,9 +276,20 @@ export default function AutoPage() {
                     </Select>
                   </div>
                    <div className="space-y-2">
-                    <Label htmlFor="licenseDate">Date Obtained</Label>
+                    <Label htmlFor="licenseDate">Date Obtained (Current Class)</Label>
                     <Input id="licenseDate" type="date" {...form.register("primaryDriver.licenseDate")} data-testid="input-license-date" />
                      {form.formState.errors.primaryDriver?.licenseDate && <p className="text-destructive text-xs">{form.formState.errors.primaryDriver.licenseDate.message}</p>}
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="licenseDateG2" className="text-muted-foreground">G2 Date Obtained (Optional)</Label>
+                    <Input id="licenseDateG2" type="date" {...form.register("primaryDriver.licenseDateG2")} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="licenseDateG1" className="text-muted-foreground">G1 Date Obtained (Optional)</Label>
+                    <Input id="licenseDateG1" type="date" {...form.register("primaryDriver.licenseDateG1")} />
                   </div>
                 </div>
 
