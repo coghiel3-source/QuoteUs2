@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { VehicleSelector } from "@/components/VehicleSelector";
 import { DriverHistorySection } from "@/components/DriverHistorySection";
-import { Loader2, Plus, Trash2, Shield, Info, Car, User, AlertTriangle, FileWarning, Ban } from "lucide-react";
+import { Loader2, Plus, Trash2, Shield, Info, Car, User, AlertTriangle, FileWarning, Ban, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Textarea } from "@/components/ui/textarea";
@@ -77,7 +77,7 @@ type AutoFormValues = z.infer<typeof autoSchema>;
 export default function AutoPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [quoteResult, setQuoteResult] = useState<number | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const form = useForm<AutoFormValues>({
     resolver: zodResolver(autoSchema),
@@ -109,88 +109,46 @@ export default function AutoPage() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 2000));
     
-    // Mock quote calculation logic
-    let baseRate = 150; // Base monthly
-    baseRate += data.vehicles.length * 80;
-    if (data.primaryDriver.licenseType !== "G") baseRate += 50;
-    
-    // Risk factors
-    if (data.primaryDriver.accidents.length > 0) {
-      data.primaryDriver.accidents.forEach(acc => {
-        if (acc.type === 'at_fault') baseRate += 100;
-        else baseRate += 20; // Minor increase for not-at-fault claims freq
-      });
-    }
-    
-    if (data.primaryDriver.tickets.length > 0) baseRate += (data.primaryDriver.tickets.length * 50);
-    if (data.primaryDriver.cancellations.length > 0) baseRate += 200;
-
-    if (data.drivers && data.drivers.length > 0) {
-      baseRate += data.drivers.length * 40;
-      data.drivers.forEach(driver => {
-         if (driver.accidents.length > 0) {
-           driver.accidents.forEach(acc => {
-              if (acc.type === 'at_fault') baseRate += 80;
-           });
-         }
-      });
-    }
-    
-    setQuoteResult(baseRate);
+    setIsSubmitted(true);
     setIsSubmitting(false);
     toast({
-      title: "Quote Calculated!",
-      description: "We've found a preliminary rate for you.",
+      title: "Quote Request Received",
+      description: "A licensed broker will review your details and contact you shortly.",
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  if (quoteResult) {
+  if (isSubmitted) {
     return (
       <div className="container mx-auto max-w-4xl py-12 px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
         <Card className="border-t-4 border-t-accent shadow-2xl bg-white overflow-hidden">
           <CardHeader className="bg-secondary/20 pb-8 text-center">
-             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
-               <Shield size={32} />
+             <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-600 shadow-sm">
+               <CheckCircle size={40} />
              </div>
-            <CardTitle className="text-3xl font-serif font-bold text-primary">Your Estimated Quote</CardTitle>
-            <CardDescription className="text-lg">Based on the information provided for {form.getValues().primaryDriver.postalCode}</CardDescription>
+            <CardTitle className="text-3xl font-serif font-bold text-primary">Quote Request Received!</CardTitle>
+            <CardDescription className="text-lg mt-2">
+              Thank you for providing your details, {form.getValues().primaryDriver.firstName}.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-8">
-            <div className="flex flex-col items-center justify-center space-y-6">
-              <div className="text-center">
-                <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Estimated Monthly Premium</span>
-                <div className="text-6xl font-bold text-primary mt-2">
-                  ${quoteResult}<span className="text-2xl text-muted-foreground font-normal">/mo</span>
+            <div className="flex flex-col items-center justify-center space-y-8 max-w-2xl mx-auto text-center">
+              
+              <div className="space-y-4">
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  We have successfully received your information. One of our licensed Ontario insurance brokers is now reviewing your profile to find you the best possible rates from our network of over 30 insurance carriers.
+                </p>
+                
+                <div className="bg-primary/5 p-6 rounded-lg border border-primary/10 my-6">
+                  <h3 className="font-bold text-primary mb-2">What happens next?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    A broker will contact you shortly via phone or email to confirm your details, discuss any eligible discounts, and present your personalized quote options.
+                  </p>
                 </div>
               </div>
-              
-              <div className="grid md:grid-cols-3 gap-6 w-full max-w-2xl mt-8">
-                 <div className="p-4 rounded-lg bg-secondary/30 border text-center">
-                    <div className="font-bold text-lg mb-1">Standard</div>
-                    <div className="text-2xl font-bold text-primary">${quoteResult + 20}</div>
-                    <div className="text-xs text-muted-foreground mt-2">Includes collision</div>
-                 </div>
-                 <div className="p-4 rounded-lg bg-primary/5 border-primary/20 text-center ring-2 ring-primary relative">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Best Value</div>
-                    <div className="font-bold text-lg mb-1">Plus</div>
-                    <div className="text-2xl font-bold text-primary">${quoteResult}</div>
-                    <div className="text-xs text-muted-foreground mt-2">Comprehensive + Rental</div>
-                 </div>
-                 <div className="p-4 rounded-lg bg-secondary/30 border text-center">
-                    <div className="font-bold text-lg mb-1">Basic</div>
-                    <div className="text-2xl font-bold text-primary">${quoteResult - 15}</div>
-                    <div className="text-xs text-muted-foreground mt-2">Liability Only</div>
-                 </div>
-              </div>
 
-              <div className="bg-blue-50 text-blue-800 p-4 rounded-lg flex gap-3 text-sm max-w-2xl">
-                <Info className="shrink-0 mt-0.5" size={16} />
-                <p>This is an estimate based on provided data. Final premiums are subject to verification of driving record and insurance history by a licensed broker.</p>
-              </div>
-
-              <Button size="lg" className="w-full max-w-md text-lg h-14 bg-accent hover:bg-accent/90 text-white" onClick={() => window.location.reload()}>
-                Start a New Quote
+              <Button size="lg" className="w-full max-w-md text-lg h-14 bg-accent hover:bg-accent/90 text-white shadow-lg transition-all hover:-translate-y-1" onClick={() => window.location.reload()}>
+                Start Another Quote
               </Button>
             </div>
           </CardContent>
