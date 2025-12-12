@@ -45,11 +45,11 @@ export default function TenantPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Address</Label>
-                  <Input {...register("address")} placeholder="456 Condo Way" required />
+                  <Input {...register("address")} placeholder="456 Condo Way" required autoComplete="street-address" />
                 </div>
                 <div className="space-y-2">
                   <Label>Unit #</Label>
-                  <Input {...register("unit")} placeholder="Apt 402" />
+                  <Input {...register("unit")} placeholder="Apt 402" autoComplete="address-line2" />
                 </div>
               </div>
 

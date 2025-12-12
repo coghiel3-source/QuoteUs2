@@ -17,6 +17,7 @@ import PetPage from "@/pages/Pet";
 import AboutPage from "@/pages/About";
 import DashboardPage from "@/pages/Dashboard";
 import PrivacyPage from "@/pages/Privacy";
+import ContactPage from "@/pages/Contact";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -43,6 +44,7 @@ function Router() {
         <Route path="/pet" component={PetPage} />
         <Route path="/compare" component={ComparePage} />
         <Route path="/about" component={AboutPage} />
+        <Route path="/contact" component={ContactPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/profile">

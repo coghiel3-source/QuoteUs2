@@ -45,11 +45,11 @@ export default function HomeInsurancePage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Property Address</Label>
-                  <Input {...register("address")} placeholder="123 Maple Dr" required />
+                  <Input {...register("address")} placeholder="123 Maple Dr" required autoComplete="street-address" />
                 </div>
                 <div className="space-y-2">
                   <Label>Postal Code</Label>
-                  <Input {...register("postalCode")} placeholder="M5V 2T6" required />
+                  <Input {...register("postalCode")} placeholder="M5V 2T6" required autoComplete="postal-code" />
                 </div>
               </div>
 

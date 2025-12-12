@@ -1,0 +1,136 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useForm } from "react-hook-form";
+import { useToast } from "@/hooks/use-toast";
+import { Mail, Phone, MapPin, Send } from "lucide-react";
+import { useState } from "react";
+
+export default function ContactPage() {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { register, handleSubmit, reset } = useForm();
+
+  const onSubmit = async (data: any) => {
+    setIsSubmitting(true);
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setIsSubmitting(false);
+    toast({
+      title: "Message Sent",
+      description: "We've received your message and will get back to you shortly.",
+    });
+    reset();
+  };
+
+  return (
+    <div className="bg-secondary/30 min-h-screen pb-20">
+      <div className="bg-primary text-white py-16 px-4">
+        <div className="container mx-auto max-w-4xl text-center">
+           <h1 className="text-4xl md:text-5xl font-serif font-bold mb-6">Contact Us</h1>
+           <p className="text-xl text-primary-foreground/90 max-w-2xl mx-auto">
+             Have questions? We're here to help. Reach out to our team for support or inquiries.
+           </p>
+        </div>
+      </div>
+
+      <div className="container mx-auto max-w-6xl px-4 -mt-12">
+        <div className="grid md:grid-cols-3 gap-8">
+          
+          {/* Contact Info Cards */}
+          <div className="md:col-span-1 space-y-6">
+            <Card className="shadow-lg border-none hover:-translate-y-1 transition-transform">
+              <CardContent className="p-6 flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center text-accent">
+                  <Phone size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Phone</h3>
+                  <p className="text-muted-foreground mt-1">1-877-253-2695</p>
+                  <p className="text-xs text-muted-foreground mt-2">Mon-Fri, 9am - 5pm EST</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg border-none hover:-translate-y-1 transition-transform">
+              <CardContent className="p-6 flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center text-accent">
+                  <Mail size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Email</h3>
+                  <p className="text-muted-foreground mt-1">support@quoteus.ca</p>
+                  <p className="text-xs text-muted-foreground mt-2">We reply within 24 hours</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg border-none hover:-translate-y-1 transition-transform">
+              <CardContent className="p-6 flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center text-accent">
+                  <MapPin size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Office</h3>
+                  <p className="text-muted-foreground mt-1">123 Insurance Way<br/>Toronto, ON M5V 2T6</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Contact Form */}
+          <div className="md:col-span-2">
+            <Card className="shadow-xl border-none h-full">
+              <CardHeader>
+                <CardTitle className="text-2xl font-serif">Send us a Message</CardTitle>
+                <CardDescription>Fill out the form below and we'll direct your inquiry to the right department.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input id="name" {...register("name")} placeholder="John Doe" required autoComplete="name" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input id="email" type="email" {...register("email")} placeholder="john@example.com" required autoComplete="email" />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input id="phone" type="tel" {...register("phone")} placeholder="(555) 555-5555" autoComplete="tel" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Address</Label>
+                      <Input id="address" {...register("address")} placeholder="123 Main St, Toronto" autoComplete="street-address" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="subject">Subject</Label>
+                    <Input id="subject" {...register("subject")} placeholder="Quote Inquiry" required />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message</Label>
+                    <Textarea id="message" {...register("message")} placeholder="How can we help you?" className="min-h-[150px]" required />
+                  </div>
+
+                  <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12 gap-2" disabled={isSubmitting}>
+                    {isSubmitting ? "Sending..." : <><Send size={18} /> Send Message</>}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}

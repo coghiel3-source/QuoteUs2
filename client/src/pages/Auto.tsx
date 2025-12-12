@@ -216,13 +216,13 @@ export default function AutoPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="postalCode">Postal Code (Ontario)</Label>
-                  <Input id="postalCode" placeholder="M5V 2H1" className="uppercase" {...form.register("primaryDriver.postalCode")} data-testid="input-postal" />
+                  <Input id="postalCode" placeholder="M5V 2H1" className="uppercase" {...form.register("primaryDriver.postalCode")} data-testid="input-postal" autoComplete="postal-code" />
                    {form.formState.errors.primaryDriver?.postalCode && <p className="text-destructive text-xs">{form.formState.errors.primaryDriver.postalCode.message}</p>}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="address">Mailing Address</Label>
-                  <Input id="address" placeholder="123 Maple Street, Apt 4B, Toronto, ON" {...form.register("primaryDriver.address")} data-testid="input-address" />
+                  <Input id="address" placeholder="123 Maple Street, Apt 4B, Toronto, ON" {...form.register("primaryDriver.address")} data-testid="input-address" autoComplete="street-address" />
                 </div>
                 
                 <div className="md:col-span-2 grid md:grid-cols-2 gap-6 pt-4 border-t mt-2">
