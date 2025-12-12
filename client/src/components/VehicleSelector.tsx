@@ -1,8 +1,23 @@
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { YEARS, MAKES, getModelsForMake } from "@/lib/mockData";
 import { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-form";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface VehicleSelectorProps {
   index: number;
@@ -11,80 +26,134 @@ interface VehicleSelectorProps {
   watch: UseFormWatch<any>;
 }
 
+function SearchableSelect({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder, 
+  disabled = false,
+  testId
+}: { 
+  value: string | number; 
+  onChange: (val: string) => void; 
+  options: { label: string; value: string }[]; 
+  placeholder: string;
+  disabled?: boolean;
+  testId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+          disabled={disabled}
+          data-testid={testId}
+        >
+          {value
+            ? options.find((opt) => opt.value === value.toString())?.label
+            : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] md:w-[300px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup className="max-h-[300px] overflow-auto">
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt.value}
+                  value={opt.label}
+                  onSelect={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value?.toString() === opt.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {opt.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function VehicleSelector({ index, register, setValue, watch }: VehicleSelectorProps) {
   const year = watch(`vehicles.${index}.year`);
   const make = watch(`vehicles.${index}.make`);
+  const model = watch(`vehicles.${index}.model`);
   
   const [models, setModels] = useState<string[]>([]);
 
   useEffect(() => {
     if (make) {
       setModels(getModelsForMake(make));
-      // Reset model if make changes
-      // setValue(`vehicles.${index}.model`, ""); 
+      // Only reset model if the current model is not valid for the new make
+      // But for simplicity in this mockup, we'll keep the behavior of needing to re-select if make changes
+      // Actually, standard behavior is usually to clear model on make change
     } else {
       setModels([]);
     }
-  }, [make, setValue, index]);
+  }, [make]);
+
+  const yearOptions = YEARS.map(y => ({ label: y.toString(), value: y.toString() }));
+  const makeOptions = MAKES.map(m => ({ label: m, value: m }));
+  const modelOptions = models.map(m => ({ label: m, value: m }));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="space-y-2">
         <Label htmlFor={`vehicle-${index}-year`}>Year</Label>
-        <Select 
-          onValueChange={(val) => setValue(`vehicles.${index}.year`, parseInt(val))}
-          value={year?.toString()}
-        >
-          <SelectTrigger id={`vehicle-${index}-year`} data-testid={`select-year-${index}`}>
-            <SelectValue placeholder="Year" />
-          </SelectTrigger>
-          <SelectContent>
-            {YEARS.map((y) => (
-              <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={year}
+          onChange={(val) => setValue(`vehicles.${index}.year`, parseInt(val))}
+          options={yearOptions}
+          placeholder="Select Year"
+          testId={`select-year-${index}`}
+        />
         <input type="hidden" {...register(`vehicles.${index}.year`)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor={`vehicle-${index}-make`}>Make</Label>
-        <Select 
-          onValueChange={(val) => {
+        <SearchableSelect
+          value={make}
+          onChange={(val) => {
             setValue(`vehicles.${index}.make`, val);
             setValue(`vehicles.${index}.model`, ""); // Reset model on make change
           }}
-          value={make}
-        >
-          <SelectTrigger id={`vehicle-${index}-make`} data-testid={`select-make-${index}`}>
-            <SelectValue placeholder="Make" />
-          </SelectTrigger>
-          <SelectContent>
-            {MAKES.map((m) => (
-              <SelectItem key={m} value={m}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-         <input type="hidden" {...register(`vehicles.${index}.make`)} />
+          options={makeOptions}
+          placeholder="Select Make"
+          testId={`select-make-${index}`}
+        />
+        <input type="hidden" {...register(`vehicles.${index}.make`)} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor={`vehicle-${index}-model`}>Model</Label>
-        <Select 
-          onValueChange={(val) => setValue(`vehicles.${index}.model`, val)}
+        <SearchableSelect
+          value={model}
+          onChange={(val) => setValue(`vehicles.${index}.model`, val)}
+          options={modelOptions}
+          placeholder={make ? "Select Model" : "Select Make First"}
           disabled={!make}
-           value={watch(`vehicles.${index}.model`)}
-        >
-          <SelectTrigger id={`vehicle-${index}-model`} data-testid={`select-model-${index}`}>
-            <SelectValue placeholder={make ? "Select Model" : "Select Make First"} />
-          </SelectTrigger>
-          <SelectContent>
-            {models.map((m) => (
-              <SelectItem key={m} value={m}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-         <input type="hidden" {...register(`vehicles.${index}.model`)} />
+          testId={`select-model-${index}`}
+        />
+        <input type="hidden" {...register(`vehicles.${index}.model`)} />
       </div>
     </div>
   );
