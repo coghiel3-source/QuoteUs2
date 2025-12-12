@@ -75,6 +75,23 @@ export default function LifePage() {
               </div>
 
               <div className="space-y-2">
+                 <Label>Type of Insurance</Label>
+                 <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="term10">Term 10 Years</SelectItem>
+                      <SelectItem value="term20">Term 20 Years</SelectItem>
+                      <SelectItem value="term30">Term 30 Years</SelectItem>
+                      <SelectItem value="term40">Term 40 Years</SelectItem>
+                      <SelectItem value="whole">Whole Life (Lifetime with Cash Value)</SelectItem>
+                      <SelectItem value="universal">Universal Life (Flexible Premium)</SelectItem>
+                    </SelectContent>
+                  </Select>
+              </div>
+
+              <div className="space-y-2">
                  <Label>Coverage Amount Desired</Label>
                  <Select>
                     <SelectTrigger>
@@ -84,7 +101,11 @@ export default function LifePage() {
                       <SelectItem value="100k">$100,000</SelectItem>
                       <SelectItem value="250k">$250,000</SelectItem>
                       <SelectItem value="500k">$500,000</SelectItem>
-                      <SelectItem value="1m">$1,000,000+</SelectItem>
+                      <SelectItem value="1m">$1,000,000</SelectItem>
+                      <SelectItem value="2m">$2,000,000</SelectItem>
+                      <SelectItem value="3m">$3,000,000</SelectItem>
+                      <SelectItem value="4m">$4,000,000</SelectItem>
+                      <SelectItem value="5m">$5,000,000</SelectItem>
                     </SelectContent>
                   </Select>
               </div>
