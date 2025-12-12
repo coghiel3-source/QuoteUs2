@@ -127,7 +127,7 @@ export default function AutoPage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Request Received",
-      description: "A licensed broker will review your details and contact you shortly.",
+      description: `A confirmation email has been sent to ${data.primaryDriver.email}`,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -150,13 +150,13 @@ export default function AutoPage() {
               
               <div className="space-y-4">
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  We have successfully received your information. One of our licensed Ontario insurance brokers is now reviewing your profile to find you the best possible rates from our network of over 30 insurance carriers.
+                  We have successfully received your information. A confirmation email has been sent to <span className="font-semibold text-primary">{form.getValues().primaryDriver.email}</span> from <span className="font-semibold">info@quoteus.ca</span>.
                 </p>
                 
                 <div className="bg-primary/5 p-6 rounded-lg border border-primary/10 my-6">
                   <h3 className="font-bold text-primary mb-2">What happens next?</h3>
                   <p className="text-sm text-muted-foreground">
-                    A broker will contact you shortly via phone or email to confirm your details, discuss any eligible discounts, and present your personalized quote options.
+                    One of our licensed Ontario insurance brokers is now reviewing your profile to find you the best possible rates from our network of over 30 insurance carriers. They will contact you shortly via phone or email to present your personalized quote options.
                   </p>
                 </div>
               </div>
