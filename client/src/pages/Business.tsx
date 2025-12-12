@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Briefcase } from "lucide-react";
 import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function BusinessPage() {
   const { toast } = useToast();
@@ -81,7 +82,18 @@ export default function BusinessPage() {
                    <label className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" /> General Liability</label>
                    <label className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" /> Commercial Property</label>
                    <label className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" /> Professional Liability (E&O)</label>
+                   <label className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" /> Cyber Liability</label>
+                   <label className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" /> Other</label>
                  </div>
+              </div>
+
+              <div className="space-y-2">
+                 <Label>Additional Details / Other Coverage</Label>
+                 <Textarea 
+                   {...register("otherDetails")} 
+                   placeholder="Describe any other coverage needs or specific risks..." 
+                   className="resize-none"
+                 />
               </div>
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
