@@ -151,7 +151,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <ul className="space-y-2 text-sm text-primary-foreground/70">
                 <li className="flex items-center gap-2"><Phone size={14} /> 1-877-253-2695</li>
                 <li>Toronto, Ontario</li>
-                <li>support@quoteus.ca</li>
+                <li>info@quoteus.ca</li>
               </ul>
               <div className="flex gap-4 mt-6">
                 <a href="https://www.facebook.com/people/QuoteUsca/100064074608534/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors">

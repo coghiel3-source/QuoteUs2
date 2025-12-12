@@ -64,7 +64,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">Email</h3>
-                  <p className="text-muted-foreground mt-1">support@quoteus.ca</p>
+                  <p className="text-muted-foreground mt-1">info@quoteus.ca</p>
                   <p className="text-xs text-muted-foreground mt-2">We reply within 24 hours</p>
                 </div>
               </CardContent>
