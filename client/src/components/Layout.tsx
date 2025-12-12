@@ -163,7 +163,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           
           <div className="border-t border-primary-foreground/10 pt-8 text-center text-xs text-primary-foreground/50">
-            <p>&copy; 2025 QuoteUs.ca. All rights reserved. Brokerage License #12345.</p>
+            <p>&copy; 2025 QuoteUs.ca. All rights reserved.</p>
             <p className="mt-2 text-primary-foreground/30">Compliant Ontario Canada Privacy Statement Included.</p>
           </div>
         </div>
