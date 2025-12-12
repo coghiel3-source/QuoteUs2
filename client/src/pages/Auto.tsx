@@ -14,6 +14,8 @@ import { DriverHistorySection } from "@/components/DriverHistorySection";
 import { Loader2, Plus, Trash2, Shield, Info, Car, User, AlertTriangle, FileWarning, Ban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { Textarea } from "@/components/ui/textarea";
+
 const autoSchema = z.object({
   primaryDriver: z.object({
     firstName: z.string().min(2, "First name is required"),
@@ -25,6 +27,7 @@ const autoSchema = z.object({
     address: z.string().min(5, "Valid mailing address required"),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
+    priorInsurance: z.enum(["yes", "no"], { required_error: "Please select if you have prior insurance" }),
     accidents: z.array(z.object({
       date: z.string(),
       type: z.string(),
@@ -38,6 +41,7 @@ const autoSchema = z.object({
       reason: z.string(),
     })),
   }),
+  comments: z.string().optional(),
   vehicles: z.array(z.object({
     year: z.number().min(1990),
     make: z.string().min(1, "Make is required"),
@@ -78,6 +82,7 @@ export default function AutoPage() {
     defaultValues: {
       primaryDriver: {
         licenseType: "G",
+        priorInsurance: "yes",
         accidents: [],
         tickets: [],
         cancellations: []
@@ -283,6 +288,25 @@ export default function AutoPage() {
                       basePath="primaryDriver" 
                     />
                   </div>
+                  
+                  <div className="md:col-span-2 pt-4 border-t space-y-3">
+                    <Label>Prior Insurance History</Label>
+                    <p className="text-sm text-muted-foreground mb-2">Have you had continuous auto insurance coverage for the last 3 years?</p>
+                    <RadioGroup 
+                      onValueChange={(val: "yes" | "no") => form.setValue("primaryDriver.priorInsurance", val)} 
+                      defaultValue="yes"
+                      className="flex gap-6"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="prior-yes" />
+                        <Label htmlFor="prior-yes" className="font-normal cursor-pointer">Yes, I have prior insurance</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="prior-no" />
+                        <Label htmlFor="prior-no" className="font-normal cursor-pointer">No, this is my first policy / gap in coverage</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
 
               </CardContent>
             </Card>
@@ -458,6 +482,28 @@ export default function AutoPage() {
                    No additional drivers added.
                  </div>
                )}
+            </div>
+
+            {/* Additional Comments */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
+                  <Info size={20} /> Additional Comments
+                </h3>
+              </div>
+              <Card className="shadow-md border-none">
+                <CardContent className="p-6">
+                   <div className="space-y-2">
+                      <Label htmlFor="comments">Additional Information</Label>
+                      <Textarea 
+                        id="comments" 
+                        placeholder="Please include any other details such as: Driver's license number, previous US license history, gaps in coverage explanation, etc." 
+                        className="min-h-[100px] resize-y"
+                        {...form.register("comments")}
+                      />
+                   </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Submit */}
