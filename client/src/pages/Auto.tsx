@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { VehicleSelector } from "@/components/VehicleSelector";
+import { DriverHistorySection } from "@/components/DriverHistorySection";
 import { Loader2, Plus, Trash2, Shield, Info, Car, User, AlertTriangle, FileWarning, Ban } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -24,9 +25,18 @@ const autoSchema = z.object({
     address: z.string().min(5, "Valid mailing address required"),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
-    accidents: z.string(),
-    tickets: z.string(),
-    cancellations: z.string(),
+    accidents: z.array(z.object({
+      date: z.string(),
+      type: z.string(),
+    })),
+    tickets: z.array(z.object({
+      date: z.string(),
+      type: z.string(),
+    })),
+    cancellations: z.array(z.object({
+      date: z.string(),
+      reason: z.string(),
+    })),
   }),
   vehicles: z.array(z.object({
     year: z.number().min(1990),
@@ -41,9 +51,18 @@ const autoSchema = z.object({
     dob: z.string().min(1, "Date of birth required"),
     relationship: z.string().min(1, "Relationship required"),
     licenseType: z.enum(["G1", "G2", "G"]),
-    accidents: z.string(),
-    tickets: z.string(),
-    cancellations: z.string(),
+    accidents: z.array(z.object({
+      date: z.string(),
+      type: z.string(),
+    })),
+    tickets: z.array(z.object({
+      date: z.string(),
+      type: z.string(),
+    })),
+    cancellations: z.array(z.object({
+      date: z.string(),
+      reason: z.string(),
+    })),
   })).optional(),
 });
 
@@ -59,9 +78,9 @@ export default function AutoPage() {
     defaultValues: {
       primaryDriver: {
         licenseType: "G",
-        accidents: "0",
-        tickets: "0",
-        cancellations: "0"
+        accidents: [],
+        tickets: [],
+        cancellations: []
       },
       vehicles: [{ year: 2020, usage: "commute" }],
       drivers: [],
@@ -89,14 +108,24 @@ export default function AutoPage() {
     if (data.primaryDriver.licenseType !== "G") baseRate += 50;
     
     // Risk factors
-    if (parseInt(data.primaryDriver.accidents) > 0) baseRate += 100;
-    if (parseInt(data.primaryDriver.tickets) > 0) baseRate += 50;
-    if (parseInt(data.primaryDriver.cancellations) > 0) baseRate += 200;
+    if (data.primaryDriver.accidents.length > 0) {
+      data.primaryDriver.accidents.forEach(acc => {
+        if (acc.type === 'at_fault') baseRate += 100;
+        else baseRate += 20; // Minor increase for not-at-fault claims freq
+      });
+    }
+    
+    if (data.primaryDriver.tickets.length > 0) baseRate += (data.primaryDriver.tickets.length * 50);
+    if (data.primaryDriver.cancellations.length > 0) baseRate += 200;
 
     if (data.drivers && data.drivers.length > 0) {
       baseRate += data.drivers.length * 40;
       data.drivers.forEach(driver => {
-         if (parseInt(driver.accidents) > 0) baseRate += 80;
+         if (driver.accidents.length > 0) {
+           driver.accidents.forEach(acc => {
+              if (acc.type === 'at_fault') baseRate += 80;
+           });
+         }
       });
     }
     
@@ -246,50 +275,14 @@ export default function AutoPage() {
                   </div>
                 </div>
 
-                <div className="md:col-span-2 pt-4 border-t mt-2 space-y-4">
-                  <h4 className="font-semibold text-primary flex items-center gap-2"><AlertTriangle size={18} /> Driving History</h4>
-                  <div className="grid md:grid-cols-3 gap-6">
-                     <div className="space-y-2">
-                        <Label>Accidents (Last 6 Years)</Label>
-                        <Select onValueChange={(val) => form.setValue("primaryDriver.accidents", val)} defaultValue="0">
-                          <SelectTrigger>
-                            <SelectValue placeholder="0" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">None</SelectItem>
-                            <SelectItem value="1">1 Accident</SelectItem>
-                            <SelectItem value="2">2+ Accidents</SelectItem>
-                          </SelectContent>
-                        </Select>
-                     </div>
-                     <div className="space-y-2">
-                        <Label>Tickets (Last 3 Years)</Label>
-                        <Select onValueChange={(val) => form.setValue("primaryDriver.tickets", val)} defaultValue="0">
-                          <SelectTrigger>
-                            <SelectValue placeholder="0" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">None</SelectItem>
-                            <SelectItem value="1">1 Ticket</SelectItem>
-                            <SelectItem value="2">2 Tickets</SelectItem>
-                            <SelectItem value="3">3+ Tickets</SelectItem>
-                          </SelectContent>
-                        </Select>
-                     </div>
-                     <div className="space-y-2">
-                        <Label>Non-Payment Cancellations (3 Years)</Label>
-                         <Select onValueChange={(val) => form.setValue("primaryDriver.cancellations", val)} defaultValue="0">
-                          <SelectTrigger>
-                            <SelectValue placeholder="0" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">None</SelectItem>
-                            <SelectItem value="1">Yes</SelectItem>
-                          </SelectContent>
-                        </Select>
-                     </div>
+                  <div className="md:col-span-2">
+                    <DriverHistorySection 
+                      control={form.control} 
+                      register={form.register} 
+                      setValue={form.setValue} 
+                      basePath="primaryDriver" 
+                    />
                   </div>
-                </div>
 
               </CardContent>
             </Card>
@@ -375,7 +368,7 @@ export default function AutoPage() {
                 <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
                   <User size={20} /> Additional Drivers
                 </h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ firstName: "", lastName: "", dob: "", relationship: "Spouse", licenseType: "G", accidents: "0", tickets: "0", cancellations: "0" })} className="gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ firstName: "", lastName: "", dob: "", relationship: "Spouse", licenseType: "G", accidents: [], tickets: [], cancellations: [] })} className="gap-2">
                   <Plus size={16} /> Add Driver
                 </Button>
               </div>
@@ -447,46 +440,13 @@ export default function AutoPage() {
                             </div>
                           </div>
 
-                          <div className="grid md:grid-cols-3 gap-4 border-t pt-4">
-                             <div className="space-y-2">
-                                <Label>Accidents (6 yrs)</Label>
-                                <Select onValueChange={(val) => form.setValue(`drivers.${index}.accidents`, val)} defaultValue="0">
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="0" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="0">None</SelectItem>
-                                    <SelectItem value="1">1</SelectItem>
-                                    <SelectItem value="2">2+</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                             </div>
-                             <div className="space-y-2">
-                                <Label>Tickets (3 yrs)</Label>
-                                <Select onValueChange={(val) => form.setValue(`drivers.${index}.tickets`, val)} defaultValue="0">
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="0" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="0">None</SelectItem>
-                                    <SelectItem value="1">1</SelectItem>
-                                    <SelectItem value="2">2</SelectItem>
-                                    <SelectItem value="3">3+</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                             </div>
-                             <div className="space-y-2">
-                                <Label>Cancellations (3 yrs)</Label>
-                                 <Select onValueChange={(val) => form.setValue(`drivers.${index}.cancellations`, val)} defaultValue="0">
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="0" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="0">None</SelectItem>
-                                    <SelectItem value="1">Yes</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                             </div>
+                          <div className="border-t pt-4">
+                             <DriverHistorySection 
+                               control={form.control} 
+                               register={form.register} 
+                               setValue={form.setValue} 
+                               basePath={`drivers.${index}`} 
+                             />
                           </div>
                        </CardContent>
                     </Card>
