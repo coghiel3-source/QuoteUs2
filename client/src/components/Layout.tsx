@@ -3,7 +3,7 @@ import { Shield, Menu, X, Phone, User, LogIn } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import logoImage from "@assets/generated_images/modern_minimalist_shield_logo_with_a_maple_leaf..png";
+import logoImage from "@assets/FullLogo_NoBuffer_1765525677801.png";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -41,14 +41,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto max-w-7xl flex h-20 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-3 group">
-              <div className="h-10 w-10 overflow-hidden rounded-lg">
-                <img src={logoImage} alt="QuoteUs Logo" className="h-full w-full object-cover" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-serif font-bold tracking-tight text-primary leading-none group-hover:text-primary/90">
-                  QuoteUs<span className="text-accent">.ca</span>
-                </span>
-                <span className="text-[10px] tracking-widest uppercase font-semibold text-muted-foreground">Ontario's Insurance Marketplace</span>
+              <div className="h-12 w-auto overflow-hidden rounded-lg">
+                <img src={logoImage} alt="QuoteUs Logo" className="h-full w-auto object-contain" />
               </div>
           </Link>
 

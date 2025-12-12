@@ -9,52 +9,52 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   
-  /* Trustworthy Navy & Red Theme */
+  /* Trustworthy Green Theme */
   --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222 47% 11%);
+  --color-foreground: hsl(150 62% 19%); /* Dark green text */
   
   --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(222 47% 11%);
+  --color-card-foreground: hsl(150 62% 19%);
   
   --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(222 47% 11%);
+  --color-popover-foreground: hsl(150 62% 19%);
   
-  /* Deep Navy Primary */
-  --color-primary: hsl(222 47% 11%);
-  --color-primary-foreground: hsl(210 40% 98%);
+  /* QuoteUs Dark Green Primary */
+  --color-primary: hsl(150 62% 19%); /* Approx #1E6F50 */
+  --color-primary-foreground: hsl(0 0% 100%);
   
-  /* Slate Secondary */
-  --color-secondary: hsl(210 40% 96.1%);
-  --color-secondary-foreground: hsl(222 47% 11%);
+  /* Slate/Neutral Secondary */
+  --color-secondary: hsl(140 20% 96%); /* Very light green tint */
+  --color-secondary-foreground: hsl(150 62% 19%);
   
-  --color-muted: hsl(210 40% 96.1%);
-  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-muted: hsl(140 20% 96%);
+  --color-muted-foreground: hsl(150 15% 45%);
   
-  /* Canadiana Red Accent */
-  --color-accent: hsl(356 72% 51%);
-  --color-accent-foreground: hsl(210 40% 98%);
+  /* QuoteUs Lime Green Accent */
+  --color-accent: hsl(86 51% 51%); /* Approx #7BC043 */
+  --color-accent-foreground: hsl(0 0% 100%);
   
   --color-destructive: hsl(0 84.2% 60.2%);
   --color-destructive-foreground: hsl(210 40% 98%);
   
-  --color-border: hsl(214.3 31.8% 91.4%);
-  --color-input: hsl(214.3 31.8% 91.4%);
-  --color-ring: hsl(222 47% 11%);
+  --color-border: hsl(150 20% 90%);
+  --color-input: hsl(150 20% 90%);
+  --color-ring: hsl(150 62% 19%);
   
-  --color-chart-1: hsl(222 47% 11%);
-  --color-chart-2: hsl(356 72% 51%);
-  --color-chart-3: hsl(210 40% 96.1%);
-  --color-chart-4: hsl(215.4 16.3% 46.9%);
-  --color-chart-5: hsl(214.3 31.8% 91.4%);
+  --color-chart-1: hsl(150 62% 19%);
+  --color-chart-2: hsl(86 51% 51%);
+  --color-chart-3: hsl(140 20% 96%);
+  --color-chart-4: hsl(150 15% 45%);
+  --color-chart-5: hsl(150 20% 90%);
   
-  --color-sidebar: hsl(222 47% 11%);
-  --color-sidebar-foreground: hsl(210 40% 98%);
-  --color-sidebar-primary: hsl(356 72% 51%);
+  --color-sidebar: hsl(150 62% 19%);
+  --color-sidebar-foreground: hsl(0 0% 100%);
+  --color-sidebar-primary: hsl(86 51% 51%);
   --color-sidebar-primary-foreground: hsl(0 0% 100%);
-  --color-sidebar-accent: hsl(217 33% 17%);
-  --color-sidebar-accent-foreground: hsl(210 40% 98%);
-  --color-sidebar-border: hsl(217 33% 17%);
-  --color-sidebar-ring: hsl(210 40% 98%);
+  --color-sidebar-accent: hsl(150 50% 25%);
+  --color-sidebar-accent-foreground: hsl(0 0% 100%);
+  --color-sidebar-border: hsl(150 50% 25%);
+  --color-sidebar-ring: hsl(0 0% 100%);
 
   --font-sans: 'Inter', sans-serif;
   --font-serif: 'Merriweather', serif;
