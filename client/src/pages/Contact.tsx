@@ -70,17 +70,6 @@ export default function ContactPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-none hover:-translate-y-1 transition-transform">
-              <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center text-accent">
-                  <MapPin size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg">Office</h3>
-                  <p className="text-muted-foreground mt-1">123 Insurance Way<br/>Toronto, ON M5V 2T6</p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Contact Form */}
