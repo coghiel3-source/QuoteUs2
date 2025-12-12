@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Shield, Menu, X, Phone, User, LogIn } from "lucide-react";
+import { Shield, Menu, X, Phone, User, LogIn, Facebook, Instagram } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -25,7 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Top Bar */}
       <div className="bg-primary text-primary-foreground py-2 px-4 text-sm hidden md:flex justify-between items-center">
         <div className="container mx-auto max-w-7xl flex justify-between">
-          <span className="opacity-90">Serving Ontario Residents Since 2025</span>
+          <span className="opacity-90">Serving Ontario Residents Since 2016</span>
           <div className="flex gap-6">
             <a href="tel:1-877-253-2695" className="flex items-center gap-2 hover:text-accent transition-colors">
               <Phone size={14} /> 1-877-253-2695
@@ -153,6 +153,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li>Toronto, Ontario</li>
                 <li>support@quoteus.ca</li>
               </ul>
+              <div className="flex gap-4 mt-6">
+                <a href="https://www.facebook.com/people/QuoteUsca/100064074608534/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors">
+                  <Facebook size={20} />
+                </a>
+                <a href="https://www.instagram.com/quoteus.ca/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors">
+                  <Instagram size={20} />
+                </a>
+              </div>
             </div>
           </div>
           
