@@ -15,6 +15,7 @@ import { Loader2, Plus, Trash2, Shield, Info, Car, User, AlertTriangle, FileWarn
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Textarea } from "@/components/ui/textarea";
+import { useQuotes } from "@/lib/QuoteContext";
 
 const autoSchema = z.object({
   primaryDriver: z.object({
@@ -76,6 +77,7 @@ type AutoFormValues = z.infer<typeof autoSchema>;
 
 export default function AutoPage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -109,6 +111,18 @@ export default function AutoPage() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 2000));
     
+    addQuote({
+      type: 'Auto',
+      clientName: `${data.primaryDriver.firstName} ${data.primaryDriver.lastName}`,
+      email: data.primaryDriver.email,
+      phone: data.primaryDriver.phone,
+      postalCode: data.primaryDriver.postalCode,
+      details: {
+        vehicles: data.vehicles.map(v => `${v.year} ${v.make} ${v.model}`).join(', '),
+        drivers: 1 + (data.drivers?.length || 0)
+      }
+    });
+
     setIsSubmitted(true);
     setIsSubmitting(false);
     toast({

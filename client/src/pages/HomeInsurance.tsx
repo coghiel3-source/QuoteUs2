@@ -8,14 +8,30 @@ import { useToast } from "@/hooks/use-toast";
 import { Home } from "lucide-react";
 import { useState } from "react";
 
+import { useQuotes } from "@/lib/QuoteContext";
+
 export default function HomeInsurancePage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    addQuote({
+      type: 'Home',
+      clientName: 'New Client', // Name not in form
+      postalCode: data.postalCode,
+      details: {
+        address: data.address,
+        yearBuilt: data.yearBuilt,
+        sqft: data.sqft,
+        type: 'Detached' // Assuming default from form if not captured well
+      }
+    });
+
     setIsSubmitting(false);
     toast({
       title: "Quote Received",

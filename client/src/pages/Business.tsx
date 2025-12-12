@@ -9,8 +9,11 @@ import { Briefcase, UploadCloud } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
+import { useQuotes } from "@/lib/QuoteContext";
+
 export default function BusinessPage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const { register, handleSubmit } = useForm();
@@ -24,6 +27,18 @@ export default function BusinessPage() {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    addQuote({
+      type: 'Business',
+      clientName: data.businessName,
+      email: '', // Not collected in this form version, maybe add it? Or assume internal
+      details: {
+        industry: data.industry,
+        revenue: data.revenue,
+        employees: data.employees
+      }
+    });
+
     setIsSubmitting(false);
     toast({
       title: "Quote Received",

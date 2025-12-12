@@ -8,13 +8,26 @@ import { useToast } from "@/hooks/use-toast";
 import { Plane } from "lucide-react";
 import { useState } from "react";
 
+import { useQuotes } from "@/lib/QuoteContext";
+
 export default function TravelPage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
+    
+    addQuote({
+      type: 'Travel',
+      clientName: 'Tugo Referral',
+      details: {
+        destination: 'Travel',
+        travellers: data.travellers
+      }
+    });
+
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsSubmitting(false);
     toast({

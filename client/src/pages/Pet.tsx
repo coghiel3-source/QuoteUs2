@@ -8,14 +8,28 @@ import { useToast } from "@/hooks/use-toast";
 import { Dog } from "lucide-react";
 import { useState } from "react";
 
+import { useQuotes } from "@/lib/QuoteContext";
+
 export default function PetPage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    addQuote({
+      type: 'Pet',
+      clientName: 'New Client',
+      details: {
+        petName: data.petName,
+        breed: data.breed,
+        species: 'Pet' // simplified
+      }
+    });
+
     setIsSubmitting(false);
     toast({
       title: "Quote Received",

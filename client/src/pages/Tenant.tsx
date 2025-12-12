@@ -8,14 +8,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Building2 } from "lucide-react";
 import { useState } from "react";
 
+import { useQuotes } from "@/lib/QuoteContext";
+
 export default function TenantPage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    addQuote({
+      type: 'Tenant',
+      clientName: 'New Client',
+      details: {
+        address: data.address,
+        contentsValue: data.contentsValue
+      }
+    });
+
     setIsSubmitting(false);
     toast({
       title: "Quote Received",

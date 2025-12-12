@@ -9,14 +9,27 @@ import { Heart } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
+import { useQuotes } from "@/lib/QuoteContext";
+
 export default function LifePage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    addQuote({
+      type: 'Life',
+      clientName: 'New Client',
+      details: {
+        dob: data.dob,
+        amount: 'Requested Quote'
+      }
+    });
+
     setIsSubmitting(false);
     toast({
       title: "Quote Received",
