@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Building2 } from "lucide-react";
 import { useState } from "react";
+import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -14,7 +15,11 @@ export default function TenantPage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, control, setValue } = useForm<any>({
+    defaultValues: {
+      claims: []
+    }
+  });
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
@@ -25,7 +30,9 @@ export default function TenantPage() {
       clientName: 'New Client',
       details: {
         address: data.address,
-        contentsValue: data.contentsValue
+        contentsValue: data.contentsValue,
+        yearsAtAddress: data.yearsAtAddress,
+        claims: data.claims?.length || 0
       }
     });
 
@@ -66,6 +73,21 @@ export default function TenantPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                 <Label>Time at Current Address</Label>
+                 <Select onValueChange={(val) => setValue("yearsAtAddress", val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="less_than_1">Less than 1 year</SelectItem>
+                      <SelectItem value="1_to_3">1 - 3 years</SelectItem>
+                      <SelectItem value="3_to_5">3 - 5 years</SelectItem>
+                      <SelectItem value="5_plus">5+ years</SelectItem>
+                    </SelectContent>
+                 </Select>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Contents Value ($)</Label>
@@ -85,6 +107,8 @@ export default function TenantPage() {
                   </Select>
                 </div>
               </div>
+
+              <ClaimsHistorySection control={control} register={register} setValue={setValue} />
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Tenant Quote"}

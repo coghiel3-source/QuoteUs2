@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Home } from "lucide-react";
 import { useState } from "react";
+import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -14,7 +15,11 @@ export default function HomeInsurancePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, control, setValue } = useForm<any>({
+    defaultValues: {
+      claims: []
+    }
+  });
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
@@ -28,7 +33,9 @@ export default function HomeInsurancePage() {
         address: data.address,
         yearBuilt: data.yearBuilt,
         sqft: data.sqft,
-        type: 'Detached' // Assuming default from form if not captured well
+        type: 'Detached', // Assuming default from form if not captured well
+        yearsAtAddress: data.yearsAtAddress,
+        claims: data.claims?.length || 0
       }
     });
 
@@ -69,6 +76,21 @@ export default function HomeInsurancePage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                 <Label>Time at Current Address</Label>
+                 <Select onValueChange={(val) => setValue("yearsAtAddress", val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="less_than_1">Less than 1 year</SelectItem>
+                      <SelectItem value="1_to_3">1 - 3 years</SelectItem>
+                      <SelectItem value="3_to_5">3 - 5 years</SelectItem>
+                      <SelectItem value="5_plus">5+ years</SelectItem>
+                    </SelectContent>
+                 </Select>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Year Built</Label>
@@ -107,6 +129,8 @@ export default function HomeInsurancePage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <ClaimsHistorySection control={control} register={register} setValue={setValue} />
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Home Quote"}
