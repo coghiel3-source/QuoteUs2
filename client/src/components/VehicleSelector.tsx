@@ -5,6 +5,7 @@ import { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-form"
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Command,
   CommandEmpty,
@@ -102,9 +103,6 @@ export function VehicleSelector({ index, register, setValue, watch }: VehicleSel
   useEffect(() => {
     if (make) {
       setModels(getModelsForMake(make));
-      // Only reset model if the current model is not valid for the new make
-      // But for simplicity in this mockup, we'll keep the behavior of needing to re-select if make changes
-      // Actually, standard behavior is usually to clear model on make change
     } else {
       setModels([]);
     }
@@ -115,45 +113,61 @@ export function VehicleSelector({ index, register, setValue, watch }: VehicleSel
   const modelOptions = models.map(m => ({ label: m, value: m }));
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor={`vehicle-${index}-year`}>Year</Label>
-        <SearchableSelect
-          value={year}
-          onChange={(val) => setValue(`vehicles.${index}.year`, parseInt(val))}
-          options={yearOptions}
-          placeholder="Select Year"
-          testId={`select-year-${index}`}
-        />
-        <input type="hidden" {...register(`vehicles.${index}.year`)} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`vehicle-${index}-year`}>Year</Label>
+          <SearchableSelect
+            value={year}
+            onChange={(val) => setValue(`vehicles.${index}.year`, parseInt(val))}
+            options={yearOptions}
+            placeholder="Select Year"
+            testId={`select-year-${index}`}
+          />
+          <input type="hidden" {...register(`vehicles.${index}.year`)} />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor={`vehicle-${index}-make`}>Make</Label>
+          <SearchableSelect
+            value={make}
+            onChange={(val) => {
+              setValue(`vehicles.${index}.make`, val);
+              setValue(`vehicles.${index}.model`, ""); // Reset model on make change
+            }}
+            options={makeOptions}
+            placeholder="Select Make"
+            testId={`select-make-${index}`}
+          />
+          <input type="hidden" {...register(`vehicles.${index}.make`)} />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor={`vehicle-${index}-model`}>Model</Label>
+          <SearchableSelect
+            value={model}
+            onChange={(val) => setValue(`vehicles.${index}.model`, val)}
+            options={modelOptions}
+            placeholder={make ? "Select Model" : "Select Make First"}
+            disabled={!make}
+            testId={`select-model-${index}`}
+          />
+          <input type="hidden" {...register(`vehicles.${index}.model`)} />
+        </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`vehicle-${index}-make`}>Make</Label>
-        <SearchableSelect
-          value={make}
-          onChange={(val) => {
-            setValue(`vehicles.${index}.make`, val);
-            setValue(`vehicles.${index}.model`, ""); // Reset model on make change
-          }}
-          options={makeOptions}
-          placeholder="Select Make"
-          testId={`select-make-${index}`}
-        />
-        <input type="hidden" {...register(`vehicles.${index}.make`)} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor={`vehicle-${index}-model`}>Model</Label>
-        <SearchableSelect
-          value={model}
-          onChange={(val) => setValue(`vehicles.${index}.model`, val)}
-          options={modelOptions}
-          placeholder={make ? "Select Model" : "Select Make First"}
-          disabled={!make}
-          testId={`select-model-${index}`}
-        />
-        <input type="hidden" {...register(`vehicles.${index}.model`)} />
+         <Label htmlFor={`vehicle-${index}-vin`} className="text-muted-foreground text-xs uppercase tracking-wide">Vehicle Identification Number (VIN) - Optional</Label>
+         <Input 
+           id={`vehicle-${index}-vin`} 
+           placeholder="Enter VIN if vehicle not listed above" 
+           {...register(`vehicles.${index}.vin`)} 
+           className="font-mono uppercase placeholder:normal-case"
+           maxLength={17}
+         />
+         <p className="text-[10px] text-muted-foreground">
+           If your year, make, and model isn't available, please use an earlier year or add your VIN#.
+         </p>
       </div>
     </div>
   );

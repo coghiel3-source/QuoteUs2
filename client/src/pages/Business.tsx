@@ -5,7 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { UploadCloud } from "lucide-react";
+import { Briefcase, UploadCloud } from "lucide-react";
+import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function BusinessPage() {
   const { toast } = useToast();
