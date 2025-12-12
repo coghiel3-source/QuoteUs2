@@ -170,7 +170,7 @@ export default function AutoPage() {
         <div className="container mx-auto max-w-4xl">
            <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Auto Insurance Quote</h1>
            <p className="text-lg text-primary-foreground/80 max-w-2xl">
-             At QuoteUs.ca, we’re dedicated to finding the insurance that truly fits you—never a one-size-fits-all solution. By understanding your needs and budget, we match you with the right coverage options and do all the hard work for you. Simply share a few details to get started, and we’ll bring you personalized quotes that help you save while staying protected.
+             Save on auto insurance across Ontario. Compare multiple carriers to find the policy that fits your driving profile.
            </p>
         </div>
       </div>
