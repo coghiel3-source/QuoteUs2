@@ -33,6 +33,8 @@ export default function HomeInsurancePage() {
         address: data.address,
         yearBuilt: data.yearBuilt,
         sqft: data.sqft,
+        roofAge: data.roofAge,
+        furnaceAge: data.furnaceAge,
         type: 'Detached', // Assuming default from form if not captured well
         yearsAtAddress: data.yearsAtAddress,
         claims: data.claims?.length || 0
@@ -99,6 +101,17 @@ export default function HomeInsurancePage() {
                 <div className="space-y-2">
                   <Label>Square Footage</Label>
                   <Input {...register("sqft")} type="number" placeholder="2000" required />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <Label>Age of Roof (Years)</Label>
+                   <Input {...register("roofAge")} type="number" placeholder="10" required />
+                </div>
+                <div className="space-y-2">
+                   <Label>Age of Furnace (Years)</Label>
+                   <Input {...register("furnaceAge")} type="number" placeholder="5" required />
                 </div>
               </div>
 
