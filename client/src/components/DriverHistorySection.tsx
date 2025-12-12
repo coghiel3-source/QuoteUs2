@@ -1,4 +1,4 @@
-import { useFieldArray, Control, UseFormRegister, FieldValues } from "react-hook-form";
+import { useFieldArray, Control, UseFormRegister, UseFormSetValue } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface DriverHistorySectionProps {
   control: Control<any>;
   register: UseFormRegister<any>;
-  setValue: (name: string, value: any) => void;
+  setValue: UseFormSetValue<any>;
   basePath: string; // e.g. "primaryDriver" or "drivers.0"
 }
 

@@ -18,9 +18,11 @@ export default function TravelPage() {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsSubmitting(false);
     toast({
-      title: "Quote Received",
-      description: "A broker will contact you shortly with your travel insurance estimate.",
+      title: "Redirecting...",
+      description: "We are taking you to our trusted travel insurance partner to complete your quote.",
     });
+    // Redirect to Tugo
+    window.location.href = "https://shop.tugo.com/store/AFL801/?utm_group=insurancereferral&utm_source=TAP&utm_medium=insurancereferral&utm_campaign=ce&ps_partner_key=Y29yZXljb2doaWVsMTEwMA&ps_xid=2gfw6vKwwAnoHF&gsxid=2gfw6vKwwAnoHF&gspk=Y29yZXljb2doaWVsMTEwMA";
   };
 
   return (
