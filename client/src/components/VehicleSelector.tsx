@@ -155,20 +155,6 @@ export function VehicleSelector({ index, register, setValue, watch }: VehicleSel
           <input type="hidden" {...register(`vehicles.${index}.model`)} />
         </div>
       </div>
-
-      <div className="space-y-2">
-         <Label htmlFor={`vehicle-${index}-vin`} className="text-muted-foreground text-xs uppercase tracking-wide">Vehicle Identification Number (VIN) - Optional</Label>
-         <Input 
-           id={`vehicle-${index}-vin`} 
-           placeholder="Enter VIN if vehicle not listed above" 
-           {...register(`vehicles.${index}.vin`)} 
-           className="font-mono uppercase placeholder:normal-case"
-           maxLength={17}
-         />
-         <p className="text-[10px] text-muted-foreground">
-           If your year, make, and model isn't available, please use an earlier year or add your VIN#.
-         </p>
-      </div>
     </div>
   );
 }
