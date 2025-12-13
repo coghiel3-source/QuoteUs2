@@ -30,9 +30,12 @@ export default function BusinessPage() {
     
     addQuote({
       type: 'Business',
-      clientName: data.businessName,
-      email: '', // Not collected in this form version, maybe add it? Or assume internal
+      clientName: data.contactName, // Using contact name for client name in CRM
+      email: data.email,
+      phone: data.phone,
+      postalCode: data.postalCode,
       details: {
+        businessName: data.businessName,
         industry: data.industry,
         revenue: data.revenue,
         employees: data.employees
@@ -68,6 +71,33 @@ export default function BusinessPage() {
               <div className="space-y-2">
                 <Label>Business Name</Label>
                 <Input {...register("businessName")} placeholder="Acme Corp" required />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Contact Name</Label>
+                <Input {...register("contactName")} placeholder="John Doe" required />
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input {...register("email")} type="email" placeholder="john@example.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input {...register("phone")} type="tel" placeholder="(555) 123-4567" required />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Business Address</Label>
+                  <Input {...register("address")} placeholder="123 Business Park Dr" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Postal Code</Label>
+                  <Input {...register("postalCode")} placeholder="M5V 2T6" required />
+                </div>
               </div>
 
               <div className="space-y-2">

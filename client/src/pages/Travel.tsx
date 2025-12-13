@@ -21,7 +21,10 @@ export default function TravelPage() {
     
     addQuote({
       type: 'Travel',
-      clientName: 'Tugo Referral',
+      clientName: `${data.firstName} ${data.lastName}`,
+      email: data.email,
+      phone: data.phone,
+      postalCode: data.postalCode,
       details: {
         destination: 'Travel',
         travellers: data.travellers
@@ -57,6 +60,39 @@ export default function TravelPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input {...register("firstName")} placeholder="John" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input {...register("lastName")} placeholder="Doe" required />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input {...register("email")} type="email" placeholder="john@example.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input {...register("phone")} type="tel" placeholder="(555) 123-4567" required />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Address</Label>
+                  <Input {...register("address")} placeholder="123 Maple Dr" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Postal Code</Label>
+                  <Input {...register("postalCode")} placeholder="M5V 2T6" required />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Destination</Label>
                 <Select>

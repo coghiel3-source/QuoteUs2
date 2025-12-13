@@ -27,7 +27,9 @@ export default function HomeInsurancePage() {
     
     addQuote({
       type: 'Home',
-      clientName: 'New Client', // Name not in form
+      clientName: `${data.firstName} ${data.lastName}`,
+      email: data.email,
+      phone: data.phone,
       postalCode: data.postalCode,
       details: {
         address: data.address,
@@ -67,6 +69,28 @@ export default function HomeInsurancePage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input {...register("firstName")} placeholder="John" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input {...register("lastName")} placeholder="Doe" required />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input {...register("email")} type="email" placeholder="john@example.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input {...register("phone")} type="tel" placeholder="(555) 123-4567" required />
+                </div>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Property Address</Label>

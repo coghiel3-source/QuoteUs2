@@ -27,7 +27,10 @@ export default function TenantPage() {
     
     addQuote({
       type: 'Tenant',
-      clientName: 'New Client',
+      clientName: `${data.firstName} ${data.lastName}`,
+      email: data.email,
+      phone: data.phone,
+      postalCode: data.postalCode,
       details: {
         address: data.address,
         contentsValue: data.contentsValue,
@@ -64,6 +67,28 @@ export default function TenantPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input {...register("firstName")} placeholder="John" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input {...register("lastName")} placeholder="Doe" required />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input {...register("email")} type="email" placeholder="john@example.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input {...register("phone")} type="tel" placeholder="(555) 123-4567" required />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label>Address</Label>
                   <Input {...register("address")} placeholder="456 Condo Way" required autoComplete="street-address" />
                 </div>
@@ -71,6 +96,11 @@ export default function TenantPage() {
                   <Label>Unit #</Label>
                   <Input {...register("unit")} placeholder="Apt 402" autoComplete="address-line2" />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <Label>Postal Code</Label>
+                 <Input {...register("postalCode")} placeholder="M5V 2T6" required autoComplete="postal-code" />
               </div>
 
               <div className="space-y-2">
