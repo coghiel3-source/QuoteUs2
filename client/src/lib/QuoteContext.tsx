@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 export interface Quote {
   id: string;
-  type: 'Auto' | 'Home' | 'Tenant' | 'Business' | 'Life' | 'Travel' | 'Pet';
+  type: 'Auto' | 'Home' | 'Tenant' | 'Business' | 'Life' | 'Travel' | 'Pet' | 'General';
   clientName: string;
   email?: string;
   phone?: string;

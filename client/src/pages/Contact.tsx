@@ -9,16 +9,35 @@ import { Mail, Phone, MapPin, Send, CheckCircle, UserPlus, ArrowRight } from "lu
 import { useState } from "react";
 import { Link } from "wouter";
 
+import { useQuotes } from "@/lib/QuoteContext";
+
 export default function ContactPage() {
   const { toast } = useToast();
+  const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const { register, handleSubmit, reset } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    // Add to CRM via Context
+    addQuote({
+      type: 'General',
+      clientName: data.name,
+      email: data.email,
+      phone: data.phone,
+      postalCode: data.address, // Using address field for location context
+      details: {
+        subject: data.subject,
+        message: data.message,
+        address: data.address
+      }
+    });
+
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
     setIsSubmitting(false);
     setIsSuccess(true);
     toast({
