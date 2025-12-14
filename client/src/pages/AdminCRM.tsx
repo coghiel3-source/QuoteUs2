@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 
 export default function AdminCRMPage() {
   const { quotes, updateStatus, assignQuote } = useQuotes();
   const { user, users, approveBroker, denyBroker } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -230,7 +232,21 @@ export default function AdminCRMPage() {
                             <TableCell>
                                <Select 
                                 value={quote.assignedTo || "unassigned"} 
-                                onValueChange={(val) => assignQuote(quote.id, val)}
+                                onValueChange={(val) => {
+                                  assignQuote(quote.id, val);
+                                  const broker = users.find(u => u.id === val);
+                                  if (broker) {
+                                    toast({
+                                      title: "Lead Assigned",
+                                      description: `Notification sent to ${broker.name}.`,
+                                    });
+                                  } else {
+                                     toast({
+                                      title: "Lead Unassigned",
+                                      description: "Lead is now unassigned.",
+                                    });
+                                  }
+                                }}
                               >
                                 <SelectTrigger className="w-[180px] h-8 text-xs">
                                   <SelectValue placeholder="Unassigned" />

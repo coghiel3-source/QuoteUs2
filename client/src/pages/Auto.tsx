@@ -128,7 +128,7 @@ export default function AutoPage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Request Received",
-      description: `A confirmation email has been sent to ${data.primaryDriver.email}`,
+      description: `A confirmation email has been sent to ${data.primaryDriver.email}. Account Manager notified.`,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
