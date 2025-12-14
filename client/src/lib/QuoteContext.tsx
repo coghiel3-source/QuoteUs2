@@ -9,6 +9,7 @@ export interface Quote {
   postalCode?: string;
   date: string;
   status: 'New' | 'Contacted' | 'Quoted' | 'Closed';
+  assignedTo?: string; // Broker ID
   details: any;
 }
 
@@ -16,6 +17,7 @@ interface QuoteContextType {
   quotes: Quote[];
   addQuote: (quote: Omit<Quote, 'id' | 'date' | 'status'>) => void;
   updateStatus: (id: string, status: Quote['status']) => void;
+  assignQuote: (quoteId: string, brokerId: string) => void;
 }
 
 const QuoteContext = createContext<QuoteContextType | undefined>(undefined);
@@ -31,7 +33,8 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
       postalCode: 'M5V 2H1',
       date: new Date(Date.now() - 86400000).toISOString(),
       status: 'New',
-      details: { vehicle: '2020 Honda Civic' }
+      details: { vehicle: '2020 Honda Civic' },
+      assignedTo: 'broker1'
     },
     {
       id: '2',
@@ -41,7 +44,8 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
       postalCode: 'K1A 0B1',
       date: new Date(Date.now() - 172800000).toISOString(),
       status: 'Contacted',
-      details: { propertyType: 'Detached' }
+      details: { propertyType: 'Detached' },
+      assignedTo: undefined
     }
   ]);
 
@@ -59,8 +63,12 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
     setQuotes(prev => prev.map(q => q.id === id ? { ...q, status } : q));
   };
 
+  const assignQuote = (quoteId: string, brokerId: string) => {
+    setQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, assignedTo: brokerId } : q));
+  };
+
   return (
-    <QuoteContext.Provider value={{ quotes, addQuote, updateStatus }}>
+    <QuoteContext.Provider value={{ quotes, addQuote, updateStatus, assignQuote }}>
       {children}
     </QuoteContext.Provider>
   );
