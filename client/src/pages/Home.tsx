@@ -19,8 +19,8 @@ export default function HomePage() {
     <div className="flex flex-col gap-16 pb-20">
       {/* Hero Section */}
       <section className="relative bg-primary text-white overflow-hidden">
-        <div className="absolute inset-0 bg-primary/20 z-10" />
-        <div className="absolute inset-0 z-0 opacity-40">
+        <div className="absolute inset-0 bg-black/40 z-10" />
+        <div className="absolute inset-0 z-0">
            <img src={heroImage} alt="Happy customers looking at phone" className="w-full h-full object-cover" />
         </div>
         
