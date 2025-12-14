@@ -22,27 +22,29 @@ export default function DashboardPage() {
 
   // Login States
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "broker">("broker");
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, role)) {
+    if (login(email, role, password)) {
       if (role === 'admin') {
         setLocation('/admin');
       } else {
         toast({ title: "Welcome back!", description: "You are now logged in." });
       }
     } else {
-      toast({ variant: "destructive", title: "Login Failed", description: "Invalid email or account is pending approval." });
+      toast({ variant: "destructive", title: "Login Failed", description: "Invalid email, password, or account is pending approval." });
     }
   };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    register(registerName, registerEmail);
+    register(registerName, registerEmail, registerPassword);
     setIsRegistering(false);
     toast({ title: "Registration Submitted", description: "Your account is pending approval from an Account Manager." });
   };
@@ -71,6 +73,10 @@ export default function DashboardPage() {
                   <label className="text-sm font-medium">Email Address</label>
                   <Input type="email" placeholder="john@example.com" value={registerEmail} onChange={e => setRegisterEmail(e.target.value)} required />
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Create Password</label>
+                  <Input type="password" placeholder="********" value={registerPassword} onChange={e => setRegisterPassword(e.target.value)} required />
+                </div>
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90">Request Access</Button>
                 <div className="text-center text-sm">
                   <button type="button" onClick={() => setIsRegistering(false)} className="text-accent hover:underline">
@@ -83,6 +89,10 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email Address</label>
                   <Input type="email" placeholder="john@quoteus.ca" value={email} onChange={e => setEmail(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Password</label>
+                  <Input type="password" placeholder="********" value={password} onChange={e => setPassword(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Role</label>
@@ -104,8 +114,8 @@ export default function DashboardPage() {
                 </div>
                  <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 mt-4 border border-yellow-200">
                   <p className="font-bold mb-1">Demo Credentials:</p>
-                  <p>Manager: admin@quoteus.ca</p>
-                  <p>Broker: john@quoteus.ca</p>
+                  <p>Manager: admin@quoteus.ca / password123</p>
+                  <p>Broker: john@quoteus.ca / password123</p>
                 </div>
               </form>
             )}
