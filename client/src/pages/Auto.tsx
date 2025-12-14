@@ -49,6 +49,7 @@ const autoSchema = z.object({
     year: z.number().min(1990),
     make: z.string().min(1, "Make is required"),
     model: z.string().min(1, "Model is required"),
+    vin: z.string().optional(),
     usage: z.enum(["commute", "pleasure", "business"]),
     annualKm: z.number().min(0, "Kilometres required"),
   })).min(1, "At least one vehicle is required"),
@@ -337,6 +338,7 @@ export default function AutoPage() {
                               register={form.register} 
                               setValue={form.setValue} 
                               watch={form.watch} 
+                              showVin={true}
                            />
                            
                            <div className="grid md:grid-cols-2 gap-4">

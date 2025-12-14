@@ -25,6 +25,7 @@ interface VehicleSelectorProps {
   register: UseFormRegister<any>;
   setValue: UseFormSetValue<any>;
   watch: UseFormWatch<any>;
+  showVin?: boolean;
 }
 
 function SearchableSelect({ 
@@ -93,7 +94,7 @@ function SearchableSelect({
   );
 }
 
-export function VehicleSelector({ index, register, setValue, watch }: VehicleSelectorProps) {
+export function VehicleSelector({ index, register, setValue, watch, showVin = false }: VehicleSelectorProps) {
   const year = watch(`vehicles.${index}.year`);
   const make = watch(`vehicles.${index}.make`);
   const model = watch(`vehicles.${index}.model`);
@@ -155,6 +156,21 @@ export function VehicleSelector({ index, register, setValue, watch }: VehicleSel
           <input type="hidden" {...register(`vehicles.${index}.model`)} />
         </div>
       </div>
+
+      {showVin && (
+        <div className="space-y-2">
+           <Label htmlFor={`vehicle-${index}-vin`}>VIN# (Optional)</Label>
+           <Input 
+             id={`vehicle-${index}-vin`} 
+             placeholder="Enter 17-digit VIN" 
+             {...register(`vehicles.${index}.vin`)} 
+             className="uppercase"
+           />
+           <p className="text-sm text-muted-foreground mt-2 bg-secondary/30 p-3 rounded-md border border-secondary">
+             If your year, make, and model of vehicle isn't available, please use an earlier year or add your VIN#
+           </p>
+        </div>
+      )}
     </div>
   );
 }
