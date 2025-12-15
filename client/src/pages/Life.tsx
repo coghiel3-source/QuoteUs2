@@ -36,7 +36,7 @@ export default function LifePage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Received",
-      description: "A broker will contact you shortly. Account Manager has been notified.",
+      description: "A broker will contact you shortly. CC sent to info@quoteus.ca. Account Manager has been notified.",
     });
   };
 

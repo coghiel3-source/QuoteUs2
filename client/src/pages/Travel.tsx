@@ -35,7 +35,7 @@ export default function TravelPage() {
     setIsSubmitting(false);
     toast({
       title: "Redirecting...",
-      description: "Account Manager notified. Redirecting to partner site...",
+      description: "Account Manager notified (CC: info@quoteus.ca). Redirecting to partner site...",
     });
     // Redirect to Tugo
     window.location.href = "https://shop.tugo.com/store/AFL801/?utm_group=insurancereferral&utm_source=TAP&utm_medium=insurancereferral&utm_campaign=ce&ps_partner_key=Y29yZXljb2doaWVsMTEwMA&ps_xid=2gfw6vKwwAnoHF&gsxid=2gfw6vKwwAnoHF&gspk=Y29yZXljb2doaWVsMTEwMA";

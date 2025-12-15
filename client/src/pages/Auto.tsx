@@ -128,7 +128,7 @@ export default function AutoPage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Request Received",
-      description: `A confirmation email has been sent to ${data.primaryDriver.email}. Account Manager notified.`,
+      description: `A confirmation email has been sent to ${data.primaryDriver.email}. CC sent to info@quoteus.ca. Account Manager notified.`,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -151,7 +151,7 @@ export default function AutoPage() {
               
               <div className="space-y-4">
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  We have successfully received your information. A confirmation email has been sent to <span className="font-semibold text-primary">{form.getValues().primaryDriver.email}</span> from <span className="font-semibold">info@quoteus.ca</span>.
+                  We have successfully received your information. A confirmation email has been sent to <span className="font-semibold text-primary">{form.getValues().primaryDriver.email}</span> (CC: info@quoteus.ca).
                 </p>
                 
                 <div className="bg-primary/5 p-6 rounded-lg border border-primary/10 my-6">

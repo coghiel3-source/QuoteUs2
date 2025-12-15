@@ -42,7 +42,7 @@ export default function ContactPage() {
     setIsSuccess(true);
     toast({
       title: "Message Sent",
-      description: "Your message has been sent. The Account Manager has been notified.",
+      description: "Your message has been sent. CC sent to info@quoteus.ca. The Account Manager has been notified.",
     });
     reset();
   };
