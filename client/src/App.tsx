@@ -21,6 +21,7 @@ import DashboardPage from "@/pages/Dashboard";
 import PrivacyPage from "@/pages/Privacy";
 import ContactPage from "@/pages/Contact";
 import ProfilePage from "@/pages/Profile";
+import LoginPage from "@/pages/Login";
 import AdminCRMPage from "@/pages/AdminCRM";
 
 // Placeholder pages for other routes to prevent 404s during dev
@@ -52,6 +53,7 @@ function Router() {
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/profile" component={ProfilePage} />
+        <Route path="/login" component={LoginPage} />
         <Route path="/admin" component={AdminCRMPage} />
         <Route component={NotFound} />
       </Switch>
