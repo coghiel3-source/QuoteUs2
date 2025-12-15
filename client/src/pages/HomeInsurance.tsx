@@ -46,7 +46,7 @@ export default function HomeInsurancePage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Received",
-      description: "A broker will contact you shortly with your home insurance estimate.",
+      description: "A broker will contact you shortly. Account Manager has been notified.",
     });
   };
 

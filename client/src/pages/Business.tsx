@@ -45,7 +45,7 @@ export default function BusinessPage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Received",
-      description: "A commercial broker will contact you shortly.",
+      description: "A commercial broker will contact you shortly. Account Manager has been notified.",
     });
   };
 

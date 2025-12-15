@@ -36,7 +36,7 @@ export default function PetPage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Received",
-      description: "A broker will contact you shortly with your pet insurance estimate.",
+      description: "A broker will contact you shortly. Account Manager has been notified.",
     });
   };
 
