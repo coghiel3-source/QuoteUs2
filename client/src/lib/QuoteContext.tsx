@@ -23,31 +23,42 @@ interface QuoteContextType {
 const QuoteContext = createContext<QuoteContextType | undefined>(undefined);
 
 export function QuoteProvider({ children }: { children: ReactNode }) {
-  // Initialize with some mock data for demonstration
-  const [quotes, setQuotes] = useState<Quote[]>([
-    {
-      id: '1',
-      type: 'Auto',
-      clientName: 'John Doe',
-      email: 'john@example.com',
-      postalCode: 'M5V 2H1',
-      date: new Date(Date.now() - 86400000).toISOString(),
-      status: 'New',
-      details: { vehicle: '2020 Honda Civic' },
-      assignedTo: 'broker1'
-    },
-    {
-      id: '2',
-      type: 'Home',
-      clientName: 'Sarah Smith',
-      email: 'sarah@example.com',
-      postalCode: 'K1A 0B1',
-      date: new Date(Date.now() - 172800000).toISOString(),
-      status: 'Contacted',
-      details: { propertyType: 'Detached' },
-      assignedTo: undefined
+  // Initialize with localStorage data or default mock data
+  const [quotes, setQuotes] = useState<Quote[]>(() => {
+    const savedQuotes = localStorage.getItem('quoteus_quotes');
+    if (savedQuotes) {
+      return JSON.parse(savedQuotes);
     }
-  ]);
+    return [
+      {
+        id: '1',
+        type: 'Auto',
+        clientName: 'John Doe',
+        email: 'john@example.com',
+        postalCode: 'M5V 2H1',
+        date: new Date(Date.now() - 86400000).toISOString(),
+        status: 'New',
+        details: { vehicle: '2020 Honda Civic' },
+        assignedTo: 'broker1'
+      },
+      {
+        id: '2',
+        type: 'Home',
+        clientName: 'Sarah Smith',
+        email: 'sarah@example.com',
+        postalCode: 'K1A 0B1',
+        date: new Date(Date.now() - 172800000).toISOString(),
+        status: 'Contacted',
+        details: { propertyType: 'Detached' },
+        assignedTo: undefined
+      }
+    ];
+  });
+
+  // Save to localStorage whenever quotes change
+  useEffect(() => {
+    localStorage.setItem('quoteus_quotes', JSON.stringify(quotes));
+  }, [quotes]);
 
   const addQuote = (quoteData: Omit<Quote, 'id' | 'date' | 'status'>) => {
     const newQuote: Quote = {

@@ -151,6 +151,7 @@ export default function AdminCRMPage() {
                         <SelectItem value="Life">Life</SelectItem>
                         <SelectItem value="Travel">Travel</SelectItem>
                         <SelectItem value="Pet">Pet</SelectItem>
+                        <SelectItem value="General">General Inquiry</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
