@@ -8,13 +8,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 
 export default function AdminCRMPage() {
-  const { quotes, updateStatus, assignQuote } = useQuotes();
+  const { quotes, updateStatus, assignQuote, addQuote } = useQuotes();
   const { user, users, approveBroker, denyBroker, logout, updateUser } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -22,6 +24,38 @@ export default function AdminCRMPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  
+  // Manual Lead Form State
+  const [newLead, setNewLead] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    type: "Auto",
+    notes: ""
+  });
+
+  const handleAddManualLead = (e: React.FormEvent) => {
+    e.preventDefault();
+    addQuote({
+      type: newLead.type as any,
+      clientName: `${newLead.firstName} ${newLead.lastName}`,
+      email: newLead.email,
+      phone: newLead.phone,
+      details: {
+        notes: newLead.notes,
+        source: 'Manual Entry'
+      }
+    });
+    
+    setIsAddLeadOpen(false);
+    setNewLead({ firstName: "", lastName: "", email: "", phone: "", type: "Auto", notes: "" });
+    toast({
+      title: "Lead Added",
+      description: "Manual lead has been successfully added to the CRM.",
+    });
+  };
 
   // Auth check - simulate protected route
   if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
@@ -274,9 +308,96 @@ export default function AdminCRMPage() {
                   <Button variant="outline" size="sm" className="gap-2">
                     <Download size={16} /> Export CSV
                   </Button>
-                  <Button size="sm" className="gap-2 bg-primary">
-                     <UserPlus size={16} /> Add Manual Lead
-                  </Button>
+                  
+                  <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-2 bg-primary">
+                        <UserPlus size={16} /> Add Manual Lead
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add Manual Lead</DialogTitle>
+                        <DialogDescription>
+                          Manually enter a new lead into the CRM system.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleAddManualLead} className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="firstName">First Name</Label>
+                            <Input 
+                              id="firstName" 
+                              value={newLead.firstName} 
+                              onChange={(e) => setNewLead({...newLead, firstName: e.target.value})}
+                              required 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="lastName">Last Name</Label>
+                            <Input 
+                              id="lastName" 
+                              value={newLead.lastName} 
+                              onChange={(e) => setNewLead({...newLead, lastName: e.target.value})}
+                              required 
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input 
+                            id="email" 
+                            type="email"
+                            value={newLead.email} 
+                            onChange={(e) => setNewLead({...newLead, email: e.target.value})}
+                            required 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone</Label>
+                          <Input 
+                            id="phone" 
+                            type="tel"
+                            value={newLead.phone} 
+                            onChange={(e) => setNewLead({...newLead, phone: e.target.value})}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="type">Insurance Type</Label>
+                          <Select 
+                            value={newLead.type} 
+                            onValueChange={(val) => setNewLead({...newLead, type: val})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Auto">Auto</SelectItem>
+                              <SelectItem value="Home">Home</SelectItem>
+                              <SelectItem value="Tenant">Tenant</SelectItem>
+                              <SelectItem value="Business">Business</SelectItem>
+                              <SelectItem value="Life">Life</SelectItem>
+                              <SelectItem value="Travel">Travel</SelectItem>
+                              <SelectItem value="Pet">Pet</SelectItem>
+                              <SelectItem value="General">General</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="notes">Initial Notes</Label>
+                          <Input 
+                            id="notes" 
+                            placeholder="Source, preferences, etc."
+                            value={newLead.notes} 
+                            onChange={(e) => setNewLead({...newLead, notes: e.target.value})}
+                          />
+                        </div>
+                        <DialogFooter>
+                          <Button type="submit" className="w-full">Add Lead to CRM</Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             </CardHeader>
