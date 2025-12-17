@@ -6,7 +6,7 @@ export interface User {
   email: string;
   phone?: string;
   role: 'admin' | 'manager' | 'broker' | 'customer';
-  status: 'pending' | 'active' | 'denied';
+  status: 'pending' | 'active' | 'denied' | 'paused' | 'cancelled';
   password?: string; // For mock login
   lastLogin?: string;
   performance?: {
@@ -24,6 +24,7 @@ interface AuthContextType {
   approveBroker: (id: string) => void;
   denyBroker: (id: string) => void;
   updateUser: (id: string, data: Partial<User>) => void;
+  resetPassword: (id: string, newPassword: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,6 +101,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (foundUser.status !== 'active') {
+         if (foundUser.status === 'paused') {
+           alert("Your account has been temporarily paused. Please contact your administrator.");
+           return false;
+         }
+         if (foundUser.status === 'cancelled' || foundUser.status === 'denied') {
+           alert("Your account has been deactivated.");
+           return false;
+         }
          alert("Your account is pending approval.");
          return false;
       }
@@ -145,8 +154,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resetPassword = (id: string, newPassword: string) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, password: newPassword } : u));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, users, login, logout, register, approveBroker, denyBroker, updateUser }}>
+    <AuthContext.Provider value={{ user, users, login, logout, register, approveBroker, denyBroker, updateUser, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

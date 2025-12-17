@@ -9,15 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 
 export default function AdminCRMPage() {
   const { quotes, updateStatus, assignQuote, addQuote } = useQuotes();
-  const { user, users, approveBroker, denyBroker, logout, updateUser } = useAuth();
+  const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,6 +26,9 @@ export default function AdminCRMPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [selectedUserForReset, setSelectedUserForReset] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
   
   // Manual Lead Form State
   const [newLead, setNewLead] = useState({
@@ -54,6 +58,33 @@ export default function AdminCRMPage() {
     toast({
       title: "Lead Added",
       description: "Manual lead has been successfully added to the CRM.",
+    });
+  };
+
+  const handlePasswordReset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedUserForReset && newPassword) {
+      resetPassword(selectedUserForReset, newPassword);
+      setIsResetPasswordOpen(false);
+      setNewPassword("");
+      setSelectedUserForReset(null);
+      toast({
+        title: "Password Updated",
+        description: "The user's password has been successfully changed.",
+      });
+    }
+  };
+
+  const openPasswordReset = (userId: string) => {
+    setSelectedUserForReset(userId);
+    setIsResetPasswordOpen(true);
+  };
+
+  const handleStatusChange = (userId: string, status: 'active' | 'paused' | 'cancelled') => {
+    updateUser(userId, { status });
+    toast({
+      title: "Status Updated",
+      description: `User status has been changed to ${status}.`,
     });
   };
 
@@ -125,9 +156,20 @@ export default function AdminCRMPage() {
     }
   };
 
+  const getUserStatusBadge = (status: string) => {
+    switch(status) {
+      case 'active': return 'bg-green-500';
+      case 'pending': return 'bg-yellow-500';
+      case 'paused': return 'bg-orange-500';
+      case 'cancelled': return 'bg-red-500';
+      case 'denied': return 'bg-red-500';
+      default: return 'bg-slate-500';
+    }
+  };
+
   // Filter users for the Manager Tab
   const allStaff = users.filter(u => u.role !== 'customer');
-  const brokers = users.filter(u => u.role === 'broker' && u.status === 'active');
+  const brokers = users.filter(u => u.role === 'broker' && (u.status === 'active' || u.status === 'paused' || u.status === 'cancelled'));
   const pendingBrokers = users.filter(u => u.role === 'broker' && u.status === 'pending');
 
   // Reports Data Calculation
@@ -204,6 +246,35 @@ export default function AdminCRMPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+
+        {/* Password Reset Dialog */}
+        <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Password</DialogTitle>
+              <DialogDescription>
+                Set a new password for the selected user. This will take effect immediately.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handlePasswordReset} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input 
+                  id="newPassword" 
+                  type="password"
+                  value={newPassword} 
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  required
+                  minLength={6}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" className="w-full">Update Password</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
         
         {/* DASHBOARD TAB */}
         {activeTab === 'dashboard' && (
@@ -645,7 +716,7 @@ export default function AdminCRMPage() {
                              <div className="text-xs text-muted-foreground">{staff.phone || 'No phone'}</div>
                            </TableCell>
                            <TableCell>
-                             <Badge className={staff.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}>
+                             <Badge className={getUserStatusBadge(staff.status)}>
                                {staff.status}
                              </Badge>
                            </TableCell>
@@ -670,9 +741,46 @@ export default function AdminCRMPage() {
                              )}
                            </TableCell>
                            <TableCell className="text-right">
-                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                               <Settings size={16} className="text-muted-foreground" />
-                             </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Open menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => openPasswordReset(staff.id)}>
+                                  <Lock className="mr-2 h-4 w-4" />
+                                  Change Password
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {staff.status === 'active' && (
+                                  <DropdownMenuItem onClick={() => handleStatusChange(staff.id, 'paused')}>
+                                    <Pause className="mr-2 h-4 w-4" />
+                                    Pause Access
+                                  </DropdownMenuItem>
+                                )}
+                                {staff.status === 'paused' && (
+                                  <DropdownMenuItem onClick={() => handleStatusChange(staff.id, 'active')}>
+                                    <Play className="mr-2 h-4 w-4" />
+                                    Resume Access
+                                  </DropdownMenuItem>
+                                )}
+                                {staff.status !== 'cancelled' && (
+                                  <DropdownMenuItem className="text-red-600" onClick={() => handleStatusChange(staff.id, 'cancelled')}>
+                                    <Ban className="mr-2 h-4 w-4" />
+                                    Cancel Account
+                                  </DropdownMenuItem>
+                                )}
+                                {staff.status === 'cancelled' && (
+                                  <DropdownMenuItem onClick={() => handleStatusChange(staff.id, 'active')}>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Reactivate Account
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                            </TableCell>
                          </TableRow>
                        ))}
