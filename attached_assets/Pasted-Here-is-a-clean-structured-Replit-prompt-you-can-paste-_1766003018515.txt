@@ -1,0 +1,171 @@
+Here is a **clean, structured Replit prompt** you can paste directly into Replit AI to generate or extend your application. It’s written with **insurance CRM best practices**, admin controls, and broker/manager workflows in mind.
+
+---
+
+## Replit AI Prompt – Insurance CRM with Admin, Manager & Broker Roles
+
+**Project Goal:**
+Build a secure, scalable **Insurance Lead CRM** where **all website and quoting tool leads automatically flow into a centralized CRM system**. The CRM must support **Admin, Manager, and Broker roles**, with role-based permissions, lead assignment, and full lead lifecycle tracking.
+
+---
+
+### Core CRM Requirements
+
+#### 1. Lead Intake & Flow
+
+* All leads from:
+
+  * Website forms
+  * Auto insurance quoting tools
+  * Manual lead entry
+* Automatically flow into the CRM database
+* Each lead must include:
+
+  * Full name
+  * Contact details (email, phone)
+  * Insurance type (Auto, Home, etc.)
+  * Source (website, referral, campaign, manual)
+  * Timestamp
+  * Status (New, Contacted, In Progress, Quoted, Bound, Lost, Follow-Up)
+
+---
+
+### 2. User Roles & Permissions
+
+#### Admin Role (Full Access)
+
+* Create, edit, suspend, or delete user accounts
+* Grant or revoke access levels (Admin / Manager / Broker)
+* Reset and update user passwords
+* Assign leads to Managers or Brokers
+* View and edit all leads and lead statuses
+* Access system-wide analytics and reports
+* Configure CRM settings
+
+---
+
+#### Manager Role
+
+* View all assigned and unassigned leads
+* Assign and reassign leads to Brokers
+* View detailed Broker activity and performance
+* Change lead statuses and add internal notes
+* Access Manager dashboard with reporting tools
+
+---
+
+#### Broker Role
+
+* View only assigned leads
+* Update lead status and notes
+* Track follow-ups and client communications
+* Mark leads as quoted, bound, or lost
+
+---
+
+### 3. CRM Navigation & Layout
+
+* Once logged into the CRM:
+
+  * **Persistent top navigation bar on all pages**
+  * Navigation must include:
+
+    * Dashboard
+    * Leads
+    * My Assigned Leads
+    * Manager (Managers/Admin only)
+    * Reports
+    * Settings
+    * Logout
+* Clean, professional insurance-industry UI
+* Responsive design for desktop and tablet use
+
+---
+
+### 4. Manager Tab – Advanced Details (High Priority)
+
+The **Manager tab** must be a detailed control center including:
+
+#### Registered Users Table
+
+* User Name
+* Role (Admin / Manager / Broker)
+* Email
+* Phone
+* Status (Active / Suspended)
+* Last Login
+* Number of Assigned Leads
+* Performance indicators (conversion rate, response time)
+
+#### User Management Tools
+
+* Assign leads directly from Manager tab
+* Change user access levels
+* Reset passwords (Admin only)
+* Enable/disable user accounts
+
+---
+
+### 5. Recommended Tools to Include in Manager Tab
+
+Add the following **insurance CRM-focused tools** to enhance lead generation and management:
+
+* Lead aging tracker (shows leads not contacted within X hours)
+* Automated follow-up reminders
+* Broker response time tracking
+* Conversion analytics dashboard
+* Lead source performance tracking
+* Notes & internal comments system
+* Activity log per user and per lead
+* Export leads (CSV)
+* Task and follow-up scheduling
+
+---
+
+### 6. Dashboard Features
+
+* Total leads (daily / weekly / monthly)
+* Leads by status
+* Leads by broker
+* Conversion rate
+* Pending follow-ups
+* Recent activity feed
+
+---
+
+### 7. Security & Best Practices
+
+* Secure authentication (hashed passwords)
+* Role-based route protection
+* Audit logs for:
+
+  * Lead reassignment
+  * Status changes
+  * User access changes
+* Data validation on all forms
+
+---
+
+### 8. Tech Preferences (Recommended)
+
+* Frontend: React or Next.js
+* Backend: Node.js / Express
+* Database: PostgreSQL or MongoDB
+* Authentication: JWT-based sessions
+* Deployed and runnable directly in Replit
+
+---
+
+**Final Instruction to Replit AI:**
+Build this CRM in a modular, scalable way so additional insurance products (home, life, commercial) can be added later without restructuring the system.
+
+---
+
+If you’d like, I can also:
+
+* Convert this into **database schema**
+* Create **user stories** for Admin / Manager / Broker
+* Write **API endpoints**
+* Or tailor this specifically for **QuoteUs.ca**
+
+Just tell me the next step.
