@@ -112,11 +112,6 @@ export default function DashboardPage() {
                     New Broker? Create Profile
                   </button>
                 </div>
-                 <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 mt-4 border border-yellow-200">
-                  <p className="font-bold mb-1">Demo Credentials:</p>
-                  <p>Manager: admin@quoteus.ca / password123</p>
-                  <p>Broker: john@quoteus.ca / password123</p>
-                </div>
               </form>
             )}
           </CardContent>
