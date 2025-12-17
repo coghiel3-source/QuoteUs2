@@ -8,8 +8,11 @@ import { Lock, Mail, LogIn } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
+import { useAuth } from "@/lib/AuthContext";
+
 export default function LoginPage() {
   const { toast } = useToast();
+  const { login } = useAuth();
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm();
@@ -17,16 +20,26 @@ export default function LoginPage() {
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    const success = login(data.email, 'customer', data.password);
+    
     setIsSubmitting(false);
     
-    toast({
-      title: "Welcome back!",
-      description: "You have successfully logged in.",
-    });
-    
-    // Redirect to home or dashboard
-    setLocation("/");
+    if (success) {
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully logged in.",
+      });
+      // Redirect to profile to see quotes
+      setLocation("/profile");
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Invalid email or password.",
+      });
+    }
   };
 
   return (
