@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -83,6 +83,17 @@ export default function AdminCRMPage() {
   const brokers = users.filter(u => u.role === 'broker' && u.status === 'active');
   const pendingBrokers = users.filter(u => u.role === 'broker' && u.status === 'pending');
 
+  // Reports Data Calculation
+  const getBrokerStats = (brokerId: string) => {
+    const brokerQuotes = quotes.filter(q => q.assignedTo === brokerId);
+    return {
+      total: brokerQuotes.length,
+      new: brokerQuotes.filter(q => q.status === 'New').length,
+      inProgress: brokerQuotes.filter(q => q.status === 'Contacted' || q.status === 'Quoted').length,
+      closed: brokerQuotes.filter(q => q.status === 'Closed').length
+    };
+  };
+
   return (
     <div className="min-h-screen bg-secondary/10 pb-20">
       <div className="bg-primary text-white py-8 px-4 shadow-md">
@@ -92,20 +103,21 @@ export default function AdminCRMPage() {
               <h1 className="text-3xl font-serif font-bold mb-2">Account Manager Dashboard</h1>
               <p className="text-primary-foreground/80">Welcome back, {user.name}</p>
             </div>
-            <div className="text-right">
-              <Link href="/dashboard">
-                <Button variant="outline" className="text-primary bg-white hover:bg-white/90">View Broker Portal</Button>
-              </Link>
-            </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 -mt-8">
         <Tabs defaultValue="leads" className="space-y-6">
-          <TabsList className="bg-white border shadow-sm">
-             <TabsTrigger value="leads">Manage Leads</TabsTrigger>
-             <TabsTrigger value="brokers">Manage Brokers {pendingBrokers.length > 0 && <Badge className="ml-2 bg-destructive">{pendingBrokers.length}</Badge>}</TabsTrigger>
+          <TabsList className="bg-white border shadow-sm h-auto p-1 grid grid-cols-1 md:grid-cols-4 gap-2">
+             <TabsTrigger value="leads" className="py-2">Manage Leads</TabsTrigger>
+             <TabsTrigger value="brokers" className="py-2">
+               Manage Brokers {pendingBrokers.length > 0 && <Badge className="ml-2 bg-destructive">{pendingBrokers.length}</Badge>}
+             </TabsTrigger>
+             <TabsTrigger value="reports" className="py-2">Reports</TabsTrigger>
+             <Link href="/dashboard" className="w-full">
+               <Button variant="ghost" className="w-full text-sm font-medium h-9 px-3">View Broker Portal</Button>
+             </Link>
           </TabsList>
 
           <TabsContent value="leads">
@@ -338,6 +350,70 @@ export default function AdminCRMPage() {
                   </Table>
                 </CardContent>
              </Card>
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <Card className="shadow-lg border-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><BarChart className="text-accent" /> Broker Performance Reports</CardTitle>
+                <CardDescription>View lead assignment distribution and status updates per broker.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6">
+                  {brokers.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">No active brokers found to generate reports.</div>
+                  ) : (
+                    <div className="rounded-md border bg-white overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-secondary/10">
+                          <TableRow>
+                            <TableHead>Broker Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead className="text-center">Total Assigned</TableHead>
+                            <TableHead className="text-center text-blue-600">New Leads</TableHead>
+                            <TableHead className="text-center text-yellow-600">In Progress</TableHead>
+                            <TableHead className="text-center text-green-600">Closed Won</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {brokers.map(broker => {
+                            const stats = getBrokerStats(broker.id);
+                            return (
+                              <TableRow key={broker.id}>
+                                <TableCell className="font-medium">{broker.name}</TableCell>
+                                <TableCell className="text-muted-foreground">{broker.email}</TableCell>
+                                <TableCell className="text-center font-bold">{stats.total}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">{stats.new}</Badge>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200">{stats.inProgress}</Badge>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200">{stats.closed}</Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          
+                          {/* Unassigned Row */}
+                          <TableRow className="bg-slate-50">
+                             <TableCell className="font-medium text-muted-foreground italic">Unassigned Leads</TableCell>
+                             <TableCell className="text-muted-foreground">-</TableCell>
+                             <TableCell className="text-center font-bold text-muted-foreground">
+                               {getBrokerStats("undefined").total + getBrokerStats("unassigned").total}
+                             </TableCell>
+                             <TableCell colSpan={3} className="text-center text-xs text-muted-foreground italic">
+                               Assign these leads to brokers to start tracking performance
+                             </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
