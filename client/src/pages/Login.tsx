@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Mail, LogIn } from "lucide-react";
+import { Lock, Mail, LogIn, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data: any) => {
@@ -81,12 +82,19 @@ export default function LoginPage() {
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 
                     id="password" 
-                    type="password" 
+                    type={showPassword ? "text" : "password"} 
                     {...register("password", { required: "Password is required" })} 
-                    className="pl-9" 
+                    className="pl-9 pr-10" 
                     placeholder="••••••••" 
                     autoComplete="current-password"
                   />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
                 {errors.password && <p className="text-destructive text-xs">{errors.password.message as string}</p>}
               </div>

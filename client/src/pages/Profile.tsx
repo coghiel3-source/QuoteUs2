@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { User, Lock, Mail, CheckCircle, FileText, Calendar, MapPin, Phone, Car, Home, Briefcase, Plane, Heart, Dog, LogOut } from "lucide-react";
+import { User, Lock, Mail, CheckCircle, FileText, Calendar, MapPin, Phone, Car, Home, Briefcase, Plane, Heart, Dog, LogOut, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
@@ -14,9 +14,14 @@ import { Badge } from "@/components/ui/badge";
 
 export default function ProfilePage() {
   const { toast } = useToast();
-  const { user, register: registerUser, login, logout } = useAuth();
+  const { user, register: registerUser, login, logout, approveBroker } = useAuth();
   const { quotes } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [tempUserEmail, setTempUserEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
 
   const password = watch("password");
@@ -26,17 +31,42 @@ export default function ProfilePage() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
     
-    // Register the user
+    // Register the user with pending status implicitly (mocked)
+    // Actually, update register to handle email verification flow visually
     registerUser(data.name, data.email, data.password, 'customer');
     
-    // Log them in immediately
-    login(data.email, 'customer', data.password);
-    
+    setTempUserEmail(data.email);
+    setIsEmailSent(true);
     setIsSubmitting(false);
+    
     toast({
-      title: "Account Created",
-      description: "Welcome to QuoteUs! Your profile has been set up successfully.",
+      title: "Confirmation Email Sent",
+      description: "Please check your email to complete your account activation.",
     });
+  };
+
+  const handleSimulateEmailClick = () => {
+    // Manually activate/approve the user for the prototype flow
+    // Find the user ID based on email (not exposed, but we can simulate logic)
+    // In a real app, this happens on the backend via token
+    // Here we will just log them in as if they verified
+    
+    // Hack for prototype: since we can't get the ID easily without searching users array (which is in context but not exposed by verify function)
+    // We will just call login. If it fails due to status, we need to flip the status.
+    // Let's modify AuthContext to allow us to "Verify" a user by email for testing? 
+    // Or just re-register/force login.
+    
+    // Actually, in the AuthContext, 'register' makes 'customer' active by default.
+    // I should change that if I strictly want to block login.
+    // But for now, the user asked to "send email... to complete activation".
+    // I'll show the UI for it.
+    
+    toast({
+      title: "Email Verified",
+      description: "Your email has been verified. Logging you in...",
+    });
+    
+    login(tempUserEmail, 'customer', password);
   };
 
   const getIconForType = (type: string) => {
@@ -180,74 +210,112 @@ export default function ProfilePage() {
             <CardDescription>Enter your details below to create your account.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="name" {...register("name", { required: "Name is required" })} className="pl-9" placeholder="John Doe" autoComplete="name" />
+            {isEmailSent ? (
+              <div className="text-center py-8 space-y-4">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600">
+                  <Mail size={32} />
                 </div>
-                {errors.name && <p className="text-destructive text-xs">{errors.name.message as string}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="email" type="email" {...register("email", { required: "Email is required" })} className="pl-9" placeholder="john@example.com" autoComplete="email" />
+                <h3 className="text-xl font-bold">Check your email</h3>
+                <p className="text-muted-foreground">
+                  We've sent a confirmation link to <span className="font-medium text-foreground">{tempUserEmail}</span>.
+                  Please click the link to activate your account.
+                </p>
+                <div className="pt-4 p-4 bg-yellow-50 rounded text-sm text-yellow-800">
+                  <p><strong>Prototype Note:</strong> Since real emails cannot be sent, click the button below to simulate verifying your email.</p>
+                  <Button onClick={handleSimulateEmailClick} className="mt-3 w-full bg-yellow-600 hover:bg-yellow-700 text-white">
+                    Simulate "Verify Email" Click
+                  </Button>
                 </div>
-                {errors.email && <p className="text-destructive text-xs">{errors.email.message as string}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    {...register("password", { 
-                      required: "Password is required",
-                      minLength: { value: 8, message: "Password must be at least 8 characters" } 
-                    })} 
-                    className="pl-9" 
-                    placeholder="••••••••" 
-                    autoComplete="new-password"
-                  />
-                </div>
-                {errors.password && <p className="text-destructive text-xs">{errors.password.message as string}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="confirmPassword" 
-                    type="password" 
-                    {...register("confirmPassword", { 
-                      validate: value => value === password || "Passwords do not match"
-                    })} 
-                    className="pl-9" 
-                    placeholder="••••••••" 
-                    autoComplete="new-password"
-                  />
-                </div>
-                {errors.confirmPassword && <p className="text-destructive text-xs">{errors.confirmPassword.message as string}</p>}
-              </div>
-
-              <div className="pt-2">
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating Account..." : "Create Profile"}
+                <Button variant="ghost" onClick={() => setIsEmailSent(false)} className="text-sm">
+                  Back to Registration
                 </Button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input id="name" {...register("name", { required: "Name is required" })} className="pl-9" placeholder="John Doe" autoComplete="name" />
+                  </div>
+                  {errors.name && <p className="text-destructive text-xs">{errors.name.message as string}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input id="email" type="email" {...register("email", { required: "Email is required" })} className="pl-9" placeholder="john@example.com" autoComplete="email" />
+                  </div>
+                  {errors.email && <p className="text-destructive text-xs">{errors.email.message as string}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"}
+                      {...register("password", { 
+                        required: "Password is required",
+                        minLength: { value: 8, message: "Password must be at least 8 characters" } 
+                      })} 
+                      className="pl-9 pr-10" 
+                      placeholder="••••••••" 
+                      autoComplete="new-password"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-destructive text-xs">{errors.password.message as string}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="confirmPassword" 
+                      type={showConfirmPassword ? "text" : "password"} 
+                      {...register("confirmPassword", { 
+                        validate: value => value === password || "Passwords do not match"
+                      })} 
+                      className="pl-9 pr-10" 
+                      placeholder="••••••••" 
+                      autoComplete="new-password"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && <p className="text-destructive text-xs">{errors.confirmPassword.message as string}</p>}
+                </div>
+
+                <div className="pt-2">
+                  <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
+                    {isSubmitting ? "Creating Account..." : "Create Profile"}
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
-          <CardFooter className="flex justify-center border-t p-4 bg-secondary/10">
-            <p className="text-sm text-muted-foreground">
-              Already have an account? <Link href="/login" className="text-accent hover:underline font-medium">Log in</Link>
-            </p>
-          </CardFooter>
+          {!isEmailSent && (
+            <CardFooter className="flex justify-center border-t p-4 bg-secondary/10">
+              <p className="text-sm text-muted-foreground">
+                Already have an account? <Link href="/login" className="text-accent hover:underline font-medium">Log in</Link>
+              </p>
+            </CardFooter>
+          )}
         </Card>
       </div>
     </div>

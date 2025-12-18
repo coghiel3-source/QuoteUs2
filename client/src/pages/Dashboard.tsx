@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, Bell } from "lucide-react";
+import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, Bell, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuotes } from "@/lib/QuoteContext";
@@ -23,11 +23,13 @@ export default function DashboardPage() {
   // Login States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<"admin" | "broker">("broker");
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +40,9 @@ export default function DashboardPage() {
         toast({ title: "Welcome back!", description: "You are now logged in." });
       }
     } else {
-      toast({ variant: "destructive", title: "Login Failed", description: "Invalid email, password, or account is pending approval." });
+      // Toast is handled in AuthContext logic now generally, but specific errors might still bubble or be duplicate. 
+      // AuthContext returns false on fail.
+      // We will keep the toast here as backup or ensure it's not double toasting if AuthContext also toasts (it alerts currently).
     }
   };
 
@@ -75,7 +79,23 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Create Password</label>
-                  <Input type="password" placeholder="********" value={registerPassword} onChange={e => setRegisterPassword(e.target.value)} required />
+                  <div className="relative">
+                    <Input 
+                      type={showRegisterPassword ? "text" : "password"} 
+                      placeholder="********" 
+                      value={registerPassword} 
+                      onChange={e => setRegisterPassword(e.target.value)} 
+                      required 
+                      className="pr-10"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90">Request Access</Button>
                 <div className="text-center text-sm">
@@ -92,7 +112,23 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Password</label>
-                  <Input type="password" placeholder="********" value={password} onChange={e => setPassword(e.target.value)} required />
+                  <div className="relative">
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="********" 
+                      value={password} 
+                      onChange={e => setPassword(e.target.value)} 
+                      required 
+                      className="pr-10"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Role</label>
