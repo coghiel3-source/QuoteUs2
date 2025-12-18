@@ -239,7 +239,7 @@ export default function DashboardPage() {
           <Table>
             <TableHeader className="bg-secondary/30">
               <TableRow>
-                <TableHead className="w-[100px]">ID</TableHead>
+                <TableHead className="w-[100px]">Quote #</TableHead>
                 <TableHead>Client Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
@@ -262,7 +262,9 @@ export default function DashboardPage() {
               ) : (
                 myQuotes.map((lead) => (
                   <TableRow key={lead.id} className="hover:bg-secondary/10 cursor-pointer">
-                    <TableCell className="font-medium text-xs text-muted-foreground">#{lead.id.substring(0, 5)}</TableCell>
+                    <TableCell className="font-medium text-xs text-muted-foreground font-mono">
+                      {lead.quoteNumber || `#${lead.id.substring(0, 5)}`}
+                    </TableCell>
                     <TableCell>
                       <div className="font-medium">{lead.clientName}</div>
                       <div className="text-xs text-muted-foreground">{lead.postalCode}</div>

@@ -141,6 +141,11 @@ export default function ProfilePage() {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="font-bold">{quote.type} Insurance</h3>
+                              {quote.quoteNumber && (
+                                <Badge variant="secondary" className="font-mono text-[10px]">
+                                  {quote.quoteNumber}
+                                </Badge>
+                              )}
                               <Badge variant="outline" className={getStatusColor(quote.status)}>
                                 {quote.status}
                               </Badge>

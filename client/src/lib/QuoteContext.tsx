@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 export interface Quote {
   id: string;
+  quoteNumber: string;
   type: 'Auto' | 'Home' | 'Tenant' | 'Business' | 'Life' | 'Travel' | 'Pet' | 'General';
   clientName: string;
   email?: string;
@@ -15,7 +16,7 @@ export interface Quote {
 
 interface QuoteContextType {
   quotes: Quote[];
-  addQuote: (quote: Omit<Quote, 'id' | 'date' | 'status'>) => void;
+  addQuote: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'date' | 'status'>) => void;
   updateStatus: (id: string, status: Quote['status']) => void;
   assignQuote: (quoteId: string, brokerId: string) => void;
 }
@@ -32,6 +33,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
     return [
       {
         id: '1',
+        quoteNumber: 'Q-2025-1001',
         type: 'Auto',
         clientName: 'John Doe',
         email: 'john@example.com',
@@ -43,6 +45,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
       },
       {
         id: '2',
+        quoteNumber: 'Q-2025-1002',
         type: 'Home',
         clientName: 'Sarah Smith',
         email: 'sarah@example.com',
@@ -60,10 +63,12 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('quoteus_quotes', JSON.stringify(quotes));
   }, [quotes]);
 
-  const addQuote = (quoteData: Omit<Quote, 'id' | 'date' | 'status'>) => {
+  const addQuote = (quoteData: Omit<Quote, 'id' | 'quoteNumber' | 'date' | 'status'>) => {
+    const quoteNumber = `Q-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const newQuote: Quote = {
       ...quoteData,
       id: Math.random().toString(36).substr(2, 9),
+      quoteNumber,
       date: new Date().toISOString(),
       status: 'New'
     };

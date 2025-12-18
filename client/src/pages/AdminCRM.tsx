@@ -530,6 +530,7 @@ export default function AdminCRMPage() {
                     <TableRow>
                       <TableHead className="w-[120px]">Status</TableHead>
                       <TableHead>Client Details</TableHead>
+                      <TableHead>Quote #</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Assigned Broker</TableHead>
@@ -539,7 +540,7 @@ export default function AdminCRMPage() {
                   <TableBody>
                     {sortedQuotes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                           No quotes found matching your criteria.
                         </TableCell>
                       </TableRow>
@@ -570,6 +571,11 @@ export default function AdminCRMPage() {
                             <div className="text-xs text-muted-foreground">
                                {quote.phone || 'No phone'}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono text-xs bg-slate-50">
+                              {quote.quoteNumber || 'N/A'}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
