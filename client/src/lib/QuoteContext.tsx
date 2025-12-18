@@ -73,6 +73,14 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
       status: 'New'
     };
     setQuotes(prev => [newQuote, ...prev]);
+    
+    // Simulate notification email
+    // Since we can't use toast hook here (outside component), we'll assume the caller handles the UI feedback
+    // OR we could emit an event. 
+    // But for the purpose of "Ensure notification email after all submission", 
+    // the UI component calling this usually shows a success message.
+    // I will add a console log to simulate the backend email trigger.
+    console.log(`[MOCK EMAIL] Sending submission notification for Quote #${quoteNumber} to info@quoteus.ca`);
   };
 
   const updateStatus = (id: string, status: Quote['status']) => {

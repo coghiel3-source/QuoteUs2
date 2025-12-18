@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPhone, setRegisterPhone] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
@@ -48,7 +49,7 @@ export default function DashboardPage() {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    register(registerName, registerEmail, registerPassword);
+    register(registerName, registerEmail, registerPassword, 'broker', registerPhone);
     setIsRegistering(false);
     toast({ title: "Registration Submitted", description: "Your account is pending approval from an Account Manager." });
   };
@@ -76,6 +77,10 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email Address</label>
                   <Input type="email" placeholder="john@example.com" value={registerEmail} onChange={e => setRegisterEmail(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Phone Number</label>
+                  <Input type="tel" placeholder="416-555-0123" value={registerPhone} onChange={e => setRegisterPhone(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Create Password</label>

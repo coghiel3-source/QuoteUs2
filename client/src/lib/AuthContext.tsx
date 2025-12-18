@@ -126,11 +126,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const register = (name: string, email: string, password?: string, role: 'broker' | 'customer' = 'broker') => {
+  const register = (name: string, email: string, password?: string, role: 'broker' | 'customer' = 'broker', phone?: string) => {
     const newUser: User = {
       id: Math.random().toString(36).substr(2, 9),
       name,
       email,
+      phone,
       role,
       status: role === 'customer' ? 'active' : 'pending', // Customers are active immediately
       password,
