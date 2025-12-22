@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Label } from "@/components/ui/label";
-import { YEARS, MAKES, getModelsForMake } from "@/lib/mockData";
 import { UseFormRegister, UseFormSetValue, UseFormWatch } from "react-hook-form";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +19,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+interface Vehicle {
+  Year: string;
+  Make: string;
+  Model: string;
+}
+
 interface VehicleSelectorProps {
   index: number;
   register: UseFormRegister<any>;
@@ -34,7 +39,8 @@ function SearchableSelect({
   options, 
   placeholder, 
   disabled = false,
-  testId
+  testId,
+  loading = false
 }: { 
   value: string | number; 
   onChange: (val: string) => void; 
@@ -42,6 +48,7 @@ function SearchableSelect({
   placeholder: string;
   disabled?: boolean;
   testId?: string;
+  loading?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -53,12 +60,19 @@ function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between font-normal"
-          disabled={disabled}
+          disabled={disabled || loading}
           data-testid={testId}
         >
-          {value
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading...
+            </div>
+          ) : (
+            value
             ? options.find((opt) => opt.value === value.toString())?.label
-            : placeholder}
+            : placeholder
+          )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -94,24 +108,63 @@ function SearchableSelect({
   );
 }
 
+// Global cache for vehicle data
+let cachedVehicles: Vehicle[] | null = null;
+
 export function VehicleSelector({ index, register, setValue, watch, showVin = false }: VehicleSelectorProps) {
   const year = watch(`vehicles.${index}.year`);
   const make = watch(`vehicles.${index}.make`);
   const model = watch(`vehicles.${index}.model`);
   
-  const [models, setModels] = useState<string[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (make) {
-      setModels(getModelsForMake(make));
-    } else {
-      setModels([]);
+    if (cachedVehicles) {
+      setVehicles(cachedVehicles);
+      return;
     }
-  }, [make]);
 
-  const yearOptions = YEARS.map(y => ({ label: y.toString(), value: y.toString() }));
-  const makeOptions = MAKES.map(m => ({ label: m, value: m }));
-  const modelOptions = models.map(m => ({ label: m, value: m }));
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/data/vehicles.json');
+        if (!response.ok) throw new Error("Failed to load vehicle data");
+        const data = await response.json();
+        cachedVehicles = data;
+        setVehicles(data);
+      } catch (error) {
+        console.error("Error loading vehicle data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Derived options based on selections
+  const yearOptions = useMemo(() => {
+    if (vehicles.length === 0) return [];
+    const years = Array.from(new Set(vehicles.map(v => v.Year))).sort((a, b) => parseInt(b) - parseInt(a));
+    return years.map(y => ({ label: y, value: y }));
+  }, [vehicles]);
+
+  const makeOptions = useMemo(() => {
+    if (!year || vehicles.length === 0) return [];
+    const makes = Array.from(new Set(
+      vehicles.filter(v => v.Year === year.toString()).map(v => v.Make)
+    )).sort();
+    return makes.map(m => ({ label: m, value: m }));
+  }, [vehicles, year]);
+
+  const modelOptions = useMemo(() => {
+    if (!year || !make || vehicles.length === 0) return [];
+    const models = Array.from(new Set(
+      vehicles.filter(v => v.Year === year.toString() && v.Make === make).map(v => v.Model)
+    )).sort();
+    return models.map(m => ({ label: m, value: m }));
+  }, [vehicles, year, make]);
 
   return (
     <div className="space-y-4">
@@ -120,10 +173,15 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
           <Label htmlFor={`vehicle-${index}-year`}>Year</Label>
           <SearchableSelect
             value={year}
-            onChange={(val) => setValue(`vehicles.${index}.year`, parseInt(val))}
+            onChange={(val) => {
+              setValue(`vehicles.${index}.year`, parseInt(val));
+              setValue(`vehicles.${index}.make`, "");
+              setValue(`vehicles.${index}.model`, "");
+            }}
             options={yearOptions}
             placeholder="Select Year"
             testId={`select-year-${index}`}
+            loading={isLoading}
           />
           <input type="hidden" {...register(`vehicles.${index}.year`)} />
         </div>
@@ -137,8 +195,10 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
               setValue(`vehicles.${index}.model`, ""); // Reset model on make change
             }}
             options={makeOptions}
-            placeholder="Select Make"
+            placeholder={year ? "Select Make" : "Select Year First"}
+            disabled={!year}
             testId={`select-make-${index}`}
+            loading={isLoading}
           />
           <input type="hidden" {...register(`vehicles.${index}.make`)} />
         </div>
@@ -152,6 +212,7 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
             placeholder={make ? "Select Model" : "Select Make First"}
             disabled={!make}
             testId={`select-model-${index}`}
+            loading={isLoading}
           />
           <input type="hidden" {...register(`vehicles.${index}.model`)} />
         </div>

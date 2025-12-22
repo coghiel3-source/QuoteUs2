@@ -52,7 +52,29 @@ const autoSchema = z.object({
     vin: z.string().optional(),
     usage: z.enum(["commute", "pleasure", "business"]),
     annualKm: z.number().min(0, "Kilometres required"),
-  })).min(1, "At least one vehicle is required"),
+    coverageType: z.enum(["liability", "full"]).default("liability"),
+    collisionDeductible: z.string().optional(),
+    comprehensiveDeductible: z.string().optional(),
+  })).min(1, "At least one vehicle is required").superRefine((val, ctx) => {
+    val.forEach((vehicle, index) => {
+      if (vehicle.coverageType === "full") {
+        if (!vehicle.collisionDeductible) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Collision deductible is required",
+            path: [index, "collisionDeductible"],
+          });
+        }
+        if (!vehicle.comprehensiveDeductible) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Comprehensive deductible is required",
+            path: [index, "comprehensiveDeductible"],
+          });
+        }
+      }
+    });
+  }),
   drivers: z.array(z.object({
     firstName: z.string().min(2, "First name required"),
     lastName: z.string().min(2, "Last name required"),
@@ -364,6 +386,67 @@ export default function AutoPage() {
                                   data-testid={`input-km-${index}`}
                                 />
                              </div>
+                           </div>
+
+                           <div className="pt-4 border-t mt-4">
+                             <Label className="text-base font-semibold mb-3 block">Coverage Options</Label>
+                             <RadioGroup
+                               onValueChange={(val: any) => form.setValue(`vehicles.${index}.coverageType`, val)}
+                               defaultValue="liability"
+                               className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"
+                             >
+                               <div className="flex items-center space-x-2 border p-4 rounded-lg hover:bg-accent/5 cursor-pointer has-[:checked]:bg-accent/10 has-[:checked]:border-accent transition-colors">
+                                 <RadioGroupItem value="liability" id={`cov-liability-${index}`} />
+                                 <Label htmlFor={`cov-liability-${index}`} className="cursor-pointer flex-1">
+                                   <span className="font-semibold block">Liability Only</span>
+                                   <span className="text-xs text-muted-foreground">Basic coverage required by law. Does not cover damage to your vehicle.</span>
+                                 </Label>
+                               </div>
+                               <div className="flex items-center space-x-2 border p-4 rounded-lg hover:bg-accent/5 cursor-pointer has-[:checked]:bg-accent/10 has-[:checked]:border-accent transition-colors">
+                                 <RadioGroupItem value="full" id={`cov-full-${index}`} />
+                                 <Label htmlFor={`cov-full-${index}`} className="cursor-pointer flex-1">
+                                   <span className="font-semibold block">Full Coverage</span>
+                                   <span className="text-xs text-muted-foreground">Includes Collision & Comprehensive. Covers damage to your vehicle.</span>
+                                 </Label>
+                               </div>
+                             </RadioGroup>
+
+                             {form.watch(`vehicles.${index}.coverageType`) === "full" && (
+                               <div className="grid md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 bg-secondary/10 p-4 rounded-lg">
+                                 <div className="space-y-2">
+                                   <Label>Collision Deductible</Label>
+                                   <Select onValueChange={(val) => form.setValue(`vehicles.${index}.collisionDeductible`, val)}>
+                                     <SelectTrigger>
+                                       <SelectValue placeholder="Select Deductible" />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                       {["0", "100", "250", "500", "750", "1000", "2500"].map((amt) => (
+                                         <SelectItem key={amt} value={amt}>${amt}</SelectItem>
+                                       ))}
+                                     </SelectContent>
+                                   </Select>
+                                   {form.formState.errors.vehicles?.[index]?.collisionDeductible && (
+                                     <p className="text-destructive text-xs">{form.formState.errors.vehicles[index]?.collisionDeductible?.message}</p>
+                                   )}
+                                 </div>
+                                 <div className="space-y-2">
+                                   <Label>Comprehensive Deductible</Label>
+                                   <Select onValueChange={(val) => form.setValue(`vehicles.${index}.comprehensiveDeductible`, val)}>
+                                     <SelectTrigger>
+                                       <SelectValue placeholder="Select Deductible" />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                        {["0", "100", "250", "500", "750", "1000", "2500"].map((amt) => (
+                                         <SelectItem key={amt} value={amt}>${amt}</SelectItem>
+                                       ))}
+                                     </SelectContent>
+                                   </Select>
+                                   {form.formState.errors.vehicles?.[index]?.comprehensiveDeductible && (
+                                     <p className="text-destructive text-xs">{form.formState.errors.vehicles[index]?.comprehensiveDeductible?.message}</p>
+                                   )}
+                                 </div>
+                               </div>
+                             )}
                            </div>
                         </div>
                       </CardContent>
