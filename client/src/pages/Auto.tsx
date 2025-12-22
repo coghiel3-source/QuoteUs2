@@ -21,7 +21,7 @@ const autoSchema = z.object({
   primaryDriver: z.object({
     firstName: z.string().min(2, "First name is required"),
     lastName: z.string().min(2, "Last name is required"),
-    email: z.string().email("Invalid email"),
+    email: z.string().min(1, "Email address is required").email("Invalid email format"),
     phone: z.string().min(10, "Valid phone number required"),
     dob: z.string().min(1, "Date of birth required"),
     postalCode: z.string().regex(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/, "Invalid Ontario postal code"),
@@ -50,7 +50,7 @@ const autoSchema = z.object({
     make: z.string().min(1, "Make is required"),
     model: z.string().min(1, "Model is required"),
     vin: z.string().optional(),
-    usage: z.enum(["commute", "pleasure", "business"]),
+    usage: z.enum(["commute", "pleasure", "business", "rideshare"]),
     annualKm: z.number().min(0, "Kilometres required"),
     coverageType: z.enum(["liability", "full"]).default("liability"),
     collisionDeductible: z.string().optional(),
@@ -150,7 +150,7 @@ export default function AutoPage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Request Received",
-      description: `A confirmation email has been sent to ${data.primaryDriver.email}. CC sent to info@quoteus.ca. Account Manager notified.`,
+      description: `Thank you for your request. An agent will contact you shortly with a detailed quote.`,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -173,7 +173,7 @@ export default function AutoPage() {
               
               <div className="space-y-4">
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  We have successfully received your information. A confirmation email has been sent to <span className="font-semibold text-primary">{form.getValues().primaryDriver.email}</span> (CC: info@quoteus.ca).
+                  We have successfully received your information.
                 </p>
                 
                 <div className="bg-primary/5 p-6 rounded-lg border border-primary/10 my-6">
@@ -325,7 +325,7 @@ export default function AutoPage() {
                 <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
                   <Car size={20} /> Vehicles
                 </h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendVehicle({ year: 2020, make: "", model: "", usage: "commute", annualKm: 10000 })} className="gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => appendVehicle({ year: 2020, make: "", model: "", usage: "commute", annualKm: 10000, coverageType: "liability" })} className="gap-2">
                   <Plus size={16} /> Add Vehicle
                 </Button>
               </div>
@@ -374,6 +374,7 @@ export default function AutoPage() {
                                     <SelectItem value="commute">Commuting to Work/School</SelectItem>
                                     <SelectItem value="pleasure">Pleasure Use Only</SelectItem>
                                     <SelectItem value="business">Business Use</SelectItem>
+                                    <SelectItem value="rideshare">Rideshare (Uber/Lyft)</SelectItem>
                                   </SelectContent>
                                 </Select>
                              </div>
