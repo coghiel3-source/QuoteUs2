@@ -423,9 +423,6 @@ export default function AutoPage() {
                 <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
                   <Car size={20} /> Vehicles
                 </h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendVehicle({ year: 2020, make: "", model: "", usage: "commute", annualKm: 10000, coverageType: "liability" })} className="gap-2">
-                  <Plus size={16} /> Add Vehicle
-                </Button>
               </div>
               
               <AnimatePresence>
@@ -553,6 +550,10 @@ export default function AutoPage() {
                   </motion.div>
                 ))}
               </AnimatePresence>
+              
+              <Button type="button" variant="outline" size="sm" onClick={() => appendVehicle({ year: 2020, make: "", model: "", usage: "commute", annualKm: 10000, coverageType: "liability" })} className="gap-2 w-full border-dashed py-6">
+                <Plus size={16} /> Add Another Vehicle
+              </Button>
             </div>
 
             {/* Additional Comments */}

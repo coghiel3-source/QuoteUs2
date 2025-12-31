@@ -11,14 +11,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 
 export default function AdminCRMPage() {
-  const { quotes, updateStatus, assignQuote, addQuote } = useQuotes();
-  const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword } = useAuth();
+  const { quotes, updateStatus, assignQuote, addQuote, deleteQuote } = useQuotes();
+  const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword, register } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -591,12 +591,13 @@ export default function AdminCRMPage() {
                       <TableHead>Location</TableHead>
                       <TableHead>Assigned Broker</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedQuotes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                           No quotes found matching your criteria.
                         </TableCell>
                       </TableRow>
@@ -685,6 +686,25 @@ export default function AdminCRMPage() {
                             <div className="text-xs text-muted-foreground pl-5">
                               {format(new Date(quote.date), 'h:mm a')}
                             </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                             <Button 
+                               variant="ghost" 
+                               size="icon" 
+                               className="text-muted-foreground hover:text-destructive"
+                               onClick={() => {
+                                 if (confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
+                                   deleteQuote(quote.id);
+                                   toast({
+                                     title: "Quote Deleted",
+                                     description: "The quote has been permanently removed.",
+                                     variant: "destructive"
+                                   });
+                                 }
+                               }}
+                             >
+                               <Trash2 size={16} />
+                             </Button>
                           </TableCell>
                         </TableRow>
                       ))

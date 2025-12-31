@@ -19,6 +19,7 @@ interface QuoteContextType {
   addQuote: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'date' | 'status'>) => void;
   updateStatus: (id: string, status: Quote['status']) => void;
   assignQuote: (quoteId: string, brokerId: string) => void;
+  deleteQuote: (id: string) => void;
 }
 
 const QuoteContext = createContext<QuoteContextType | undefined>(undefined);
@@ -90,9 +91,13 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
   const assignQuote = (quoteId: string, brokerId: string) => {
     setQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, assignedTo: brokerId } : q));
   };
+  
+  const deleteQuote = (id: string) => {
+    setQuotes(prev => prev.filter(q => q.id !== id));
+  };
 
   return (
-    <QuoteContext.Provider value={{ quotes, addQuote, updateStatus, assignQuote }}>
+    <QuoteContext.Provider value={{ quotes, addQuote, updateStatus, assignQuote, deleteQuote }}>
       {children}
     </QuoteContext.Provider>
   );
