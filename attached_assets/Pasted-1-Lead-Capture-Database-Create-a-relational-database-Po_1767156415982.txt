@@ -1,0 +1,124 @@
+1. Lead Capture & Database
+
+Create a relational database (PostgreSQL or equivalent) to store leads submitted through QuoteUs.ca web forms.
+
+Lead fields should include:
+Full Name, Email, Phone Number, Insurance Type (Auto, Home, Tenant, Commercial, Life, Travel, Pet), Location (City/Province), Vehicle or Property Details (where applicable), Notes, Date/Time Submitted, Lead Source, Status, Priority, Assigned Broker, and Assigned Admin (if applicable).
+
+All new leads must automatically be marked as “Unassigned – Pending Admin Review”.
+
+2. Admin-First Lead Flow
+
+All new leads are first visible only to Admin users.
+
+Admin users must be able to:
+
+View all incoming leads in a centralized dashboard
+
+Sort and filter leads by insurance type, date, priority, status, and source
+
+Assign leads to individual brokers
+
+Reassign leads when necessary
+
+Update lead status (New, Contacted, Quoted, Bound, Follow-Up, Closed, Lost)
+
+3. User Accounts & Role Management
+
+Implement role-based access control with at least Admin and Broker roles.
+
+Admins must be able to create, edit, deactivate, and delete user accounts directly from the CRM.
+
+Admins can:
+
+Create broker accounts and additional admin accounts
+
+Assign responsibility (e.g., lines of business, regions, or lead types) to each broker
+
+Set active/inactive status for users
+
+Brokers can:
+
+Log in securely
+
+View only leads assigned to them
+
+Update lead statuses and add internal notes
+
+Email assigned clients through the CRM
+
+4. Email & Notifications
+
+Integrate email functionality (SMTP or API-based).
+
+Admin and broker email capabilities:
+
+Notify brokers automatically when a lead is assigned or reassigned
+
+Allow brokers to email clients directly from the lead profile
+
+Allow admins to email brokers and clients
+
+Log all email activity under each lead (timestamp, sender, recipient, subject).
+
+5. Lead Tracking & Activity History
+
+Maintain a complete audit trail for each lead:
+
+Assignment changes
+
+Status updates
+
+Notes added by admins or brokers
+
+Emails sent
+
+Display a chronological activity timeline on each lead’s profile.
+
+6. Dashboards & UI
+
+Admin Dashboard:
+
+Total leads
+
+Unassigned leads
+
+Leads by broker
+
+Conversion status and pipeline view
+
+Broker Dashboard:
+
+Assigned leads
+
+Follow-ups due
+
+Recent activity
+
+Clean, professional UI suitable for an insurance brokerage environment.
+
+7. Security & Compliance
+
+Secure authentication (email/password with hashing)
+
+Role-based access enforcement
+
+Protect sensitive client data
+
+Database and architecture designed for scalability and future integrations.
+
+Tech Preferences:
+
+Modern web stack (Node.js, Express, React or equivalent)
+
+PostgreSQL or equivalent structured database
+
+Include:
+
+Database schema
+
+Example seed data (admin + broker accounts)
+
+Clear project file structure
+
+Code should be production-ready and well-commented.

@@ -20,7 +20,7 @@ interface AuthContextType {
   users: User[];
   login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => boolean;
   logout: () => void;
-  register: (name: string, email: string, password?: string, role?: 'broker' | 'customer') => void;
+  register: (name: string, email: string, password?: string, role?: 'broker' | 'customer', phone?: string) => void;
   approveBroker: (id: string) => void;
   denyBroker: (id: string) => void;
   updateUser: (id: string, data: Partial<User>) => void;

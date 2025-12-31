@@ -10,14 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2 } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 
 export default function AdminCRMPage() {
-  const { quotes, updateStatus, assignQuote, addQuote, deleteQuote } = useQuotes();
+  const { quotes, updateStatus, assignQuote, addQuote, deleteQuote, addNote, logEmail } = useQuotes();
   const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword, register } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -31,6 +34,13 @@ export default function AdminCRMPage() {
   const [selectedUserForReset, setSelectedUserForReset] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   
+  // Lead Detail View State
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [newNote, setNewNote] = useState("");
+  const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  
   // New User Form State
   const [newUser, setNewUser] = useState({
     name: "",
@@ -42,41 +52,7 @@ export default function AdminCRMPage() {
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
-    // Use register function from AuthContext which handles adding to state
-    // We pass the role and phone number
-    // We need to extend register function in AuthContext or just call it here?
-    // The register function in context sets status to pending for broker.
-    // If admin adds user, it should probably be active immediately?
-    // Let's modify AuthContext register or just hack it here by finding the user and approving them immediately if needed.
-    // Actually, let's assume register adds them as pending and we approve them if role is broker?
-    // Or simpler: manually add to users array via a new context method? 
-    // AuthContext `register` is for public registration. `addUser` (admin) might be different.
-    // Let's use `register` for now and then manually flip status if needed.
-    
-    // Actually, I'll update register in AuthContext to accept status or create a new `addUser` method in AuthContext.
-    // For now, I'll use register and if I'm admin adding, it might be weird if they are pending.
-    // But let's check AuthContext again.
-    
-    // AuthContext.tsx register implementation:
-    // status: role === 'customer' ? 'active' : 'pending'
-    
-    // So if I add a broker, they are pending. That's fine, I can approve them immediately in the UI or let them be pending.
-    // But better to add `addUser` to AuthContext for admins.
-    // Since I can't easily add a method to AuthContext without editing it extensively and all consumers, 
-    // I will use `register` and then `approveBroker` immediately if role is broker.
-    
-    // Wait, I can just edit AuthContext to export `addUser` which takes status.
-    // But for simplicity in this turn, I will just use `register` and let them be pending (or active if I edit `register` to take status).
-    // I already edited `register` to take phone.
-    
-    // Let's just use register.
     register(newUser.name, newUser.email, newUser.password, newUser.role as any, newUser.phone);
-    
-    // If admin added them, auto-approve
-    // We need the ID of the new user to approve them. `register` doesn't return it.
-    // It's a mock state, so it updates `users`.
-    // I can't easily get the ID back synchronously. 
-    // Let's just let them be pending and show a toast "User added (Pending Approval)".
     
     setIsAddUserOpen(false);
     setNewUser({ name: "", email: "", phone: "", role: "broker", password: "" });
@@ -93,6 +69,7 @@ export default function AdminCRMPage() {
     email: "",
     phone: "",
     type: "Auto",
+    source: "Manual Entry",
     notes: ""
   });
 
@@ -103,18 +80,49 @@ export default function AdminCRMPage() {
       clientName: `${newLead.firstName} ${newLead.lastName}`,
       email: newLead.email,
       phone: newLead.phone,
+      source: newLead.source,
+      priority: 'Medium',
       details: {
-        notes: newLead.notes,
-        source: 'Manual Entry'
+        notes: newLead.notes
       }
     });
     
     setIsAddLeadOpen(false);
-    setNewLead({ firstName: "", lastName: "", email: "", phone: "", type: "Auto", notes: "" });
+    setNewLead({ firstName: "", lastName: "", email: "", phone: "", type: "Auto", source: "Manual Entry", notes: "" });
     toast({
       title: "Lead Added",
       description: "Manual lead has been successfully added to the CRM.",
     });
+  };
+
+  const handleAddNote = () => {
+    if (!selectedQuote || !newNote.trim()) return;
+    addNote(selectedQuote.id, newNote, user?.name || 'Admin');
+    setNewNote("");
+    toast({
+      title: "Note Added",
+      description: "Internal note has been added to the lead.",
+    });
+    // Force refresh selected quote
+    const updated = quotes.find(q => q.id === selectedQuote.id);
+    if (updated) setSelectedQuote(updated);
+  };
+
+  const handleSendEmail = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedQuote || !emailSubject.trim()) return;
+    
+    logEmail(selectedQuote.id, emailSubject, selectedQuote.email || 'Client', user?.name || 'Admin');
+    setEmailSubject("");
+    setEmailBody("");
+    setIsEmailOpen(false);
+    toast({
+      title: "Email Sent",
+      description: `Email "${emailSubject}" sent to client.`,
+    });
+    // Force refresh
+    const updated = quotes.find(q => q.id === selectedQuote.id);
+    if (updated) setSelectedQuote(updated);
   };
 
   const handlePasswordReset = (e: React.FormEvent) => {
@@ -207,8 +215,19 @@ export default function AdminCRMPage() {
       case 'New': return 'bg-blue-500 hover:bg-blue-600';
       case 'Contacted': return 'bg-yellow-500 hover:bg-yellow-600';
       case 'Quoted': return 'bg-green-500 hover:bg-green-600';
+      case 'Bound': return 'bg-purple-500 hover:bg-purple-600';
       case 'Closed': return 'bg-gray-500 hover:bg-gray-600';
+      case 'Lost': return 'bg-red-500 hover:bg-red-600';
       default: return 'bg-slate-500';
+    }
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    switch(priority) {
+      case 'High': return 'bg-red-100 text-red-700 border-red-200';
+      case 'Medium': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'Low': return 'bg-green-100 text-green-700 border-green-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 
@@ -302,6 +321,197 @@ export default function AdminCRMPage() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        
+        {/* Lead Detail Sheet */}
+        <Sheet open={!!selectedQuote} onOpenChange={(open) => !open && setSelectedQuote(null)}>
+          <SheetContent className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto">
+            {selectedQuote && (
+              <>
+                <SheetHeader className="mb-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <SheetTitle className="text-2xl font-bold flex items-center gap-2">
+                        {selectedQuote.clientName}
+                        <Badge variant="outline" className={getPriorityBadge(selectedQuote.priority || 'Medium')}>
+                          {selectedQuote.priority || 'Medium'} Priority
+                        </Badge>
+                      </SheetTitle>
+                      <SheetDescription className="mt-1 flex items-center gap-2">
+                        Quote #{selectedQuote.quoteNumber} • {format(new Date(selectedQuote.date), 'MMMM d, yyyy h:mm a')}
+                      </SheetDescription>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <Tabs defaultValue="details" className="w-full">
+                  <TabsList className="w-full grid grid-cols-3 mb-6">
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="activity">Activity Log</TabsTrigger>
+                    <TabsTrigger value="notes">Internal Notes</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="details" className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">Email</Label>
+                        <div className="font-medium flex items-center gap-2">
+                           {selectedQuote.email}
+                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEmailOpen(true)}>
+                             <Mail size={14} />
+                           </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">Phone</Label>
+                        <div className="font-medium">{selectedQuote.phone || 'N/A'}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">Insurance Type</Label>
+                        <div className="font-medium flex items-center gap-2">
+                          {getIconForType(selectedQuote.type)} {selectedQuote.type}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">Source</Label>
+                        <div className="font-medium">{selectedQuote.source || 'Web Form'}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">Postal Code</Label>
+                        <div className="font-medium">{selectedQuote.postalCode || 'N/A'}</div>
+                      </div>
+                       <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">Current Status</Label>
+                        <Badge className={`${getStatusColor(selectedQuote.status).replace('hover:', '')} border-none`}>{selectedQuote.status}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg p-4 bg-slate-50">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2"><Car size={16}/> Quote Details</h4>
+                      <pre className="text-sm whitespace-pre-wrap font-sans text-slate-600">
+                        {JSON.stringify(selectedQuote.details, null, 2)}
+                      </pre>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="activity" className="h-[400px]">
+                    <ScrollArea className="h-full pr-4">
+                       <div className="space-y-6 pl-2 border-l-2 border-slate-200 ml-2">
+                         {selectedQuote.activityLog && selectedQuote.activityLog.length > 0 ? (
+                           selectedQuote.activityLog.map((activity) => (
+                             <div key={activity.id} className="relative pl-6 pb-2">
+                               <div className={`absolute -left-[9px] top-0 h-4 w-4 rounded-full border-2 border-white 
+                                 ${activity.type === 'status_change' ? 'bg-blue-500' : 
+                                   activity.type === 'assignment' ? 'bg-purple-500' : 
+                                   activity.type === 'email_sent' ? 'bg-green-500' : 
+                                   activity.type === 'note' ? 'bg-yellow-500' : 'bg-slate-400'}`} 
+                               />
+                               <div className="flex justify-between items-start">
+                                 <span className="text-sm font-medium text-slate-900">{activity.author}</span>
+                                 <span className="text-xs text-muted-foreground">{format(new Date(activity.timestamp), 'MMM d, h:mm a')}</span>
+                               </div>
+                               <p className="text-sm text-slate-600 mt-1">{activity.content}</p>
+                             </div>
+                           ))
+                         ) : (
+                           <div className="pl-6 text-sm text-muted-foreground">No activity recorded yet.</div>
+                         )}
+                       </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="notes" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Add Internal Note</Label>
+                      <Textarea 
+                        placeholder="Enter notes about this lead..." 
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                      <div className="flex justify-end">
+                        <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>Add Note</Button>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6">
+                      <h4 className="font-medium mb-3 text-sm text-muted-foreground uppercase">Note History</h4>
+                      {selectedQuote.internalNotes ? (
+                         <div className="bg-yellow-50/50 p-4 rounded-lg border border-yellow-100 whitespace-pre-wrap text-sm text-slate-700">
+                           {selectedQuote.internalNotes}
+                         </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground italic">No internal notes yet.</div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+                
+                <SheetFooter className="mt-6 pt-6 border-t flex-col sm:flex-row gap-2 sm:justify-between">
+                   <div className="flex items-center gap-2">
+                     <Select 
+                        value={selectedQuote.status} 
+                        onValueChange={(val: any) => updateStatus(selectedQuote.id, val, user?.name)}
+                      >
+                        <SelectTrigger className="w-[150px]">
+                          <SelectValue placeholder="Update Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="New">New</SelectItem>
+                          <SelectItem value="Contacted">Contacted</SelectItem>
+                          <SelectItem value="Quoted">Quoted</SelectItem>
+                          <SelectItem value="Bound">Bound</SelectItem>
+                          <SelectItem value="Closed">Closed</SelectItem>
+                          <SelectItem value="Lost">Lost</SelectItem>
+                        </SelectContent>
+                      </Select>
+                   </div>
+                   <Button variant="outline" onClick={() => setSelectedQuote(null)}>Close</Button>
+                </SheetFooter>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
+
+        {/* Email Dialog */}
+        <Dialog open={isEmailOpen} onOpenChange={setIsEmailOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Send Email to Client</DialogTitle>
+              <DialogDescription>
+                Send a message directly to {selectedQuote?.clientName}. A copy will be logged in the CRM.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSendEmail} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>To</Label>
+                <Input value={selectedQuote?.email || ''} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label>Subject</Label>
+                <Input 
+                  value={emailSubject} 
+                  onChange={(e) => setEmailSubject(e.target.value)} 
+                  placeholder="Regarding your insurance quote..."
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Message</Label>
+                <Textarea 
+                  value={emailBody} 
+                  onChange={(e) => setEmailBody(e.target.value)} 
+                  placeholder="Enter your message here..."
+                  className="min-h-[150px]"
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEmailOpen(false)}>Cancel</Button>
+                <Button type="submit"><Mail size={16} className="mr-2"/> Send Email</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Password Reset Dialog */}
         <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
@@ -355,7 +565,7 @@ export default function AdminCRMPage() {
               <Card className="border-l-4 border-l-yellow-500 shadow-sm">
                 <CardContent className="pt-6">
                   <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">In Progress</div>
-                  <div className="text-3xl font-bold mt-2">{quotes.filter(q => ['Contacted', 'Quoted'].includes(q.status)).length}</div>
+                  <div className="text-3xl font-bold mt-2">{quotes.filter(q => ['Contacted', 'Quoted', 'Bound'].includes(q.status)).length}</div>
                   <div className="text-xs text-muted-foreground mt-1">Active opportunities</div>
                 </CardContent>
               </Card>
@@ -376,7 +586,7 @@ export default function AdminCRMPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {quotes.slice(0, 5).map(quote => (
-                      <div key={quote.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
+                      <div key={quote.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 cursor-pointer hover:bg-slate-50 p-2 rounded transition-colors" onClick={() => setSelectedQuote(quote)}>
                         <div className="flex items-center gap-3">
                           <div className={`p-2 rounded-full bg-slate-100 text-slate-600`}>
                             {getIconForType(quote.type)}
@@ -386,7 +596,10 @@ export default function AdminCRMPage() {
                             <div className="text-xs text-muted-foreground">{format(new Date(quote.date), 'MMM d, h:mm a')}</div>
                           </div>
                         </div>
-                        <Badge className={`${getStatusColor(quote.status).replace('hover:', '')} border-none`}>{quote.status}</Badge>
+                        <div className="flex flex-col items-end gap-1">
+                           <Badge className={`${getStatusColor(quote.status).replace('hover:', '')} border-none`}>{quote.status}</Badge>
+                           <span className="text-[10px] text-muted-foreground">{quote.priority} Priority</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -511,6 +724,23 @@ export default function AdminCRMPage() {
                           </Select>
                         </div>
                         <div className="space-y-2">
+                           <Label htmlFor="source">Source</Label>
+                           <Select 
+                            value={newLead.source} 
+                            onValueChange={(val) => setNewLead({...newLead, source: val})}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Manual Entry">Manual Entry</SelectItem>
+                              <SelectItem value="Phone">Phone</SelectItem>
+                              <SelectItem value="Walk-in">Walk-in</SelectItem>
+                              <SelectItem value="Referral">Referral</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
                           <Label htmlFor="notes">Initial Notes</Label>
                           <Input 
                             id="notes" 
@@ -585,10 +815,9 @@ export default function AdminCRMPage() {
                   <TableHeader className="bg-slate-50">
                     <TableRow>
                       <TableHead className="w-[120px]">Status</TableHead>
+                      <TableHead>Priority</TableHead>
                       <TableHead>Client Details</TableHead>
-                      <TableHead>Quote #</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Location</TableHead>
                       <TableHead>Assigned Broker</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -603,11 +832,15 @@ export default function AdminCRMPage() {
                       </TableRow>
                     ) : (
                       sortedQuotes.map((quote) => (
-                        <TableRow key={quote.id} className="hover:bg-slate-50 transition-colors">
+                        <TableRow key={quote.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={(e) => {
+                          // Don't trigger if clicking on select or button
+                          if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="combobox"]')) return;
+                          setSelectedQuote(quote);
+                        }}>
                           <TableCell>
                             <Select 
                               value={quote.status} 
-                              onValueChange={(val: any) => updateStatus(quote.id, val)}
+                              onValueChange={(val: any) => updateStatus(quote.id, val, user?.name)}
                             >
                               <SelectTrigger className={`w-[110px] h-8 text-xs text-white border-none ${getStatusColor(quote.status).replace('hover:', '')}`}>
                                 <SelectValue />
@@ -616,9 +849,16 @@ export default function AdminCRMPage() {
                                 <SelectItem value="New">New</SelectItem>
                                 <SelectItem value="Contacted">Contacted</SelectItem>
                                 <SelectItem value="Quoted">Quoted</SelectItem>
+                                <SelectItem value="Bound">Bound</SelectItem>
                                 <SelectItem value="Closed">Closed</SelectItem>
+                                <SelectItem value="Lost">Lost</SelectItem>
                               </SelectContent>
                             </Select>
+                          </TableCell>
+                          <TableCell>
+                             <Badge variant="outline" className={`text-xs ${getPriorityBadge(quote.priority || 'Medium')}`}>
+                               {quote.priority || 'Medium'}
+                             </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="font-medium text-slate-900">{quote.clientName}</div>
@@ -626,13 +866,8 @@ export default function AdminCRMPage() {
                                {quote.email || 'No email'}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                               {quote.phone || 'No phone'}
+                               {quote.phone || 'No phone'} • {quote.source || 'Web'}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="font-mono text-xs bg-slate-50">
-                              {quote.quoteNumber || 'N/A'}
-                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -643,16 +878,10 @@ export default function AdminCRMPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1 text-sm text-slate-600">
-                              <MapPin size={14} className="text-muted-foreground" />
-                              {quote.postalCode || 'N/A'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
                              <Select 
                               value={quote.assignedTo || "unassigned"} 
                               onValueChange={(val) => {
-                                assignQuote(quote.id, val);
+                                assignQuote(quote.id, val, user?.name);
                                 const broker = users.find(u => u.id === val);
                                 if (broker) {
                                   toast({
@@ -667,7 +896,7 @@ export default function AdminCRMPage() {
                                 }
                               }}
                             >
-                              <SelectTrigger className="w-[180px] h-8 text-xs">
+                              <SelectTrigger className="w-[140px] h-8 text-xs">
                                 <SelectValue placeholder="Unassigned" />
                               </SelectTrigger>
                               <SelectContent>
@@ -681,7 +910,7 @@ export default function AdminCRMPage() {
                           <TableCell>
                             <div className="flex items-center gap-1 text-sm text-muted-foreground">
                               <Calendar size={14} />
-                              {format(new Date(quote.date), 'MMM d, yyyy')}
+                              {format(new Date(quote.date), 'MMM d')}
                             </div>
                             <div className="text-xs text-muted-foreground pl-5">
                               {format(new Date(quote.date), 'h:mm a')}
@@ -692,7 +921,8 @@ export default function AdminCRMPage() {
                                variant="ghost" 
                                size="icon" 
                                className="text-muted-foreground hover:text-destructive"
-                               onClick={() => {
+                               onClick={(e) => {
+                                 e.stopPropagation();
                                  if (confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
                                    deleteQuote(quote.id);
                                    toast({
@@ -942,6 +1172,13 @@ export default function AdminCRMPage() {
                            </TableCell>
                          </TableRow>
                        ))}
+                       {allStaff.length === 0 && (
+                         <TableRow>
+                           <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">
+                             No staff members found.
+                           </TableCell>
+                         </TableRow>
+                       )}
                     </TableBody>
                   </Table>
                 </div>
@@ -949,73 +1186,29 @@ export default function AdminCRMPage() {
            </Card>
         )}
 
-        {/* REPORTS TAB */}
+        {/* REPORTS TAB Placeholder */}
         {activeTab === 'reports' && (
-          <Card className="shadow-lg border-none">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><BarChart className="text-accent" /> Broker Performance Reports</CardTitle>
-              <CardDescription>View lead assignment distribution and status updates per broker.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6">
-                {brokers.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">No active brokers found to generate reports.</div>
-                ) : (
-                  <div className="rounded-md border bg-white overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-secondary/10">
-                        <TableRow>
-                          <TableHead>Broker Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead className="text-center">Total Assigned</TableHead>
-                          <TableHead className="text-center text-blue-600">New Leads</TableHead>
-                          <TableHead className="text-center text-yellow-600">In Progress</TableHead>
-                          <TableHead className="text-center text-green-600">Closed Won</TableHead>
-                          <TableHead className="text-center">Avg Response</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {brokers.map(broker => {
-                          const stats = getBrokerStats(broker.id);
-                          return (
-                            <TableRow key={broker.id}>
-                              <TableCell className="font-medium">{broker.name}</TableCell>
-                              <TableCell className="text-muted-foreground">{broker.email}</TableCell>
-                              <TableCell className="text-center font-bold">{stats.total}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">{stats.new}</Badge>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200">{stats.inProgress}</Badge>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200">{stats.closed}</Badge>
-                              </TableCell>
-                              <TableCell className="text-center text-sm text-muted-foreground">
-                                {broker.performance?.responseTime || 'N/A'}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                        
-                        {/* Unassigned Row */}
-                        <TableRow className="bg-slate-50">
-                           <TableCell className="font-medium text-muted-foreground italic">Unassigned Leads</TableCell>
-                           <TableCell className="text-muted-foreground">-</TableCell>
-                           <TableCell className="text-center font-bold text-muted-foreground">
-                             {getBrokerStats("undefined").total + getBrokerStats("unassigned").total}
-                           </TableCell>
-                           <TableCell colSpan={4} className="text-center text-xs text-muted-foreground italic">
-                             Assign these leads to brokers to start tracking performance
-                           </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold mb-6 text-slate-800">Performance Reports</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Conversion Rate by Broker</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground border-dashed border-2 m-4 rounded-lg">
+                   Chart Placeholder
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leads by Type</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground border-dashed border-2 m-4 rounded-lg">
+                   Chart Placeholder
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         )}
         
         {/* SETTINGS TAB Placeholder */}
