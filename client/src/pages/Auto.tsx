@@ -319,6 +319,104 @@ export default function AutoPage() {
               </CardContent>
             </Card>
 
+            {/* Additional Drivers Section */}
+             <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
+                  <User size={20} /> Additional Drivers
+                </h3>
+                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ firstName: "", lastName: "", dob: "", relationship: "Spouse", licenseType: "G", accidents: [], tickets: [], cancellations: [] })} className="gap-2">
+                  <Plus size={16} /> Add Driver
+                </Button>
+              </div>
+
+               <AnimatePresence>
+                {driverFields.map((field, index) => (
+                  <motion.div 
+                    key={field.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-4"
+                  >
+                    <Card className="shadow-md border-none relative overflow-hidden">
+                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary-foreground/20"></div>
+                       <CardContent className="p-6 pt-8 gap-4">
+                          <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon" 
+                              className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeDriver(index)}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          
+                          <div className="grid md:grid-cols-3 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <Label>First Name</Label>
+                              <Input {...form.register(`drivers.${index}.firstName`)} placeholder="First Name" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Last Name</Label>
+                              <Input {...form.register(`drivers.${index}.lastName`)} placeholder="Last Name" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Date of Birth</Label>
+                              <Input type="date" {...form.register(`drivers.${index}.dob`)} />
+                            </div>
+                          </div>
+
+                          <div className="grid md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                               <Label>Relationship</Label>
+                               <Select onValueChange={(val) => form.setValue(`drivers.${index}.relationship`, val)} defaultValue="Spouse">
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Spouse">Spouse / Partner</SelectItem>
+                                    <SelectItem value="Child">Child</SelectItem>
+                                    <SelectItem value="Parent">Parent</SelectItem>
+                                    <SelectItem value="Other">Other</SelectItem>
+                                  </SelectContent>
+                               </Select>
+                            </div>
+                            <div className="space-y-2">
+                               <Label>License Type</Label>
+                               <Select onValueChange={(val: any) => form.setValue(`drivers.${index}.licenseType`, val)} defaultValue="G">
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="G">G</SelectItem>
+                                    <SelectItem value="G2">G2</SelectItem>
+                                    <SelectItem value="G1">G1</SelectItem>
+                                  </SelectContent>
+                               </Select>
+                            </div>
+                          </div>
+
+                          <div className="border-t pt-4">
+                             <DriverHistorySection 
+                               control={form.control} 
+                               register={form.register} 
+                               setValue={form.setValue} 
+                               basePath={`drivers.${index}`} 
+                             />
+                          </div>
+                       </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+               </AnimatePresence>
+               {driverFields.length === 0 && (
+                 <div className="text-sm text-muted-foreground italic p-4 border border-dashed rounded-lg text-center">
+                   No additional drivers added.
+                 </div>
+               )}
+            </div>
+
             {/* Vehicles Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -455,104 +553,6 @@ export default function AutoPage() {
                   </motion.div>
                 ))}
               </AnimatePresence>
-            </div>
-
-            {/* Additional Drivers Section */}
-             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
-                  <User size={20} /> Additional Drivers
-                </h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ firstName: "", lastName: "", dob: "", relationship: "Spouse", licenseType: "G", accidents: [], tickets: [], cancellations: [] })} className="gap-2">
-                  <Plus size={16} /> Add Driver
-                </Button>
-              </div>
-
-               <AnimatePresence>
-                {driverFields.map((field, index) => (
-                  <motion.div 
-                    key={field.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-4"
-                  >
-                    <Card className="shadow-md border-none relative overflow-hidden">
-                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary-foreground/20"></div>
-                       <CardContent className="p-6 pt-8 gap-4">
-                          <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="icon" 
-                              className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
-                              onClick={() => removeDriver(index)}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          
-                          <div className="grid md:grid-cols-3 gap-4 mb-4">
-                            <div className="space-y-2">
-                              <Label>First Name</Label>
-                              <Input {...form.register(`drivers.${index}.firstName`)} placeholder="First Name" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Last Name</Label>
-                              <Input {...form.register(`drivers.${index}.lastName`)} placeholder="Last Name" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Date of Birth</Label>
-                              <Input type="date" {...form.register(`drivers.${index}.dob`)} />
-                            </div>
-                          </div>
-
-                          <div className="grid md:grid-cols-2 gap-4 mb-4">
-                            <div className="space-y-2">
-                               <Label>Relationship</Label>
-                               <Select onValueChange={(val) => form.setValue(`drivers.${index}.relationship`, val)} defaultValue="Spouse">
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Spouse">Spouse / Partner</SelectItem>
-                                    <SelectItem value="Child">Child</SelectItem>
-                                    <SelectItem value="Parent">Parent</SelectItem>
-                                    <SelectItem value="Other">Other</SelectItem>
-                                  </SelectContent>
-                               </Select>
-                            </div>
-                            <div className="space-y-2">
-                               <Label>License Type</Label>
-                               <Select onValueChange={(val: any) => form.setValue(`drivers.${index}.licenseType`, val)} defaultValue="G">
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="G">G</SelectItem>
-                                    <SelectItem value="G2">G2</SelectItem>
-                                    <SelectItem value="G1">G1</SelectItem>
-                                  </SelectContent>
-                               </Select>
-                            </div>
-                          </div>
-
-                          <div className="border-t pt-4">
-                             <DriverHistorySection 
-                               control={form.control} 
-                               register={form.register} 
-                               setValue={form.setValue} 
-                               basePath={`drivers.${index}`} 
-                             />
-                          </div>
-                       </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-               </AnimatePresence>
-               {driverFields.length === 0 && (
-                 <div className="text-sm text-muted-foreground italic p-4 border border-dashed rounded-lg text-center">
-                   No additional drivers added.
-                 </div>
-               )}
             </div>
 
             {/* Additional Comments */}
