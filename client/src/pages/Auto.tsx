@@ -31,6 +31,7 @@ const autoSchema = z.object({
     licenseDateG2: z.string().optional(),
     licenseDateG1: z.string().optional(),
     priorInsurance: z.enum(["yes", "no"], { required_error: "Please select if you have prior insurance" }),
+    priorInsuranceYears: z.string().optional(),
     accidents: z.array(z.object({
       date: z.string(),
       type: z.string(),
@@ -81,6 +82,8 @@ const autoSchema = z.object({
     dob: z.string().min(1, "Date of birth required"),
     relationship: z.string().min(1, "Relationship required"),
     licenseType: z.enum(["G1", "G2", "G"]),
+    priorInsurance: z.enum(["yes", "no"]).optional(),
+    priorInsuranceYears: z.string().optional(),
     accidents: z.array(z.object({
       date: z.string(),
       type: z.string(),
@@ -299,7 +302,7 @@ export default function AutoPage() {
                   
                   <div className="md:col-span-2 pt-4 border-t space-y-3">
                     <Label>Prior Insurance History</Label>
-                    <p className="text-sm text-muted-foreground mb-2">Have you had continuous auto insurance coverage for the last 3 years?</p>
+                    <p className="text-sm text-muted-foreground mb-2">Have you had prior insurance in Canada or the United States?</p>
                     <RadioGroup 
                       onValueChange={(val: "yes" | "no") => form.setValue("primaryDriver.priorInsurance", val)} 
                       defaultValue="yes"
@@ -307,13 +310,31 @@ export default function AutoPage() {
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="yes" id="prior-yes" />
-                        <Label htmlFor="prior-yes" className="font-normal cursor-pointer">Yes, I have prior insurance</Label>
+                        <Label htmlFor="prior-yes" className="font-normal cursor-pointer">Yes</Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="no" id="prior-no" />
-                        <Label htmlFor="prior-no" className="font-normal cursor-pointer">No, this is my first policy / gap in coverage</Label>
+                        <Label htmlFor="prior-no" className="font-normal cursor-pointer">No</Label>
                       </div>
                     </RadioGroup>
+
+                    {form.watch("primaryDriver.priorInsurance") === "yes" && (
+                      <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <Label className="mb-2 block">How many years of continuous insurance?</Label>
+                        <Select onValueChange={(val) => form.setValue("primaryDriver.priorInsuranceYears", val)}>
+                          <SelectTrigger className="w-full md:w-[300px]">
+                            <SelectValue placeholder="Select number of years" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">Less than 1 year</SelectItem>
+                            {[...Array(10)].map((_, i) => (
+                              <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1} year{i !== 0 ? 's' : ''}</SelectItem>
+                            ))}
+                            <SelectItem value="10+">10+ years</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
               </CardContent>
@@ -398,6 +419,43 @@ export default function AutoPage() {
                           </div>
 
                           <div className="border-t pt-4">
+                             <div className="mb-6 space-y-3">
+                               <Label>Prior Insurance History</Label>
+                               <p className="text-sm text-muted-foreground mb-2">Have you had prior insurance in Canada or the United States?</p>
+                               <RadioGroup 
+                                 onValueChange={(val: "yes" | "no") => form.setValue(`drivers.${index}.priorInsurance`, val)} 
+                                 defaultValue="no"
+                                 className="flex gap-6"
+                               >
+                                 <div className="flex items-center space-x-2">
+                                   <RadioGroupItem value="yes" id={`driver-${index}-prior-yes`} />
+                                   <Label htmlFor={`driver-${index}-prior-yes`} className="font-normal cursor-pointer">Yes</Label>
+                                 </div>
+                                 <div className="flex items-center space-x-2">
+                                   <RadioGroupItem value="no" id={`driver-${index}-prior-no`} />
+                                   <Label htmlFor={`driver-${index}-prior-no`} className="font-normal cursor-pointer">No</Label>
+                                 </div>
+                               </RadioGroup>
+
+                               {form.watch(`drivers.${index}.priorInsurance`) === "yes" && (
+                                 <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                   <Label className="mb-2 block">How many years of continuous insurance?</Label>
+                                   <Select onValueChange={(val) => form.setValue(`drivers.${index}.priorInsuranceYears`, val)}>
+                                     <SelectTrigger className="w-full md:w-[300px]">
+                                       <SelectValue placeholder="Select number of years" />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                       <SelectItem value="0">Less than 1 year</SelectItem>
+                                       {[...Array(10)].map((_, i) => (
+                                         <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1} year{i !== 0 ? 's' : ''}</SelectItem>
+                                       ))}
+                                       <SelectItem value="10+">10+ years</SelectItem>
+                                     </SelectContent>
+                                   </Select>
+                                 </div>
+                               )}
+                             </div>
+
                              <DriverHistorySection 
                                control={form.control} 
                                register={form.register} 
