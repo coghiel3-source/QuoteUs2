@@ -82,6 +82,9 @@ const autoSchema = z.object({
     dob: z.string().min(1, "Date of birth required"),
     relationship: z.string().min(1, "Relationship required"),
     licenseType: z.enum(["G1", "G2", "G"]),
+    licenseDate: z.string().optional(),
+    licenseDateG2: z.string().optional(),
+    licenseDateG1: z.string().optional(),
     priorInsurance: z.enum(["yes", "no"]).optional(),
     priorInsuranceYears: z.string().optional(),
     accidents: z.array(z.object({
@@ -179,6 +182,9 @@ export default function AutoPage() {
           dob: d.dob,
           relationship: d.relationship,
           licenseType: d.licenseType,
+          licenseDate: d.licenseDate,
+          licenseDateG2: d.licenseDateG2,
+          licenseDateG1: d.licenseDateG1,
           priorInsurance: d.priorInsurance,
           priorInsuranceYears: d.priorInsuranceYears,
           accidents: d.accidents,
@@ -388,7 +394,7 @@ export default function AutoPage() {
                 <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
                   <User size={20} /> Additional Drivers
                 </h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ firstName: "", lastName: "", dob: "", relationship: "Spouse", licenseType: "G", accidents: [], tickets: [], cancellations: [] })} className="gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => appendDriver({ firstName: "", lastName: "", dob: "", relationship: "Spouse", licenseType: "G", licenseDate: "", licenseDateG2: "", licenseDateG1: "", accidents: [], tickets: [], cancellations: [] })} className="gap-2">
                   <Plus size={16} /> Add Driver
                 </Button>
               </div>
@@ -452,11 +458,26 @@ export default function AutoPage() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="G">G</SelectItem>
+                                    <SelectItem value="G">G (Full License)</SelectItem>
                                     <SelectItem value="G2">G2</SelectItem>
-                                    <SelectItem value="G1">G1</SelectItem>
+                                    <SelectItem value="G1">G1 (Learner)</SelectItem>
                                   </SelectContent>
                                </Select>
+                            </div>
+                          </div>
+
+                          <div className="grid md:grid-cols-3 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <Label>G Date Obtained</Label>
+                              <Input type="date" {...form.register(`drivers.${index}.licenseDate`)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-muted-foreground">G2 Date (Optional)</Label>
+                              <Input type="date" {...form.register(`drivers.${index}.licenseDateG2`)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-muted-foreground">G1 Date (Optional)</Label>
+                              <Input type="date" {...form.register(`drivers.${index}.licenseDateG1`)} />
                             </div>
                           </div>
 

@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Plane } from "lucide-react";
@@ -14,7 +16,8 @@ export default function TravelPage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit } = useForm();
+  const [hasPreExisting, setHasPreExisting] = useState<"yes" | "no" | null>(null);
+  const { register, handleSubmit, setValue, watch } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
@@ -26,8 +29,19 @@ export default function TravelPage() {
       phone: data.phone,
       postalCode: data.postalCode,
       details: {
-        destination: 'Travel',
-        travellers: data.travellers
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        postalCode: data.postalCode,
+        destination: data.destination,
+        departureDate: data.departureDate,
+        returnDate: data.returnDate,
+        travellers: data.travellers,
+        primaryTravellerAge: data.age,
+        preExistingCondition: hasPreExisting,
+        preExistingDetails: data.preExistingDetails
       }
     });
 
@@ -95,7 +109,7 @@ export default function TravelPage() {
 
               <div className="space-y-2">
                 <Label>Destination</Label>
-                <Select>
+                <Select onValueChange={(val) => setValue("destination", val)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Destination" />
                   </SelectTrigger>
@@ -128,6 +142,35 @@ export default function TravelPage() {
               <div className="space-y-2">
                  <Label>Primary Traveller Age</Label>
                  <Input {...register("age")} type="number" placeholder="35" required />
+              </div>
+
+              <div className="space-y-3 border-t pt-6">
+                <Label>Pre-Existing Medical Conditions</Label>
+                <p className="text-sm text-muted-foreground">Do any travellers have pre-existing medical conditions?</p>
+                <RadioGroup 
+                  onValueChange={(val: "yes" | "no") => setHasPreExisting(val)}
+                  className="flex gap-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="preexisting-yes" />
+                    <Label htmlFor="preexisting-yes" className="font-normal cursor-pointer">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="preexisting-no" />
+                    <Label htmlFor="preexisting-no" className="font-normal cursor-pointer">No</Label>
+                  </div>
+                </RadioGroup>
+
+                {hasPreExisting === "yes" && (
+                  <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label className="mb-2 block">Please describe the condition(s)</Label>
+                    <Textarea 
+                      {...register("preExistingDetails")}
+                      placeholder="Please provide details about any pre-existing medical conditions..."
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                )}
               </div>
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
