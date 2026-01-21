@@ -30,15 +30,24 @@ export default function BusinessPage() {
     
     addQuote({
       type: 'Business',
-      clientName: data.contactName, // Using contact name for client name in CRM
+      clientName: data.contactName,
       email: data.email,
       phone: data.phone,
       postalCode: data.postalCode,
       details: {
         businessName: data.businessName,
+        contactName: data.contactName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        postalCode: data.postalCode,
         industry: data.industry,
         revenue: data.revenue,
-        employees: data.employees
+        employees: data.employees,
+        yearsInBusiness: data.yearsInBusiness,
+        currentInsurer: data.currentInsurer,
+        additionalInfo: data.additionalInfo,
+        hasAttachment: !!fileName
       }
     });
 

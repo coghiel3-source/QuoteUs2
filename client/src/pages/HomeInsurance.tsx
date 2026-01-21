@@ -32,14 +32,20 @@ export default function HomeInsurancePage() {
       phone: data.phone,
       postalCode: data.postalCode,
       details: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
         address: data.address,
+        postalCode: data.postalCode,
         yearBuilt: data.yearBuilt,
         sqft: data.sqft,
         roofAge: data.roofAge,
         furnaceAge: data.furnaceAge,
-        type: 'Detached', // Assuming default from form if not captured well
+        constructionType: data.constructionType || 'Detached',
         yearsAtAddress: data.yearsAtAddress,
-        claims: data.claims?.length || 0
+        claims: data.claims || [],
+        claimsCount: data.claims?.length || 0
       }
     });
 

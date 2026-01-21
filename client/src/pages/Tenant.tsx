@@ -32,10 +32,17 @@ export default function TenantPage() {
       phone: data.phone,
       postalCode: data.postalCode,
       details: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
         address: data.address,
+        unit: data.unit,
+        postalCode: data.postalCode,
         contentsValue: data.contentsValue,
         yearsAtAddress: data.yearsAtAddress,
-        claims: data.claims?.length || 0
+        claims: data.claims || [],
+        claimsCount: data.claims?.length || 0
       }
     });
 

@@ -28,8 +28,19 @@ export default function LifePage() {
       phone: data.phone,
       postalCode: data.postalCode,
       details: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        postalCode: data.postalCode,
         dob: data.dob,
-        amount: 'Requested Quote'
+        gender: data.gender,
+        smoker: data.smoker,
+        coverageType: data.coverageType,
+        coverageAmount: data.coverageAmount,
+        occupation: data.occupation,
+        healthConditions: data.healthConditions
       }
     });
 

@@ -27,9 +27,18 @@ export default function PetPage() {
       phone: data.phone,
       postalCode: data.postalCode,
       details: {
+        ownerFirstName: data.firstName,
+        ownerLastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        postalCode: data.postalCode,
         petName: data.petName,
+        petType: data.petType,
         breed: data.breed,
-        species: 'Pet' // simplified
+        age: data.age,
+        spayedNeutered: data.spayedNeutered,
+        preExistingConditions: data.preExistingConditions
       }
     });
 

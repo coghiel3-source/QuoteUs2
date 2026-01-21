@@ -27,11 +27,15 @@ export default function ContactPage() {
       clientName: data.name,
       email: data.email,
       phone: data.phone,
-      postalCode: data.address, // Using address field for location context
+      postalCode: data.address,
       details: {
+        fullName: data.name,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
         subject: data.subject,
         message: data.message,
-        address: data.address
+        inquiryType: 'General Contact'
       }
     });
 
