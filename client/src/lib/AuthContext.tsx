@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { apiRequest } from './api';
 
 export interface User {
   id: string;
@@ -7,160 +8,230 @@ export interface User {
   phone?: string;
   role: 'admin' | 'manager' | 'broker' | 'customer';
   status: 'pending' | 'active' | 'denied' | 'paused' | 'cancelled';
-  password?: string; // For mock login
+  password?: string;
+  createdAt?: string;
   lastLogin?: string;
   performance?: {
-    conversionRate: number; // Percentage
-    responseTime: string; // e.g. "2h"
+    conversionRate: number;
+    responseTime: string;
   };
 }
 
 interface AuthContextType {
   user: User | null;
   users: User[];
-  login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => boolean;
+  loading: boolean;
+  login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password?: string, role?: 'broker' | 'customer', phone?: string) => void;
-  approveBroker: (id: string) => void;
-  denyBroker: (id: string) => void;
-  updateUser: (id: string, data: Partial<User>) => void;
-  resetPassword: (id: string, newPassword: string) => void;
+  register: (name: string, email: string, password?: string, role?: 'broker' | 'customer' | 'manager' | 'admin', phone?: string) => Promise<void>;
+  approveBroker: (id: string) => Promise<void>;
+  denyBroker: (id: string) => Promise<void>;
+  updateUser: (id: string, data: Partial<User>) => Promise<void>;
+  resetPassword: (id: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Mock Users
-  const [users, setUsers] = useState<User[]>([
-    { 
-      id: 'admin1', 
-      name: 'Account Manager', 
-      email: 'admin@quoteus.ca', 
-      role: 'admin', 
-      status: 'active', 
-      password: 'password123',
-      phone: '416-555-0100',
-      lastLogin: new Date().toISOString()
-    },
-    { 
-      id: 'manager1', 
-      name: 'Sales Director', 
-      email: 'manager@quoteus.ca', 
-      role: 'manager', 
-      status: 'active', 
-      password: 'password123',
-      phone: '416-555-0101',
-      lastLogin: new Date(Date.now() - 86400000).toISOString(),
-      performance: { conversionRate: 0, responseTime: 'N/A' }
-    },
-    { 
-      id: 'broker1', 
-      name: 'John Broker', 
-      email: 'john@quoteus.ca', 
-      role: 'broker', 
-      status: 'active', 
-      password: 'password123',
-      phone: '416-555-0102',
-      lastLogin: new Date(Date.now() - 3600000).toISOString(),
-      performance: { conversionRate: 15, responseTime: '2h' }
-    },
-    { 
-      id: 'broker2', 
-      name: 'Sarah Agent', 
-      email: 'sarah@quoteus.ca', 
-      role: 'broker', 
-      status: 'pending', 
-      password: 'password123',
-      phone: '416-555-0103',
-      lastLogin: undefined,
-      performance: { conversionRate: 0, responseTime: 'N/A' }
-    },
-    { 
-      id: 'customer1', 
-      name: 'John Doe', 
-      email: 'john@example.com', 
-      role: 'customer', 
-      status: 'active', 
-      password: 'password123',
-      phone: '416-555-0199',
-      lastLogin: new Date(Date.now() - 7200000).toISOString()
-    },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [seeded, setSeeded] = useState(false);
 
-  const login = (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => {
-    // Simple mock login: check if email exists and matches role and password
-    
-    // For customers, we might be lenient with role check if they try to login via generic form
-    const foundUser = users.find(u => u.email === email && (u.role === role || (role === 'customer' && u.role === 'customer')));
-    
-    if (foundUser) {
+  // Seed database with initial users
+  const seedUsers = async () => {
+    try {
+      const initialUsers = [
+        { 
+          name: 'Account Manager', 
+          email: 'admin@quoteus.ca', 
+          role: 'admin' as const, 
+          status: 'active' as const, 
+          password: 'password123',
+          phone: '416-555-0100',
+        },
+        { 
+          name: 'Sales Director', 
+          email: 'manager@quoteus.ca', 
+          role: 'manager' as const, 
+          status: 'active' as const, 
+          password: 'password123',
+          phone: '416-555-0101',
+        },
+        { 
+          name: 'John Broker', 
+          email: 'john@quoteus.ca', 
+          role: 'broker' as const, 
+          status: 'active' as const, 
+          password: 'password123',
+          phone: '416-555-0102',
+        },
+        { 
+          name: 'Sarah Agent', 
+          email: 'sarah@quoteus.ca', 
+          role: 'broker' as const, 
+          status: 'pending' as const, 
+          password: 'password123',
+          phone: '416-555-0103',
+        },
+      ];
+
+      for (const userData of initialUsers) {
+        try {
+          await apiRequest('/users', {
+            method: 'POST',
+            body: JSON.stringify(userData),
+          });
+        } catch (e) {
+          // User might already exist, skip
+        }
+      }
+      setSeeded(true);
+      localStorage.setItem('quoteus_seeded', 'true');
+    } catch (error) {
+      console.error('Failed to seed users:', error);
+    }
+  };
+
+  // Fetch all users from API
+  const fetchUsers = async () => {
+    try {
+      const data = await apiRequest<User[]>('/users');
+      setUsers(data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      // Check if we've seeded the database
+      const hasSeeded = localStorage.getItem('quoteus_seeded');
+      if (!hasSeeded) {
+        await seedUsers();
+      }
+      await fetchUsers();
+    };
+
+    initializeAuth();
+  }, []);
+
+  const login = async (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string): Promise<boolean> => {
+    try {
+      const foundUser = await apiRequest<User>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, role }),
+      });
+
+      if (!foundUser) {
+        return false;
+      }
+
+      // Check password (simple mock check)
       if (password && foundUser.password && password !== foundUser.password) {
         return false;
       }
 
       if (foundUser.status !== 'active') {
-         if (foundUser.status === 'paused') {
-           alert("Your account has been temporarily paused. Please contact your administrator.");
-           return false;
-         }
-         if (foundUser.status === 'cancelled' || foundUser.status === 'denied') {
-           alert("Your account has been deactivated.");
-           return false;
-         }
-         alert("Your account is pending approval.");
-         return false;
+        if (foundUser.status === 'paused') {
+          alert("Your account has been temporarily paused. Please contact your administrator.");
+          return false;
+        }
+        if (foundUser.status === 'cancelled' || foundUser.status === 'denied') {
+          alert("Your account has been deactivated.");
+          return false;
+        }
+        alert("Your account is pending approval.");
+        return false;
       }
-      
-      // Update last login
-      const updatedUser = { ...foundUser, lastLogin: new Date().toISOString() };
-      updateUser(foundUser.id, { lastLogin: updatedUser.lastLogin });
-      setUser(updatedUser);
+
+      setUser(foundUser);
       return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setUser(null);
   };
 
-  const register = (name: string, email: string, password?: string, role: 'broker' | 'customer' = 'broker', phone?: string) => {
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      email,
-      phone,
-      role,
-      status: role === 'customer' ? 'active' : 'pending', // Customers are active immediately
-      password,
-      lastLogin: undefined
-    };
-    setUsers([...users, newUser]);
-  };
-
-  const approveBroker = (id: string) => {
-    setUsers(users.map(u => u.id === id ? { ...u, status: 'active' } : u));
-  };
-
-  const denyBroker = (id: string) => {
-    setUsers(users.map(u => u.id === id ? { ...u, status: 'denied' } : u));
-  };
-
-  const updateUser = (id: string, data: Partial<User>) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));
-    if (user && user.id === id) {
-      setUser(prev => prev ? { ...prev, ...data } : null);
+  const register = async (name: string, email: string, password?: string, role: 'broker' | 'customer' | 'manager' | 'admin' = 'broker', phone?: string) => {
+    try {
+      const newUser = await apiRequest<User>('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          role,
+          status: role === 'customer' ? 'active' : 'pending',
+          password,
+        }),
+      });
+      setUsers([...users, newUser]);
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
     }
   };
 
-  const resetPassword = (id: string, newPassword: string) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, password: newPassword } : u));
+  const approveBroker = async (id: string) => {
+    try {
+      const updated = await apiRequest<User>(`/users/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'active' }),
+      });
+      setUsers(users.map(u => u.id === id ? updated : u));
+    } catch (error) {
+      console.error('Failed to approve broker:', error);
+    }
+  };
+
+  const denyBroker = async (id: string) => {
+    try {
+      const updated = await apiRequest<User>(`/users/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'denied' }),
+      });
+      setUsers(users.map(u => u.id === id ? updated : u));
+    } catch (error) {
+      console.error('Failed to deny broker:', error);
+    }
+  };
+
+  const updateUser = async (id: string, data: Partial<User>) => {
+    try {
+      const updated = await apiRequest<User>(`/users/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      setUsers(prev => prev.map(u => u.id === id ? updated : u));
+      if (user && user.id === id) {
+        setUser(updated);
+      }
+    } catch (error) {
+      console.error('Failed to update user:', error);
+    }
+  };
+
+  const resetPassword = async (id: string, newPassword: string) => {
+    try {
+      await apiRequest(`/users/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ password: newPassword }),
+      });
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, password: newPassword } : u));
+    } catch (error) {
+      console.error('Failed to reset password:', error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, login, logout, register, approveBroker, denyBroker, updateUser, resetPassword }}>
+    <AuthContext.Provider value={{ user, users, loading, login, logout, register, approveBroker, denyBroker, updateUser, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
