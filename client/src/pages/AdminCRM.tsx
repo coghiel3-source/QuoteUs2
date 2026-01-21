@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { useAuth } from "@/lib/AuthContext";
-import { useContent } from "@/lib/ContentContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +22,6 @@ import { Link, useLocation } from "wouter";
 export default function AdminCRMPage() {
   const { quotes, updateStatus, assignQuote, addQuote, deleteQuote, addNote, logEmail } = useQuotes();
   const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword, register } = useAuth();
-  const { updateContent, getContent } = useContent();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -302,14 +300,6 @@ export default function AdminCRMPage() {
                   className={activeTab === 'reports' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                 >
                   <BarChart size={16} className="mr-2" /> Reports
-                </Button>
-                <Button 
-                  variant={activeTab === 'content' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  onClick={() => setActiveTab('content')}
-                  className={activeTab === 'content' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
-                >
-                  <FileText size={16} className="mr-2" /> Content
                 </Button>
               </nav>
             </div>
@@ -1235,50 +1225,6 @@ export default function AdminCRMPage() {
             </CardContent>
           </Card>
         )}
-
-        <TabsContent value="content" className="space-y-6">
-           <Card>
-             <CardHeader>
-               <CardTitle>Website Content Manager</CardTitle>
-               <CardDescription>Update text and messaging on your public website directly from here. Changes are saved automatically.</CardDescription>
-             </CardHeader>
-             <CardContent className="space-y-6">
-               
-               <div className="space-y-4 border rounded-lg p-6 bg-slate-50">
-                 <h3 className="text-lg font-semibold flex items-center gap-2"><LayoutDashboard size={18} /> Home Page Hero Section</h3>
-                 
-                 <div className="space-y-2">
-                   <Label>Main Headline</Label>
-                   <Input 
-                      defaultValue={getContent('home', 'hero_title', "Insurance made simple for")} 
-                      onChange={(e) => updateContent('home', 'hero_title', e.target.value)}
-                   />
-                   <p className="text-xs text-muted-foreground">The main large text on the home page.</p>
-                 </div>
-
-                 <div className="space-y-2">
-                   <Label>Accent Word</Label>
-                   <Input 
-                      defaultValue={getContent('home', 'hero_title_accent', "Ontarians")} 
-                      onChange={(e) => updateContent('home', 'hero_title_accent', e.target.value)}
-                   />
-                   <p className="text-xs text-muted-foreground">The highlighted word in the headline (appears in orange).</p>
-                 </div>
-
-                 <div className="space-y-2">
-                   <Label>Hero Description</Label>
-                   <Textarea 
-                      defaultValue={getContent('home', 'hero_description', "Compare quotes from Canada's top providers. Save money on Auto, Home, and Business insurance with one simple form.")} 
-                      onChange={(e) => updateContent('home', 'hero_description', e.target.value)}
-                      className="min-h-[100px]"
-                   />
-                   <p className="text-xs text-muted-foreground">The subtitle text below the main headline.</p>
-                 </div>
-               </div>
-
-             </CardContent>
-           </Card>
-        </TabsContent>
 
       </div>
     </div>

@@ -3,11 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign } from "lucide-react";
 import heroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1765553789903.jpg";
-import { useContent } from "@/lib/ContentContext";
 
 export default function HomePage() {
-  const { getContent } = useContent();
-
   const products = [
     { icon: Car, label: "Auto", href: "/auto", desc: "Compare rates for G1, G2 & G drivers" },
     { icon: Home, label: "Home", href: "/home-insurance", desc: "Protect your biggest investment" },
@@ -34,10 +31,10 @@ export default function HomePage() {
               Ontario's Top Rated Insurance Platform
             </div>
             <h1 className="text-4xl md:text-6xl font-serif font-bold leading-tight">
-              {getContent('home', 'hero_title', "Insurance made simple for")} <span className="text-accent">{getContent('home', 'hero_title_accent', "Ontarians")}</span>.
+              Insurance made simple for <span className="text-accent">Ontarians</span>.
             </h1>
             <p className="text-lg md:text-xl text-primary-foreground/90 max-w-xl leading-relaxed">
-              {getContent('home', 'hero_description', "Compare quotes from Canada's top providers. Save money on Auto, Home, and Business insurance with one simple form.")}
+              Compare quotes from Canada's top providers. Save money on Auto, Home, and Business insurance with one simple form.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
