@@ -699,23 +699,70 @@ export default function AdminCRMPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {quotes.slice(0, 5).map(quote => (
-                      <div key={quote.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 cursor-pointer hover:bg-slate-50 p-2 rounded transition-colors" onClick={() => setSelectedQuote(quote)}>
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-full bg-slate-100 text-slate-600`}>
-                            {getIconForType(quote.type)}
-                          </div>
-                          <div>
-                            <div className="font-medium">{quote.clientName}</div>
-                            <div className="text-xs text-muted-foreground">{format(new Date(quote.date || new Date()), 'MMM d, h:mm a')}</div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                           <Badge className={`${getStatusColor(quote.status).replace('hover:', '')} border-none`}>{quote.status}</Badge>
-                           <span className="text-[10px] text-muted-foreground">{quote.priority} Priority</span>
-                        </div>
+                    {quotes.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        No leads yet. New quote submissions will appear here.
                       </div>
-                    ))}
+                    ) : (
+                      quotes.slice(0, 5).map(quote => (
+                        <div key={quote.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0 hover:bg-slate-50 p-2 rounded transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full bg-slate-100 text-slate-600`}>
+                              {getIconForType(quote.type)}
+                            </div>
+                            <div>
+                              <div className="font-medium">{quote.clientName}</div>
+                              <div className="text-xs text-muted-foreground">{format(new Date(quote.date || new Date()), 'MMM d, h:mm a')}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-end gap-1 mr-2">
+                               <Badge className={`${getStatusColor(quote.status).replace('hover:', '')} border-none`}>{quote.status}</Badge>
+                               <span className="text-[10px] text-muted-foreground">{quote.priority} Priority</span>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-7 text-xs"
+                              data-testid={`button-view-${quote.id}`}
+                              onClick={() => setSelectedQuote(quote)}
+                            >
+                              <Eye size={14} className="mr-1" /> View
+                            </Button>
+                            {(user?.role === 'admin' || user?.role === 'manager') && !quote.assignedTo && (
+                              <Select 
+                                value=""
+                                onValueChange={(val) => {
+                                  const broker = users.find(u => u.id === val);
+                                  handleAssignWithCredits(quote.id, val, broker?.name || "");
+                                }}
+                              >
+                                <SelectTrigger className="w-[100px] h-7 text-xs">
+                                  <SelectValue placeholder="Assign" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {brokers.map(broker => (
+                                    <SelectItem key={broker.id} value={broker.id}>
+                                      <span className="flex items-center gap-1">
+                                        {broker.name}
+                                        <span className="text-xs text-muted-foreground">
+                                          (${parseFloat(broker.balance || "0").toFixed(0)})
+                                        </span>
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            {quote.assignedTo && (
+                              <Badge variant="secondary" className="text-xs">
+                                {users.find(u => u.id === quote.assignedTo)?.name || 'Assigned'}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                   <Button variant="link" className="w-full mt-4" onClick={() => setActiveTab('leads')}>View All Leads</Button>
                 </CardContent>
