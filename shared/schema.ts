@@ -22,6 +22,7 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("customer"),
   status: userStatusEnum("status").notNull().default("active"),
   balance: decimal("balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  leadCostOverride: decimal("lead_cost_override", { precision: 10, scale: 2 }),
   stripeCustomerId: text("stripe_customer_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

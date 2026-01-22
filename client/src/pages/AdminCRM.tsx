@@ -55,6 +55,14 @@ export default function AdminCRMPage() {
   const [leadCosts, setLeadCosts] = useState<Record<string, number>>({});
   const [assigningLead, setAssigningLead] = useState<string | null>(null);
 
+  // Credits tab state
+  const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
+  const [selectedBrokerForFunds, setSelectedBrokerForFunds] = useState<string | null>(null);
+  const [fundAmount, setFundAmount] = useState("");
+  const [fundReason, setFundReason] = useState("");
+  const [editingLeadCost, setEditingLeadCost] = useState<string | null>(null);
+  const [newLeadCost, setNewLeadCost] = useState("");
+
   useEffect(() => {
     fetch("/api/credits/lead-costs")
       .then(r => r.json())
@@ -378,6 +386,16 @@ export default function AdminCRMPage() {
                 >
                   <BarChart size={16} className="mr-2" /> Reports
                 </Button>
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                  <Button 
+                    variant={activeTab === 'credits' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setActiveTab('credits')}
+                    className={activeTab === 'credits' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                  >
+                    <DollarSign size={16} className="mr-2" /> Credits
+                  </Button>
+                )}
               </nav>
             </div>
 
@@ -1387,6 +1405,241 @@ export default function AdminCRMPage() {
           </div>
         )}
         
+        {/* CREDITS TAB - Admin/Manager Only */}
+        {activeTab === 'credits' && (user?.role === 'admin' || user?.role === 'manager') && (
+          <Card className="shadow-lg border-none">
+            <CardHeader className="bg-white border-b pb-4">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign size={20} /> Credit Management
+                  </CardTitle>
+                  <CardDescription>Add funds to broker accounts and set custom lead costs.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Broker</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
+                      <TableHead className="text-right">Lead Cost</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {brokers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          No brokers found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      brokers.map((broker) => (
+                        <TableRow key={broker.id}>
+                          <TableCell className="font-medium">{broker.name}</TableCell>
+                          <TableCell>{broker.email}</TableCell>
+                          <TableCell>
+                            <Badge variant={broker.status === 'active' ? 'default' : 'secondary'}>
+                              {broker.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ${parseFloat(broker.balance || "0").toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {editingLeadCost === broker.id ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="Default"
+                                  value={newLeadCost}
+                                  onChange={(e) => setNewLeadCost(e.target.value)}
+                                  className="w-24 h-8 text-right"
+                                  data-testid={`input-lead-cost-${broker.id}`}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await fetch("/api/admin/broker-lead-cost", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                          brokerId: broker.id,
+                                          leadCost: newLeadCost || null,
+                                          actorId: user?.id,
+                                        }),
+                                      });
+                                      if (res.ok) {
+                                        toast({ title: "Lead Cost Updated", description: newLeadCost ? `Set to $${parseFloat(newLeadCost).toFixed(2)} per lead.` : "Reset to default pricing." });
+                                        setEditingLeadCost(null);
+                                        setNewLeadCost("");
+                                        window.location.reload();
+                                      } else {
+                                        const err = await res.json();
+                                        toast({ title: "Error", description: err.error, variant: "destructive" });
+                                      }
+                                    } catch (err) {
+                                      toast({ title: "Error", description: "Failed to update lead cost", variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  <Check size={14} />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8"
+                                  onClick={() => { setEditingLeadCost(null); setNewLeadCost(""); }}
+                                >
+                                  <X size={14} />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="font-mono">
+                                  {broker.leadCostOverride ? `$${parseFloat(broker.leadCostOverride).toFixed(2)}` : "Default"}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2"
+                                  onClick={() => {
+                                    setEditingLeadCost(broker.id);
+                                    setNewLeadCost(broker.leadCostOverride || "");
+                                  }}
+                                  data-testid={`button-edit-lead-cost-${broker.id}`}
+                                >
+                                  Edit
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  onClick={() => {
+                                    setSelectedBrokerForFunds(broker.id);
+                                    setFundAmount("");
+                                    setFundReason("");
+                                  }}
+                                  data-testid={`button-add-funds-${broker.id}`}
+                                >
+                                  <DollarSign size={14} /> Add Funds
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Add Funds to {broker.name}</DialogTitle>
+                                  <DialogDescription>
+                                    Current balance: ${parseFloat(broker.balance || "0").toFixed(2)}
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                  <div className="space-y-2">
+                                    <Label>Amount to Add ($)</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      placeholder="50.00"
+                                      value={fundAmount}
+                                      onChange={(e) => setFundAmount(e.target.value)}
+                                      data-testid="input-fund-amount"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Reason</Label>
+                                    <Input
+                                      placeholder="Manual credit adjustment"
+                                      value={fundReason}
+                                      onChange={(e) => setFundReason(e.target.value)}
+                                      data-testid="input-fund-reason"
+                                    />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button
+                                    onClick={async () => {
+                                      if (!fundAmount || !fundReason) {
+                                        toast({ title: "Error", description: "Please enter amount and reason", variant: "destructive" });
+                                        return;
+                                      }
+                                      try {
+                                        const res = await fetch("/api/admin/credits/adjust", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({
+                                            userId: broker.id,
+                                            amount: fundAmount,
+                                            reason: fundReason,
+                                            actorId: user?.id,
+                                            actorName: user?.name,
+                                          }),
+                                        });
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          toast({ 
+                                            title: "Funds Added", 
+                                            description: `$${parseFloat(fundAmount).toFixed(2)} added to ${broker.name}. New balance: $${parseFloat(data.newBalance).toFixed(2)}` 
+                                          });
+                                          setFundAmount("");
+                                          setFundReason("");
+                                          window.location.reload();
+                                        } else {
+                                          const err = await res.json();
+                                          toast({ title: "Error", description: err.error, variant: "destructive" });
+                                        }
+                                      } catch (err) {
+                                        toast({ title: "Error", description: "Failed to add funds", variant: "destructive" });
+                                      }
+                                    }}
+                                    data-testid="button-confirm-add-funds"
+                                  >
+                                    Add ${fundAmount || "0.00"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-3">Default Lead Costs</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(leadCosts).map(([type, cost]) => (
+                    <div key={type} className="bg-slate-50 rounded-lg p-3 text-center">
+                      <div className="text-sm text-muted-foreground">{type}</div>
+                      <div className="text-xl font-bold">${cost}</div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  These are the default costs per lead type. Set a custom lead cost on individual brokers above to override.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* SETTINGS TAB Placeholder */}
         {activeTab === 'settings' && (
           <Card>

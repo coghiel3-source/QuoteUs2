@@ -492,6 +492,60 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Update broker lead cost override
+  // Only admin/manager can update broker lead costs
+  app.post("/api/admin/broker-lead-cost", async (req, res) => {
+    try {
+      const { brokerId, leadCost, actorId } = req.body;
+      
+      if (!brokerId) {
+        return res.status(400).json({ error: "Broker ID is required" });
+      }
+      
+      // Require actor ID for authorization
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required for authentication" });
+      }
+      
+      // Verify actor is admin/manager
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can update broker lead costs" });
+      }
+      
+      // Verify target is a broker
+      const broker = await storage.getUser(brokerId);
+      if (!broker) {
+        return res.status(404).json({ error: "Broker not found" });
+      }
+      if (broker.role !== "broker") {
+        return res.status(400).json({ error: "Can only set lead costs for brokers" });
+      }
+      
+      // Validate lead cost (null to clear, or a number >= 0)
+      let costValue: string | null = null;
+      if (leadCost !== null && leadCost !== undefined && leadCost !== "") {
+        const numCost = parseFloat(leadCost);
+        if (isNaN(numCost) || numCost < 0) {
+          return res.status(400).json({ error: "Lead cost must be $0 or higher" });
+        }
+        costValue = numCost.toFixed(2);
+      }
+      
+      // Update broker's lead cost override
+      const updatedUser = await storage.updateUser(brokerId, { 
+        leadCostOverride: costValue 
+      } as any);
+      
+      res.json({ 
+        success: true, 
+        broker: updatedUser 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Assign lead to broker (with balance deduction)
   // Only admin/manager can assign leads
   app.post("/api/leads/assign", async (req, res) => {
@@ -545,8 +599,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Can only assign leads to brokers" });
       }
       
-      // Get lead cost
-      const leadCost = LEAD_COSTS[quote.type] || LEAD_COSTS["General"];
+      // Get lead cost - use broker's override if set, otherwise default
+      const defaultCost = LEAD_COSTS[quote.type] || LEAD_COSTS["General"];
+      const leadCost = broker.leadCostOverride !== null && broker.leadCostOverride !== undefined
+        ? parseFloat(broker.leadCostOverride)
+        : defaultCost;
       
       // Deduct from broker's balance
       const debitResult = await storage.debitBalance(
