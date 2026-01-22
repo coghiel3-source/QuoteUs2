@@ -10,12 +10,14 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useQuotes } from "@/lib/QuoteContext";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function LifePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit, setValue } = useForm();
+  const [hasMortgage, setHasMortgage] = useState<string>("");
+  const { register, handleSubmit, setValue, watch } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
@@ -37,6 +39,9 @@ export default function LifePage() {
         dob: data.dob,
         gender: data.gender,
         smoker: data.smoker,
+        annualIncome: data.annualIncome,
+        hasMortgage: hasMortgage,
+        outstandingMortgage: hasMortgage === "yes" ? data.outstandingMortgage : null,
         coverageType: data.coverageType,
         coverageAmount: data.coverageAmount,
         occupation: data.occupation,
@@ -124,7 +129,7 @@ export default function LifePage() {
 
               <div className="space-y-2">
                  <Label>Smoking Status</Label>
-                 <Select>
+                 <Select onValueChange={(val) => setValue("smoker", val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
@@ -134,6 +139,50 @@ export default function LifePage() {
                     </SelectContent>
                   </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label>Annual Income</Label>
+                <Select onValueChange={(val) => setValue("annualIncome", val)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select income range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="under-30k">Under $30,000</SelectItem>
+                    <SelectItem value="30k-50k">$30,000 - $50,000</SelectItem>
+                    <SelectItem value="50k-75k">$50,000 - $75,000</SelectItem>
+                    <SelectItem value="75k-100k">$75,000 - $100,000</SelectItem>
+                    <SelectItem value="100k-150k">$100,000 - $150,000</SelectItem>
+                    <SelectItem value="150k-200k">$150,000 - $200,000</SelectItem>
+                    <SelectItem value="200k-plus">$200,000+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Do you have a mortgage?</Label>
+                <RadioGroup value={hasMortgage} onValueChange={setHasMortgage} className="flex gap-4">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="mortgage-yes" />
+                    <Label htmlFor="mortgage-yes" className="cursor-pointer">Yes</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="mortgage-no" />
+                    <Label htmlFor="mortgage-no" className="cursor-pointer">No</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {hasMortgage === "yes" && (
+                <div className="space-y-2">
+                  <Label>Outstanding Mortgage Value</Label>
+                  <Input 
+                    {...register("outstandingMortgage")} 
+                    type="text" 
+                    placeholder="$350,000" 
+                    data-testid="input-outstanding-mortgage"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                  <Label>Type of Insurance</Label>
