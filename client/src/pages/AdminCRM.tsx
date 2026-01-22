@@ -387,9 +387,46 @@ export default function AdminCRMPage() {
 
                     <div className="border rounded-lg p-4 bg-slate-50">
                       <h4 className="font-semibold mb-3 flex items-center gap-2"><Car size={16}/> Quote Details</h4>
-                      <pre className="text-sm whitespace-pre-wrap font-sans text-slate-600">
-                        {JSON.stringify(selectedQuote.details, null, 2)}
-                      </pre>
+                      <div className="space-y-3">
+                        {selectedQuote.details && Object.entries(selectedQuote.details).map(([key, value]) => {
+                          const formatLabel = (k: string) => k
+                            .replace(/([A-Z])/g, ' $1')
+                            .replace(/^./, str => str.toUpperCase())
+                            .replace(/_/g, ' ');
+                          
+                          const formatValue = (v: any): string => {
+                            if (v === null || v === undefined || v === '') return 'Not provided';
+                            if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+                            if (Array.isArray(v)) {
+                              if (v.length === 0) return 'None';
+                              return v.map((item, i) => {
+                                if (typeof item === 'object') {
+                                  return Object.entries(item)
+                                    .map(([k, val]) => `${formatLabel(k)}: ${val}`)
+                                    .join(', ');
+                                }
+                                return String(item);
+                              }).join(' | ');
+                            }
+                            if (typeof v === 'object') {
+                              return Object.entries(v)
+                                .map(([k, val]) => `${formatLabel(k)}: ${val}`)
+                                .join(', ');
+                            }
+                            return String(v);
+                          };
+
+                          return (
+                            <div key={key} className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-slate-200 last:border-0">
+                              <span className="text-sm text-slate-500 sm:w-1/3 shrink-0">{formatLabel(key)}</span>
+                              <span className="text-sm font-semibold text-primary">{formatValue(value)}</span>
+                            </div>
+                          );
+                        })}
+                        {(!selectedQuote.details || Object.keys(selectedQuote.details).length === 0) && (
+                          <p className="text-sm text-muted-foreground">No additional details available.</p>
+                        )}
+                      </div>
                     </div>
                   </TabsContent>
 

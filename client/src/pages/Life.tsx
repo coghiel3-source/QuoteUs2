@@ -15,7 +15,7 @@ export default function LifePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, setValue } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
@@ -137,7 +137,7 @@ export default function LifePage() {
 
               <div className="space-y-2">
                  <Label>Type of Insurance</Label>
-                 <Select>
+                 <Select onValueChange={(val) => setValue("coverageType", val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
@@ -148,6 +148,8 @@ export default function LifePage() {
                       <SelectItem value="term40">Term 40 Years</SelectItem>
                       <SelectItem value="whole">Whole Life (Lifetime with Cash Value)</SelectItem>
                       <SelectItem value="universal">Universal Life (Flexible Premium)</SelectItem>
+                      <SelectItem value="unknown">Unknown</SelectItem>
+                      <SelectItem value="recommendation">Make Recommendation</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
