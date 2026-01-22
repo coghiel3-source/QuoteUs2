@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFo
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -1028,24 +1028,42 @@ export default function AdminCRMPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                             <Button 
-                               variant="ghost" 
-                               size="icon" 
-                               className="text-muted-foreground hover:text-destructive"
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 if (confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
-                                   deleteQuote(quote.id);
-                                   toast({
-                                     title: "Quote Deleted",
-                                     description: "The quote has been permanently removed.",
-                                     variant: "destructive"
-                                   });
-                                 }
-                               }}
-                             >
-                               <Trash2 size={16} />
-                             </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="text-xs h-7 px-2"
+                                data-testid={`button-view-details-${quote.id}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedQuote(quote);
+                                }}
+                              >
+                                <Eye size={14} className="mr-1" />
+                                View
+                              </Button>
+                              {(user?.role === 'admin' || user?.role === 'manager') && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="text-muted-foreground hover:text-destructive h-7 w-7"
+                                  data-testid={`button-delete-${quote.id}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
+                                      deleteQuote(quote.id);
+                                      toast({
+                                        title: "Quote Deleted",
+                                        description: "The quote has been permanently removed.",
+                                        variant: "destructive"
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
