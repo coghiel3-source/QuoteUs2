@@ -1,0 +1,191 @@
+Roles
+
+Broker (Approved User)
+
+Manager
+
+Admin
+
+Core Feature Overview
+
+Approved brokers must be able to purchase lead credits using a payment gateway and spend those credits as leads are delivered. Managers and Admins must be able to monitor balances, transactions, analytics, and adjustments.
+
+Use Replit’s built-in payment gateway for all payment processing.
+
+Broker Portal Requirements
+Broker Eligibility
+
+Only approved brokers can access purchasing features.
+
+Broker must be logged in.
+
+Purchasing Credits
+
+Broker can purchase credits in increments of $25, from:
+
+Minimum: $25
+
+Maximum: $250
+
+Payment is processed via Replit Payment Gateway.
+
+On successful payment:
+
+Credit broker’s running balance
+
+Record transaction (amount, date, payment ID)
+
+Broker Dashboard
+
+Display:
+
+Current balance
+
+Purchase history
+
+Lead charges (debits)
+
+Show warning if balance is low or insufficient
+
+Lead Pricing & Deduction Logic
+Lead Value Configuration
+
+Admin & Manager can set the price per lead
+
+Lead price range:
+
+Minimum: $3
+
+Maximum: $20
+
+Lead Delivery
+
+When a lead is sent to a broker:
+
+The configured lead price is automatically deducted from broker balance
+
+Transaction is logged as a debit
+
+Prevent lead delivery if broker has insufficient balance
+
+Manager Portal Requirements
+Monitoring & Visibility
+
+Managers can:
+
+View brokers assigned to them
+
+See each broker’s:
+
+Balance
+
+Payment history
+
+Lead usage
+
+Managers see a running balance per broker
+
+Analytics Dashboard
+
+Manager dashboard must show:
+
+Total credits purchased
+
+Total credits spent
+
+Leads delivered
+
+Remaining balances
+
+Time-based analytics (daily / weekly / monthly)
+
+Credit Adjustments
+
+Managers can manually credit broker accounts
+
+All adjustments must:
+
+Require a reason
+
+Be logged and auditable
+
+Managers cannot modify payments, only balances
+
+Admin can customize whether managers:
+
+Can view individual broker details
+
+Can issue credits
+
+Can see payment-level details
+
+Admin Portal Requirements
+Full Access
+
+Admin has full system control, including:
+
+Viewing all payments, balances, and transactions
+
+Editing or reversing balances
+
+Configuring manager permissions
+
+Overriding lead pricing
+
+Viewing system-wide analytics
+
+Admin Controls
+
+Enable/disable broker purchasing
+
+Set manager permissions:
+
+View-only
+
+Credit access
+
+Analytics access
+
+Transaction Logging (Required)
+
+Every action must be logged:
+
+Payment transactions
+
+Lead deductions
+
+Manual credits or adjustments
+
+Include:
+
+Actor (Broker / Manager / Admin)
+
+Amount
+
+Reason
+
+Timestamp
+
+Security & Validation
+
+Prevent negative balances
+
+Validate all price limits ($3–$20)
+
+Validate purchase limits ($25–$250)
+
+Role-based permission enforcement
+
+Protect payment and balance endpoints
+
+Acceptance Criteria
+
+Broker can successfully purchase credits and see updated balance
+
+Leads reduce balance correctly and in real time
+
+Managers can monitor balances and analytics
+
+Admin has complete oversight and control
+
+All financial actions are logged and auditable
