@@ -9,6 +9,8 @@ export interface User {
   role: 'admin' | 'manager' | 'broker' | 'customer';
   status: 'pending' | 'active' | 'denied' | 'paused' | 'cancelled';
   password?: string;
+  balance?: string;
+  stripeCustomerId?: string;
   createdAt?: string;
   lastLogin?: string;
   performance?: {
@@ -28,6 +30,7 @@ interface AuthContextType {
   denyBroker: (id: string) => Promise<void>;
   updateUser: (id: string, data: Partial<User>) => Promise<void>;
   resetPassword: (id: string, newPassword: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -230,8 +233,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    if (!user) return;
+    try {
+      const updated = await apiRequest<User>(`/users/${user.id}`);
+      setUser(updated);
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, users, loading, login, logout, register, approveBroker, denyBroker, updateUser, resetPassword }}>
+    <AuthContext.Provider value={{ user, users, loading, login, logout, register, approveBroker, denyBroker, updateUser, resetPassword, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

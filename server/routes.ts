@@ -4,6 +4,29 @@ import { storage } from "./storage";
 import { insertUserSchema, insertQuoteSchema, insertActivitySchema } from "@shared/schema";
 import { z } from "zod";
 import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail } from "./email";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+
+// Lead costs by type
+const LEAD_COSTS: Record<string, number> = {
+  "Auto": 10,
+  "Home": 15,
+  "Tenant": 5,
+  "Business": 20,
+  "Life": 12,
+  "Travel": 3,
+  "Pet": 5,
+  "General": 8,
+};
+
+// Credit package options
+const CREDIT_PACKAGES = [
+  { amount: 25, label: "$25" },
+  { amount: 50, label: "$50" },
+  { amount: 100, label: "$100" },
+  { amount: 150, label: "$150" },
+  { amount: 200, label: "$200" },
+  { amount: 250, label: "$250" },
+];
 
 export async function registerRoutes(
   httpServer: Server,
@@ -246,6 +269,284 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== CREDIT & PAYMENT ROUTES =====
+  
+  // Get Stripe publishable key
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get credit packages
+  app.get("/api/credits/packages", async (req, res) => {
+    res.json({ packages: CREDIT_PACKAGES });
+  });
+
+  // Get lead pricing
+  app.get("/api/credits/lead-costs", async (req, res) => {
+    res.json({ costs: LEAD_COSTS });
+  });
+
+  // Get user balance and transaction history
+  app.get("/api/users/:id/balance", async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json({ balance: user.balance });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get user transactions
+  app.get("/api/users/:id/transactions", async (req, res) => {
+    try {
+      const transactions = await storage.getTransactionsForUser(req.params.id);
+      res.json(transactions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create checkout session for credit purchase
+  app.post("/api/credits/checkout", async (req, res) => {
+    try {
+      const { userId, amount } = req.body;
+      
+      if (!userId || !amount) {
+        return res.status(400).json({ error: "User ID and amount are required" });
+      }
+      
+      const validAmounts = CREDIT_PACKAGES.map(p => p.amount);
+      if (!validAmounts.includes(amount)) {
+        return res.status(400).json({ error: "Invalid credit amount" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      
+      // Create or get Stripe customer
+      let customerId = user.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: { userId: user.id },
+        });
+        await storage.updateUser(user.id, { stripeCustomerId: customer.id } as any);
+        customerId = customer.id;
+      }
+      
+      // Create checkout session
+      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+        
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: 'cad',
+            product_data: {
+              name: `Lead Credits - $${amount}`,
+              description: `Purchase $${amount} in lead credits for QuoteUs.ca`,
+            },
+            unit_amount: amount * 100, // Convert to cents
+          },
+          quantity: 1,
+        }],
+        mode: 'payment',
+        success_url: `${baseUrl}/broker/credits?success=true&amount=${amount}`,
+        cancel_url: `${baseUrl}/broker/credits?canceled=true`,
+        metadata: {
+          userId: user.id,
+          creditAmount: amount.toString(),
+          type: 'credit_purchase',
+        },
+      });
+      
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error('[Checkout] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Handle successful payment (called after Stripe redirects back)
+  app.post("/api/credits/confirm", async (req, res) => {
+    try {
+      const { sessionId, userId } = req.body;
+      
+      if (!sessionId || !userId) {
+        return res.status(400).json({ error: "Session ID and user ID required" });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ error: "Payment not completed" });
+      }
+      
+      // Check if already processed
+      const metadata = session.metadata;
+      if (!metadata?.userId || metadata.userId !== userId) {
+        return res.status(400).json({ error: "Invalid session" });
+      }
+      
+      const amount = metadata.creditAmount;
+      
+      // Credit the user's balance
+      const result = await storage.creditBalance(
+        userId,
+        amount,
+        "credit_purchase",
+        `Purchased $${amount} in credits via Stripe`,
+        { stripePaymentId: session.payment_intent as string }
+      );
+      
+      res.json({ 
+        success: true, 
+        newBalance: result.user.balance,
+        transaction: result.transaction 
+      });
+    } catch (error: any) {
+      console.error('[Credit Confirm] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Manual credit adjustment
+  app.post("/api/admin/credits/adjust", async (req, res) => {
+    try {
+      const { userId, amount, reason, actorId, actorName } = req.body;
+      
+      if (!userId || !amount || !reason) {
+        return res.status(400).json({ error: "User ID, amount, and reason are required" });
+      }
+      
+      const numAmount = parseFloat(amount);
+      if (isNaN(numAmount)) {
+        return res.status(400).json({ error: "Invalid amount" });
+      }
+      
+      const type = numAmount >= 0 ? "manual_credit" : "adjustment";
+      const result = await storage.creditBalance(
+        userId,
+        Math.abs(numAmount).toFixed(2),
+        type,
+        `Manual ${numAmount >= 0 ? 'credit' : 'debit'}: ${reason}`,
+        { actorId, actorName, reason }
+      );
+      
+      res.json({ 
+        success: true, 
+        newBalance: result.user.balance,
+        transaction: result.transaction 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all transactions (admin)
+  app.get("/api/admin/transactions", async (req, res) => {
+    try {
+      const transactions = await storage.getAllTransactions();
+      res.json(transactions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Assign lead to broker (with balance deduction)
+  app.post("/api/leads/assign", async (req, res) => {
+    try {
+      const { quoteId, brokerId, actorId, actorName } = req.body;
+      
+      if (!quoteId || !brokerId) {
+        return res.status(400).json({ error: "Quote ID and broker ID are required" });
+      }
+      
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      const broker = await storage.getUser(brokerId);
+      if (!broker) {
+        return res.status(404).json({ error: "Broker not found" });
+      }
+      
+      // Get lead cost
+      const leadCost = LEAD_COSTS[quote.type] || LEAD_COSTS["General"];
+      
+      // Deduct from broker's balance
+      const debitResult = await storage.debitBalance(
+        brokerId,
+        leadCost.toFixed(2),
+        `Lead assigned: ${quote.type} - ${quote.clientName} (${quote.quoteNumber})`,
+        { quoteId, actorId, actorName }
+      );
+      
+      if (!debitResult) {
+        return res.status(400).json({ 
+          error: "Insufficient balance", 
+          required: leadCost,
+          currentBalance: broker.balance 
+        });
+      }
+      
+      // Update quote assignment
+      await storage.updateQuote(quoteId, { assignedTo: brokerId } as any);
+      
+      // Create activity
+      await storage.createActivity({
+        quoteId,
+        type: "assignment",
+        content: `Lead assigned to ${broker.name} ($${leadCost} deducted)`,
+        author: actorName || "System",
+      });
+      
+      // Send assignment email
+      if (broker.email) {
+        const assignmentEmail = generateAssignmentEmail({
+          brokerName: broker.name,
+          clientName: quote.clientName,
+          type: quote.type,
+          email: quote.email || '',
+          phone: quote.phone || undefined,
+          assignedBy: actorName || 'Admin'
+        });
+        sendEmail({
+          to: broker.email,
+          subject: assignmentEmail.subject,
+          html: assignmentEmail.html
+        }).catch(err => console.error('[Email] Assignment notification error:', err));
+      }
+      
+      res.json({ 
+        success: true, 
+        newBalance: debitResult.user.balance,
+        transaction: debitResult.transaction,
+        leadCost 
+      });
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
