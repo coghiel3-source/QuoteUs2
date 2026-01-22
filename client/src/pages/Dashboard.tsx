@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, Bell, Eye, EyeOff } from "lucide-react";
+import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { useQuotes } from "@/lib/QuoteContext";
+import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { Link, useLocation } from "wouter";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
 
 export default function DashboardPage() {
   const { user, login, logout, register } = useAuth();
@@ -31,6 +33,20 @@ export default function DashboardPage() {
   const [registerPhone, setRegisterPhone] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Quote | null>(null);
+
+  const getIconForType = (type: string) => {
+    switch (type) {
+      case "Auto": return <Car size={16} />;
+      case "Home": return <Home size={16} />;
+      case "Tenant": return <Home size={16} />;
+      case "Business": return <Briefcase size={16} />;
+      case "Life": return <Heart size={16} />;
+      case "Travel": return <Plane size={16} />;
+      case "Pet": return <Dog size={16} />;
+      default: return <Shield size={16} />;
+    }
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,7 +327,15 @@ export default function DashboardPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                       <Button size="sm" variant="outline" className="text-xs h-8">View Details</Button>
+                       <Button 
+                         size="sm" 
+                         variant="outline" 
+                         className="text-xs h-8"
+                         onClick={() => setSelectedLead(lead)}
+                         data-testid={`button-view-lead-${lead.id}`}
+                       >
+                         View Details
+                       </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -319,6 +343,114 @@ export default function DashboardPage() {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Lead Details Sheet */}
+        <Sheet open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+          <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+            {selectedLead && (
+              <>
+                <SheetHeader className="mb-6">
+                  <SheetTitle className="text-xl font-bold flex items-center gap-2">
+                    {selectedLead.clientName}
+                  </SheetTitle>
+                  <SheetDescription>
+                    Quote #{selectedLead.quoteNumber} • {format(new Date(selectedLead.date || new Date()), 'MMMM d, yyyy')}
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="space-y-6">
+                  {/* Contact Information */}
+                  <div>
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Contact Information</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Email</Label>
+                        <div className="font-medium flex items-center gap-2">
+                          {selectedLead.email}
+                          <a href={`mailto:${selectedLead.email}`}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <Mail size={14} />
+                            </Button>
+                          </a>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Phone</Label>
+                        <div className="font-medium flex items-center gap-2">
+                          {selectedLead.phone || 'N/A'}
+                          {selectedLead.phone && (
+                            <a href={`tel:${selectedLead.phone}`}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Phone size={14} />
+                              </Button>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Postal Code</Label>
+                        <div className="font-medium">{selectedLead.postalCode || 'N/A'}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Insurance Type</Label>
+                        <div className="font-medium flex items-center gap-2">
+                          {getIconForType(selectedLead.type)} {selectedLead.type}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quote Details */}
+                  {selectedLead.details && Object.keys(selectedLead.details).length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Quote Details</h3>
+                      <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                        {Object.entries(selectedLead.details).map(([key, value]) => {
+                          if (!value || key === 'email' || key === 'phone' || key === 'postalCode' || key === 'firstName' || key === 'lastName') return null;
+                          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                          return (
+                            <div key={key} className="flex justify-between items-start border-b border-slate-200 pb-2 last:border-0 last:pb-0">
+                              <span className="text-sm text-muted-foreground">{label}</span>
+                              <span className="text-sm font-medium text-right max-w-[60%]">
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status */}
+                  <div>
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Status</h3>
+                    <Select 
+                      value={selectedLead.status} 
+                      onValueChange={(val: any) => {
+                        updateStatus(selectedLead.id, val);
+                        setSelectedLead({ ...selectedLead, status: val });
+                      }}
+                    >
+                      <SelectTrigger className={`w-[140px] ${getStatusColor(selectedLead.status)}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="New">New</SelectItem>
+                        <SelectItem value="Contacted">Contacted</SelectItem>
+                        <SelectItem value="Quoted">Quoted</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t flex justify-end">
+                  <Button variant="outline" onClick={() => setSelectedLead(null)}>Close</Button>
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
 
       </div>
     </div>

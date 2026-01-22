@@ -6,8 +6,8 @@ import { z } from "zod";
 import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
-// Lead costs by type
-const LEAD_COSTS: Record<string, number> = {
+// Default lead costs by type (fallback if not set in database)
+const DEFAULT_LEAD_COSTS: Record<string, number> = {
   "Auto": 10,
   "Home": 15,
   "Tenant": 5,
@@ -17,6 +17,19 @@ const LEAD_COSTS: Record<string, number> = {
   "Pet": 5,
   "General": 8,
 };
+
+// Get lead costs from database or use defaults
+async function getLeadCosts(): Promise<Record<string, number>> {
+  const storedCosts = await storage.getSetting("lead_costs");
+  if (storedCosts) {
+    try {
+      return JSON.parse(storedCosts);
+    } catch {
+      return DEFAULT_LEAD_COSTS;
+    }
+  }
+  return DEFAULT_LEAD_COSTS;
+}
 
 // Credit package options
 const CREDIT_PACKAGES = [
@@ -292,7 +305,45 @@ export async function registerRoutes(
 
   // Get lead pricing
   app.get("/api/credits/lead-costs", async (req, res) => {
-    res.json({ costs: LEAD_COSTS });
+    const costs = await getLeadCosts();
+    res.json({ costs });
+  });
+
+  // Admin: Update default lead costs
+  app.post("/api/admin/lead-costs", async (req, res) => {
+    try {
+      const { costs, actorId } = req.body;
+      
+      if (!costs || typeof costs !== 'object') {
+        return res.status(400).json({ error: "Costs object is required" });
+      }
+      
+      // Require actor ID for authorization
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required for authentication" });
+      }
+      
+      // Verify actor is admin/manager
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can update lead costs" });
+      }
+      
+      // Validate all costs are non-negative numbers
+      for (const [type, cost] of Object.entries(costs)) {
+        const numCost = Number(cost);
+        if (isNaN(numCost) || numCost < 0) {
+          return res.status(400).json({ error: `Invalid cost for ${type}: must be $0 or higher` });
+        }
+      }
+      
+      // Save to database
+      await storage.setSetting("lead_costs", JSON.stringify(costs), actorId);
+      
+      res.json({ success: true, costs });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Get user balance - accessible by user themselves or admin/manager
@@ -583,8 +634,11 @@ export async function registerRoutes(
         });
       }
       
+      // Get current lead costs from database
+      const currentLeadCosts = await getLeadCosts();
+      
       // Validate lead type
-      const validTypes = Object.keys(LEAD_COSTS);
+      const validTypes = Object.keys(currentLeadCosts);
       if (!validTypes.includes(quote.type)) {
         return res.status(400).json({ error: "Invalid lead type" });
       }
@@ -600,7 +654,7 @@ export async function registerRoutes(
       }
       
       // Get lead cost - use broker's override if set, otherwise default
-      const defaultCost = LEAD_COSTS[quote.type] || LEAD_COSTS["General"];
+      const defaultCost = currentLeadCosts[quote.type] || currentLeadCosts["General"];
       const leadCost = broker.leadCostOverride !== null && broker.leadCostOverride !== undefined
         ? parseFloat(broker.leadCostOverride)
         : defaultCost;

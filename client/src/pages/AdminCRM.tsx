@@ -62,6 +62,8 @@ export default function AdminCRMPage() {
   const [fundReason, setFundReason] = useState("");
   const [editingLeadCost, setEditingLeadCost] = useState<string | null>(null);
   const [newLeadCost, setNewLeadCost] = useState("");
+  const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
+  const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/credits/lead-costs")
@@ -1623,12 +1625,88 @@ export default function AdminCRMPage() {
               </div>
 
               <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-3">Default Lead Costs</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold">Default Lead Costs</h3>
+                  {!editingDefaultCosts ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setEditingDefaultCosts(true);
+                        setEditedCosts(Object.fromEntries(
+                          Object.entries(leadCosts).map(([k, v]) => [k, String(v)])
+                        ));
+                      }}
+                      data-testid="button-edit-default-costs"
+                    >
+                      Edit Costs
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setEditingDefaultCosts(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const numericCosts: Record<string, number> = {};
+                            for (const [type, cost] of Object.entries(editedCosts)) {
+                              const numCost = parseFloat(cost);
+                              if (isNaN(numCost) || numCost < 0) {
+                                toast({ title: "Error", description: `Invalid cost for ${type}`, variant: "destructive" });
+                                return;
+                              }
+                              numericCosts[type] = numCost;
+                            }
+                            const res = await fetch("/api/admin/lead-costs", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ costs: numericCosts, actorId: user?.id }),
+                            });
+                            if (res.ok) {
+                              toast({ title: "Lead Costs Updated", description: "Default lead costs have been saved." });
+                              setLeadCosts(numericCosts);
+                              setEditingDefaultCosts(false);
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "Error", description: err.error, variant: "destructive" });
+                            }
+                          } catch (err) {
+                            toast({ title: "Error", description: "Failed to update lead costs", variant: "destructive" });
+                          }
+                        }}
+                        data-testid="button-save-default-costs"
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries(leadCosts).map(([type, cost]) => (
+                  {Object.entries(editingDefaultCosts ? editedCosts : leadCosts).map(([type, cost]) => (
                     <div key={type} className="bg-slate-50 rounded-lg p-3 text-center">
-                      <div className="text-sm text-muted-foreground">{type}</div>
-                      <div className="text-xl font-bold">${cost}</div>
+                      <div className="text-sm text-muted-foreground mb-1">{type}</div>
+                      {editingDefaultCosts ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-lg">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editedCosts[type] || ""}
+                            onChange={(e) => setEditedCosts({ ...editedCosts, [type]: e.target.value })}
+                            className="w-20 h-8 text-center font-bold"
+                            data-testid={`input-default-cost-${type}`}
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-xl font-bold">${cost}</div>
+                      )}
                     </div>
                   ))}
                 </div>
