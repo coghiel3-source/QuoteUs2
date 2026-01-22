@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertQuoteSchema, insertActivitySchema } from "@shared/schema";
 import { z } from "zod";
+import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail } from "./email";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -103,6 +104,20 @@ export async function registerRoutes(
         author: "System",
       });
       
+      // Send notification email to admin (info@quoteus.ca)
+      const adminEmail = generateNewLeadEmail({
+        clientName: quote.clientName,
+        type: quote.type,
+        email: quote.email || '',
+        phone: quote.phone || undefined,
+        source: quote.source || 'Website'
+      });
+      sendEmail({
+        to: 'info@quoteus.ca',
+        subject: adminEmail.subject,
+        html: adminEmail.html
+      }).catch(err => console.error('[Email] Admin notification error:', err));
+      
       res.status(201).json(quote);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -138,10 +153,58 @@ export async function registerRoutes(
   // Update quote
   app.patch("/api/quotes/:id", async (req, res) => {
     try {
+      const existingQuote = await storage.getQuote(req.params.id);
+      if (!existingQuote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
       const quote = await storage.updateQuote(req.params.id, req.body);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
+      
+      // Check for assignment change
+      if (req.body.assignedTo && req.body.assignedTo !== existingQuote.assignedTo) {
+        const broker = await storage.getUser(req.body.assignedTo);
+        if (broker && broker.email) {
+          const assignmentEmail = generateAssignmentEmail({
+            brokerName: broker.name,
+            clientName: quote.clientName,
+            type: quote.type,
+            email: quote.email || '',
+            phone: quote.phone || undefined,
+            assignedBy: req.body.assignedBy || 'Admin'
+          });
+          sendEmail({
+            to: broker.email,
+            subject: assignmentEmail.subject,
+            html: assignmentEmail.html
+          }).catch(err => console.error('[Email] Assignment notification error:', err));
+        }
+      }
+      
+      // Check for status change
+      if (req.body.status && req.body.status !== existingQuote.status) {
+        // Notify assigned broker if exists
+        if (quote.assignedTo) {
+          const broker = await storage.getUser(quote.assignedTo);
+          if (broker && broker.email) {
+            const statusEmail = generateStatusChangeEmail({
+              clientName: quote.clientName,
+              type: quote.type,
+              oldStatus: existingQuote.status,
+              newStatus: req.body.status,
+              changedBy: req.body.changedBy || 'Admin'
+            });
+            sendEmail({
+              to: broker.email,
+              subject: statusEmail.subject,
+              html: statusEmail.html
+            }).catch(err => console.error('[Email] Status change notification error:', err));
+          }
+        }
+      }
+      
       res.json(quote);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

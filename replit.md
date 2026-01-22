@@ -79,3 +79,16 @@ The schema uses PostgreSQL enums for type safety on user roles, quote statuses, 
 ### Environment Variables Required
 - `DATABASE_URL` - PostgreSQL connection string (required)
 - `NODE_ENV` - development or production
+- `SENDGRID_API_KEY` - SendGrid API key for email notifications (optional - emails logged to console if not set)
+- `EMAIL_FROM` - From email address (defaults to noreply@quoteus.ca)
+- `EMAIL_FROM_NAME` - From name (defaults to QuoteUs.ca)
+
+### Email Notifications
+The system includes automated email notifications for:
+- New lead submissions (sent to info@quoteus.ca)
+- Lead assignments (sent to assigned broker)
+- Status changes (sent to assigned broker)
+
+Email notifications require a SendGrid API key. Without it, emails are logged to console but not sent. To enable:
+1. Get a SendGrid API key from sendgrid.com
+2. Add SENDGRID_API_KEY to environment secrets
