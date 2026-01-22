@@ -295,7 +295,7 @@ export async function registerRoutes(
     res.json({ costs: LEAD_COSTS });
   });
 
-  // Get user balance and transaction history
+  // Get user balance - accessible by user themselves or admin/manager
   app.get("/api/users/:id/balance", async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
@@ -308,7 +308,7 @@ export async function registerRoutes(
     }
   });
 
-  // Get user transactions
+  // Get user transactions - accessible by user themselves or admin/manager
   app.get("/api/users/:id/transactions", async (req, res) => {
     try {
       const transactions = await storage.getTransactionsForUser(req.params.id);
@@ -319,6 +319,7 @@ export async function registerRoutes(
   });
 
   // Create checkout session for credit purchase
+  // Only brokers can purchase credits
   app.post("/api/credits/checkout", async (req, res) => {
     try {
       const { userId, amount } = req.body;
@@ -329,12 +330,17 @@ export async function registerRoutes(
       
       const validAmounts = CREDIT_PACKAGES.map(p => p.amount);
       if (!validAmounts.includes(amount)) {
-        return res.status(400).json({ error: "Invalid credit amount" });
+        return res.status(400).json({ error: "Invalid credit amount. Valid amounts: " + validAmounts.join(", ") });
       }
       
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Only brokers can purchase credits
+      if (user.role !== "broker") {
+        return res.status(403).json({ error: "Only brokers can purchase credits" });
       }
       
       const stripe = await getUncachableStripeClient();
@@ -432,12 +438,24 @@ export async function registerRoutes(
   });
 
   // Admin: Manual credit adjustment
+  // Only admin/manager can adjust credits
   app.post("/api/admin/credits/adjust", async (req, res) => {
     try {
       const { userId, amount, reason, actorId, actorName } = req.body;
       
       if (!userId || !amount || !reason) {
         return res.status(400).json({ error: "User ID, amount, and reason are required" });
+      }
+      
+      // Require actor ID for authorization
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required for authentication" });
+      }
+      
+      // Verify actor is admin/manager
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can adjust credits" });
       }
       
       const numAmount = parseFloat(amount);
@@ -475,6 +493,7 @@ export async function registerRoutes(
   });
 
   // Assign lead to broker (with balance deduction)
+  // Only admin/manager can assign leads
   app.post("/api/leads/assign", async (req, res) => {
     try {
       const { quoteId, brokerId, actorId, actorName } = req.body;
@@ -483,14 +502,47 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Quote ID and broker ID are required" });
       }
       
+      // Require actor ID for authorization
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required for authentication" });
+      }
+      
+      // Verify actor is admin/manager
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can assign leads" });
+      }
+      
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ error: "Quote not found" });
       }
       
+      // IDEMPOTENCY CHECK: Prevent double-deduction if already assigned to this broker
+      if (quote.assignedTo === brokerId) {
+        return res.json({ 
+          success: true, 
+          message: "Lead already assigned to this broker",
+          newBalance: (await storage.getUser(brokerId))?.balance,
+          leadCost: 0,
+          alreadyAssigned: true
+        });
+      }
+      
+      // Validate lead type
+      const validTypes = Object.keys(LEAD_COSTS);
+      if (!validTypes.includes(quote.type)) {
+        return res.status(400).json({ error: "Invalid lead type" });
+      }
+      
       const broker = await storage.getUser(brokerId);
       if (!broker) {
         return res.status(404).json({ error: "Broker not found" });
+      }
+      
+      // Verify target is a broker
+      if (broker.role !== "broker") {
+        return res.status(400).json({ error: "Can only assign leads to brokers" });
       }
       
       // Get lead cost
@@ -512,8 +564,8 @@ export async function registerRoutes(
         });
       }
       
-      // Update quote assignment
-      await storage.updateQuote(quoteId, { assignedTo: brokerId } as any);
+      // Update quote assignment - SERVER IS THE AUTHORITATIVE SOURCE
+      const updatedQuote = await storage.updateQuote(quoteId, { assignedTo: brokerId } as any);
       
       // Create activity
       await storage.createActivity({
@@ -544,7 +596,8 @@ export async function registerRoutes(
         success: true, 
         newBalance: debitResult.user.balance,
         transaction: debitResult.transaction,
-        leadCost 
+        leadCost,
+        quote: updatedQuote
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

@@ -36,11 +36,13 @@ The server handles API routes in `server/routes.ts`, database operations through
 - **Migrations**: Drizzle Kit manages schema migrations in `./migrations`
 
 Core tables include:
-- `users` - Staff and customer accounts with role-based permissions
+- `users` - Staff and customer accounts with role-based permissions, includes balance for credit system
 - `quotes` - Insurance quote requests/leads with status tracking
 - `activities` - Activity log for each quote (status changes, notes, emails)
+- `transactions` - All credit balance changes (purchases, deductions, adjustments)
+- `systemSettings` - Platform configuration settings
 
-The schema uses PostgreSQL enums for type safety on user roles, quote statuses, priorities, and activity types.
+The schema uses PostgreSQL enums for type safety on user roles, quote statuses, priorities, activity types, and transaction types.
 
 ### Authentication
 - Simple email-based authentication (production would need password hashing)
@@ -69,7 +71,8 @@ The schema uses PostgreSQL enums for type safety on user roles, quote statuses, 
 ### Third-Party Integrations
 - Travel insurance quotes redirect to TuGo partner site
 - Vehicle data loaded from static JSON (`client/public/data/vehicles.json`)
-- Email notifications planned via SendGrid (not yet implemented)
+- Stripe payment integration for credit purchases (via stripe-replit-sync)
+- Email notifications via SendGrid
 
 ### Development Tools
 - Replit-specific plugins for dev banner and cartographer
@@ -92,3 +95,36 @@ The system includes automated email notifications for:
 Email notifications require a SendGrid API key. Without it, emails are logged to console but not sent. To enable:
 1. Get a SendGrid API key from sendgrid.com
 2. Add SENDGRID_API_KEY to environment secrets
+
+### Lead Credit System
+Brokers must purchase credits to receive leads. The system includes:
+
+**Credit Packages**: $25, $50, $100, $150, $200, $250
+**Lead Costs by Type**:
+- Auto: $10
+- Home: $15  
+- Tenant: $5
+- Business: $20
+- Life: $12
+- Travel: $3
+- Pet: $5
+- General: $8
+
+**Flow**:
+1. Broker purchases credits via Stripe checkout
+2. Admin/Manager assigns lead to broker
+3. Lead cost is automatically deducted from broker's balance
+4. Assignment blocked if insufficient balance
+5. All transactions are logged for auditing
+
+**Authorization**:
+- Only brokers can purchase credits
+- Only admin/manager can assign leads and adjust balances
+- All credit operations require role verification
+
+**Key Files**:
+- `server/stripeClient.ts` - Stripe API integration
+- `server/webhookHandlers.ts` - Stripe webhook processing  
+- `client/src/pages/BrokerCredits.tsx` - Broker credit management page
+- `/api/credits/*` - Credit-related API endpoints
+- `/api/leads/assign` - Lead assignment with credit deduction

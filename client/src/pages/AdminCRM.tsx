@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { useAuth } from "@/lib/AuthContext";
+import { DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 
 export default function AdminCRMPage() {
-  const { quotes, updateStatus, assignQuote, addQuote, deleteQuote, addNote, logEmail } = useQuotes();
+  const { quotes, updateStatus, assignQuote, assignQuoteLocal, refreshQuotes, addQuote, deleteQuote, addNote, logEmail } = useQuotes();
   const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword, register } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -49,6 +50,82 @@ export default function AdminCRMPage() {
     role: "broker" as "broker" | "manager" | "admin",
     password: ""
   });
+
+  // Lead costs from API
+  const [leadCosts, setLeadCosts] = useState<Record<string, number>>({});
+  const [assigningLead, setAssigningLead] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/credits/lead-costs")
+      .then(r => r.json())
+      .then(data => setLeadCosts(data.costs || {}))
+      .catch(console.error);
+  }, []);
+
+  const handleAssignWithCredits = async (quoteId: string, brokerId: string, brokerName: string) => {
+    if (brokerId === "unassigned") {
+      // Use standard assignment for unassigning (no credit involved)
+      assignQuote(quoteId, "unassigned", user?.name);
+      toast({
+        title: "Lead Unassigned",
+        description: "Lead is now unassigned.",
+      });
+      return;
+    }
+
+    setAssigningLead(quoteId);
+    try {
+      const response = await fetch("/api/leads/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteId,
+          brokerId,
+          actorId: user?.id,
+          actorName: user?.name
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.error === "Insufficient balance") {
+          toast({
+            title: "Insufficient Credits",
+            description: `${brokerName} needs $${data.required} but only has $${parseFloat(data.currentBalance).toFixed(2)}.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Assignment Failed",
+            description: data.error || "Could not assign lead",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      // Server is authoritative - update local state to match (no additional API call)
+      assignQuoteLocal(quoteId, brokerId);
+      
+      toast({
+        title: "Lead Assigned",
+        description: `Lead assigned to ${brokerName}. $${data.leadCost} deducted. New balance: $${parseFloat(data.newBalance).toFixed(2)}`,
+      });
+      
+      // Refresh quotes to get updated activities
+      refreshQuotes();
+    } catch (error) {
+      console.error("Assignment error:", error);
+      toast({
+        title: "Assignment Failed",
+        description: "An error occurred while assigning the lead",
+        variant: "destructive",
+      });
+    } finally {
+      setAssigningLead(null);
+    }
+  };
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,7 +271,7 @@ export default function AdminCRMPage() {
 
   // Sort by date descending
   const sortedQuotes = [...filteredQuotes].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
+    new Date(b.date || new Date()).getTime() - new Date(a.date || new Date()).getTime()
   );
 
   const getIconForType = (type: string) => {
@@ -337,7 +414,7 @@ export default function AdminCRMPage() {
                         </Badge>
                       </SheetTitle>
                       <SheetDescription className="mt-1 flex items-center gap-2">
-                        Quote #{selectedQuote.quoteNumber} • {format(new Date(selectedQuote.date), 'MMMM d, yyyy h:mm a')}
+                        Quote #{selectedQuote.quoteNumber} • {format(new Date(selectedQuote.date || new Date()), 'MMMM d, yyyy h:mm a')}
                       </SheetDescription>
                     </div>
                   </div>
@@ -444,7 +521,7 @@ export default function AdminCRMPage() {
                                />
                                <div className="flex justify-between items-start">
                                  <span className="text-sm font-medium text-slate-900">{activity.author}</span>
-                                 <span className="text-xs text-muted-foreground">{format(new Date(activity.timestamp), 'MMM d, h:mm a')}</span>
+                                 <span className="text-xs text-muted-foreground">{format(new Date(activity.timestamp || new Date()), 'MMM d, h:mm a')}</span>
                                </div>
                                <p className="text-sm text-slate-600 mt-1">{activity.content}</p>
                              </div>
@@ -630,7 +707,7 @@ export default function AdminCRMPage() {
                           </div>
                           <div>
                             <div className="font-medium">{quote.clientName}</div>
-                            <div className="text-xs text-muted-foreground">{format(new Date(quote.date), 'MMM d, h:mm a')}</div>
+                            <div className="text-xs text-muted-foreground">{format(new Date(quote.date || new Date()), 'MMM d, h:mm a')}</div>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -918,28 +995,25 @@ export default function AdminCRMPage() {
                              <Select 
                               value={quote.assignedTo || "unassigned"} 
                               onValueChange={(val) => {
-                                assignQuote(quote.id, val, user?.name);
                                 const broker = users.find(u => u.id === val);
-                                if (broker) {
-                                  toast({
-                                    title: "Lead Assigned",
-                                    description: `Notification sent to ${broker.name}.`,
-                                  });
-                                } else {
-                                   toast({
-                                    title: "Lead Unassigned",
-                                    description: "Lead is now unassigned.",
-                                  });
-                                }
+                                handleAssignWithCredits(quote.id, val, broker?.name || "");
                               }}
+                              disabled={assigningLead === quote.id}
                             >
-                              <SelectTrigger className="w-[140px] h-8 text-xs">
+                              <SelectTrigger className="w-[160px] h-8 text-xs">
                                 <SelectValue placeholder="Unassigned" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="unassigned">Unassigned</SelectItem>
                                 {brokers.map(broker => (
-                                  <SelectItem key={broker.id} value={broker.id}>{broker.name}</SelectItem>
+                                  <SelectItem key={broker.id} value={broker.id}>
+                                    <span className="flex items-center gap-2">
+                                      {broker.name}
+                                      <span className="text-xs text-muted-foreground">
+                                        (${parseFloat(broker.balance || "0").toFixed(0)})
+                                      </span>
+                                    </span>
+                                  </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -947,10 +1021,10 @@ export default function AdminCRMPage() {
                           <TableCell>
                             <div className="flex items-center gap-1 text-sm text-muted-foreground">
                               <Calendar size={14} />
-                              {format(new Date(quote.date), 'MMM d')}
+                              {format(new Date(quote.date || new Date()), 'MMM d')}
                             </div>
                             <div className="text-xs text-muted-foreground pl-5">
-                              {format(new Date(quote.date), 'h:mm a')}
+                              {format(new Date(quote.date || new Date()), 'h:mm a')}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">

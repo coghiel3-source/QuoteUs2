@@ -35,6 +35,8 @@ interface QuoteContextType {
   addQuote: (quote: Omit<Quote, 'id' | 'quoteNumber' | 'date' | 'createdAt' | 'status' | 'priority' | 'source' | 'internalNotes' | 'activityLog'> & { priority?: Quote['priority'], source?: string }) => Promise<void>;
   updateStatus: (id: string, status: Quote['status'], author?: string) => Promise<void>;
   assignQuote: (quoteId: string, brokerId: string, author?: string) => Promise<void>;
+  assignQuoteLocal: (quoteId: string, brokerId: string) => void;
+  refreshQuotes: () => Promise<void>;
   deleteQuote: (id: string) => Promise<void>;
   addNote: (id: string, note: string, author: string) => Promise<void>;
   logEmail: (id: string, subject: string, recipient: string, author: string) => Promise<void>;
@@ -200,6 +202,31 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Local state update only - used when server has already updated the assignment
+  const assignQuoteLocal = (quoteId: string, brokerId: string) => {
+    setQuotes(prev => prev.map(q =>
+      q.id === quoteId ? {
+        ...q,
+        assignedTo: brokerId === 'unassigned' ? undefined : brokerId,
+      } : q
+    ));
+  };
+
+  // Refresh quotes from server
+  const refreshQuotes = async () => {
+    try {
+      const data = await apiRequest<any[]>('/quotes');
+      const quotesWithDates = data.map(q => ({
+        ...q,
+        date: q.createdAt,
+        activityLog: q.activityLog || [],
+      }));
+      setQuotes(quotesWithDates);
+    } catch (error) {
+      console.error('Failed to refresh quotes:', error);
+    }
+  };
+
   const deleteQuote = async (id: string) => {
     try {
       await apiRequest(`/quotes/${id}`, {
@@ -285,7 +312,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <QuoteContext.Provider value={{ quotes, loading, addQuote, updateStatus, assignQuote, deleteQuote, addNote, logEmail }}>
+    <QuoteContext.Provider value={{ quotes, loading, addQuote, updateStatus, assignQuote, assignQuoteLocal, refreshQuotes, deleteQuote, addNote, logEmail }}>
       {children}
     </QuoteContext.Provider>
   );
