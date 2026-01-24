@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFo
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -34,6 +34,8 @@ export default function AdminCRMPage() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [selectedUserForReset, setSelectedUserForReset] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   
   // Lead Detail View State
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -659,15 +661,26 @@ export default function AdminCRMPage() {
             <form onSubmit={handlePasswordReset} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
-                <Input 
-                  id="newPassword" 
-                  type="password"
-                  value={newPassword} 
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  required
-                  minLength={6}
-                />
+                <div className="relative">
+                  <Input 
+                    id="newPassword" 
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword} 
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    required
+                    minLength={6}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    data-testid="button-toggle-password"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="submit" className="w-full">Update Password</Button>
@@ -1218,14 +1231,25 @@ export default function AdminCRMPage() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="userPassword">Initial Password</Label>
-                          <Input 
-                            id="userPassword" 
-                            type="password"
-                            value={newUser.password} 
-                            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                            required 
-                            placeholder="••••••••"
-                          />
+                          <div className="relative">
+                            <Input 
+                              id="userPassword" 
+                              type={showNewUserPassword ? "text" : "password"}
+                              value={newUser.password} 
+                              onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                              required 
+                              placeholder="••••••••"
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              data-testid="button-toggle-new-user-password"
+                            >
+                              {showNewUserPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
                         </div>
                         <DialogFooter>
                           <Button type="submit" className="w-full">Create Account</Button>
