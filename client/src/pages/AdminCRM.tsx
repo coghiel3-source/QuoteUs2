@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFo
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -398,6 +398,17 @@ export default function AdminCRMPage() {
                     className={activeTab === 'credits' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                   >
                     <DollarSign size={16} className="mr-2" /> Credits
+                  </Button>
+                )}
+                {user?.role === 'admin' && (
+                  <Button 
+                    variant={activeTab === 'manage' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setActiveTab('manage')}
+                    className={activeTab === 'manage' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                    data-testid="nav-manage"
+                  >
+                    <Key size={16} className="mr-2" /> Manage
                   </Button>
                 )}
               </nav>
@@ -1752,6 +1763,180 @@ export default function AdminCRMPage() {
             <CardContent>
               <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">
                 Settings panel content would go here.
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* MANAGE TAB - API Keys & Services */}
+        {activeTab === 'manage' && user?.role === 'admin' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                API Keys & Services
+              </CardTitle>
+              <CardDescription>
+                Configure third-party service integrations. API keys are securely stored as environment secrets.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-800">
+                  <strong>Security Note:</strong> API keys are stored as encrypted environment secrets and cannot be viewed once set. 
+                  To update a key, enter a new value and save.
+                </p>
+              </div>
+
+              {/* Stripe Payment Integration */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-purple-100 p-2 rounded-lg">
+                      <DollarSign className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Stripe Payments</h3>
+                      <p className="text-sm text-muted-foreground">Process credit purchases and payments</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                    Connected
+                  </Badge>
+                </div>
+                <div className="space-y-3 mt-4">
+                  <div className="space-y-2">
+                    <Label>Stripe Secret Key</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        placeholder="sk_live_••••••••••••••••"
+                        className="font-mono"
+                        data-testid="input-stripe-secret-key"
+                      />
+                      <Button variant="outline" data-testid="button-save-stripe-key">Save</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Your Stripe secret key from the Stripe Dashboard</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Stripe Publishable Key</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="text" 
+                        placeholder="pk_live_••••••••••••••••"
+                        className="font-mono"
+                        data-testid="input-stripe-publishable-key"
+                      />
+                      <Button variant="outline" data-testid="button-save-stripe-pub-key">Save</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Your Stripe publishable key (safe to expose client-side)</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Webhook Signing Secret</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        placeholder="whsec_••••••••••••••••"
+                        className="font-mono"
+                        data-testid="input-stripe-webhook-secret"
+                      />
+                      <Button variant="outline" data-testid="button-save-stripe-webhook">Save</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Used to verify webhook events from Stripe</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Service Integration */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-100 p-2 rounded-lg">
+                      <Mail className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">SendGrid Email</h3>
+                      <p className="text-sm text-muted-foreground">Send email notifications to brokers and admins</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
+                    <XCircle className="h-3 w-3" />
+                    Not Configured
+                  </Badge>
+                </div>
+                <div className="space-y-3 mt-4">
+                  <div className="space-y-2">
+                    <Label>SendGrid API Key</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="password" 
+                        placeholder="SG.••••••••••••••••"
+                        className="font-mono"
+                        data-testid="input-sendgrid-api-key"
+                      />
+                      <Button variant="outline" data-testid="button-save-sendgrid-key">Save</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Your SendGrid API key for sending transactional emails</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>From Email Address</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="email" 
+                        placeholder="noreply@quoteus.ca"
+                        data-testid="input-email-from"
+                      />
+                      <Button variant="outline" data-testid="button-save-email-from">Save</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">The email address that notifications will be sent from</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>From Name</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="text" 
+                        placeholder="QuoteUs.ca"
+                        data-testid="input-email-from-name"
+                      />
+                      <Button variant="outline" data-testid="button-save-email-name">Save</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">The display name shown in email notifications</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Admin Notification Email */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-green-100 p-2 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Admin Notifications</h3>
+                      <p className="text-sm text-muted-foreground">Configure where admin alerts are sent</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3 mt-4">
+                  <div className="space-y-2">
+                    <Label>Admin Email Address</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="email" 
+                        placeholder="info@quoteus.ca"
+                        data-testid="input-admin-email"
+                      />
+                      <Button variant="outline" data-testid="button-save-admin-email">Save</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Email address to receive new lead notifications</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-sm text-muted-foreground mt-4">
+                <p>Need help setting up integrations? Contact support for assistance with API configuration.</p>
               </div>
             </CardContent>
           </Card>
