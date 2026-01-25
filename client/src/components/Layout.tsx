@@ -30,9 +30,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <a href="tel:1-877-253-2695" className="flex items-center gap-2 hover:text-accent transition-colors">
               <Phone size={14} /> 1-877-253-2695
             </a>
-            <Link href="/dashboard" className="flex items-center gap-2 hover:text-accent transition-colors">
-               Broker Login
-            </Link>
           </div>
         </div>
       </div>
@@ -143,7 +140,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
-                <li><Link href="/dashboard" className="hover:text-white transition-colors">Broker CRM</Link></li>
+                <li><Link href="/dashboard" className="hover:text-white transition-colors">Broker Login</Link></li>
               </ul>
             </div>
 
