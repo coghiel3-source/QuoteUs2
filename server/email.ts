@@ -1,3 +1,6 @@
+import nodemailer from 'nodemailer';
+import { storage } from './storage';
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -5,52 +8,75 @@ interface EmailOptions {
   text?: string;
 }
 
-interface EmailConfig {
-  apiKey?: string;
+interface SmtpSettings {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
   fromEmail: string;
   fromName: string;
+  useSsl: boolean;
 }
 
-const config: EmailConfig = {
-  apiKey: process.env.SENDGRID_API_KEY,
-  fromEmail: process.env.EMAIL_FROM || 'noreply@quoteus.ca',
-  fromName: process.env.EMAIL_FROM_NAME || 'QuoteUs.ca'
-};
+let cachedSmtpSettings: SmtpSettings | null = null;
+let lastSettingsCheck = 0;
+const SETTINGS_CACHE_TTL = 60000; // 1 minute
+
+async function getSmtpSettings(): Promise<SmtpSettings | null> {
+  const now = Date.now();
+  if (cachedSmtpSettings && (now - lastSettingsCheck) < SETTINGS_CACHE_TTL) {
+    return cachedSmtpSettings;
+  }
+
+  try {
+    const setting = await storage.getSetting("smtp_settings");
+    if (!setting) {
+      return null;
+    }
+    cachedSmtpSettings = JSON.parse(setting.value);
+    lastSettingsCheck = now;
+    return cachedSmtpSettings;
+  } catch (error) {
+    console.error('[Email] Failed to load SMTP settings:', error);
+    return null;
+  }
+}
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
-  if (!config.apiKey) {
-    console.log('[Email] No API key configured - email notification logged but not sent:');
+  const smtpSettings = await getSmtpSettings();
+  
+  if (!smtpSettings) {
+    console.log('[Email] No SMTP settings configured - email notification logged but not sent:');
     console.log(`  To: ${options.to}`);
     console.log(`  Subject: ${options.subject}`);
     return false;
   }
 
   try {
-    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
-        'Content-Type': 'application/json'
+    const transporter = nodemailer.createTransport({
+      host: smtpSettings.host,
+      port: smtpSettings.port,
+      secure: smtpSettings.useSsl && smtpSettings.port === 465,
+      auth: {
+        user: smtpSettings.username,
+        pass: smtpSettings.password,
       },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: options.to }] }],
-        from: { email: config.fromEmail, name: config.fromName },
-        subject: options.subject,
-        content: [
-          { type: 'text/html', value: options.html },
-          ...(options.text ? [{ type: 'text/plain', value: options.text }] : [])
-        ]
-      })
+      tls: {
+        rejectUnauthorized: false
+      }
     });
 
-    if (response.ok || response.status === 202) {
-      console.log(`[Email] Sent successfully to ${options.to}`);
-      return true;
-    } else {
-      const error = await response.text();
-      console.error(`[Email] Failed to send: ${error}`);
-      return false;
-    }
+    const mailOptions = {
+      from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text || undefined,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[Email] Sent successfully to ${options.to} - MessageId: ${info.messageId}`);
+    return true;
   } catch (error) {
     console.error('[Email] Error sending email:', error);
     return false;
