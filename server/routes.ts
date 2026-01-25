@@ -531,6 +531,150 @@ export async function registerRoutes(
     }
   });
 
+  // Create payment link for policy premium collection
+  app.post("/api/payments/premium", async (req, res) => {
+    try {
+      const { quoteId, amount, description, actorId } = req.body;
+      
+      if (!quoteId || !amount) {
+        return res.status(400).json({ error: "Quote ID and amount are required" });
+      }
+      
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required for authentication" });
+      }
+      
+      // Verify actor is admin/manager/broker
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["admin", "manager", "broker"].includes(actor.role)) {
+        return res.status(403).json({ error: "Only staff can collect premiums" });
+      }
+      
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      if (!quote.email) {
+        return res.status(400).json({ error: "Client email is required for payment" });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      
+      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'http://localhost:5000';
+      
+      // Create checkout session for premium payment
+      const session = await stripe.checkout.sessions.create({
+        customer_email: quote.email,
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: 'cad',
+            product_data: {
+              name: `${quote.type} Insurance Premium`,
+              description: description || `Policy premium for ${quote.clientName} - ${quote.quoteNumber}`,
+            },
+            unit_amount: Math.round(parseFloat(amount) * 100),
+          },
+          quantity: 1,
+        }],
+        mode: 'payment',
+        success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/payment/canceled`,
+        metadata: {
+          quoteId: quote.id,
+          quoteNumber: quote.quoteNumber,
+          type: 'premium_payment',
+          premiumAmount: amount.toString(),
+        },
+      });
+      
+      // Update quote with premium amount
+      await storage.updateQuote(quoteId, { premiumAmount: amount } as any);
+      
+      // Log activity
+      await storage.createActivity({
+        quoteId,
+        type: "system",
+        content: `Payment link created for $${amount} premium`,
+        author: actor.name,
+      });
+      
+      res.json({ 
+        url: session.url, 
+        sessionId: session.id,
+        paymentLink: session.url
+      });
+    } catch (error: any) {
+      console.error('[Premium Payment] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Handle premium payment webhook/confirmation
+  app.post("/api/payments/premium/confirm", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      
+      if (!sessionId) {
+        return res.status(400).json({ error: "Session ID required" });
+      }
+      
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ error: "Payment not completed" });
+      }
+      
+      const metadata = session.metadata;
+      if (!metadata?.quoteId || metadata.type !== 'premium_payment') {
+        return res.status(400).json({ error: "Invalid session" });
+      }
+      
+      // Update quote as paid
+      await storage.updateQuote(metadata.quoteId, {
+        premiumPaid: true,
+        premiumPaidAt: new Date(),
+        stripePaymentIntentId: session.payment_intent as string,
+      } as any);
+      
+      // Log activity
+      await storage.createActivity({
+        quoteId: metadata.quoteId,
+        type: "system",
+        content: `Premium payment of $${metadata.premiumAmount} received via Stripe`,
+        author: "System",
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[Premium Confirm] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get payment status for a quote
+  app.get("/api/payments/quote/:quoteId", async (req, res) => {
+    try {
+      const quote = await storage.getQuote(req.params.quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      
+      res.json({
+        quoteId: quote.id,
+        premiumAmount: quote.premiumAmount,
+        premiumPaid: quote.premiumPaid,
+        premiumPaidAt: quote.premiumPaidAt,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Handle successful payment (called after Stripe redirects back)
   app.post("/api/credits/confirm", async (req, res) => {
     try {

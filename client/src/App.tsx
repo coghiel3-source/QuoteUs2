@@ -24,6 +24,8 @@ import ProfilePage from "@/pages/Profile";
 import LoginPage from "@/pages/Login";
 import AdminCRMPage from "@/pages/AdminCRM";
 import BrokerCreditsPage from "@/pages/BrokerCredits";
+import PaymentSuccessPage from "@/pages/PaymentSuccess";
+import PaymentCanceledPage from "@/pages/PaymentCanceled";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -57,6 +59,8 @@ function Router() {
         <Route path="/login" component={LoginPage} />
         <Route path="/admin" component={AdminCRMPage} />
         <Route path="/broker/credits" component={BrokerCreditsPage} />
+        <Route path="/payment/success" component={PaymentSuccessPage} />
+        <Route path="/payment/canceled" component={PaymentCanceledPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

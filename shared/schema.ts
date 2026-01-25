@@ -70,6 +70,10 @@ export const quotes = pgTable("quotes", {
   assignedTo: varchar("assigned_to").references(() => users.id),
   internalNotes: text("internal_notes").default(""),
   details: jsonb("details").notNull().default({}),
+  premiumAmount: decimal("premium_amount", { precision: 10, scale: 2 }),
+  premiumPaid: boolean("premium_paid").default(false),
+  premiumPaidAt: timestamp("premium_paid_at"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
