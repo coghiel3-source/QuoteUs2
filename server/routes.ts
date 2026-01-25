@@ -364,11 +364,25 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Host, username and password are required" });
       }
       
-      // For now, just validate the settings exist - actual SMTP test would require nodemailer
-      // In production, you'd test the connection here
-      res.json({ success: true, message: "SMTP settings validated" });
+      const nodemailer = await import('nodemailer');
+      const transporter = nodemailer.default.createTransport({
+        host: host,
+        port: port || 587,
+        secure: useSsl && port === 465,
+        auth: {
+          user: username,
+          pass: password,
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+      
+      await transporter.verify();
+      res.json({ success: true, message: "SMTP connection successful" });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('[SMTP Test] Error:', error);
+      res.status(400).json({ error: `SMTP connection failed: ${error.message}` });
     }
   });
 
