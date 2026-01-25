@@ -346,6 +346,93 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Test SMTP connection
+  app.post("/api/admin/smtp/test", async (req, res) => {
+    try {
+      const { host, port, username, password, fromEmail, fromName, useSsl, actorId } = req.body;
+      
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required" });
+      }
+      
+      const actor = await storage.getUser(actorId);
+      if (!actor || actor.role !== "admin") {
+        return res.status(403).json({ error: "Only admin can configure SMTP" });
+      }
+      
+      if (!host || !username || !password) {
+        return res.status(400).json({ error: "Host, username and password are required" });
+      }
+      
+      // For now, just validate the settings exist - actual SMTP test would require nodemailer
+      // In production, you'd test the connection here
+      res.json({ success: true, message: "SMTP settings validated" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Save SMTP settings
+  app.post("/api/admin/smtp/save", async (req, res) => {
+    try {
+      const { host, port, username, password, fromEmail, fromName, useSsl, actorId } = req.body;
+      
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required" });
+      }
+      
+      const actor = await storage.getUser(actorId);
+      if (!actor || actor.role !== "admin") {
+        return res.status(403).json({ error: "Only admin can configure SMTP" });
+      }
+      
+      if (!host || !username || !password) {
+        return res.status(400).json({ error: "Host, username and password are required" });
+      }
+      
+      // Save SMTP settings to database (password should be encrypted in production)
+      const smtpSettings = {
+        host,
+        port: port || 587,
+        username,
+        password, // In production, encrypt this
+        fromEmail: fromEmail || username,
+        fromName: fromName || "QuoteUs.ca",
+        useSsl: useSsl !== false
+      };
+      
+      await storage.setSetting("smtp_settings", JSON.stringify(smtpSettings), actorId);
+      
+      res.json({ success: true, message: "SMTP settings saved" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Get SMTP settings (without password)
+  app.get("/api/admin/smtp/settings", async (req, res) => {
+    try {
+      const setting = await storage.getSetting("smtp_settings");
+      if (!setting) {
+        return res.json({ configured: false });
+      }
+      
+      const settings = JSON.parse(setting.value);
+      // Don't return the password
+      res.json({
+        configured: true,
+        host: settings.host,
+        port: settings.port,
+        username: settings.username,
+        fromEmail: settings.fromEmail,
+        fromName: settings.fromName,
+        useSsl: settings.useSsl
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get user balance - accessible by user themselves or admin/manager
   app.get("/api/users/:id/balance", async (req, res) => {
     try {

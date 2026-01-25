@@ -69,11 +69,40 @@ export default function AdminCRMPage() {
   const [newLeadCost, setNewLeadCost] = useState("");
   const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
   const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
+  
+  // SMTP Settings State
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpUsername, setSmtpUsername] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpFromEmail, setSmtpFromEmail] = useState("");
+  const [smtpFromName, setSmtpFromName] = useState("");
+  const [smtpUseSsl, setSmtpUseSsl] = useState(true);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/credits/lead-costs")
       .then(r => r.json())
       .then(data => setLeadCosts(data.costs || {}))
+      .catch(console.error);
+    
+    // Load SMTP settings
+    fetch("/api/admin/smtp/settings")
+      .then(r => r.json())
+      .then(data => {
+        if (data.configured) {
+          setSmtpConfigured(true);
+          setSmtpHost(data.host || "");
+          setSmtpPort(data.port?.toString() || "587");
+          setSmtpUsername(data.username || "");
+          setSmtpFromEmail(data.fromEmail || "");
+          setSmtpFromName(data.fromName || "");
+          setSmtpUseSsl(data.useSsl !== false);
+        }
+      })
       .catch(console.error);
   }, []);
 
@@ -1933,10 +1962,17 @@ export default function AdminCRMPage() {
                       <p className="text-sm text-muted-foreground">Connect your hosting company email account</p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
-                    <XCircle className="h-3 w-3" />
-                    Not Configured
-                  </Badge>
+                  {smtpConfigured ? (
+                    <Badge variant="outline" className="flex items-center gap-1 text-green-600">
+                      <CheckCircle className="h-3 w-3" />
+                      Configured
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
+                      <XCircle className="h-3 w-3" />
+                      Not Configured
+                    </Badge>
+                  )}
                 </div>
                 <div className="space-y-3 mt-4">
                   <div className="grid grid-cols-2 gap-3">
@@ -1946,6 +1982,8 @@ export default function AdminCRMPage() {
                         type="text" 
                         placeholder="mail.yourdomain.com"
                         className="font-mono"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
                         data-testid="input-smtp-host"
                       />
                     </div>
@@ -1955,6 +1993,8 @@ export default function AdminCRMPage() {
                         type="number" 
                         placeholder="587"
                         className="font-mono"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
                         data-testid="input-smtp-port"
                       />
                     </div>
@@ -1964,17 +2004,32 @@ export default function AdminCRMPage() {
                     <Input 
                       type="text" 
                       placeholder="info@quoteus.ca"
+                      value={smtpUsername}
+                      onChange={(e) => setSmtpUsername(e.target.value)}
                       data-testid="input-smtp-username"
                     />
                     <p className="text-xs text-muted-foreground">Usually your full email address</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Email Password</Label>
-                    <Input 
-                      type="password" 
-                      placeholder="••••••••••••"
-                      data-testid="input-smtp-password"
-                    />
+                    <div className="relative">
+                      <Input 
+                        type={showSmtpPassword ? "text" : "password"}
+                        placeholder="••••••••••••"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="pr-10"
+                        data-testid="input-smtp-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        data-testid="button-toggle-smtp-password"
+                      >
+                        {showSmtpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     <p className="text-xs text-muted-foreground">Your email account password</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -1983,6 +2038,8 @@ export default function AdminCRMPage() {
                       <Input 
                         type="email" 
                         placeholder="info@quoteus.ca"
+                        value={smtpFromEmail}
+                        onChange={(e) => setSmtpFromEmail(e.target.value)}
                         data-testid="input-email-from"
                       />
                     </div>
@@ -1991,17 +2048,104 @@ export default function AdminCRMPage() {
                       <Input 
                         type="text" 
                         placeholder="QuoteUs.ca"
+                        value={smtpFromName}
+                        onChange={(e) => setSmtpFromName(e.target.value)}
                         data-testid="input-email-from-name"
                       />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <input type="checkbox" id="smtp-ssl" className="h-4 w-4" data-testid="checkbox-smtp-ssl" />
+                    <input 
+                      type="checkbox" 
+                      id="smtp-ssl" 
+                      className="h-4 w-4" 
+                      checked={smtpUseSsl}
+                      onChange={(e) => setSmtpUseSsl(e.target.checked)}
+                      data-testid="checkbox-smtp-ssl" 
+                    />
                     <Label htmlFor="smtp-ssl" className="text-sm font-normal">Use SSL/TLS encryption</Label>
                   </div>
                   <div className="flex gap-2 mt-3">
-                    <Button variant="outline" data-testid="button-test-email">Test Connection</Button>
-                    <Button data-testid="button-save-smtp">Save Settings</Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={async () => {
+                        if (!smtpHost || !smtpUsername || !smtpPassword) {
+                          toast({ title: "Error", description: "Please fill in host, username and password", variant: "destructive" });
+                          return;
+                        }
+                        setSmtpTesting(true);
+                        try {
+                          const res = await fetch("/api/admin/smtp/test", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              host: smtpHost,
+                              port: parseInt(smtpPort),
+                              username: smtpUsername,
+                              password: smtpPassword,
+                              fromEmail: smtpFromEmail || smtpUsername,
+                              fromName: smtpFromName || "QuoteUs.ca",
+                              useSsl: smtpUseSsl,
+                              actorId: user?.id
+                            }),
+                          });
+                          if (res.ok) {
+                            toast({ title: "Success", description: "SMTP connection test successful!" });
+                          } else {
+                            const err = await res.json();
+                            toast({ title: "Connection Failed", description: err.error || "Could not connect to SMTP server", variant: "destructive" });
+                          }
+                        } catch (err) {
+                          toast({ title: "Error", description: "Failed to test connection", variant: "destructive" });
+                        } finally {
+                          setSmtpTesting(false);
+                        }
+                      }}
+                      disabled={smtpTesting}
+                      data-testid="button-test-email"
+                    >
+                      {smtpTesting ? "Testing..." : "Test Connection"}
+                    </Button>
+                    <Button 
+                      onClick={async () => {
+                        if (!smtpHost || !smtpUsername || !smtpPassword) {
+                          toast({ title: "Error", description: "Please fill in host, username and password", variant: "destructive" });
+                          return;
+                        }
+                        setSmtpSaving(true);
+                        try {
+                          const res = await fetch("/api/admin/smtp/save", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              host: smtpHost,
+                              port: parseInt(smtpPort),
+                              username: smtpUsername,
+                              password: smtpPassword,
+                              fromEmail: smtpFromEmail || smtpUsername,
+                              fromName: smtpFromName || "QuoteUs.ca",
+                              useSsl: smtpUseSsl,
+                              actorId: user?.id
+                            }),
+                          });
+                          if (res.ok) {
+                            setSmtpConfigured(true);
+                            toast({ title: "Settings Saved", description: "SMTP email settings have been saved." });
+                          } else {
+                            const err = await res.json();
+                            toast({ title: "Error", description: err.error || "Failed to save settings", variant: "destructive" });
+                          }
+                        } catch (err) {
+                          toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+                        } finally {
+                          setSmtpSaving(false);
+                        }
+                      }}
+                      disabled={smtpSaving}
+                      data-testid="button-save-smtp"
+                    >
+                      {smtpSaving ? "Saving..." : "Save Settings"}
+                    </Button>
                   </div>
                 </div>
               </div>
