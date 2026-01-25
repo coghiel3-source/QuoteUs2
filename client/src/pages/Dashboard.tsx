@@ -34,6 +34,10 @@ export default function DashboardPage() {
   const [registerPhone, setRegisterPhone] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [registerBrokerage, setRegisterBrokerage] = useState("");
+  const [registerYearsOfService, setRegisterYearsOfService] = useState("");
+  const [registerProductTypes, setRegisterProductTypes] = useState<string[]>([]);
+  const [registerOtherServices, setRegisterOtherServices] = useState("");
   const [selectedLead, setSelectedLead] = useState<Quote | null>(null);
   const [isFundDialogOpen, setIsFundDialogOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
@@ -128,8 +132,26 @@ export default function DashboardPage() {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    register(registerName, registerEmail, registerPassword, 'broker', registerPhone);
+    const allProductTypes = registerOtherServices 
+      ? [...registerProductTypes, registerOtherServices]
+      : registerProductTypes;
+    register(
+      registerName, 
+      registerEmail, 
+      registerPassword, 
+      'broker', 
+      registerPhone,
+      {
+        brokerage: registerBrokerage,
+        yearsOfService: registerYearsOfService ? parseInt(registerYearsOfService) : undefined,
+        productTypes: allProductTypes
+      }
+    );
     setIsRegistering(false);
+    setRegisterBrokerage("");
+    setRegisterYearsOfService("");
+    setRegisterProductTypes([]);
+    setRegisterOtherServices("");
     toast({ title: "Registration Submitted", description: "Your account is pending approval from an Account Manager." });
   };
 
@@ -180,6 +202,64 @@ export default function DashboardPage() {
                       {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Brokerage / Insurance Company Name</label>
+                  <Input 
+                    placeholder="ABC Insurance Brokers Inc." 
+                    value={registerBrokerage} 
+                    onChange={e => setRegisterBrokerage(e.target.value)} 
+                    data-testid="input-register-brokerage"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Years of Experience</label>
+                  <Select value={registerYearsOfService} onValueChange={setRegisterYearsOfService}>
+                    <SelectTrigger data-testid="select-register-years">
+                      <SelectValue placeholder="Select years of experience" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Less than 1 year</SelectItem>
+                      <SelectItem value="2">1-2 years</SelectItem>
+                      <SelectItem value="5">3-5 years</SelectItem>
+                      <SelectItem value="10">6-10 years</SelectItem>
+                      <SelectItem value="15">11-15 years</SelectItem>
+                      <SelectItem value="20">16-20 years</SelectItem>
+                      <SelectItem value="25">20+ years</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Services Offered</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Auto', 'Home', 'Life', 'Travel', 'Business'].map((product) => (
+                      <label key={product} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={registerProductTypes.includes(product)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setRegisterProductTypes([...registerProductTypes, product]);
+                            } else {
+                              setRegisterProductTypes(registerProductTypes.filter(p => p !== product));
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                          data-testid={`checkbox-register-${product.toLowerCase()}`}
+                        />
+                        <span className="text-sm">{product}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Other Services (optional)</label>
+                  <Input 
+                    placeholder="e.g., Pet, Tenant, Motorcycle" 
+                    value={registerOtherServices} 
+                    onChange={e => setRegisterOtherServices(e.target.value)} 
+                    data-testid="input-register-other-services"
+                  />
                 </div>
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90">Request Access</Button>
                 <div className="text-center text-sm">

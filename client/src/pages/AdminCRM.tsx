@@ -1921,7 +1921,7 @@ export default function AdminCRMPage() {
                 </div>
               </div>
 
-              {/* Email Service Integration */}
+              {/* SMTP Email Service Integration */}
               <div className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -1929,8 +1929,8 @@ export default function AdminCRMPage() {
                       <Mail className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">SendGrid Email</h3>
-                      <p className="text-sm text-muted-foreground">Send email notifications to brokers and admins</p>
+                      <h3 className="font-semibold">SMTP Email (Hosting Company)</h3>
+                      <p className="text-sm text-muted-foreground">Connect your hosting company email account</p>
                     </div>
                   </div>
                   <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
@@ -1939,42 +1939,69 @@ export default function AdminCRMPage() {
                   </Badge>
                 </div>
                 <div className="space-y-3 mt-4">
-                  <div className="space-y-2">
-                    <Label>SendGrid API Key</Label>
-                    <div className="flex gap-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>SMTP Host</Label>
                       <Input 
-                        type="password" 
-                        placeholder="SG.••••••••••••••••"
+                        type="text" 
+                        placeholder="mail.yourdomain.com"
                         className="font-mono"
-                        data-testid="input-sendgrid-api-key"
+                        data-testid="input-smtp-host"
                       />
-                      <Button variant="outline" data-testid="button-save-sendgrid-key">Save</Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">Your SendGrid API key for sending transactional emails</p>
+                    <div className="space-y-2">
+                      <Label>SMTP Port</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="587"
+                        className="font-mono"
+                        data-testid="input-smtp-port"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>From Email Address</Label>
-                    <div className="flex gap-2">
+                    <Label>Email Username</Label>
+                    <Input 
+                      type="text" 
+                      placeholder="info@quoteus.ca"
+                      data-testid="input-smtp-username"
+                    />
+                    <p className="text-xs text-muted-foreground">Usually your full email address</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email Password</Label>
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••••••"
+                      data-testid="input-smtp-password"
+                    />
+                    <p className="text-xs text-muted-foreground">Your email account password</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>From Email Address</Label>
                       <Input 
                         type="email" 
-                        placeholder="noreply@quoteus.ca"
+                        placeholder="info@quoteus.ca"
                         data-testid="input-email-from"
                       />
-                      <Button variant="outline" data-testid="button-save-email-from">Save</Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">The email address that notifications will be sent from</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>From Name</Label>
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
+                      <Label>From Name</Label>
                       <Input 
                         type="text" 
                         placeholder="QuoteUs.ca"
                         data-testid="input-email-from-name"
                       />
-                      <Button variant="outline" data-testid="button-save-email-name">Save</Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">The display name shown in email notifications</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input type="checkbox" id="smtp-ssl" className="h-4 w-4" data-testid="checkbox-smtp-ssl" />
+                    <Label htmlFor="smtp-ssl" className="text-sm font-normal">Use SSL/TLS encryption</Label>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button variant="outline" data-testid="button-test-email">Test Connection</Button>
+                    <Button data-testid="button-save-smtp">Save Settings</Button>
                   </div>
                 </div>
               </div>
