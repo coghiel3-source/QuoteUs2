@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield } from "lucide-react";
-import { useState } from "react";
+import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Link, useLocation } from "wouter";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +35,68 @@ export default function DashboardPage() {
   const [registerPassword, setRegisterPassword] = useState("");
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Quote | null>(null);
+  const [isFundDialogOpen, setIsFundDialogOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [balance, setBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [creditPackages, setCreditPackages] = useState<{amount: number; label: string}[]>([]);
+
+  useEffect(() => {
+    if (user && user.role === 'broker') {
+      fetchBalance();
+      fetchPackages();
+    }
+  }, [user]);
+
+  const fetchBalance = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/users/${user.id}/balance`);
+      if (res.ok) {
+        const data = await res.json();
+        setBalance(parseFloat(data.balance || "0"));
+      }
+    } catch (err) {
+      console.error("Failed to fetch balance:", err);
+    }
+  };
+
+  const fetchPackages = async () => {
+    try {
+      const res = await fetch("/api/credits/packages");
+      if (res.ok) {
+        const data = await res.json();
+        setCreditPackages(data.packages || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch packages:", err);
+    }
+  };
+
+  const handleFundAccount = async () => {
+    if (!selectedPackage || !user) return;
+    setIsLoadingBalance(true);
+    try {
+      const res = await fetch("/api/credits/purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, amount: selectedPackage }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to initiate payment", variant: "destructive" });
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
 
   const getIconForType = (type: string) => {
     switch (type) {
@@ -218,7 +281,28 @@ export default function DashboardPage() {
       <div className="container mx-auto max-w-7xl px-4 py-8">
         
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card className="shadow-sm border-none bg-purple-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm text-purple-600 font-medium">Account Balance</p>
+                  <h3 className="text-3xl font-bold text-purple-900 mt-1">${balance.toFixed(2)}</h3>
+                </div>
+                <div className="h-12 w-12 bg-white text-purple-600 rounded-full flex items-center justify-center shadow-sm">
+                  <DollarSign size={24} />
+                </div>
+              </div>
+              <Button 
+                size="sm" 
+                className="w-full mt-2"
+                onClick={() => setIsFundDialogOpen(true)}
+                data-testid="button-fund-account"
+              >
+                <CreditCard size={16} className="mr-2" /> Fund Account
+              </Button>
+            </CardContent>
+          </Card>
           <Card className="shadow-sm border-none bg-blue-50">
             <CardContent className="p-6 flex items-center justify-between">
               <div>
@@ -451,6 +535,57 @@ export default function DashboardPage() {
             )}
           </SheetContent>
         </Sheet>
+
+        {/* Fund Account Dialog */}
+        <Dialog open={isFundDialogOpen} onOpenChange={setIsFundDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Fund Your Account
+              </DialogTitle>
+              <DialogDescription>
+                Select a credit package to add funds to your account. Funds are used when leads are assigned to you.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="grid grid-cols-2 gap-3">
+                {creditPackages.map((pkg) => (
+                  <button
+                    key={pkg.amount}
+                    onClick={() => setSelectedPackage(pkg.amount)}
+                    className={`p-4 rounded-lg border-2 text-center transition-all ${
+                      selectedPackage === pkg.amount
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200 hover:border-primary/50'
+                    }`}
+                    data-testid={`package-${pkg.amount}`}
+                  >
+                    <div className="text-2xl font-bold text-primary">${pkg.amount}</div>
+                    <div className="text-sm text-muted-foreground">{pkg.label}</div>
+                  </button>
+                ))}
+              </div>
+              {creditPackages.length === 0 && (
+                <div className="text-center text-muted-foreground py-4">
+                  Loading packages...
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsFundDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleFundAccount} 
+                disabled={!selectedPackage || isLoadingBalance}
+                data-testid="button-confirm-fund"
+              >
+                {isLoadingBalance ? "Processing..." : `Pay $${selectedPackage || 0}`}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </div>
