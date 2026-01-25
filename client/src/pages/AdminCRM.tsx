@@ -82,12 +82,6 @@ export default function AdminCRMPage() {
   const [smtpConfigured, setSmtpConfigured] = useState(false);
   const [smtpTesting, setSmtpTesting] = useState(false);
   const [smtpSaving, setSmtpSaving] = useState(false);
-  
-  // Premium Payment State
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-  const [premiumAmount, setPremiumAmount] = useState("");
-  const [premiumDescription, setPremiumDescription] = useState("");
-  const [paymentLoading, setPaymentLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/credits/lead-costs")
@@ -274,50 +268,6 @@ export default function AdminCRMPage() {
         title: "Password Updated",
         description: "The user's password has been successfully changed.",
       });
-    }
-  };
-
-  const handleCollectPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedQuote || !premiumAmount) return;
-    
-    setPaymentLoading(true);
-    try {
-      const response = await fetch("/api/payments/premium", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          quoteId: selectedQuote.id,
-          amount: premiumAmount,
-          description: premiumDescription,
-          actorId: user?.id,
-        }),
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      
-      // Copy payment link to clipboard
-      if (data.paymentLink) {
-        await navigator.clipboard.writeText(data.paymentLink);
-        toast({
-          title: "Payment Link Created",
-          description: "Payment link copied to clipboard. Send it to the client.",
-        });
-      }
-      
-      setIsPaymentOpen(false);
-      setPremiumAmount("");
-      setPremiumDescription("");
-      refreshQuotes();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create payment link",
-        variant: "destructive",
-      });
-    } finally {
-      setPaymentLoading(false);
     }
   };
 
@@ -588,40 +538,6 @@ export default function AdminCRMPage() {
                       </div>
                     </div>
 
-                    {/* Payment Status Section */}
-                    {(selectedQuote.premiumAmount || selectedQuote.premiumPaid) && (
-                      <div className={`border rounded-lg p-4 ${selectedQuote.premiumPaid ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <DollarSign size={16} />
-                          Payment Status
-                        </h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase">Premium Amount</Label>
-                            <div className="font-medium text-lg">${selectedQuote.premiumAmount}</div>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase">Status</Label>
-                            {selectedQuote.premiumPaid ? (
-                              <Badge className="bg-green-600 hover:bg-green-700">
-                                <CheckCircle size={14} className="mr-1" /> Paid
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-amber-600 hover:bg-amber-700">
-                                <Clock size={14} className="mr-1" /> Pending
-                              </Badge>
-                            )}
-                          </div>
-                          {selectedQuote.premiumPaidAt && (
-                            <div className="space-y-1 col-span-2">
-                              <Label className="text-xs text-muted-foreground uppercase">Paid On</Label>
-                              <div className="font-medium">{format(new Date(selectedQuote.premiumPaidAt), 'MMMM d, yyyy h:mm a')}</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
                     <div className="border rounded-lg p-4 bg-slate-50">
                       <h4 className="font-semibold mb-3 flex items-center gap-2"><Car size={16}/> Quote Details</h4>
                       <div className="space-y-3">
@@ -738,15 +654,6 @@ export default function AdminCRMPage() {
                           <SelectItem value="Lost">Lost</SelectItem>
                         </SelectContent>
                       </Select>
-                     <Button 
-                       variant="default" 
-                       onClick={() => setIsPaymentOpen(true)}
-                       disabled={!selectedQuote.email}
-                       data-testid="button-collect-payment"
-                     >
-                       <DollarSign size={16} className="mr-2" />
-                       Collect Payment
-                     </Button>
                    </div>
                    <Button variant="outline" onClick={() => setSelectedQuote(null)}>Close</Button>
                 </SheetFooter>
@@ -791,62 +698,6 @@ export default function AdminCRMPage() {
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEmailOpen(false)}>Cancel</Button>
                 <Button type="submit"><Mail size={16} className="mr-2"/> Send Email</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Collect Payment Dialog */}
-        <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Collect Policy Premium</DialogTitle>
-              <DialogDescription>
-                Create a payment link to collect the policy premium from {selectedQuote?.clientName}. 
-                The link will be copied to your clipboard to send to the client.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCollectPayment} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Client Email</Label>
-                <Input value={selectedQuote?.email || ''} disabled />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="premiumAmount">Premium Amount (CAD)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input 
-                    id="premiumAmount"
-                    type="number" 
-                    step="0.01"
-                    min="1"
-                    value={premiumAmount} 
-                    onChange={(e) => setPremiumAmount(e.target.value)} 
-                    placeholder="0.00"
-                    className="pl-7"
-                    required
-                    data-testid="input-premium-amount"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="premiumDescription">Description (Optional)</Label>
-                <Textarea 
-                  id="premiumDescription"
-                  value={premiumDescription} 
-                  onChange={(e) => setPremiumDescription(e.target.value)} 
-                  placeholder="e.g., Annual auto insurance policy premium"
-                  className="min-h-[80px]"
-                  data-testid="input-premium-description"
-                />
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsPaymentOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={paymentLoading} data-testid="button-create-payment-link">
-                  {paymentLoading ? "Creating..." : <>
-                    <DollarSign size={16} className="mr-2"/> Create Payment Link
-                  </>}
-                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
