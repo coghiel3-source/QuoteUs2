@@ -50,7 +50,10 @@ export default function AdminCRMPage() {
     email: "",
     phone: "",
     role: "broker" as "broker" | "manager" | "admin",
-    password: ""
+    password: "",
+    brokerage: "",
+    yearsOfService: "",
+    productTypes: [] as string[]
   });
 
   // Lead costs from API
@@ -141,10 +144,21 @@ export default function AdminCRMPage() {
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
-    register(newUser.name, newUser.email, newUser.password, newUser.role as any, newUser.phone);
+    register(
+      newUser.name, 
+      newUser.email, 
+      newUser.password, 
+      newUser.role as any, 
+      newUser.phone,
+      newUser.role === 'broker' ? {
+        brokerage: newUser.brokerage,
+        yearsOfService: newUser.yearsOfService ? parseInt(newUser.yearsOfService) : undefined,
+        productTypes: newUser.productTypes
+      } : undefined
+    );
     
     setIsAddUserOpen(false);
-    setNewUser({ name: "", email: "", phone: "", role: "broker", password: "" });
+    setNewUser({ name: "", email: "", phone: "", role: "broker", password: "", brokerage: "", yearsOfService: "", productTypes: [] });
     toast({
       title: "User Added",
       description: "New user account has been created.",
@@ -1240,6 +1254,65 @@ export default function AdminCRMPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        
+                        {newUser.role === 'broker' && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="userBrokerage">Name of Brokerage</Label>
+                              <Input 
+                                id="userBrokerage" 
+                                value={newUser.brokerage} 
+                                onChange={(e) => setNewUser({...newUser, brokerage: e.target.value})}
+                                placeholder="ABC Insurance Brokers Inc."
+                                data-testid="input-brokerage"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="userYears">Years of Service</Label>
+                              <Select 
+                                value={newUser.yearsOfService} 
+                                onValueChange={(val) => setNewUser({...newUser, yearsOfService: val})}
+                              >
+                                <SelectTrigger data-testid="select-years-service">
+                                  <SelectValue placeholder="Select years" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">Less than 1 year</SelectItem>
+                                  <SelectItem value="2">1-2 years</SelectItem>
+                                  <SelectItem value="5">3-5 years</SelectItem>
+                                  <SelectItem value="10">6-10 years</SelectItem>
+                                  <SelectItem value="15">11-15 years</SelectItem>
+                                  <SelectItem value="20">16-20 years</SelectItem>
+                                  <SelectItem value="25">20+ years</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Products You Sell</Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {['Auto', 'Home', 'Life', 'Travel', 'Business'].map((product) => (
+                                  <label key={product} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={newUser.productTypes.includes(product)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setNewUser({...newUser, productTypes: [...newUser.productTypes, product]});
+                                        } else {
+                                          setNewUser({...newUser, productTypes: newUser.productTypes.filter(p => p !== product)});
+                                        }
+                                      }}
+                                      className="h-4 w-4 rounded border-gray-300"
+                                      data-testid={`checkbox-product-${product.toLowerCase()}`}
+                                    />
+                                    <span className="text-sm">{product}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        
                         <div className="space-y-2">
                           <Label htmlFor="userPassword">Initial Password</Label>
                           <div className="relative">

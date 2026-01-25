@@ -24,6 +24,9 @@ export const users = pgTable("users", {
   balance: decimal("balance", { precision: 10, scale: 2 }).notNull().default("0.00"),
   leadCostOverride: decimal("lead_cost_override", { precision: 10, scale: 2 }),
   stripeCustomerId: text("stripe_customer_id"),
+  brokerage: text("brokerage"),
+  yearsOfService: integer("years_of_service"),
+  productTypes: text("product_types").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

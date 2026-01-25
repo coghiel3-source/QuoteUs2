@@ -162,7 +162,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const register = async (name: string, email: string, password?: string, role: 'broker' | 'customer' | 'manager' | 'admin' = 'broker', phone?: string) => {
+  const register = async (
+    name: string, 
+    email: string, 
+    password?: string, 
+    role: 'broker' | 'customer' | 'manager' | 'admin' = 'broker', 
+    phone?: string,
+    brokerFields?: { brokerage?: string; yearsOfService?: number; productTypes?: string[] }
+  ) => {
     try {
       const newUser = await apiRequest<User>('/users', {
         method: 'POST',
@@ -173,6 +180,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role,
           status: role === 'customer' ? 'active' : 'pending',
           password,
+          ...(brokerFields?.brokerage && { brokerage: brokerFields.brokerage }),
+          ...(brokerFields?.yearsOfService && { yearsOfService: brokerFields.yearsOfService }),
+          ...(brokerFields?.productTypes?.length && { productTypes: brokerFields.productTypes }),
         }),
       });
       setUsers([...users, newUser]);
