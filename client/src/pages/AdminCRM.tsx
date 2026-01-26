@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFo
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -67,6 +67,18 @@ export default function AdminCRMPage() {
   const [fundReason, setFundReason] = useState("");
   const [editingLeadCost, setEditingLeadCost] = useState<string | null>(null);
   const [newLeadCost, setNewLeadCost] = useState("");
+  
+  // Edit User Dialog State
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    role: string;
+    brokerage: string;
+    status: string;
+  } | null>(null);
   const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
   const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
   
@@ -303,6 +315,66 @@ export default function AdminCRMPage() {
       title: "Status Updated",
       description: `User status has been changed to ${status}.`,
     });
+  };
+
+  const openEditUser = (userToEdit: any) => {
+    setEditingUser({
+      id: userToEdit.id,
+      name: userToEdit.name || "",
+      email: userToEdit.email || "",
+      phone: userToEdit.phone || "",
+      role: userToEdit.role || "broker",
+      brokerage: userToEdit.brokerage || "",
+      status: userToEdit.status || "active",
+    });
+    setIsEditUserOpen(true);
+  };
+
+  const handleSaveEditUser = async () => {
+    if (!editingUser) return;
+    
+    try {
+      const res = await fetch(`/api/users/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingUser.name,
+          email: editingUser.email,
+          phone: editingUser.phone,
+          brokerage: editingUser.brokerage,
+          status: editingUser.status,
+        }),
+      });
+      
+      if (res.ok) {
+        updateUser(editingUser.id, {
+          name: editingUser.name,
+          email: editingUser.email,
+          phone: editingUser.phone,
+          brokerage: editingUser.brokerage,
+          status: editingUser.status as any,
+        });
+        toast({
+          title: "User Updated",
+          description: "Account details have been saved successfully.",
+        });
+        setIsEditUserOpen(false);
+        setEditingUser(null);
+      } else {
+        const err = await res.json();
+        toast({
+          title: "Error",
+          description: err.error || "Failed to update user",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
+    }
   };
 
   // Auth check - simulate protected route
@@ -845,6 +917,93 @@ export default function AdminCRMPage() {
                 <Button type="submit" className="w-full">Update Password</Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit User Dialog */}
+        <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Account Details</DialogTitle>
+              <DialogDescription>
+                Update the account information for this user.
+              </DialogDescription>
+            </DialogHeader>
+            {editingUser && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editName">Full Name</Label>
+                  <Input 
+                    id="editName" 
+                    value={editingUser.name} 
+                    onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
+                    placeholder="John Smith"
+                    data-testid="input-edit-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editEmail">Email Address</Label>
+                  <Input 
+                    id="editEmail" 
+                    type="email"
+                    value={editingUser.email} 
+                    onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
+                    placeholder="john@example.com"
+                    data-testid="input-edit-email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editPhone">Phone Number</Label>
+                  <Input 
+                    id="editPhone" 
+                    type="tel"
+                    value={editingUser.phone} 
+                    onChange={(e) => setEditingUser({...editingUser, phone: e.target.value})}
+                    placeholder="416-555-0100"
+                    data-testid="input-edit-phone"
+                  />
+                </div>
+                {editingUser.role === 'broker' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="editBrokerage">Brokerage Name</Label>
+                    <Input 
+                      id="editBrokerage" 
+                      value={editingUser.brokerage} 
+                      onChange={(e) => setEditingUser({...editingUser, brokerage: e.target.value})}
+                      placeholder="ABC Insurance Brokers Inc."
+                      data-testid="input-edit-brokerage"
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="editStatus">Account Status</Label>
+                  <Select 
+                    value={editingUser.status} 
+                    onValueChange={(val) => setEditingUser({...editingUser, status: val})}
+                  >
+                    <SelectTrigger data-testid="select-edit-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="paused">Paused</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="denied">Denied</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Role: <span className="font-medium capitalize">{editingUser.role}</span>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>Cancel</Button>
+                  <Button onClick={handleSaveEditUser} data-testid="button-save-user-edit">
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
         
@@ -1858,6 +2017,15 @@ export default function AdminCRMPage() {
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-1 ml-2"
+                              onClick={() => openEditUser(broker)}
+                              data-testid={`button-edit-user-${broker.id}`}
+                            >
+                              <Pencil size={14} /> Edit
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))
