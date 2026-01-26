@@ -85,6 +85,10 @@ export default function AdminCRMPage() {
   const [smtpConfigured, setSmtpConfigured] = useState(false);
   const [smtpTesting, setSmtpTesting] = useState(false);
   const [smtpSaving, setSmtpSaving] = useState(false);
+  
+  // Notification Email State
+  const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
+  const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
 
   useEffect(() => {
     fetch("/api/credits/lead-costs")
@@ -104,6 +108,16 @@ export default function AdminCRMPage() {
           setSmtpFromEmail(data.fromEmail || "");
           setSmtpFromName(data.fromName || "");
           setSmtpUseSsl(data.useSsl !== false);
+        }
+      })
+      .catch(console.error);
+    
+    // Load notification email setting
+    fetch("/api/admin/settings/notification_email")
+      .then(r => r.json())
+      .then(data => {
+        if (data.value) {
+          setNotificationEmail(data.value);
         }
       })
       .catch(console.error);
@@ -2257,9 +2271,41 @@ export default function AdminCRMPage() {
                       <Input 
                         type="email" 
                         placeholder="info@quoteus.ca"
+                        value={notificationEmail}
+                        onChange={(e) => setNotificationEmail(e.target.value)}
                         data-testid="input-admin-email"
                       />
-                      <Button variant="outline" data-testid="button-save-admin-email">Save</Button>
+                      <Button 
+                        variant="outline" 
+                        disabled={savingNotificationEmail}
+                        onClick={async () => {
+                          if (!notificationEmail) {
+                            toast({ title: "Error", description: "Please enter an email address", variant: "destructive" });
+                            return;
+                          }
+                          setSavingNotificationEmail(true);
+                          try {
+                            const res = await fetch("/api/admin/settings/notification_email", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ value: notificationEmail, actorId: user?.id }),
+                            });
+                            if (res.ok) {
+                              toast({ title: "Saved", description: "Notification email updated successfully." });
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+                            }
+                          } catch (err) {
+                            toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+                          } finally {
+                            setSavingNotificationEmail(false);
+                          }
+                        }}
+                        data-testid="button-save-admin-email"
+                      >
+                        {savingNotificationEmail ? "Saving..." : "Save"}
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Email address to receive new lead notifications</p>
                   </div>

@@ -148,8 +148,14 @@ export async function registerRoutes(
         phone: quote.phone || undefined,
         source: quote.source || 'Website'
       });
+      
+      // Get notification email from settings, default to info@quoteus.ca
+      const notificationEmailSetting = await storage.getSetting("notification_email");
+      const notificationEmail = notificationEmailSetting?.value || "info@quoteus.ca";
+      
+      console.log(`[Email] Attempting to send admin notification to ${notificationEmail}`);
       sendEmail({
-        to: 'coghiel3@gmail.com',
+        to: notificationEmail,
         subject: adminEmail.subject,
         html: adminEmail.html
       }).catch(err => console.error('[Email] Admin notification error:', err));
@@ -455,6 +461,40 @@ export async function registerRoutes(
         fromName: settings.fromName,
         useSsl: settings.useSsl
       });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Get a setting value
+  app.get("/api/admin/settings/:key", async (req, res) => {
+    try {
+      const setting = await storage.getSetting(req.params.key);
+      if (!setting) {
+        return res.json({ value: null });
+      }
+      res.json({ value: setting.value });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Save a setting value
+  app.post("/api/admin/settings/:key", async (req, res) => {
+    try {
+      const { value, actorId } = req.body;
+      
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required" });
+      }
+      
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can modify settings" });
+      }
+      
+      await storage.setSetting(req.params.key, value, actorId);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
