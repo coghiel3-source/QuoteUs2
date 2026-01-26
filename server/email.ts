@@ -306,3 +306,48 @@ export function generateThankYouEmail(data: {
     `
   };
 }
+
+export function generatePasswordResetEmail(userName: string, resetLink: string): { subject: string; html: string } {
+  return {
+    subject: "Password Reset Request - QuoteUs.ca",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #16a34a; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">QuoteUs.ca</h1>
+        </div>
+        <div style="padding: 30px; background-color: #f9fafb;">
+          <h2 style="color: #1f2937; margin-top: 0;">Password Reset Request</h2>
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            Hello ${userName},
+          </p>
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            We received a request to reset your password. Click the button below to create a new password:
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="display: inline-block; background-color: #16a34a; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+              Reset Password
+            </a>
+          </div>
+          
+          <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">
+            This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+          </p>
+          
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">
+            If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${resetLink}" style="color: #16a34a; word-break: break-all;">${resetLink}</a>
+          </p>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-top: 20px;">
+            Best regards,<br>
+            <strong>The QuoteUs.ca Team</strong>
+          </p>
+        </div>
+        <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+          <p>QuoteUs.ca - Your Trusted Ontario Insurance Partner</p>
+        </div>
+      </div>
+    `
+  };
+}

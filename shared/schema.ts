@@ -27,6 +27,8 @@ export const users = pgTable("users", {
   brokerage: text("brokerage"),
   yearsOfService: integer("years_of_service"),
   productTypes: text("product_types").array(),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
