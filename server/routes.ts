@@ -424,12 +424,15 @@ export async function registerRoutes(
   app.post("/api/admin/smtp/save", async (req, res) => {
     try {
       const { host, port, username, password, fromEmail, fromName, useSsl, actorId } = req.body;
+      console.log('[SMTP Save] Request received:', { host, port, username, hasPassword: !!password, actorId });
       
       if (!actorId) {
+        console.log('[SMTP Save] No actorId provided');
         return res.status(401).json({ error: "Actor ID is required" });
       }
       
       const actor = await storage.getUser(actorId);
+      console.log('[SMTP Save] Actor lookup:', { found: !!actor, role: actor?.role });
       if (!actor || actor.role !== "admin") {
         return res.status(403).json({ error: "Only admin can configure SMTP" });
       }
@@ -466,10 +469,13 @@ export async function registerRoutes(
         useSsl: useSsl !== false
       };
       
+      console.log('[SMTP Save] Saving to database...');
       await storage.setSetting("smtp_settings", JSON.stringify(smtpSettings), actorId);
+      console.log('[SMTP Save] Settings saved successfully');
       
       res.json({ success: true, message: "SMTP settings saved" });
     } catch (error: any) {
+      console.error('[SMTP Save] Error:', error);
       res.status(500).json({ error: error.message });
     }
   });
