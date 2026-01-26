@@ -52,7 +52,7 @@ export default function LifePage() {
     setIsSubmitting(false);
     toast({
       title: "Quote Received",
-      description: "A broker will contact you shortly. CC sent to info@quoteus.ca. Account Manager has been notified.",
+      description: "Thank you for your submission! A broker will contact you shortly.",
     });
   };
 

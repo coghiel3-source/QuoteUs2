@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertQuoteSchema, insertActivitySchema } from "@shared/schema";
 import { z } from "zod";
-import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail } from "./email";
+import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail, generateThankYouEmail } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 // Default lead costs by type (fallback if not set in database)
@@ -140,7 +140,7 @@ export async function registerRoutes(
         author: "System",
       });
       
-      // Send notification email to admin (info@quoteus.ca)
+      // Send notification email to admin
       const adminEmail = generateNewLeadEmail({
         clientName: quote.clientName,
         type: quote.type,
@@ -149,10 +149,23 @@ export async function registerRoutes(
         source: quote.source || 'Website'
       });
       sendEmail({
-        to: 'info@quoteus.ca',
+        to: 'coghiel3@gmail.com',
         subject: adminEmail.subject,
         html: adminEmail.html
       }).catch(err => console.error('[Email] Admin notification error:', err));
+      
+      // Send thank you email to client
+      if (quote.email) {
+        const thankYouEmail = generateThankYouEmail({
+          clientName: quote.clientName,
+          type: quote.type
+        });
+        sendEmail({
+          to: quote.email,
+          subject: thankYouEmail.subject,
+          html: thankYouEmail.html
+        }).catch(err => console.error('[Email] Thank you email error:', err));
+      }
       
       res.status(201).json(quote);
     } catch (error: any) {

@@ -251,3 +251,49 @@ export function generateAdminNotificationEmail(data: {
 }): { subject: string; html: string } {
   return generateNewLeadEmail(data);
 }
+
+export function generateThankYouEmail(data: {
+  clientName: string;
+  type: string;
+}): { subject: string; html: string } {
+  return {
+    subject: `Thank You for Your ${data.type} Insurance Quote Request - QuoteUs.ca`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #16a34a; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">QuoteUs.ca</h1>
+        </div>
+        <div style="padding: 30px; background-color: #f9fafb;">
+          <h2 style="color: #1f2937; margin-top: 0;">Thank You, ${data.clientName}!</h2>
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            We have received your ${data.type} insurance quote request and appreciate you choosing QuoteUs.ca.
+          </p>
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            One of our licensed insurance brokers will review your information and contact you shortly to discuss your options and provide you with competitive quotes.
+          </p>
+          
+          <div style="background-color: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #16a34a;">
+            <p style="color: #1f2937; margin: 0; font-weight: bold;">What happens next?</p>
+            <ul style="color: #4b5563; margin-top: 10px; padding-left: 20px;">
+              <li>A broker will review your quote request</li>
+              <li>You'll receive a call or email within 1-2 business days</li>
+              <li>We'll help you find the best coverage at competitive rates</li>
+            </ul>
+          </div>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            If you have any immediate questions, please don't hesitate to contact us.
+          </p>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin-top: 20px;">
+            Best regards,<br>
+            <strong>The QuoteUs.ca Team</strong>
+          </p>
+        </div>
+        <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+          <p>QuoteUs.ca - Your Trusted Ontario Insurance Partner</p>
+        </div>
+      </div>
+    `
+  };
+}
