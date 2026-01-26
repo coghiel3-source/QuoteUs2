@@ -104,6 +104,7 @@ export default function BusinessPage() {
                   <AddressAutocomplete
                     value={watch("address") || ""}
                     onChange={(val) => setValue("address", val)}
+                    onPostalCodeChange={(val) => setValue("postalCode", val)}
                     placeholder="Start typing your address..."
                   />
                   <p className="text-xs text-muted-foreground">Start typing for suggestions, or enter manually</p>

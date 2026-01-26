@@ -308,6 +308,7 @@ export default function AutoPage() {
                     id="address"
                     value={form.watch("primaryDriver.address") || ""}
                     onChange={(val) => form.setValue("primaryDriver.address", val)}
+                    onPostalCodeChange={(val) => form.setValue("primaryDriver.postalCode", val)}
                     placeholder="Start typing your address..."
                     data-testid="input-address"
                   />

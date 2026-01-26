@@ -2254,50 +2254,48 @@ export default function AdminCRMPage() {
                   </div>
                   
                   {/* Test Email Section */}
-                  {smtpConfigured && (
-                    <div className="mt-4 pt-4 border-t">
-                      <Label className="text-sm font-medium">Send Test Email</Label>
-                      <div className="flex gap-2 mt-2">
-                        <Input 
-                          type="email" 
-                          placeholder="Enter email to send test"
-                          value={testEmailAddress}
-                          onChange={(e) => setTestEmailAddress(e.target.value)}
-                          className="flex-1"
-                          data-testid="input-test-email-address"
-                        />
-                        <Button 
-                          variant="outline"
-                          disabled={smtpSendingTest || !testEmailAddress}
-                          onClick={async () => {
-                            if (!testEmailAddress) return;
-                            setSmtpSendingTest(true);
-                            try {
-                              const res = await fetch("/api/admin/smtp/send-test", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ toEmail: testEmailAddress, actorId: user?.id }),
-                              });
-                              if (res.ok) {
-                                toast({ title: "Success", description: "Test email sent! Check your inbox." });
-                              } else {
-                                const err = await res.json();
-                                toast({ title: "Error", description: err.error || "Failed to send test email", variant: "destructive" });
-                              }
-                            } catch (err) {
-                              toast({ title: "Error", description: "Failed to send test email", variant: "destructive" });
-                            } finally {
-                              setSmtpSendingTest(false);
+                  <div className="mt-4 pt-4 border-t">
+                    <Label className="text-sm font-medium">Send Test Email</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input 
+                        type="email" 
+                        placeholder="Enter email to send test"
+                        value={testEmailAddress}
+                        onChange={(e) => setTestEmailAddress(e.target.value)}
+                        className="flex-1"
+                        data-testid="input-test-email-address"
+                      />
+                      <Button 
+                        variant="outline"
+                        disabled={smtpSendingTest || !testEmailAddress}
+                        onClick={async () => {
+                          if (!testEmailAddress) return;
+                          setSmtpSendingTest(true);
+                          try {
+                            const res = await fetch("/api/admin/smtp/send-test", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ toEmail: testEmailAddress, actorId: user?.id }),
+                            });
+                            if (res.ok) {
+                              toast({ title: "Success", description: "Test email sent! Check your inbox." });
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "Error", description: err.error || "Failed to send test email", variant: "destructive" });
                             }
-                          }}
-                          data-testid="button-send-test-email"
-                        >
-                          {smtpSendingTest ? "Sending..." : "Send Test"}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Send a test email to verify your SMTP settings work</p>
+                          } catch (err) {
+                            toast({ title: "Error", description: "Failed to send test email", variant: "destructive" });
+                          } finally {
+                            setSmtpSendingTest(false);
+                          }
+                        }}
+                        data-testid="button-send-test-email"
+                      >
+                        {smtpSendingTest ? "Sending..." : "Send Test"}
+                      </Button>
                     </div>
-                  )}
+                    <p className="text-xs text-muted-foreground mt-1">Save settings first, then send a test email to verify</p>
+                  </div>
                 </div>
               </div>
 
