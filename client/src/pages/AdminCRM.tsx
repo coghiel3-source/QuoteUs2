@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFo
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -70,6 +70,9 @@ export default function AdminCRMPage() {
   const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
   const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
   
+  // Mobile Menu State
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // SMTP Settings State
   const [smtpHost, setSmtpHost] = useState("");
   const [smtpPort, setSmtpPort] = useState("587");
@@ -396,8 +399,92 @@ export default function AdminCRMPage() {
       <div className="bg-primary text-white shadow-md sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-6">
-              <h1 className="text-xl font-serif font-bold tracking-tight">QuoteUs <span className="text-white/70 font-sans text-sm font-normal ml-1">CRM</span></h1>
+            <div className="flex items-center gap-4">
+              {/* Mobile Menu Button */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="md:hidden text-white hover:bg-white/10"
+                  onClick={() => setMobileMenuOpen(true)}
+                >
+                  <Menu size={24} />
+                </Button>
+                <SheetContent side="left" className="w-[280px] p-0">
+                  <SheetHeader className="bg-primary text-white p-4">
+                    <SheetTitle className="text-white font-serif">QuoteUs CRM</SheetTitle>
+                    <SheetDescription className="text-white/70">
+                      {user.name} ({user.role})
+                    </SheetDescription>
+                  </SheetHeader>
+                  <nav className="flex flex-col p-2">
+                    <Button 
+                      variant={activeTab === 'dashboard' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                    >
+                      <LayoutDashboard size={18} className="mr-3" /> Dashboard
+                    </Button>
+                    <Button 
+                      variant={activeTab === 'leads' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { setActiveTab('leads'); setMobileMenuOpen(false); }}
+                    >
+                      <FileText size={18} className="mr-3" /> Leads
+                    </Button>
+                    <Button 
+                      variant={activeTab === 'manager' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { setActiveTab('manager'); setMobileMenuOpen(false); }}
+                    >
+                      <Users size={18} className="mr-3" /> Manager
+                      {pendingBrokers.length > 0 && <Badge className="ml-auto bg-red-500 text-white border-none">{pendingBrokers.length}</Badge>}
+                    </Button>
+                    <Button 
+                      variant={activeTab === 'reports' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { setActiveTab('reports'); setMobileMenuOpen(false); }}
+                    >
+                      <BarChart size={18} className="mr-3" /> Reports
+                    </Button>
+                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                      <Button 
+                        variant={activeTab === 'credits' ? 'secondary' : 'ghost'} 
+                        className="justify-start mb-1"
+                        onClick={() => { setActiveTab('credits'); setMobileMenuOpen(false); }}
+                      >
+                        <DollarSign size={18} className="mr-3" /> Credits
+                      </Button>
+                    )}
+                    {user?.role === 'admin' && (
+                      <Button 
+                        variant={activeTab === 'manage' ? 'secondary' : 'ghost'} 
+                        className="justify-start mb-1"
+                        onClick={() => { setActiveTab('manage'); setMobileMenuOpen(false); }}
+                      >
+                        <Key size={18} className="mr-3" /> Manage
+                      </Button>
+                    )}
+                    <div className="border-t my-2" />
+                    <Button 
+                      variant={activeTab === 'settings' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+                    >
+                      <Settings size={18} className="mr-3" /> Settings
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                    >
+                      <LogOut size={18} className="mr-3" /> Logout
+                    </Button>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+              
+              <h1 className="text-lg md:text-xl font-serif font-bold tracking-tight">QuoteUs <span className="text-white/70 font-sans text-sm font-normal ml-1">CRM</span></h1>
               
               <nav className="hidden md:flex space-x-1">
                 <Button 
@@ -457,15 +544,15 @@ export default function AdminCRMPage() {
               </nav>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <div className="text-right hidden sm:block mr-2">
                 <div className="text-sm font-medium">{user.name}</div>
                 <div className="text-xs text-white/70 capitalize">{user.role}</div>
               </div>
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => setActiveTab('settings')}>
+              <Button variant="ghost" size="icon" className="hidden md:flex text-white hover:bg-white/10" onClick={() => setActiveTab('settings')}>
                 <Settings size={18} />
               </Button>
-              <Button variant="ghost" size="icon" className="text-white hover:bg-red-500/20 hover:text-red-200" onClick={handleLogout}>
+              <Button variant="ghost" size="icon" className="hidden md:flex text-white hover:bg-red-500/20 hover:text-red-200" onClick={handleLogout}>
                 <LogOut size={18} />
               </Button>
             </div>
