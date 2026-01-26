@@ -20,10 +20,8 @@ export default function LoginPage() {
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
     
-    const success = login(data.email, 'customer', data.password);
+    const success = await login(data.email, 'customer', data.password);
     
     setIsSubmitting(false);
     

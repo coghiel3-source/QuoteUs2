@@ -115,18 +115,17 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, role, password)) {
+    const success = await login(email, role, password);
+    if (success) {
       if (role === 'admin') {
         setLocation('/admin');
       } else {
         toast({ title: "Welcome back!", description: "You are now logged in." });
       }
     } else {
-      // Toast is handled in AuthContext logic now generally, but specific errors might still bubble or be duplicate. 
-      // AuthContext returns false on fail.
-      // We will keep the toast here as backup or ensure it's not double toasting if AuthContext also toasts (it alerts currently).
+      toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
     }
   };
 
