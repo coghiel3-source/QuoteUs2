@@ -29,17 +29,26 @@ async function getSmtpSettings(): Promise<SmtpSettings | null> {
   }
 
   try {
-    const setting = await storage.getSetting("smtp_settings");
-    if (!setting) {
+    const settingValue = await storage.getSetting("smtp_settings");
+    if (!settingValue) {
+      console.log('[Email] No SMTP settings found in database');
       return null;
     }
-    cachedSmtpSettings = JSON.parse(setting.value);
+    cachedSmtpSettings = JSON.parse(settingValue);
     lastSettingsCheck = now;
+    console.log('[Email] SMTP settings loaded from database:', { host: cachedSmtpSettings?.host, username: cachedSmtpSettings?.username });
     return cachedSmtpSettings;
   } catch (error) {
     console.error('[Email] Failed to load SMTP settings:', error);
     return null;
   }
+}
+
+// Clear cached settings (call after saving new settings)
+export function clearSmtpCache(): void {
+  cachedSmtpSettings = null;
+  lastSettingsCheck = 0;
+  console.log('[Email] SMTP cache cleared');
 }
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {

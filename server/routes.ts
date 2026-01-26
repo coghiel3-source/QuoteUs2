@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertQuoteSchema, insertActivitySchema } from "@shared/schema";
 import { z } from "zod";
-import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail, generateThankYouEmail } from "./email";
+import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail, generateThankYouEmail, clearSmtpCache } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 
 // Default lead costs by type (fallback if not set in database)
@@ -473,6 +473,9 @@ export async function registerRoutes(
       await storage.setSetting("smtp_settings", JSON.stringify(smtpSettings), actorId);
       console.log('[SMTP Save] Settings saved successfully');
       
+      // Clear the email cache so new settings are used immediately
+      clearSmtpCache();
+      
       res.json({ success: true, message: "SMTP settings saved" });
     } catch (error: any) {
       console.error('[SMTP Save] Error:', error);
@@ -501,6 +504,51 @@ export async function registerRoutes(
         hasPassword: !!settings.password
       });
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Send test email
+  app.post("/api/admin/smtp/send-test", async (req, res) => {
+    try {
+      const { toEmail, actorId } = req.body;
+      
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required" });
+      }
+      
+      const actor = await storage.getUser(actorId);
+      if (!actor || actor.role !== "admin") {
+        return res.status(403).json({ error: "Only admin can send test emails" });
+      }
+      
+      if (!toEmail) {
+        return res.status(400).json({ error: "Email address is required" });
+      }
+      
+      console.log(`[Email Test] Sending test email to ${toEmail}`);
+      
+      const result = await sendEmail({
+        to: toEmail,
+        subject: "QuoteUs.ca - Test Email",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">Email Test Successful!</h2>
+            <p>This is a test email from QuoteUs.ca to verify your SMTP settings are working correctly.</p>
+            <p>If you received this email, your email configuration is properly set up.</p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+            <p style="color: #6b7280; font-size: 12px;">Sent from QuoteUs.ca CRM System</p>
+          </div>
+        `
+      });
+      
+      if (result) {
+        res.json({ success: true, message: "Test email sent successfully!" });
+      } else {
+        res.status(400).json({ error: "Failed to send test email. Please check your SMTP settings." });
+      }
+    } catch (error: any) {
+      console.error('[Email Test] Error:', error);
       res.status(500).json({ error: error.message });
     }
   });
