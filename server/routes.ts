@@ -379,8 +379,24 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Only admin can configure SMTP" });
       }
       
-      if (!host || !username || !password) {
-        return res.status(400).json({ error: "Host, username and password are required" });
+      if (!host || !username) {
+        return res.status(400).json({ error: "Host and username are required" });
+      }
+      
+      // Get existing settings to use stored password if not provided
+      let testPassword = password;
+      if (!testPassword) {
+        const existingSetting = await storage.getSetting("smtp_settings");
+        if (existingSetting) {
+          try {
+            const existing = JSON.parse(existingSetting.value);
+            testPassword = existing.password || "";
+          } catch (e) {}
+        }
+      }
+      
+      if (!testPassword) {
+        return res.status(400).json({ error: "Password is required" });
       }
       
       const nodemailer = await import('nodemailer');
@@ -390,7 +406,7 @@ export async function registerRoutes(
         secure: useSsl && port === 465,
         auth: {
           user: username,
-          pass: password,
+          pass: testPassword,
         },
         tls: {
           rejectUnauthorized: false
@@ -419,8 +435,25 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Only admin can configure SMTP" });
       }
       
-      if (!host || !username || !password) {
-        return res.status(400).json({ error: "Host, username and password are required" });
+      if (!host || !username) {
+        return res.status(400).json({ error: "Host and username are required" });
+      }
+      
+      // Get existing settings to preserve password if not provided
+      const existingSetting = await storage.getSetting("smtp_settings");
+      let existingPassword = "";
+      if (existingSetting) {
+        try {
+          const existing = JSON.parse(existingSetting.value);
+          existingPassword = existing.password || "";
+        } catch (e) {}
+      }
+      
+      // Use new password if provided, otherwise keep existing
+      const finalPassword = password || existingPassword;
+      
+      if (!finalPassword) {
+        return res.status(400).json({ error: "Password is required for initial setup" });
       }
       
       // Save SMTP settings to database (password should be encrypted in production)
@@ -428,7 +461,7 @@ export async function registerRoutes(
         host,
         port: port || 587,
         username,
-        password, // In production, encrypt this
+        password: finalPassword, // In production, encrypt this
         fromEmail: fromEmail || username,
         fromName: fromName || "QuoteUs.ca",
         useSsl: useSsl !== false
@@ -451,7 +484,7 @@ export async function registerRoutes(
       }
       
       const settings = JSON.parse(setting.value);
-      // Don't return the password
+      // Don't return the password, but indicate if one is set
       res.json({
         configured: true,
         host: settings.host,
@@ -459,7 +492,8 @@ export async function registerRoutes(
         username: settings.username,
         fromEmail: settings.fromEmail,
         fromName: settings.fromName,
-        useSsl: settings.useSsl
+        useSsl: settings.useSsl,
+        hasPassword: !!settings.password
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

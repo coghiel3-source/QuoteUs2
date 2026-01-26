@@ -85,6 +85,7 @@ export default function AdminCRMPage() {
   const [smtpConfigured, setSmtpConfigured] = useState(false);
   const [smtpTesting, setSmtpTesting] = useState(false);
   const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpHasPassword, setSmtpHasPassword] = useState(false);
   
   // Notification Email State
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
@@ -108,6 +109,7 @@ export default function AdminCRMPage() {
           setSmtpFromEmail(data.fromEmail || "");
           setSmtpFromName(data.fromName || "");
           setSmtpUseSsl(data.useSsl !== false);
+          setSmtpHasPassword(data.hasPassword === true);
         }
       })
       .catch(console.error);
@@ -2112,11 +2114,11 @@ export default function AdminCRMPage() {
                     <p className="text-xs text-muted-foreground">Usually your full email address</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Email Password</Label>
+                    <Label>Email Password {smtpHasPassword && <span className="text-xs text-green-600 font-normal">(saved)</span>}</Label>
                     <div className="relative">
                       <Input 
                         type={showSmtpPassword ? "text" : "password"}
-                        placeholder="••••••••••••"
+                        placeholder={smtpHasPassword ? "Leave blank to keep existing password" : "Enter password"}
                         value={smtpPassword}
                         onChange={(e) => setSmtpPassword(e.target.value)}
                         className="pr-10"
