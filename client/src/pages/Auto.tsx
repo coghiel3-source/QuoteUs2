@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { Textarea } from "@/components/ui/textarea";
 import { useQuotes } from "@/lib/QuoteContext";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 const autoSchema = z.object({
   primaryDriver: z.object({
@@ -303,7 +304,14 @@ export default function AutoPage() {
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="address">Mailing Address</Label>
-                  <Input id="address" placeholder="123 Maple Street, Apt 4B, Toronto, ON" {...form.register("primaryDriver.address")} data-testid="input-address" autoComplete="street-address" />
+                  <AddressAutocomplete
+                    id="address"
+                    value={form.watch("primaryDriver.address") || ""}
+                    onChange={(val) => form.setValue("primaryDriver.address", val)}
+                    placeholder="Start typing your address..."
+                    data-testid="input-address"
+                  />
+                  <p className="text-xs text-muted-foreground">Start typing to see suggestions, or enter your address manually</p>
                 </div>
                 
                 <div className="md:col-span-2 grid md:grid-cols-2 gap-6 pt-4 border-t mt-2">

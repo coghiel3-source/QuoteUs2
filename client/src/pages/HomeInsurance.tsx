@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Home } from "lucide-react";
 import { useState } from "react";
 import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -15,7 +16,7 @@ export default function HomeInsurancePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit, control, setValue } = useForm<any>({
+  const { register, handleSubmit, control, setValue, watch } = useForm<any>({
     defaultValues: {
       claims: []
     }
@@ -99,7 +100,12 @@ export default function HomeInsurancePage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Property Address</Label>
-                  <Input {...register("address")} placeholder="123 Maple Dr" required autoComplete="street-address" />
+                  <AddressAutocomplete
+                    value={watch("address") || ""}
+                    onChange={(val) => setValue("address", val)}
+                    placeholder="Start typing your address..."
+                  />
+                  <p className="text-xs text-muted-foreground">Start typing for suggestions, or enter manually</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Postal Code</Label>

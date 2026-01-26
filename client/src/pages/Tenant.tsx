@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Building2 } from "lucide-react";
 import { useState } from "react";
 import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -15,7 +16,7 @@ export default function TenantPage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, handleSubmit, control, setValue } = useForm<any>({
+  const { register, handleSubmit, control, setValue, watch } = useForm<any>({
     defaultValues: {
       claims: []
     }
@@ -96,7 +97,12 @@ export default function TenantPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Address</Label>
-                  <Input {...register("address")} placeholder="456 Condo Way" required autoComplete="street-address" />
+                  <AddressAutocomplete
+                    value={watch("address") || ""}
+                    onChange={(val) => setValue("address", val)}
+                    placeholder="Start typing your address..."
+                  />
+                  <p className="text-xs text-muted-foreground">Start typing for suggestions, or enter manually</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Unit #</Label>

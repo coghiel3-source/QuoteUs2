@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Briefcase, UploadCloud } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -16,7 +17,7 @@ export default function BusinessPage() {
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
-  const { register, handleSubmit } = useForm();
+  const { register, handleSubmit, setValue, watch } = useForm();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -100,7 +101,12 @@ export default function BusinessPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Business Address</Label>
-                  <Input {...register("address")} placeholder="123 Business Park Dr" required />
+                  <AddressAutocomplete
+                    value={watch("address") || ""}
+                    onChange={(val) => setValue("address", val)}
+                    placeholder="Start typing your address..."
+                  />
+                  <p className="text-xs text-muted-foreground">Start typing for suggestions, or enter manually</p>
                 </div>
                 <div className="space-y-2">
                   <Label>Postal Code</Label>
