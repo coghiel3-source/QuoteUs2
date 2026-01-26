@@ -51,8 +51,7 @@ export default function HomeInsurancePage() {
 
     setIsSubmitting(false);
     toast({
-      title: "Quote Received",
-      description: "Thank you for your submission! A broker will contact you shortly.",
+      description: "Thank you for your submission, we will be connecting you with an agent shortly.",
     });
   };
 

@@ -45,8 +45,7 @@ export default function ContactPage() {
     setIsSubmitting(false);
     setIsSuccess(true);
     toast({
-      title: "Message Sent",
-      description: "Thank you for your message! We will get back to you shortly.",
+      description: "Thank you for your submission, we will be connecting you with an agent shortly.",
     });
     reset();
   };

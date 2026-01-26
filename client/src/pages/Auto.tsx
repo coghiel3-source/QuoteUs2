@@ -200,8 +200,7 @@ export default function AutoPage() {
     setIsSubmitted(true);
     setIsSubmitting(false);
     toast({
-      title: "Quote Request Received",
-      description: `Thank you for your request. An agent will contact you shortly with a detailed quote.`,
+      description: "Thank you for your submission, we will be connecting you with an agent shortly.",
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
