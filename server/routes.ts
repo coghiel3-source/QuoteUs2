@@ -150,8 +150,7 @@ export async function registerRoutes(
       });
       
       // Get notification email from settings, default to info@quoteus.ca
-      const notificationEmailSetting = await storage.getSetting("notification_email");
-      const notificationEmail = notificationEmailSetting?.value || "info@quoteus.ca";
+      const notificationEmail = await storage.getSetting("notification_email") || "info@quoteus.ca";
       
       console.log(`[Email] Attempting to send admin notification to ${notificationEmail}`);
       sendEmail({
@@ -386,10 +385,10 @@ export async function registerRoutes(
       // Get existing settings to use stored password if not provided
       let testPassword = password;
       if (!testPassword) {
-        const existingSetting = await storage.getSetting("smtp_settings");
-        if (existingSetting) {
+        const existingSettingValue = await storage.getSetting("smtp_settings");
+        if (existingSettingValue) {
           try {
-            const existing = JSON.parse(existingSetting.value);
+            const existing = JSON.parse(existingSettingValue);
             testPassword = existing.password || "";
           } catch (e) {}
         }
@@ -440,11 +439,11 @@ export async function registerRoutes(
       }
       
       // Get existing settings to preserve password if not provided
-      const existingSetting = await storage.getSetting("smtp_settings");
+      const existingSettingValue = await storage.getSetting("smtp_settings");
       let existingPassword = "";
-      if (existingSetting) {
+      if (existingSettingValue) {
         try {
-          const existing = JSON.parse(existingSetting.value);
+          const existing = JSON.parse(existingSettingValue);
           existingPassword = existing.password || "";
         } catch (e) {}
       }
@@ -478,12 +477,12 @@ export async function registerRoutes(
   // Admin: Get SMTP settings (without password)
   app.get("/api/admin/smtp/settings", async (req, res) => {
     try {
-      const setting = await storage.getSetting("smtp_settings");
-      if (!setting) {
+      const settingValue = await storage.getSetting("smtp_settings");
+      if (!settingValue) {
         return res.json({ configured: false });
       }
       
-      const settings = JSON.parse(setting.value);
+      const settings = JSON.parse(settingValue);
       // Don't return the password, but indicate if one is set
       res.json({
         configured: true,
@@ -503,11 +502,8 @@ export async function registerRoutes(
   // Admin: Get a setting value
   app.get("/api/admin/settings/:key", async (req, res) => {
     try {
-      const setting = await storage.getSetting(req.params.key);
-      if (!setting) {
-        return res.json({ value: null });
-      }
-      res.json({ value: setting.value });
+      const value = await storage.getSetting(req.params.key);
+      res.json({ value: value || null });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
