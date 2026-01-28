@@ -15,6 +15,7 @@ import { Loader2, Plus, Trash2, Shield, Info, Car, User, AlertTriangle, FileWarn
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuotes } from "@/lib/QuoteContext";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 
@@ -110,6 +111,8 @@ export default function AutoPage() {
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [wantHomeQuote, setWantHomeQuote] = useState(false);
+  const [wantTenantQuote, setWantTenantQuote] = useState(false);
 
   const form = useForm<AutoFormValues>({
     resolver: zodResolver(autoSchema),
@@ -195,6 +198,10 @@ export default function AutoPage() {
         vehicleSummary: data.vehicles.map(v => `${v.year} ${v.make} ${v.model}`).join(', '),
         driverCount: 1 + (data.drivers?.length || 0),
         comments: data.comments,
+        crossSellInterest: {
+          wantHomeQuote: wantHomeQuote,
+          wantTenantQuote: wantTenantQuote,
+        }
       }
     });
 
@@ -703,6 +710,56 @@ export default function AutoPage() {
                         {...form.register("comments")}
                       />
                    </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Cross-Selling Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold font-serif text-primary flex items-center gap-2">
+                  <Shield size={20} /> Additional Insurance Options
+                </h3>
+              </div>
+              <Card className="shadow-md border-none bg-green-50/50">
+                <CardContent className="p-6">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Would you also like quotes for other types of insurance? Check the options below to bundle your request.
+                  </p>
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox 
+                        id="wantHomeQuote" 
+                        checked={wantHomeQuote}
+                        onCheckedChange={(checked) => setWantHomeQuote(checked as boolean)}
+                        data-testid="checkbox-want-home"
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="wantHomeQuote" className="font-medium cursor-pointer">
+                          I'd also like a Home Insurance quote
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Protect your home with comprehensive coverage. Bundle and save!
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <Checkbox 
+                        id="wantTenantQuote" 
+                        checked={wantTenantQuote}
+                        onCheckedChange={(checked) => setWantTenantQuote(checked as boolean)}
+                        data-testid="checkbox-want-tenant"
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor="wantTenantQuote" className="font-medium cursor-pointer">
+                          I'd also like a Tenant Insurance quote
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Affordable protection for your belongings as a renter.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>

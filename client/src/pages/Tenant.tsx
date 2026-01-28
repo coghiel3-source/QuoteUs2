@@ -3,12 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useForm, useFieldArray } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { Building2 } from "lucide-react";
+import { Building2, Car, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { VehicleSelector } from "@/components/VehicleSelector";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -16,10 +18,17 @@ export default function TenantPage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [wantAutoQuote, setWantAutoQuote] = useState(false);
   const { register, handleSubmit, control, setValue, watch } = useForm<any>({
     defaultValues: {
-      claims: []
+      claims: [],
+      vehicles: [{ year: 2020, make: "", model: "", usage: "commute", annualKm: 10000 }]
     }
+  });
+
+  const { fields: vehicleFields, append: appendVehicle, remove: removeVehicle } = useFieldArray({
+    control,
+    name: "vehicles",
   });
 
   const onSubmit = async (data: any) => {
@@ -43,7 +52,16 @@ export default function TenantPage() {
         contentsValue: data.contentsValue,
         yearsAtAddress: data.yearsAtAddress,
         claims: data.claims || [],
-        claimsCount: data.claims?.length || 0
+        claimsCount: data.claims?.length || 0,
+        crossSellInterest: {
+          wantAutoQuote: wantAutoQuote,
+          autoDetails: wantAutoQuote ? {
+            vehicles: data.vehicles?.filter((v: any) => v.make && v.model) || [],
+            driverDob: data.driverDob,
+            licenseType: data.licenseType,
+            licenseDate: data.licenseDate,
+          } : null
+        }
       }
     });
 
@@ -152,6 +170,118 @@ export default function TenantPage() {
               </div>
 
               <ClaimsHistorySection control={control} register={register} setValue={setValue} />
+
+              {/* Cross-Selling: Auto Insurance */}
+              <div className="space-y-4 border-t pt-6">
+                <div className="flex items-start space-x-3">
+                  <Checkbox 
+                    id="wantAutoQuote" 
+                    checked={wantAutoQuote}
+                    onCheckedChange={(checked) => setWantAutoQuote(checked as boolean)}
+                    data-testid="checkbox-want-auto"
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="wantAutoQuote" className="font-medium cursor-pointer flex items-center gap-2">
+                      <Car className="h-4 w-4 text-accent" />
+                      I'd also like an Auto Insurance quote
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Bundle your tenant and auto insurance for additional savings!
+                    </p>
+                  </div>
+                </div>
+
+                {wantAutoQuote && (
+                  <Card className="shadow-md border-2 border-accent/20 bg-green-50/30">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Car className="text-accent" /> Vehicle Information
+                      </CardTitle>
+                      <CardDescription>Tell us about the vehicle(s) you'd like to insure.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Driver Information */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-sm">Driver Information</h4>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label>Date of Birth</Label>
+                            <Input {...register("driverDob")} type="date" data-testid="input-driver-dob" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>License Type</Label>
+                            <Select onValueChange={(val) => setValue("licenseType", val)}>
+                              <SelectTrigger data-testid="select-license-type">
+                                <SelectValue placeholder="Select license" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="G">G (Full License)</SelectItem>
+                                <SelectItem value="G2">G2</SelectItem>
+                                <SelectItem value="G1">G1</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>License Date</Label>
+                            <Input {...register("licenseDate")} type="date" data-testid="input-license-date" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Vehicles */}
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-sm">Vehicle(s)</h4>
+                        {vehicleFields.map((field, index) => (
+                          <div key={field.id} className="p-4 border rounded-lg bg-white space-y-4">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-sm">Vehicle {index + 1}</span>
+                              {vehicleFields.length > 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removeVehicle(index)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                            <VehicleSelector
+                              index={index}
+                              register={register}
+                              setValue={setValue}
+                              watch={watch}
+                            />
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Vehicle Usage</Label>
+                                <Select onValueChange={(val) => setValue(`vehicles.${index}.usage`, val)} defaultValue="commute">
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select usage" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="commute">Commute to Work</SelectItem>
+                                    <SelectItem value="pleasure">Pleasure Only</SelectItem>
+                                    <SelectItem value="business">Business Use</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Annual Kilometres</Label>
+                                <Input {...register(`vehicles.${index}.annualKm`)} type="number" placeholder="15000" defaultValue={10000} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm"
+                          className="w-full border-dashed"
+                          onClick={() => appendVehicle({ year: 2020, make: "", model: "", usage: "commute", annualKm: 10000 })}
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Add Another Vehicle
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Tenant Quote"}
