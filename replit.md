@@ -72,7 +72,7 @@ The schema uses PostgreSQL enums for type safety on user roles, quote statuses, 
 - Travel insurance quotes redirect to TuGo partner site
 - Vehicle data loaded from static JSON (`client/public/data/vehicles.json`)
 - Stripe payment integration for credit purchases (via stripe-replit-sync)
-- Email notifications via SendGrid
+- Email notifications via SMTP (configured in Admin Settings)
 
 ### Development Tools
 - Replit-specific plugins for dev banner and cartographer
@@ -82,9 +82,6 @@ The schema uses PostgreSQL enums for type safety on user roles, quote statuses, 
 ### Environment Variables Required
 - `DATABASE_URL` - PostgreSQL connection string (required)
 - `NODE_ENV` - development or production
-- `SENDGRID_API_KEY` - SendGrid API key for email notifications (optional - emails logged to console if not set)
-- `EMAIL_FROM` - From email address (defaults to noreply@quoteus.ca)
-- `EMAIL_FROM_NAME` - From name (defaults to QuoteUs.ca)
 
 ### Email Notifications
 The system includes automated email notifications for:
@@ -92,9 +89,10 @@ The system includes automated email notifications for:
 - Lead assignments (sent to assigned broker)
 - Status changes (sent to assigned broker)
 
-Email notifications require a SendGrid API key. Without it, emails are logged to console but not sent. To enable:
-1. Get a SendGrid API key from sendgrid.com
-2. Add SENDGRID_API_KEY to environment secrets
+Email notifications use SMTP settings configured in the Admin Settings panel. Without SMTP configured, emails are logged to console but not sent. To enable:
+1. Log in as admin and go to Admin Settings
+2. Configure SMTP settings (host, port, username, password, from email/name)
+3. Use your hosting provider's SMTP credentials
 
 ### Lead Credit System
 Brokers must purchase credits to receive leads. The system includes:
