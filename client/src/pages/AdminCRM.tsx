@@ -1784,6 +1784,10 @@ export default function AdminCRMPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => openEditUser(staff)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit Details
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openPasswordReset(staff.id)}>
                                   <Lock className="mr-2 h-4 w-4" />
                                   Change Password
