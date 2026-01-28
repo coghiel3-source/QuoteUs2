@@ -14,11 +14,9 @@ import { Badge } from "@/components/ui/badge";
 
 export default function ProfilePage() {
   const { toast } = useToast();
-  const { user, register: registerUser, login, logout, approveBroker } = useAuth();
+  const { user, register: registerUser, logout } = useAuth();
   const { quotes } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEmailSent, setIsEmailSent] = useState(false);
-  const [tempUserEmail, setTempUserEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -28,45 +26,25 @@ export default function ProfilePage() {
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
     
-    // Register the user with pending status implicitly (mocked)
-    // Actually, update register to handle email verification flow visually
-    registerUser(data.name, data.email, data.password, 'customer');
-    
-    setTempUserEmail(data.email);
-    setIsEmailSent(true);
-    setIsSubmitting(false);
-    
-    toast({
-      title: "Confirmation Email Sent",
-      description: "Please check your email to complete your account activation.",
-    });
-  };
-
-  const handleSimulateEmailClick = () => {
-    // Manually activate/approve the user for the prototype flow
-    // Find the user ID based on email (not exposed, but we can simulate logic)
-    // In a real app, this happens on the backend via token
-    // Here we will just log them in as if they verified
-    
-    // Hack for prototype: since we can't get the ID easily without searching users array (which is in context but not exposed by verify function)
-    // We will just call login. If it fails due to status, we need to flip the status.
-    // Let's modify AuthContext to allow us to "Verify" a user by email for testing? 
-    // Or just re-register/force login.
-    
-    // Actually, in the AuthContext, 'register' makes 'customer' active by default.
-    // I should change that if I strictly want to block login.
-    // But for now, the user asked to "send email... to complete activation".
-    // I'll show the UI for it.
-    
-    toast({
-      title: "Email Verified",
-      description: "Your email has been verified. Logging you in...",
-    });
-    
-    login(tempUserEmail, 'customer', password);
+    try {
+      // Register the user and log them in immediately
+      await registerUser(data.name, data.email, data.password, 'customer');
+      
+      setIsSubmitting(false);
+      
+      toast({
+        title: "Account Created",
+        description: "Welcome! Your account has been created successfully.",
+      });
+    } catch (error: any) {
+      setIsSubmitting(false);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Could not create account. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getIconForType = (type: string) => {
@@ -215,27 +193,6 @@ export default function ProfilePage() {
             <CardDescription>Enter your details below to create your account.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isEmailSent ? (
-              <div className="text-center py-8 space-y-4">
-                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                  <Mail size={32} />
-                </div>
-                <h3 className="text-xl font-bold">Check your email</h3>
-                <p className="text-muted-foreground">
-                  We've sent a confirmation link to <span className="font-medium text-foreground">{tempUserEmail}</span>.
-                  Please click the link to activate your account.
-                </p>
-                <div className="pt-4 p-4 bg-yellow-50 rounded text-sm text-yellow-800">
-                  <p><strong>Prototype Note:</strong> Since real emails cannot be sent, click the button below to simulate verifying your email.</p>
-                  <Button onClick={handleSimulateEmailClick} className="mt-3 w-full bg-yellow-600 hover:bg-yellow-700 text-white">
-                    Simulate "Verify Email" Click
-                  </Button>
-                </div>
-                <Button variant="ghost" onClick={() => setIsEmailSent(false)} className="text-sm">
-                  Back to Registration
-                </Button>
-              </div>
-            ) : (
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
@@ -312,15 +269,12 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </form>
-            )}
           </CardContent>
-          {!isEmailSent && (
-            <CardFooter className="flex justify-center border-t p-4 bg-secondary/10">
-              <p className="text-sm text-muted-foreground">
-                Already have an account? <Link href="/login" className="text-accent hover:underline font-medium">Log in</Link>
-              </p>
-            </CardFooter>
-          )}
+          <CardFooter className="flex justify-center border-t p-4 bg-secondary/10">
+            <p className="text-sm text-muted-foreground">
+              Already have an account? <Link href="/login" className="text-accent hover:underline font-medium">Log in</Link>
+            </p>
+          </CardFooter>
         </Card>
       </div>
     </div>
