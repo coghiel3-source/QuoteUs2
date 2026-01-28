@@ -227,6 +227,39 @@ export default function AdminCRMPage() {
     });
   };
 
+  // Send email to broker state
+  const [sendingEmailToQuote, setSendingEmailToQuote] = useState<number | null>(null);
+
+  const handleSendLeadToBroker = async (quoteId: number) => {
+    setSendingEmailToQuote(quoteId);
+    try {
+      const response = await fetch(`/api/leads/${quoteId}/send-to-broker`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        toast({
+          title: "Email Sent",
+          description: "Lead details have been sent to the assigned broker.",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Failed to Send Email",
+          description: error.error || "Could not send email to broker.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEmailToQuote(null);
+    }
+  };
+
   // Manual Lead Form State
   const [newLead, setNewLead] = useState({
     firstName: "",
@@ -1440,6 +1473,22 @@ export default function AdminCRMPage() {
                                 <Eye size={14} className="mr-1" />
                                 View
                               </Button>
+                              {(user?.role === 'admin' || user?.role === 'manager') && quote.assignedTo && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="text-xs h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  data-testid={`button-send-to-broker-${quote.id}`}
+                                  disabled={sendingEmailToQuote === quote.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSendLeadToBroker(quote.id);
+                                  }}
+                                >
+                                  <Mail size={14} className="mr-1" />
+                                  {sendingEmailToQuote === quote.id ? "Sending..." : "Send"}
+                                </Button>
+                              )}
                               {(user?.role === 'admin' || user?.role === 'manager') && (
                                 <Button 
                                   variant="ghost" 

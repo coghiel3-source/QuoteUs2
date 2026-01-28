@@ -385,6 +385,118 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Send lead details to assigned broker via email
+  app.post("/api/leads/:id/send-to-broker", async (req, res) => {
+    try {
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+
+      if (!quote.assignedTo) {
+        return res.status(400).json({ error: "Lead is not assigned to a broker" });
+      }
+
+      const broker = await storage.getUser(quote.assignedTo);
+      if (!broker) {
+        return res.status(404).json({ error: "Assigned broker not found" });
+      }
+
+      if (!broker.email) {
+        return res.status(400).json({ error: "Broker does not have an email address" });
+      }
+
+      // Generate lead details email
+      const leadDetails = quote.details as Record<string, any> || {};
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #16a34a; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">QuoteUs.ca</h1>
+          </div>
+          <div style="padding: 30px; background-color: #f9fafb;">
+            <h2 style="color: #1f2937; margin-top: 0;">Lead Details - ${quote.type} Insurance</h2>
+            <p style="color: #4b5563;">You have been assigned a new lead. Here are the complete details:</p>
+            
+            <div style="background-color: white; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb; width: 140px;"><strong>Client Name:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${quote.clientName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;"><strong>Insurance Type:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${quote.type}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;"><strong>Email:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${quote.email || 'Not provided'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;"><strong>Phone:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${quote.phone || 'Not provided'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;"><strong>Postal Code:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${quote.postalCode || 'Not provided'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;"><strong>Status:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${quote.status}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280; border-bottom: 1px solid #e5e7eb;"><strong>Priority:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${quote.priority || 'Medium'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px 0; color: #6b7280;"><strong>Source:</strong></td>
+                  <td style="padding: 10px 0; color: #1f2937;">${quote.source || 'Website'}</td>
+                </tr>
+              </table>
+            </div>
+
+            ${Object.keys(leadDetails).length > 0 ? `
+              <h3 style="color: #1f2937; margin-top: 30px;">Additional Details</h3>
+              <div style="background-color: white; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 12px; color: #4b5563; margin: 0;">${JSON.stringify(leadDetails, null, 2)}</pre>
+              </div>
+            ` : ''}
+            
+            <p style="color: #4b5563; font-size: 14px; margin-top: 20px;">
+              Please contact the client at your earliest convenience.
+            </p>
+            
+            <p style="color: #4b5563; font-size: 14px; margin-top: 20px;">
+              Best regards,<br>
+              <strong>QuoteUs.ca Management</strong>
+            </p>
+          </div>
+          <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+            <p>QuoteUs.ca - Your Trusted Ontario Insurance Partner</p>
+          </div>
+        </div>
+      `;
+
+      await sendEmail({
+        to: broker.email,
+        subject: `Lead Assignment: ${quote.clientName} - ${quote.type} Insurance`,
+        html: emailHtml
+      });
+
+      // Log the activity
+      await storage.createActivity({
+        quoteId: quote.id,
+        type: "email",
+        content: `Lead details emailed to broker ${broker.name}`,
+        author: "System",
+      });
+
+      res.json({ success: true, message: "Email sent to broker" });
+    } catch (error: any) {
+      console.error('[Email] Send to broker error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   // ===== ACTIVITY ROUTES =====
   
