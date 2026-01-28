@@ -805,41 +805,65 @@ export default function AdminCRMPage() {
                     <div className="border rounded-lg p-4 bg-slate-50">
                       <h4 className="font-semibold mb-3 flex items-center gap-2"><Car size={16}/> Quote Details</h4>
                       <div className="space-y-3">
-                        {selectedQuote.details && Object.entries(selectedQuote.details).map(([key, value]) => {
+                        {selectedQuote.details && (() => {
                           const formatLabel = (k: string) => k
                             .replace(/([A-Z])/g, ' $1')
                             .replace(/^./, str => str.toUpperCase())
-                            .replace(/_/g, ' ');
+                            .replace(/_/g, ' ')
+                            .trim();
                           
-                          const formatValue = (v: any): string => {
-                            if (v === null || v === undefined || v === '') return 'Not provided';
+                          const renderValue = (v: any, depth: number = 0): React.ReactNode => {
+                            if (v === null || v === undefined || v === '') return <span className="text-slate-400 italic">Not provided</span>;
                             if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+                            if (typeof v === 'string' || typeof v === 'number') return String(v);
+                            
                             if (Array.isArray(v)) {
-                              if (v.length === 0) return 'None';
-                              return v.map((item, i) => {
-                                if (typeof item === 'object') {
-                                  return Object.entries(item)
-                                    .map(([k, val]) => `${formatLabel(k)}: ${val}`)
-                                    .join(', ');
-                                }
-                                return String(item);
-                              }).join(' | ');
+                              if (v.length === 0) return <span className="text-slate-400 italic">None</span>;
+                              return (
+                                <div className="space-y-2">
+                                  {v.map((item, i) => (
+                                    <div key={i} className={`${depth > 0 ? 'pl-3 border-l-2 border-slate-200' : ''}`}>
+                                      {typeof item === 'object' && item !== null ? (
+                                        <div className="bg-slate-50 rounded p-2 space-y-1">
+                                          {Object.entries(item).map(([k, val]) => (
+                                            <div key={k} className="flex gap-2">
+                                              <span className="text-xs text-slate-500 min-w-[80px]">{formatLabel(k)}:</span>
+                                              <span className="text-xs font-medium">{renderValue(val, depth + 1)}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <span className="text-sm">{String(item)}</span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              );
                             }
+                            
                             if (typeof v === 'object') {
-                              return Object.entries(v)
-                                .map(([k, val]) => `${formatLabel(k)}: ${val}`)
-                                .join(', ');
+                              return (
+                                <div className="bg-slate-50 rounded p-2 space-y-1">
+                                  {Object.entries(v).map(([k, val]) => (
+                                    <div key={k} className="flex gap-2">
+                                      <span className="text-xs text-slate-500 min-w-[80px]">{formatLabel(k)}:</span>
+                                      <span className="text-xs font-medium">{renderValue(val, depth + 1)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
                             }
+                            
                             return String(v);
                           };
 
-                          return (
-                            <div key={key} className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-slate-200 last:border-0">
-                              <span className="text-sm text-slate-500 sm:w-1/3 shrink-0">{formatLabel(key)}</span>
-                              <span className="text-sm font-semibold text-primary">{formatValue(value)}</span>
+                          return Object.entries(selectedQuote.details).map(([key, value]) => (
+                            <div key={key} className="py-2 border-b border-slate-200 last:border-0">
+                              <div className="text-sm text-slate-500 mb-1">{formatLabel(key)}</div>
+                              <div className="text-sm font-semibold text-primary">{renderValue(value)}</div>
                             </div>
-                          );
-                        })}
+                          ));
+                        })()}
                         {(!selectedQuote.details || Object.keys(selectedQuote.details).length === 0) && (
                           <p className="text-sm text-muted-foreground">No additional details available.</p>
                         )}
