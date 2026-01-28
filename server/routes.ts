@@ -486,7 +486,7 @@ export async function registerRoutes(
       // Log the activity
       await storage.createActivity({
         quoteId: quote.id,
-        type: "email",
+        type: "email_sent",
         content: `Lead details emailed to broker ${broker.name}`,
         author: "System",
       });
