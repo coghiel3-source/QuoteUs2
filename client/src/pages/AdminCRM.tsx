@@ -82,6 +82,13 @@ export default function AdminCRMPage() {
   const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
   const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
   
+  // Timed Pause Dialog State
+  const [isPauseDialogOpen, setIsPauseDialogOpen] = useState(false);
+  const [pausingUserId, setPausingUserId] = useState<string | null>(null);
+  const [pauseStartDate, setPauseStartDate] = useState("");
+  const [pauseEndDate, setPauseEndDate] = useState("");
+  const [isPausingUser, setIsPausingUser] = useState(false);
+  
   // Mobile Menu State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -348,6 +355,52 @@ export default function AdminCRMPage() {
       title: "Status Updated",
       description: `User status has been changed to ${status}.`,
     });
+  };
+
+  const openPauseDialog = (userId: string) => {
+    setPausingUserId(userId);
+    setPauseStartDate(new Date().toISOString().split('T')[0]);
+    setPauseEndDate("");
+    setIsPauseDialogOpen(true);
+  };
+
+  const handleTimedPause = async () => {
+    if (!pausingUserId) return;
+    
+    setIsPausingUser(true);
+    try {
+      const response = await fetch(`/api/users/${pausingUserId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'paused',
+          pauseStartDate: pauseStartDate ? new Date(pauseStartDate).toISOString() : null,
+          pauseEndDate: pauseEndDate ? new Date(pauseEndDate).toISOString() : null,
+        }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Access Paused",
+          description: pauseEndDate 
+            ? `User access paused from ${pauseStartDate} to ${pauseEndDate}.`
+            : `User access paused starting ${pauseStartDate}.`,
+        });
+        setIsPauseDialogOpen(false);
+        // Refresh users
+        window.location.reload();
+      } else {
+        throw new Error('Failed to pause user');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to pause user access.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPausingUser(false);
+    }
   };
 
   const openEditUser = (userToEdit: any) => {
@@ -950,6 +1003,58 @@ export default function AdminCRMPage() {
                 <Button type="submit" className="w-full">Update Password</Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Timed Pause Dialog */}
+        <Dialog open={isPauseDialogOpen} onOpenChange={setIsPauseDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Pause User Access</DialogTitle>
+              <DialogDescription>
+                Set a time period to pause this user's access. They will not be able to log in during this period.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="pauseStart">Pause Start Date</Label>
+                <Input 
+                  id="pauseStart" 
+                  type="date"
+                  value={pauseStartDate} 
+                  onChange={(e) => setPauseStartDate(e.target.value)}
+                  data-testid="input-pause-start"
+                />
+                <p className="text-xs text-muted-foreground">When should the pause begin?</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pauseEnd">Pause End Date (Optional)</Label>
+                <Input 
+                  id="pauseEnd" 
+                  type="date"
+                  value={pauseEndDate} 
+                  onChange={(e) => setPauseEndDate(e.target.value)}
+                  min={pauseStartDate}
+                  data-testid="input-pause-end"
+                />
+                <p className="text-xs text-muted-foreground">Leave empty for indefinite pause. Access will be restored automatically after this date.</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsPauseDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleTimedPause}
+                disabled={isPausingUser || !pauseStartDate}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {isPausingUser ? "Pausing..." : "Pause Access"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -1731,7 +1836,11 @@ export default function AdminCRMPage() {
                     </TableHeader>
                     <TableBody>
                        {allStaff.map(staff => (
-                         <TableRow key={staff.id}>
+                         <TableRow 
+                           key={staff.id} 
+                           className="cursor-pointer hover:bg-slate-50"
+                           onClick={() => openEditUser(staff)}
+                         >
                            <TableCell className="font-medium">
                               <div className="flex items-center gap-2">
                                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
@@ -1784,35 +1893,35 @@ export default function AdminCRMPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => openEditUser(staff)}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditUser(staff); }}>
                                   <Pencil className="mr-2 h-4 w-4" />
                                   Edit Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openPasswordReset(staff.id)}>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openPasswordReset(staff.id); }}>
                                   <Lock className="mr-2 h-4 w-4" />
                                   Change Password
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {staff.status === 'active' && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(staff.id, 'paused')}>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openPauseDialog(staff.id); }}>
                                     <Pause className="mr-2 h-4 w-4" />
                                     Pause Access
                                   </DropdownMenuItem>
                                 )}
                                 {staff.status === 'paused' && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(staff.id, 'active')}>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(staff.id, 'active'); }}>
                                     <Play className="mr-2 h-4 w-4" />
                                     Resume Access
                                   </DropdownMenuItem>
                                 )}
                                 {staff.status !== 'cancelled' && (
-                                  <DropdownMenuItem className="text-red-600" onClick={() => handleStatusChange(staff.id, 'cancelled')}>
+                                  <DropdownMenuItem className="text-red-600" onClick={(e) => { e.stopPropagation(); handleStatusChange(staff.id, 'cancelled'); }}>
                                     <Ban className="mr-2 h-4 w-4" />
                                     Cancel Account
                                   </DropdownMenuItem>
                                 )}
                                 {staff.status === 'cancelled' && (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(staff.id, 'active')}>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(staff.id, 'active'); }}>
                                     <Check className="mr-2 h-4 w-4" />
                                     Reactivate Account
                                   </DropdownMenuItem>

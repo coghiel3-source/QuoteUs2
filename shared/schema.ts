@@ -29,6 +29,8 @@ export const users = pgTable("users", {
   productTypes: text("product_types").array(),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
+  pauseStartDate: timestamp("pause_start_date"),
+  pauseEndDate: timestamp("pause_end_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
