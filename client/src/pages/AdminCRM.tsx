@@ -524,10 +524,11 @@ export default function AdminCRMPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'New': return 'bg-blue-500 hover:bg-blue-600';
-      case 'Contacted': return 'bg-yellow-500 hover:bg-yellow-600';
-      case 'Quoted': return 'bg-green-500 hover:bg-green-600';
-      case 'Bound': return 'bg-purple-500 hover:bg-purple-600';
-      case 'Closed': return 'bg-gray-500 hover:bg-gray-600';
+      case 'Contacted': return 'bg-amber-500 hover:bg-amber-600';
+      case 'Quoted': return 'bg-emerald-500 hover:bg-emerald-600';
+      case 'Bound': return 'bg-purple-600 hover:bg-purple-700';
+      case 'Follow-Up': return 'bg-orange-500 hover:bg-orange-600';
+      case 'Closed': return 'bg-teal-600 hover:bg-teal-700';
       case 'Lost': return 'bg-red-500 hover:bg-red-600';
       default: return 'bg-slate-500';
     }
@@ -1500,6 +1501,7 @@ export default function AdminCRMPage() {
                                 <SelectItem value="Contacted">Contacted</SelectItem>
                                 <SelectItem value="Quoted">Quoted</SelectItem>
                                 <SelectItem value="Bound">Bound</SelectItem>
+                                <SelectItem value="Follow-Up">Follow-Up</SelectItem>
                                 <SelectItem value="Closed">Closed</SelectItem>
                                 <SelectItem value="Lost">Lost</SelectItem>
                               </SelectContent>
