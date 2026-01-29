@@ -285,7 +285,7 @@ export function generateThankYouEmail(data: {
             <p style="color: #1f2937; margin: 0; font-weight: bold;">What happens next?</p>
             <ul style="color: #4b5563; margin-top: 10px; padding-left: 20px;">
               <li>A top-rated broker will review your inquiry</li>
-              <li>You'll receive a call or email within 1-2 business days</li>
+              <li>You'll receive a call or email shortly</li>
               <li>We'll help you find the best ${data.type.toLowerCase()} insurance coverage</li>
             </ul>
           </div>
@@ -299,8 +299,13 @@ export function generateThankYouEmail(data: {
             <strong>The QuoteUs.ca Team</strong>
           </p>
         </div>
-        <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
-          <p>QuoteUs.ca - Your Trusted Ontario Insurance Partner</p>
+        <div style="padding: 20px; text-align: center; color: #6b7280; font-size: 14px; background-color: #f3f4f6;">
+          <p style="margin: 0 0 8px 0;">Need help? Contact us:</p>
+          <p style="margin: 0; font-weight: bold;">1-877-253-2695</p>
+          <p style="margin: 8px 0 0 0;">or email us at <a href="mailto:quote@quoteus.ca" style="color: #16a34a; text-decoration: none;">quote@quoteus.ca</a></p>
+        </div>
+        <div style="padding: 15px; text-align: center; color: #9ca3af; font-size: 12px;">
+          <p style="margin: 0;">QuoteUs.ca - Your Trusted Ontario Insurance Partner</p>
         </div>
       </div>
     `
