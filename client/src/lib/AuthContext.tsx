@@ -11,6 +11,10 @@ export interface User {
   password?: string;
   balance?: string;
   stripeCustomerId?: string;
+  brokerage?: string;
+  yearsOfService?: number;
+  productTypes?: string[];
+  leadCostOverride?: string;
   createdAt?: string;
   lastLogin?: string;
   performance?: {
@@ -26,7 +30,7 @@ interface AuthContextType {
   login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => Promise<boolean>;
   loginWithGoogle: (userId: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password?: string, role?: 'broker' | 'customer' | 'manager' | 'admin', phone?: string) => Promise<void>;
+  register: (name: string, email: string, password?: string, role?: 'broker' | 'customer' | 'manager' | 'admin', phone?: string, brokerFields?: { brokerage?: string; yearsOfService?: number; productTypes?: string[] }) => Promise<void>;
   approveBroker: (id: string) => Promise<void>;
   denyBroker: (id: string) => Promise<void>;
   updateUser: (id: string, data: Partial<User>) => Promise<void>;

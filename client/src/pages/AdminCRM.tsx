@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +52,7 @@ export default function AdminCRMPage() {
     email: "",
     phone: "",
     role: "broker" as "broker" | "manager" | "admin",
+    status: "active" as "pending" | "active",
     password: "",
     brokerage: "",
     yearsOfService: "",
@@ -261,33 +263,61 @@ export default function AdminCRMPage() {
     }
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    register(
-      newUser.name, 
-      newUser.email, 
-      newUser.password, 
-      newUser.role as any, 
-      newUser.phone,
-      newUser.role === 'broker' ? {
-        brokerage: newUser.brokerage,
-        yearsOfService: newUser.yearsOfService ? parseInt(newUser.yearsOfService) : undefined,
-        productTypes: newUser.productTypes
-      } : undefined
-    );
-    
-    setIsAddUserOpen(false);
-    setNewUser({ name: "", email: "", phone: "", role: "broker", password: "", brokerage: "", yearsOfService: "", productTypes: [] });
-    toast({
-      title: "User Added",
-      description: "New user account has been created.",
-    });
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          phone: newUser.phone,
+          password: newUser.password,
+          role: newUser.role,
+          status: newUser.status,
+          actorId: user?.id,
+          ...(newUser.role === 'broker' && {
+            brokerage: newUser.brokerage,
+            yearsOfService: newUser.yearsOfService ? parseInt(newUser.yearsOfService) : undefined,
+            productTypes: newUser.productTypes
+          })
+        }),
+      });
+      
+      if (!response.ok) {
+        const err = await response.json();
+        toast({
+          title: "Error",
+          description: err.error || "Failed to create user",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setIsAddUserOpen(false);
+      setNewUser({ 
+        name: "", email: "", phone: "", role: "broker", status: "active", 
+        password: "", brokerage: "", yearsOfService: "", productTypes: []
+      });
+      toast({
+        title: "User Added",
+        description: `New ${newUser.role} account has been created.`,
+      });
+      window.location.reload();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive",
+      });
+    }
   };
 
   // Send email to broker state
-  const [sendingEmailToQuote, setSendingEmailToQuote] = useState<number | null>(null);
+  const [sendingEmailToQuote, setSendingEmailToQuote] = useState<string | null>(null);
 
-  const handleSendLeadToBroker = async (quoteId: number) => {
+  const handleSendLeadToBroker = async (quoteId: string) => {
     setSendingEmailToQuote(quoteId);
     try {
       const response = await fetch(`/api/leads/${quoteId}/send-to-broker`, {
@@ -1770,22 +1800,48 @@ export default function AdminCRMPage() {
                             placeholder="416-555-0123"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="userRole">Role</Label>
-                          <Select 
-                            value={newUser.role} 
-                            onValueChange={(val: any) => setNewUser({...newUser, role: val})}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="broker">Broker</SelectItem>
-                              <SelectItem value="manager">Manager</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="userRole">Role</Label>
+                            <Select 
+                              value={newUser.role} 
+                              onValueChange={(val: any) => setNewUser({...newUser, role: val})}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="broker">Broker</SelectItem>
+                                <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="userStatus">Account Status</Label>
+                            <Select 
+                              value={newUser.status} 
+                              onValueChange={(val: any) => setNewUser({...newUser, status: val})}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active (Immediate Access)</SelectItem>
+                                <SelectItem value="pending">Pending (Requires Approval)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
+                        
+                        {newUser.role === 'manager' && (
+                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm text-blue-700">
+                              <strong>Note:</strong> Manager permissions are configured globally in the Settings tab. 
+                              After creating this manager, go to Settings to configure what features managers can access.
+                            </p>
+                          </div>
+                        )}
                         
                         {newUser.role === 'broker' && (
                           <>

@@ -27,7 +27,7 @@ export default function DashboardPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<"admin" | "broker">("broker");
+  const [role, setRole] = useState<"admin" | "manager" | "broker">("broker");
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerName, setRegisterName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
@@ -119,7 +119,7 @@ export default function DashboardPage() {
     e.preventDefault();
     const success = await login(email, role, password);
     if (success) {
-      if (role === 'admin') {
+      if (role === 'admin' || role === 'manager') {
         setLocation('/admin');
       } else {
         toast({ title: "Welcome back!", description: "You are now logged in." });
@@ -301,7 +301,8 @@ export default function DashboardPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="broker">Broker</SelectItem>
-                      <SelectItem value="admin">Account Manager</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -473,7 +474,7 @@ export default function DashboardPage() {
                         </Select>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {format(new Date(lead.date), 'MMM d')}
+                      {lead.date || lead.createdAt ? format(new Date(lead.date || lead.createdAt!), 'MMM d') : '-'}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
