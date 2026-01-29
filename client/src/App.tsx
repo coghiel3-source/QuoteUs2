@@ -20,10 +20,6 @@ import AboutPage from "@/pages/About";
 import DashboardPage from "@/pages/Dashboard";
 import PrivacyPage from "@/pages/Privacy";
 import ContactPage from "@/pages/Contact";
-import ProfilePage from "@/pages/Profile";
-import LoginPage from "@/pages/Login";
-import ForgotPasswordPage from "@/pages/ForgotPassword";
-import ResetPasswordPage from "@/pages/ResetPassword";
 import AdminCRMPage from "@/pages/AdminCRM";
 import BrokerCreditsPage from "@/pages/BrokerCredits";
 
@@ -55,10 +51,6 @@ function Router() {
         <Route path="/contact" component={ContactPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/privacy" component={PrivacyPage} />
-        <Route path="/profile" component={ProfilePage} />
-        <Route path="/login" component={LoginPage} />
-        <Route path="/forgot-password" component={ForgotPasswordPage} />
-        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/admin" component={AdminCRMPage} />
         <Route path="/broker/credits" component={BrokerCreditsPage} />
         <Route component={NotFound} />
