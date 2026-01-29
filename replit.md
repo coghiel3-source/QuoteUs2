@@ -50,6 +50,17 @@ The schema uses PostgreSQL enums for type safety on user roles, quote statuses, 
 - User status workflow: pending, active, denied, paused, cancelled
 - Session state managed client-side via AuthContext
 
+### Manager Permissions
+Admins can configure what features managers can access via the Settings tab:
+- **View Leads**: See and browse lead listings
+- **Assign Leads**: Assign leads to brokers (requires credit deduction)
+- **Manage Brokers**: Add, edit, approve, and manage broker accounts
+- **View Credits**: View broker credit balances and transactions
+- **Adjust Balances**: Manually add/deduct credits from broker accounts
+- **View Settings**: View system settings (read-only)
+
+Permissions are stored in `systemSettings` table as `manager_permissions` JSON. Both frontend (UI hiding) and backend (API authorization) enforce these permissions. Server-side checks are mandatory - actorId is required for all sensitive operations.
+
 ### Key Design Patterns
 - **Context Providers**: AuthProvider and QuoteProvider wrap the app for global state
 - **Storage Interface**: IStorage interface allows swapping database implementations

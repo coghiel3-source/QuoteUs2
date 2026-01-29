@@ -219,10 +219,31 @@ export async function registerRoutes(
     }
   });
   
-  // Update user
+  // Update user (requires actorId for authorization)
   app.patch("/api/users/:id", async (req, res) => {
     try {
-      const user = await storage.updateUser(req.params.id, req.body);
+      const { actorId, ...updateData } = req.body;
+      
+      // Require actorId for authorization
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required for authentication" });
+      }
+      
+      // Verify actor has permission to manage brokers
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can update users" });
+      }
+      
+      // Check manager permissions
+      if (actor.role === "manager") {
+        const hasPermission = await checkPermission(actorId, "manageBrokers");
+        if (!hasPermission) {
+          return res.status(403).json({ error: "You don't have permission to manage brokers" });
+        }
+      }
+      
+      const user = await storage.updateUser(req.params.id, updateData);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -703,6 +724,65 @@ export async function registerRoutes(
     }
   });
 
+  // Helper function to get manager permissions from settings
+  async function getManagerPermissions() {
+    const settingValue = await storage.getSetting("manager_permissions");
+    if (!settingValue) {
+      return {
+        viewLeads: true,
+        assignLeads: true,
+        manageBrokers: false,
+        viewCredits: true,
+        adjustBalances: false,
+        viewSettings: false,
+      };
+    }
+    return JSON.parse(settingValue);
+  }
+
+  // Helper function to check if user has permission
+  async function checkPermission(userId: string, permission: string): Promise<boolean> {
+    const user = await storage.getUser(userId);
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (user.role === 'manager') {
+      const permissions = await getManagerPermissions();
+      return permissions[permission] === true;
+    }
+    return false;
+  }
+
+  // Admin: Get manager permissions (accessible to admin and manager)
+  app.get("/api/admin/manager-permissions", async (req, res) => {
+    try {
+      const permissions = await getManagerPermissions();
+      res.json({ permissions });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Save manager permissions (admin only)
+  app.post("/api/admin/manager-permissions", async (req, res) => {
+    try {
+      const { permissions, actorId } = req.body;
+      
+      // Verify actor is admin
+      if (actorId) {
+        const actor = await storage.getUser(actorId);
+        if (!actor || actor.role !== 'admin') {
+          return res.status(403).json({ error: "Only admins can modify manager permissions" });
+        }
+      }
+      
+      await storage.setSetting("manager_permissions", JSON.stringify(permissions));
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[Manager Permissions Save] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin: Get SMTP settings (without password)
   app.get("/api/admin/smtp/settings", async (req, res) => {
     try {
@@ -967,6 +1047,14 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Only admin/manager can adjust credits" });
       }
       
+      // Check manager permissions
+      if (actor.role === "manager") {
+        const hasPermission = await checkPermission(actorId, "adjustBalances");
+        if (!hasPermission) {
+          return res.status(403).json({ error: "You don't have permission to adjust credit balances" });
+        }
+      }
+      
       const numAmount = parseFloat(amount);
       if (isNaN(numAmount)) {
         return res.status(400).json({ error: "Invalid amount" });
@@ -1070,10 +1158,18 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Actor ID is required for authentication" });
       }
       
-      // Verify actor is admin/manager
+      // Verify actor has permission to assign leads
       const actor = await storage.getUser(actorId);
       if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
         return res.status(403).json({ error: "Only admin/manager can assign leads" });
+      }
+      
+      // Check manager permissions
+      if (actor.role === "manager") {
+        const hasPermission = await checkPermission(actorId, "assignLeads");
+        if (!hasPermission) {
+          return res.status(403).json({ error: "You don't have permission to assign leads" });
+        }
       }
       
       const quote = await storage.getQuote(quoteId);

@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await apiRequest<User>(`/users/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'active' }),
+        body: JSON.stringify({ status: 'active', actorId: user?.id }),
       });
       setUsers(users.map(u => u.id === id ? updated : u));
     } catch (error) {
@@ -229,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await apiRequest<User>(`/users/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'denied' }),
+        body: JSON.stringify({ status: 'denied', actorId: user?.id }),
       });
       setUsers(users.map(u => u.id === id ? updated : u));
     } catch (error) {
@@ -241,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await apiRequest<User>(`/users/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, actorId: user?.id }),
       });
       setUsers(prev => prev.map(u => u.id === id ? updated : u));
       if (user && user.id === id) {
@@ -256,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiRequest(`/users/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ password: newPassword }),
+        body: JSON.stringify({ password: newPassword, actorId: user?.id }),
       });
       setUsers(prev => prev.map(u => u.id === id ? { ...u, password: newPassword } : u));
     } catch (error) {

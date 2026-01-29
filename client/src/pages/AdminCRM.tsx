@@ -15,7 +15,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFo
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -111,6 +112,17 @@ export default function AdminCRMPage() {
   // Notification Email State
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
   const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
+  
+  // Manager Permissions State
+  const [managerPermissions, setManagerPermissions] = useState({
+    viewLeads: true,
+    assignLeads: true,
+    manageBrokers: false,
+    viewCredits: true,
+    adjustBalances: false,
+    viewSettings: false,
+  });
+  const [savingPermissions, setSavingPermissions] = useState(false);
 
   useEffect(() => {
     fetch("/api/credits/lead-costs")
@@ -144,7 +156,45 @@ export default function AdminCRMPage() {
         }
       })
       .catch(console.error);
+    
+    // Load manager permissions
+    fetch("/api/admin/manager-permissions")
+      .then(r => r.json())
+      .then(data => {
+        if (data.permissions) {
+          setManagerPermissions(prev => ({ ...prev, ...data.permissions }));
+        }
+      })
+      .catch(console.error);
   }, []);
+  
+  // Check if current user has permission for a feature
+  const hasPermission = (permission: keyof typeof managerPermissions): boolean => {
+    if (user?.role === 'admin') return true;
+    if (user?.role === 'manager') return managerPermissions[permission];
+    return false;
+  };
+  
+  const saveManagerPermissions = async () => {
+    setSavingPermissions(true);
+    try {
+      const res = await fetch("/api/admin/manager-permissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ permissions: managerPermissions, actorId: user?.id }),
+      });
+      if (res.ok) {
+        alert("Manager permissions saved successfully!");
+      } else {
+        alert("Failed to save permissions");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saving permissions");
+    } finally {
+      setSavingPermissions(false);
+    }
+  };
 
   const handleAssignWithCredits = async (quoteId: string, brokerId: string, brokerName: string) => {
     if (brokerId === "unassigned") {
@@ -376,6 +426,7 @@ export default function AdminCRMPage() {
           status: 'paused',
           pauseStartDate: pauseStartDate ? new Date(pauseStartDate).toISOString() : null,
           pauseEndDate: pauseEndDate ? new Date(pauseEndDate).toISOString() : null,
+          actorId: user?.id,
         }),
       });
       
@@ -429,6 +480,7 @@ export default function AdminCRMPage() {
           phone: editingUser.phone,
           brokerage: editingUser.brokerage,
           status: editingUser.status,
+          actorId: user?.id,
         }),
       });
       
@@ -602,6 +654,7 @@ export default function AdminCRMPage() {
                     >
                       <LayoutDashboard size={18} className="mr-3" /> Dashboard
                     </Button>
+                    {hasPermission('viewLeads') && (
                     <Button 
                       variant={activeTab === 'leads' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
@@ -609,6 +662,7 @@ export default function AdminCRMPage() {
                     >
                       <FileText size={18} className="mr-3" /> Leads
                     </Button>
+                    )}
                     <Button 
                       variant={activeTab === 'manager' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
@@ -624,7 +678,7 @@ export default function AdminCRMPage() {
                     >
                       <BarChart size={18} className="mr-3" /> Reports
                     </Button>
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    {hasPermission('viewCredits') && (
                       <Button 
                         variant={activeTab === 'credits' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
@@ -643,13 +697,15 @@ export default function AdminCRMPage() {
                       </Button>
                     )}
                     <div className="border-t my-2" />
-                    <Button 
-                      variant={activeTab === 'settings' ? 'secondary' : 'ghost'} 
-                      className="justify-start mb-1"
-                      onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
-                    >
-                      <Settings size={18} className="mr-3" /> Settings
-                    </Button>
+                    {(user?.role === 'admin' || hasPermission('viewSettings')) && (
+                      <Button 
+                        variant={activeTab === 'settings' ? 'secondary' : 'ghost'} 
+                        className="justify-start mb-1"
+                        onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+                      >
+                        <Settings size={18} className="mr-3" /> Settings
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -672,6 +728,7 @@ export default function AdminCRMPage() {
                 >
                   <LayoutDashboard size={16} className="mr-2" /> Dashboard
                 </Button>
+                {hasPermission('viewLeads') && (
                 <Button 
                   variant={activeTab === 'leads' ? 'secondary' : 'ghost'} 
                   size="sm" 
@@ -680,6 +737,7 @@ export default function AdminCRMPage() {
                 >
                   <FileText size={16} className="mr-2" /> Leads
                 </Button>
+                )}
                 <Button 
                   variant={activeTab === 'manager' ? 'secondary' : 'ghost'} 
                   size="sm" 
@@ -697,7 +755,7 @@ export default function AdminCRMPage() {
                 >
                   <BarChart size={16} className="mr-2" /> Reports
                 </Button>
-                {(user?.role === 'admin' || user?.role === 'manager') && (
+                {hasPermission('viewCredits') && (
                   <Button 
                     variant={activeTab === 'credits' ? 'secondary' : 'ghost'} 
                     size="sm" 
@@ -1243,7 +1301,7 @@ export default function AdminCRMPage() {
                             >
                               <Eye size={14} className="mr-1" /> View
                             </Button>
-                            {(user?.role === 'admin' || user?.role === 'manager') && !quote.assignedTo && (
+                            {hasPermission('assignLeads') && !quote.assignedTo && (
                               <Select 
                                 value=""
                                 onValueChange={(val) => {
@@ -1314,7 +1372,7 @@ export default function AdminCRMPage() {
         )}
 
         {/* LEADS TAB */}
-        {activeTab === 'leads' && (
+        {activeTab === 'leads' && hasPermission('viewLeads') && (
           <Card className="shadow-lg border-none">
             <CardHeader className="bg-white border-b pb-4">
               <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -1604,7 +1662,7 @@ export default function AdminCRMPage() {
                                 <Eye size={14} className="mr-1" />
                                 View
                               </Button>
-                              {(user?.role === 'admin' || user?.role === 'manager') && quote.assignedTo && (
+                              {hasPermission('assignLeads') && quote.assignedTo && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -1620,7 +1678,7 @@ export default function AdminCRMPage() {
                                   {sendingEmailToQuote === quote.id ? "Sending..." : "Send"}
                                 </Button>
                               )}
-                              {(user?.role === 'admin' || user?.role === 'manager') && (
+                              {hasPermission('assignLeads') && (
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
@@ -1667,6 +1725,7 @@ export default function AdminCRMPage() {
                     <CardTitle>User Management</CardTitle>
                     <CardDescription>Manage staff accounts, roles, and permissions.</CardDescription>
                   </div>
+                  {hasPermission('manageBrokers') && (
                   <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
                     <DialogTrigger asChild>
                       <Button><UserPlus className="mr-2" size={16}/> Add New User</Button>
@@ -1814,6 +1873,7 @@ export default function AdminCRMPage() {
                       </form>
                     </DialogContent>
                   </Dialog>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -1910,6 +1970,7 @@ export default function AdminCRMPage() {
                              )}
                            </TableCell>
                            <TableCell className="text-right">
+                            {hasPermission('manageBrokers') ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -1954,6 +2015,9 @@ export default function AdminCRMPage() {
                                 )}
                               </DropdownMenuContent>
                             </DropdownMenu>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">--</span>
+                            )}
                            </TableCell>
                          </TableRow>
                        ))}
@@ -1996,8 +2060,8 @@ export default function AdminCRMPage() {
           </div>
         )}
         
-        {/* CREDITS TAB - Admin/Manager Only */}
-        {activeTab === 'credits' && (user?.role === 'admin' || user?.role === 'manager') && (
+        {/* CREDITS TAB - Admin/Manager with permission */}
+        {activeTab === 'credits' && hasPermission('viewCredits') && (
           <Card className="shadow-lg border-none">
             <CardHeader className="bg-white border-b pb-4">
               <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
@@ -2116,6 +2180,7 @@ export default function AdminCRMPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
+                            {hasPermission('adjustBalances') ? (
                             <Dialog>
                               <DialogTrigger asChild>
                                 <Button
@@ -2205,6 +2270,10 @@ export default function AdminCRMPage() {
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">--</span>
+                            )}
+                            {hasPermission('manageBrokers') && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -2214,6 +2283,7 @@ export default function AdminCRMPage() {
                             >
                               <Pencil size={14} /> Edit
                             </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
@@ -2316,16 +2386,147 @@ export default function AdminCRMPage() {
           </Card>
         )}
 
-        {/* SETTINGS TAB Placeholder */}
-        {activeTab === 'settings' && (
+        {/* SETTINGS TAB - Manager Permissions */}
+        {activeTab === 'settings' && user?.role === 'admin' && (
           <Card>
             <CardHeader>
-              <CardTitle>System Settings</CardTitle>
-              <CardDescription>Configure CRM preferences and notifications.</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <UserCog className="h-5 w-5" />
+                Manager Permissions
+              </CardTitle>
+              <CardDescription>Configure what features managers can access in the admin portal.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Managers have limited access compared to Admins. 
+                  Use these settings to control which features they can use.
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">View Leads</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to view and browse leads</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.viewLeads}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, viewLeads: checked }))}
+                    data-testid="toggle-manager-view-leads"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Assign Leads</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to assign leads to brokers</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.assignLeads}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, assignLeads: checked }))}
+                    data-testid="toggle-manager-assign-leads"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage Brokers</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to add, edit, and manage broker accounts</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.manageBrokers}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageBrokers: checked }))}
+                    data-testid="toggle-manager-manage-brokers"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">View Credits</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to view broker credit balances and transactions</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.viewCredits}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, viewCredits: checked }))}
+                    data-testid="toggle-manager-view-credits"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Adjust Balances</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to manually adjust broker credit balances</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.adjustBalances}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, adjustBalances: checked }))}
+                    data-testid="toggle-manager-adjust-balances"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">View Settings</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to view system settings (read-only)</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.viewSettings}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, viewSettings: checked }))}
+                    data-testid="toggle-manager-view-settings"
+                  />
+                </div>
+              </div>
+              
+              <Button 
+                onClick={saveManagerPermissions} 
+                disabled={savingPermissions}
+                data-testid="button-save-manager-permissions"
+              >
+                {savingPermissions ? "Saving..." : "Save Permissions"}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* SETTINGS TAB - Manager view (if permitted - read-only) */}
+        {activeTab === 'settings' && user?.role === 'manager' && managerPermissions.viewSettings && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Settings (Read-Only)</CardTitle>
+              <CardDescription>
+                You can view system settings but cannot make changes. Contact an admin to update settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Default Lead Costs</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(leadCosts).map(([type, cost]) => (
+                    <div key={type} className="bg-slate-50 rounded-lg p-3 text-center">
+                      <div className="text-sm text-muted-foreground mb-1">{type}</div>
+                      <div className="text-xl font-bold">${cost}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              <div className="text-center text-muted-foreground py-4">
+                SMTP and other settings are configured by administrators only.
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* SETTINGS TAB - Manager view (no permission) */}
+        {activeTab === 'settings' && user?.role === 'manager' && !managerPermissions.viewSettings && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Settings</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="p-8 text-center text-muted-foreground border border-dashed rounded-lg">
-                Settings panel content would go here.
+                You don't have permission to view system settings.
               </div>
             </CardContent>
           </Card>
