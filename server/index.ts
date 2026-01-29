@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import { setupGoogleAuth } from "./googleAuth";
 
 const app = express();
 const httpServer = createServer(app);
@@ -85,6 +86,9 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// Setup Google OAuth for customers
+setupGoogleAuth(app);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

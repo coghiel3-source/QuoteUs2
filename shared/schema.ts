@@ -31,6 +31,7 @@ export const users = pgTable("users", {
   resetTokenExpiry: timestamp("reset_token_expiry"),
   pauseStartDate: timestamp("pause_start_date"),
   pauseEndDate: timestamp("pause_end_date"),
+  googleId: text("google_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

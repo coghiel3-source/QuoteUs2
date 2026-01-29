@@ -24,6 +24,7 @@ interface AuthContextType {
   users: User[];
   loading: boolean;
   login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => Promise<boolean>;
+  loginWithGoogle: (userId: string) => Promise<boolean>;
   logout: () => void;
   register: (name: string, email: string, password?: string, role?: 'broker' | 'customer' | 'manager' | 'admin', phone?: string) => Promise<void>;
   approveBroker: (id: string) => Promise<void>;
@@ -162,6 +163,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const loginWithGoogle = async (userId: string): Promise<boolean> => {
+    try {
+      const foundUser = await apiRequest<User>(`/users/${userId}`);
+      if (!foundUser) {
+        return false;
+      }
+      if (foundUser.role !== 'customer') {
+        return false;
+      }
+      if (foundUser.status !== 'active') {
+        return false;
+      }
+      setUser(foundUser);
+      return true;
+    } catch (error) {
+      console.error('Google login failed:', error);
+      return false;
+    }
+  };
+
   const register = async (
     name: string, 
     email: string, 
@@ -254,7 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, loading, login, logout, register, approveBroker, denyBroker, updateUser, resetPassword, refreshUser }}>
+    <AuthContext.Provider value={{ user, users, loading, login, loginWithGoogle, logout, register, approveBroker, denyBroker, updateUser, resetPassword, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
