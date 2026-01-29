@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiRequest } from './api';
 
+export interface ManagerPermissions {
+  viewLeads?: boolean;
+  assignLeads?: boolean;
+  manageBrokers?: boolean;
+  viewCredits?: boolean;
+  adjustBalances?: boolean;
+  viewSettings?: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -15,6 +24,7 @@ export interface User {
   yearsOfService?: number;
   productTypes?: string[];
   leadCostOverride?: string;
+  permissions?: ManagerPermissions;
   createdAt?: string;
   lastLogin?: string;
   performance?: {

@@ -27,6 +27,7 @@ export const users = pgTable("users", {
   brokerage: text("brokerage"),
   yearsOfService: integer("years_of_service"),
   productTypes: text("product_types").array(),
+  permissions: jsonb("permissions"),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
   pauseStartDate: timestamp("pause_start_date"),

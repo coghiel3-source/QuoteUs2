@@ -746,8 +746,12 @@ export async function registerRoutes(
     if (!user) return false;
     if (user.role === 'admin') return true;
     if (user.role === 'manager') {
-      const permissions = await getManagerPermissions();
-      return permissions[permission] === true;
+      const userPermissions = user.permissions as Record<string, boolean> | null;
+      if (userPermissions) {
+        return userPermissions[permission] === true;
+      }
+      const globalPermissions = await getManagerPermissions();
+      return globalPermissions[permission] === true;
     }
     return false;
   }

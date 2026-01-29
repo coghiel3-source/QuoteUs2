@@ -56,7 +56,27 @@ export default function AdminCRMPage() {
     password: "",
     brokerage: "",
     yearsOfService: "",
-    productTypes: [] as string[]
+    productTypes: [] as string[],
+    permissions: {
+      viewLeads: true,
+      assignLeads: true,
+      manageBrokers: false,
+      viewCredits: false,
+      adjustBalances: false,
+      viewSettings: false,
+    }
+  });
+  
+  // Edit Permissions Dialog State
+  const [isEditPermissionsOpen, setIsEditPermissionsOpen] = useState(false);
+  const [editingManagerId, setEditingManagerId] = useState<string | null>(null);
+  const [editingPermissions, setEditingPermissions] = useState({
+    viewLeads: true,
+    assignLeads: true,
+    manageBrokers: false,
+    viewCredits: false,
+    adjustBalances: false,
+    viewSettings: false,
   });
 
   // Lead costs from API
@@ -171,9 +191,20 @@ export default function AdminCRMPage() {
   }, []);
   
   // Check if current user has permission for a feature
+  // Uses per-manager permissions first, falls back to global settings
   const hasPermission = (permission: keyof typeof managerPermissions): boolean => {
     if (user?.role === 'admin') return true;
-    if (user?.role === 'manager') return managerPermissions[permission];
+    if (user?.role === 'manager') {
+      // Check per-manager permissions first
+      if (user.permissions && typeof user.permissions === 'object') {
+        const perms = user.permissions as Record<string, boolean>;
+        if (permission in perms) {
+          return perms[permission];
+        }
+      }
+      // Fall back to global manager permissions
+      return managerPermissions[permission];
+    }
     return false;
   };
   
@@ -281,6 +312,9 @@ export default function AdminCRMPage() {
             brokerage: newUser.brokerage,
             yearsOfService: newUser.yearsOfService ? parseInt(newUser.yearsOfService) : undefined,
             productTypes: newUser.productTypes
+          }),
+          ...(newUser.role === 'manager' && {
+            permissions: newUser.permissions
           })
         }),
       });
@@ -298,7 +332,11 @@ export default function AdminCRMPage() {
       setIsAddUserOpen(false);
       setNewUser({ 
         name: "", email: "", phone: "", role: "broker", status: "active", 
-        password: "", brokerage: "", yearsOfService: "", productTypes: []
+        password: "", brokerage: "", yearsOfService: "", productTypes: [],
+        permissions: {
+          viewLeads: true, assignLeads: true, manageBrokers: false,
+          viewCredits: false, adjustBalances: false, viewSettings: false
+        }
       });
       toast({
         title: "User Added",
@@ -309,6 +347,58 @@ export default function AdminCRMPage() {
       toast({
         title: "Error",
         description: "Failed to create user",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Open Edit Permissions dialog for a manager
+  const openEditPermissions = (manager: any) => {
+    const perms = manager.permissions || {
+      viewLeads: true,
+      assignLeads: true,
+      manageBrokers: false,
+      viewCredits: false,
+      adjustBalances: false,
+      viewSettings: false,
+    };
+    setEditingManagerId(manager.id);
+    setEditingPermissions(perms);
+    setIsEditPermissionsOpen(true);
+  };
+
+  // Save permissions for a manager
+  const handleSavePermissions = async () => {
+    if (!editingManagerId) return;
+    try {
+      const response = await fetch(`/api/users/${editingManagerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          permissions: editingPermissions,
+          actorId: user?.id,
+        }),
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Permissions Updated",
+          description: "Manager permissions have been saved.",
+        });
+        setIsEditPermissionsOpen(false);
+        window.location.reload();
+      } else {
+        const err = await response.json();
+        toast({
+          title: "Error",
+          description: err.error || "Failed to update permissions",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save permissions",
         variant: "destructive",
       });
     }
@@ -1119,6 +1209,80 @@ export default function AdminCRMPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Edit Permissions Dialog */}
+        <Dialog open={isEditPermissionsOpen} onOpenChange={setIsEditPermissionsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Manager Permissions</DialogTitle>
+              <DialogDescription>
+                Configure which features this manager can access in the admin portal.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.viewLeads}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, viewLeads: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">View Leads</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.assignLeads}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, assignLeads: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">Assign Leads</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.manageBrokers}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, manageBrokers: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">Manage Brokers</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.viewCredits}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, viewCredits: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">View Credits</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.adjustBalances}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, adjustBalances: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">Adjust Balances</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.viewSettings}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, viewSettings: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">View Settings</span>
+                </label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditPermissionsOpen(false)}>Cancel</Button>
+              <Button onClick={handleSavePermissions}>Save Permissions</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Timed Pause Dialog */}
         <Dialog open={isPauseDialogOpen} onOpenChange={setIsPauseDialogOpen}>
           <DialogContent className="max-w-md">
@@ -1835,11 +1999,83 @@ export default function AdminCRMPage() {
                         </div>
                         
                         {newUser.role === 'manager' && (
-                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-sm text-blue-700">
-                              <strong>Note:</strong> Manager permissions are configured globally in the Settings tab. 
-                              After creating this manager, go to Settings to configure what features managers can access.
-                            </p>
+                          <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <Label className="text-blue-800 font-semibold">Manager Permissions</Label>
+                            <p className="text-xs text-blue-600 mb-2">Select which features this manager can access:</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.viewLeads}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, viewLeads: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">View Leads</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.assignLeads}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, assignLeads: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Assign Leads</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.manageBrokers}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, manageBrokers: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage Brokers</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.viewCredits}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, viewCredits: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">View Credits</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.adjustBalances}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, adjustBalances: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Adjust Balances</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.viewSettings}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, viewSettings: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">View Settings</span>
+                              </label>
+                            </div>
                           </div>
                         )}
                         
@@ -2044,6 +2280,12 @@ export default function AdminCRMPage() {
                                   <Lock className="mr-2 h-4 w-4" />
                                   Change Password
                                 </DropdownMenuItem>
+                                {staff.role === 'manager' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditPermissions(staff); }}>
+                                    <UserCog className="mr-2 h-4 w-4" />
+                                    Edit Permissions
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 {staff.status === 'active' && (
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openPauseDialog(staff.id); }}>
