@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Shield, Menu, X, Phone, User, LogIn, Facebook, Instagram } from "lucide-react";
+import { Shield, Menu, X, Phone, Facebook, Instagram } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -55,11 +55,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="hidden lg:flex items-center gap-4">
-            <Link href="/profile">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <User size={16} /> My Account
-              </Button>
-            </Link>
             <Link href="/auto">
               <Button className="bg-accent hover:bg-accent/90 text-white shadow-md">
                 Get a Quote
@@ -87,11 +82,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 ))}
                 <div className="flex flex-col gap-3 mt-4">
-                  <Link href="/profile" onClick={() => setIsMobileOpen(false)}>
-                     <Button variant="outline" className="w-full justify-start gap-2">
-                       <User size={16} /> My Account
-                     </Button>
-                  </Link>
                   <Link href="/auto" onClick={() => setIsMobileOpen(false)}>
                     <Button className="w-full bg-accent hover:bg-accent/90 text-white">
                       Get a Quote
