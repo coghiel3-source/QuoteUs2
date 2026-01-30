@@ -1219,6 +1219,26 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Can only assign leads to brokers" });
       }
       
+      // Check if broker is paused
+      if (broker.status === "paused") {
+        return res.status(400).json({ error: "Cannot assign leads to paused brokers" });
+      }
+      
+      // Check if broker is in an active pause period
+      const now = new Date();
+      if (broker.pauseStartDate && broker.pauseEndDate) {
+        const startDate = new Date(broker.pauseStartDate);
+        const endDate = new Date(broker.pauseEndDate);
+        if (now >= startDate && now <= endDate) {
+          return res.status(400).json({ error: "Cannot assign leads to brokers during their pause period" });
+        }
+      } else if (broker.pauseStartDate && !broker.pauseEndDate) {
+        const startDate = new Date(broker.pauseStartDate);
+        if (now >= startDate) {
+          return res.status(400).json({ error: "Cannot assign leads to paused brokers" });
+        }
+      }
+      
       // Get lead cost - use broker's override if set, otherwise default
       const defaultCost = currentLeadCosts[quote.type] || currentLeadCosts["General"];
       const leadCost = broker.leadCostOverride !== null && broker.leadCostOverride !== undefined

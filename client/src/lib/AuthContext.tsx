@@ -29,6 +29,8 @@ export interface User {
   permissions?: ManagerPermissions;
   createdAt?: string;
   lastLogin?: string;
+  pauseStartDate?: string;
+  pauseEndDate?: string;
   performance?: {
     conversionRate: number;
     responseTime: string;

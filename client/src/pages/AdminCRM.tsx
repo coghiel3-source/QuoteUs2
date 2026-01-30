@@ -737,8 +737,27 @@ export default function AdminCRMPage() {
 
   // Filter users for the Manager Tab
   const allStaff = users.filter(u => u.role !== 'customer');
-  const brokers = users.filter(u => u.role === 'broker' && (u.status === 'active' || u.status === 'paused' || u.status === 'cancelled'));
+  const allBrokers = users.filter(u => u.role === 'broker' && (u.status === 'active' || u.status === 'paused' || u.status === 'cancelled'));
   const pendingBrokers = users.filter(u => u.role === 'broker' && u.status === 'pending');
+  
+  // Helper to check if broker is currently in pause period
+  const isBrokerPaused = (broker: any): boolean => {
+    if (broker.status === 'paused') return true;
+    const now = new Date();
+    if (broker.pauseStartDate && broker.pauseEndDate) {
+      const start = new Date(broker.pauseStartDate);
+      const end = new Date(broker.pauseEndDate);
+      return now >= start && now <= end;
+    }
+    if (broker.pauseStartDate && !broker.pauseEndDate) {
+      const start = new Date(broker.pauseStartDate);
+      return now >= start;
+    }
+    return false;
+  };
+  
+  // Brokers available for lead assignment (excludes paused)
+  const brokers = allBrokers.filter(b => !isBrokerPaused(b));
 
   // Reports Data Calculation
   const getBrokerStats = (brokerId: string) => {
@@ -2288,9 +2307,20 @@ export default function AdminCRMPage() {
                              <div className="text-xs text-muted-foreground">{staff.phone || 'No phone'}</div>
                            </TableCell>
                            <TableCell>
-                             <Badge className={getUserStatusBadge(staff.status)}>
-                               {staff.status}
-                             </Badge>
+                             <div className="flex flex-col gap-1">
+                               <Badge className={getUserStatusBadge(staff.status)}>
+                                 {staff.status}
+                               </Badge>
+                               {(staff.pauseStartDate || staff.pauseEndDate) && (
+                                 <div className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                   {staff.pauseStartDate && staff.pauseEndDate ? (
+                                     <>Pause: {format(new Date(staff.pauseStartDate), 'MMM d')} - {format(new Date(staff.pauseEndDate), 'MMM d')}</>
+                                   ) : staff.pauseStartDate ? (
+                                     <>Paused from {format(new Date(staff.pauseStartDate), 'MMM d')}</>
+                                   ) : null}
+                                 </div>
+                               )}
+                             </div>
                            </TableCell>
                            <TableCell className="text-sm text-muted-foreground">
                              {staff.lastLogin ? format(new Date(staff.lastLogin), 'MMM d, h:mm a') : 'Never'}
