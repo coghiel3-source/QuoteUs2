@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Broker Portal</h1>
           <p className="text-lg text-primary-foreground/80 max-w-2xl mx-auto">
-            Access your leads, manage quotes, and grow your business.
+            Access your profile now. Please ensure your role is available to help you log in.
           </p>
         </div>
       </div>
@@ -55,7 +55,7 @@ export default function LoginPage() {
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Briefcase className="text-accent" /> Broker Login</CardTitle>
-            <CardDescription>Enter your credentials to access the broker portal.</CardDescription>
+            <CardDescription>Enter your credentials to continue.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
