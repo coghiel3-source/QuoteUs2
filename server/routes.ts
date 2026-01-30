@@ -582,9 +582,17 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Actor ID is required for authentication" });
       }
       
-      // Verify actor is admin/manager
+      // Verify actor is admin or manager with editLeadCosts permission
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor) {
+        return res.status(403).json({ error: "User not found" });
+      }
+      if (actor.role === "manager") {
+        const hasEditPermission = await checkPermission(actorId, "editLeadCosts");
+        if (!hasEditPermission) {
+          return res.status(403).json({ error: "You don't have permission to edit lead costs" });
+        }
+      } else if (actor.role !== "admin") {
         return res.status(403).json({ error: "Only admin/manager can update lead costs" });
       }
       

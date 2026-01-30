@@ -8,6 +8,8 @@ export interface ManagerPermissions {
   viewCredits?: boolean;
   adjustBalances?: boolean;
   viewSettings?: boolean;
+  viewLeadCosts?: boolean;
+  editLeadCosts?: boolean;
 }
 
 export interface User {

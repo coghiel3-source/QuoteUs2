@@ -64,6 +64,8 @@ export default function AdminCRMPage() {
       viewCredits: false,
       adjustBalances: false,
       viewSettings: false,
+      viewLeadCosts: false,
+      editLeadCosts: false,
     }
   });
   
@@ -77,6 +79,8 @@ export default function AdminCRMPage() {
     viewCredits: false,
     adjustBalances: false,
     viewSettings: false,
+    viewLeadCosts: false,
+    editLeadCosts: false,
   });
 
   // Lead costs from API
@@ -143,6 +147,8 @@ export default function AdminCRMPage() {
     viewCredits: true,
     adjustBalances: false,
     viewSettings: false,
+    viewLeadCosts: false,
+    editLeadCosts: false,
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
@@ -335,7 +341,8 @@ export default function AdminCRMPage() {
         password: "", brokerage: "", yearsOfService: "", productTypes: [],
         permissions: {
           viewLeads: true, assignLeads: true, manageBrokers: false,
-          viewCredits: false, adjustBalances: false, viewSettings: false
+          viewCredits: false, adjustBalances: false, viewSettings: false,
+          viewLeadCosts: false, editLeadCosts: false
         }
       });
       toast({
@@ -361,6 +368,8 @@ export default function AdminCRMPage() {
       viewCredits: false,
       adjustBalances: false,
       viewSettings: false,
+      viewLeadCosts: false,
+      editLeadCosts: false,
     };
     setEditingManagerId(manager.id);
     setEditingPermissions(perms);
@@ -1274,6 +1283,24 @@ export default function AdminCRMPage() {
                   />
                   <span className="text-sm">View Settings</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.viewLeadCosts}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, viewLeadCosts: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">View Lead Costs</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.editLeadCosts}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, editLeadCosts: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <span className="text-sm">Edit Lead Costs</span>
+                </label>
               </div>
             </div>
             <DialogFooter>
@@ -2075,6 +2102,30 @@ export default function AdminCRMPage() {
                                 />
                                 <span className="text-sm">View Settings</span>
                               </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.viewLeadCosts}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, viewLeadCosts: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">View Lead Costs</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.editLeadCosts}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, editLeadCosts: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Edit Lead Costs</span>
+                              </label>
                             </div>
                           </div>
                         )}
@@ -2593,7 +2644,7 @@ export default function AdminCRMPage() {
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold">Default Lead Costs</h3>
-                  {!editingDefaultCosts ? (
+                  {hasPermission('editLeadCosts') && !editingDefaultCosts ? (
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -2607,7 +2658,7 @@ export default function AdminCRMPage() {
                     >
                       Edit Costs
                     </Button>
-                  ) : (
+                  ) : hasPermission('editLeadCosts') && editingDefaultCosts ? (
                     <div className="flex gap-2">
                       <Button 
                         variant="outline" 
@@ -2651,7 +2702,7 @@ export default function AdminCRMPage() {
                         Save Changes
                       </Button>
                     </div>
-                  )}
+                  ) : null}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {Object.entries(editingDefaultCosts ? editedCosts : leadCosts).map(([type, cost]) => (
