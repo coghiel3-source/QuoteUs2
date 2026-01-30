@@ -112,6 +112,97 @@ export default function MortgagePage() {
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
         <Card className="shadow-lg border-none">
           <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Calculator className="text-accent" /> Mortgage Calculator</CardTitle>
+            <CardDescription>Estimate your monthly mortgage payments based on your loan details.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Mortgage Amount</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      type="number" 
+                      value={calcPrincipal} 
+                      onChange={(e) => setCalcPrincipal(Number(e.target.value))}
+                      className="pl-9"
+                      data-testid="calc-principal"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Interest Rate (%)</Label>
+                  <Input 
+                    type="number" 
+                    step="0.1"
+                    value={calcRate} 
+                    onChange={(e) => setCalcRate(Number(e.target.value))}
+                    data-testid="calc-rate"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Amortization Period (Years)</Label>
+                  <Select value={String(calcAmortization)} onValueChange={(v) => setCalcAmortization(Number(v))}>
+                    <SelectTrigger data-testid="calc-amortization">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15">15 Years</SelectItem>
+                      <SelectItem value="20">20 Years</SelectItem>
+                      <SelectItem value="25">25 Years</SelectItem>
+                      <SelectItem value="30">30 Years</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Frequency</Label>
+                  <Select value={calcPaymentFrequency} onValueChange={(v: "monthly" | "biweekly" | "weekly") => setCalcPaymentFrequency(v)}>
+                    <SelectTrigger data-testid="calc-frequency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="bg-secondary/50 rounded-lg p-6 flex flex-col justify-center">
+                <div className="text-center mb-6">
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {calcPaymentFrequency === "monthly" ? "Monthly" : calcPaymentFrequency === "biweekly" ? "Bi-Weekly" : "Weekly"} Payment
+                  </p>
+                  <p className="text-4xl font-bold text-accent" data-testid="calc-payment">
+                    ${calculatorResults.payment.toLocaleString()}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Payment</p>
+                    <p className="text-lg font-semibold" data-testid="calc-total">
+                      ${calculatorResults.totalPayment.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Interest</p>
+                    <p className="text-lg font-semibold text-orange-600" data-testid="calc-interest">
+                      ${calculatorResults.totalInterest.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-4">
+                  *This is an estimate only. Actual rates and payments may vary.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg border-none mt-8">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2"><Building2 className="text-accent" /> Mortgage Application</CardTitle>
             <CardDescription>Tell us about your mortgage needs and we'll find the best rates for you.</CardDescription>
           </CardHeader>
@@ -355,97 +446,6 @@ export default function MortgagePage() {
                 </p>
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-lg border-none mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Calculator className="text-accent" /> Mortgage Calculator</CardTitle>
-            <CardDescription>Estimate your monthly mortgage payments based on your loan details.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Mortgage Amount</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      type="number" 
-                      value={calcPrincipal} 
-                      onChange={(e) => setCalcPrincipal(Number(e.target.value))}
-                      className="pl-9"
-                      data-testid="calc-principal"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Interest Rate (%)</Label>
-                  <Input 
-                    type="number" 
-                    step="0.1"
-                    value={calcRate} 
-                    onChange={(e) => setCalcRate(Number(e.target.value))}
-                    data-testid="calc-rate"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Amortization Period (Years)</Label>
-                  <Select value={String(calcAmortization)} onValueChange={(v) => setCalcAmortization(Number(v))}>
-                    <SelectTrigger data-testid="calc-amortization">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15">15 Years</SelectItem>
-                      <SelectItem value="20">20 Years</SelectItem>
-                      <SelectItem value="25">25 Years</SelectItem>
-                      <SelectItem value="30">30 Years</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Payment Frequency</Label>
-                  <Select value={calcPaymentFrequency} onValueChange={(v: "monthly" | "biweekly" | "weekly") => setCalcPaymentFrequency(v)}>
-                    <SelectTrigger data-testid="calc-frequency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="biweekly">Bi-Weekly</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="bg-secondary/50 rounded-lg p-6 flex flex-col justify-center">
-                <div className="text-center mb-6">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {calcPaymentFrequency === "monthly" ? "Monthly" : calcPaymentFrequency === "biweekly" ? "Bi-Weekly" : "Weekly"} Payment
-                  </p>
-                  <p className="text-4xl font-bold text-accent" data-testid="calc-payment">
-                    ${calculatorResults.payment.toLocaleString()}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Payment</p>
-                    <p className="text-lg font-semibold" data-testid="calc-total">
-                      ${calculatorResults.totalPayment.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Interest</p>
-                    <p className="text-lg font-semibold text-orange-600" data-testid="calc-interest">
-                      ${calculatorResults.totalInterest.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground text-center mt-4">
-                  *This is an estimate only. Actual rates and payments may vary.
-                </p>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
