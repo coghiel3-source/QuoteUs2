@@ -3,7 +3,7 @@ import { Shield, Menu, X, Phone, Facebook, Instagram } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import logoImage from "@assets/FullLogo_NoBuffer_1765525677801.png";
+import logoImage from "@assets/FullLogo_Transparent_1769748805647.png";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
