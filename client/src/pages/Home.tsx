@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign } from "lucide-react";
+import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign, Landmark, CreditCard, PiggyBank, TrendingUp } from "lucide-react";
 import heroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1765553789903.jpg";
 
 export default function HomePage() {
@@ -80,6 +80,61 @@ export default function HomePage() {
                 </Card>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Financial Services Section */}
+      <section className="container mx-auto max-w-7xl px-4 py-8">
+        <div className="text-center max-w-3xl mx-auto mb-12">
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-primary mb-4">Financial Services</h2>
+          <p className="text-muted-foreground text-lg">Beyond insurance, we help Ontarians with mortgages, credit solutions, and financial planning.</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Link href="/mortgage" className="group">
+            <Card className="h-full border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-primary/5 to-accent/5">
+              <CardContent className="p-6 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <Landmark size={32} />
+                </div>
+                <h3 className="font-bold text-lg text-primary mb-2">Mortgages</h3>
+                <p className="text-sm text-muted-foreground">Compare rates from 50+ lenders. Purchase, refinance, or renew.</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Card className="h-full border-none shadow-lg bg-gradient-to-br from-primary/5 to-accent/5 opacity-80">
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <CreditCard size={32} />
+              </div>
+              <h3 className="font-bold text-lg text-primary mb-2">Credit Cards</h3>
+              <p className="text-sm text-muted-foreground">Find the best rewards and cashback cards for your spending.</p>
+              <span className="inline-block mt-3 text-xs text-accent font-medium">Coming Soon</span>
+            </CardContent>
+          </Card>
+
+          <Card className="h-full border-none shadow-lg bg-gradient-to-br from-primary/5 to-accent/5 opacity-80">
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <PiggyBank size={32} />
+              </div>
+              <h3 className="font-bold text-lg text-primary mb-2">Savings Accounts</h3>
+              <p className="text-sm text-muted-foreground">High-interest savings and GIC rates from top Canadian banks.</p>
+              <span className="inline-block mt-3 text-xs text-accent font-medium">Coming Soon</span>
+            </CardContent>
+          </Card>
+
+          <Card className="h-full border-none shadow-lg bg-gradient-to-br from-primary/5 to-accent/5 opacity-80">
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <TrendingUp size={32} />
+              </div>
+              <h3 className="font-bold text-lg text-primary mb-2">Investments</h3>
+              <p className="text-sm text-muted-foreground">RRSP, TFSA, and RESP options with expert guidance.</p>
+              <span className="inline-block mt-3 text-xs text-accent font-medium">Coming Soon</span>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
