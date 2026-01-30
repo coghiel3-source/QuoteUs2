@@ -16,6 +16,7 @@ import TravelPage from "@/pages/Travel";
 import LifePage from "@/pages/Life";
 import BusinessPage from "@/pages/Business";
 import PetPage from "@/pages/Pet";
+import MortgagePage from "@/pages/Mortgage";
 import AboutPage from "@/pages/About";
 import DashboardPage from "@/pages/Dashboard";
 import PrivacyPage from "@/pages/Privacy";
@@ -47,6 +48,7 @@ function Router() {
         <Route path="/life" component={LifePage} />
         <Route path="/business" component={BusinessPage} />
         <Route path="/pet" component={PetPage} />
+        <Route path="/mortgage" component={MortgagePage} />
         <Route path="/compare" component={ComparePage} />
         <Route path="/about" component={AboutPage} />
         <Route path="/contact" component={ContactPage} />
