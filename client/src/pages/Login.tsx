@@ -2,9 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Mail, LogIn, Eye, EyeOff, Briefcase } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff, Briefcase, UserCog } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -16,12 +17,13 @@ export default function LoginPage() {
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>("broker");
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
     
-    const success = await login(data.email, 'broker', data.password);
+    const success = await login(data.email, selectedRole as any, data.password);
     
     setIsSubmitting(false);
     
@@ -90,6 +92,20 @@ export default function LoginPage() {
                   </button>
                 </div>
                 {errors.password && <p className="text-destructive text-xs">{errors.password.message as string}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger data-testid="select-role">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="broker">Broker</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="pt-2">
