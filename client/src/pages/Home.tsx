@@ -19,12 +19,11 @@ export default function HomePage() {
     <div className="flex flex-col gap-16 pb-20">
       {/* Hero Section */}
       <section className="relative bg-primary text-white overflow-hidden">
-        <div className="absolute inset-0 bg-black/40 z-10" />
         <div className="absolute inset-0 z-0">
            <img src={heroImage} alt="Happy customers looking at phone" className="w-full h-full object-cover" />
         </div>
         
-        <div className="container mx-auto max-w-7xl px-4 py-24 md:py-32 relative z-20">
+        <div className="container mx-auto max-w-7xl px-4 py-24 md:py-32 relative z-10">
           <div className="max-w-2xl space-y-6 animate-in slide-in-from-left-5 duration-700 fade-in">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 border border-accent/30 backdrop-blur-sm text-accent-foreground text-sm font-medium">
               <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
