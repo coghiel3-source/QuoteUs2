@@ -22,6 +22,7 @@ import PrivacyPage from "@/pages/Privacy";
 import ContactPage from "@/pages/Contact";
 import AdminCRMPage from "@/pages/AdminCRM";
 import BrokerCreditsPage from "@/pages/BrokerCredits";
+import LoginPage from "@/pages/Login";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -53,6 +54,7 @@ function Router() {
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/admin" component={AdminCRMPage} />
         <Route path="/broker/credits" component={BrokerCreditsPage} />
+        <Route path="/login" component={LoginPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
