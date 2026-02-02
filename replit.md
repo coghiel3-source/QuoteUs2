@@ -137,3 +137,29 @@ Brokers must purchase credits to receive leads. The system includes:
 - `client/src/pages/BrokerCredits.tsx` - Broker credit management page
 - `/api/credits/*` - Credit-related API endpoints
 - `/api/leads/assign` - Lead assignment with credit deduction
+
+### Advertisement System
+The platform includes an advertisement management system for displaying controlled ads on quote pages:
+
+**Features**:
+- Support for image and video media types
+- External link support with optional popup display
+- Page-specific targeting (can target individual pages or all pages)
+- Scheduling with start/end dates
+- Priority-based ad rotation
+- Analytics tracking (impressions, clicks, CTR)
+
+**Admin Management**:
+- Access via "Ads" tab in Admin panel (admin only)
+- Create, edit, pause, and delete advertisements
+- View analytics for each ad
+- Set targeting to specific quote pages
+
+**Key Components**:
+- `client/src/components/AdvertisementManager.tsx` - Admin interface for managing ads
+- `client/src/components/AdPlacement.tsx` - Display component for quote pages
+- `advertisements` table in database schema
+- `/api/admin/advertisements` - CRUD endpoints
+- `/api/advertisements/active` - Fetch active ad for a page
+- `/api/advertisements/:id/impression` - Track ad views
+- `/api/advertisements/:id/click` - Track ad clicks
