@@ -127,7 +127,6 @@ export default function AutoPage() {
   const [homeFurnaceYear, setHomeFurnaceYear] = useState("");
   const [homeBasementFinished, setHomeBasementFinished] = useState<"yes" | "no" | "">("");
   const [homeClaimsLast5Years, setHomeClaimsLast5Years] = useState<"yes" | "no" | "">("");
-  const [autoClaimsLast5Years, setAutoClaimsLast5Years] = useState<"yes" | "no" | "">("");
   const [tenantAddress, setTenantAddress] = useState("");
   const [tenantPostalCode, setTenantPostalCode] = useState("");
   const [tenantContentsValue, setTenantContentsValue] = useState("");
@@ -935,23 +934,6 @@ export default function AutoPage() {
                                 <div className="flex items-center space-x-2">
                                   <RadioGroupItem value="no" id="basement-no" />
                                   <Label htmlFor="basement-no" className="font-normal cursor-pointer">No</Label>
-                                </div>
-                              </RadioGroup>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Any Auto Claims in the Last 5 Years?</Label>
-                              <RadioGroup 
-                                value={autoClaimsLast5Years}
-                                onValueChange={(val: "yes" | "no") => setAutoClaimsLast5Years(val)} 
-                                className="flex gap-6 pt-2"
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="yes" id="auto-claims-yes" />
-                                  <Label htmlFor="auto-claims-yes" className="font-normal cursor-pointer">Yes</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="no" id="auto-claims-no" />
-                                  <Label htmlFor="auto-claims-no" className="font-normal cursor-pointer">No</Label>
                                 </div>
                               </RadioGroup>
                             </div>
