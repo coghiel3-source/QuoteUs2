@@ -128,6 +128,8 @@ export default function AutoPage() {
   const [homeBasementFinished, setHomeBasementFinished] = useState<"yes" | "no" | "">("");
   const [tenantAddress, setTenantAddress] = useState("");
   const [tenantPostalCode, setTenantPostalCode] = useState("");
+  const [tenantContentsValue, setTenantContentsValue] = useState("");
+  const [tenantHasInsurance, setTenantHasInsurance] = useState<"yes" | "no" | "">("");
 
   const form = useForm<AutoFormValues>({
     resolver: zodResolver(autoSchema),
@@ -996,6 +998,47 @@ export default function AutoPage() {
                               </div>
                             </div>
                           )}
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                            <div className="space-y-2">
+                              <Label>Total Value of Contents</Label>
+                              <Select 
+                                value={tenantContentsValue}
+                                onValueChange={(val) => setTenantContentsValue(val)}
+                              >
+                                <SelectTrigger data-testid="select-tenant-contents-value">
+                                  <SelectValue placeholder="Select estimated value" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="15000">$15,000</SelectItem>
+                                  <SelectItem value="20000">$20,000</SelectItem>
+                                  <SelectItem value="25000">$25,000</SelectItem>
+                                  <SelectItem value="30000">$30,000</SelectItem>
+                                  <SelectItem value="40000">$40,000</SelectItem>
+                                  <SelectItem value="50000">$50,000</SelectItem>
+                                  <SelectItem value="75000">$75,000</SelectItem>
+                                  <SelectItem value="100000">$100,000+</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Do You Currently Have Tenant Insurance?</Label>
+                              <RadioGroup 
+                                value={tenantHasInsurance}
+                                onValueChange={(val: "yes" | "no") => setTenantHasInsurance(val)} 
+                                className="flex gap-6 pt-2"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="tenant-insurance-yes" />
+                                  <Label htmlFor="tenant-insurance-yes" className="font-normal cursor-pointer">Yes</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="tenant-insurance-no" />
+                                  <Label htmlFor="tenant-insurance-no" className="font-normal cursor-pointer">No</Label>
+                                </div>
+                              </RadioGroup>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
