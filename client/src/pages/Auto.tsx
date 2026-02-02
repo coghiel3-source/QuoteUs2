@@ -33,6 +33,8 @@ const autoSchema = z.object({
     licenseDate: z.string().min(1, "License date required"),
     licenseDateG2: z.string().optional(),
     licenseDateG1: z.string().optional(),
+    driversTraining: z.enum(["yes", "no"]).optional(),
+    driversTrainingDate: z.string().optional(),
     hasInsurance: z.enum(["yes", "no"], { required_error: "Please select if you have insurance" }),
     currentInsuranceDate: z.string().optional(),
     priorInsurance: z.enum(["yes", "no"], { required_error: "Please select if you have prior insurance" }),
@@ -123,6 +125,7 @@ export default function AutoPage() {
       primaryDriver: {
         licenseType: "G",
         maritalStatus: "single",
+        driversTraining: "no",
         hasInsurance: "yes",
         priorInsurance: "yes",
         accidents: [],
@@ -372,6 +375,37 @@ export default function AutoPage() {
                     <Label htmlFor="licenseDateG1" className="text-muted-foreground">G1 Date Obtained (Optional)</Label>
                     <Input id="licenseDateG1" type="date" {...form.register("primaryDriver.licenseDateG1")} />
                   </div>
+                </div>
+
+                <div className="md:col-span-2 pt-4 border-t space-y-3">
+                  <Label>Driver's Training</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Did you complete full driver's training in the last 3 years?</p>
+                  <RadioGroup 
+                    onValueChange={(val: "yes" | "no") => form.setValue("primaryDriver.driversTraining", val)} 
+                    defaultValue="no"
+                    className="flex gap-6"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="drivers-training-yes" />
+                      <Label htmlFor="drivers-training-yes" className="font-normal cursor-pointer">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="drivers-training-no" />
+                      <Label htmlFor="drivers-training-no" className="font-normal cursor-pointer">No</Label>
+                    </div>
+                  </RadioGroup>
+
+                  {form.watch("primaryDriver.driversTraining") === "yes" && (
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <Label className="mb-2 block">Date Completed</Label>
+                      <Input 
+                        type="date" 
+                        {...form.register("primaryDriver.driversTrainingDate")} 
+                        className="w-full md:w-[300px]"
+                        data-testid="input-drivers-training-date"
+                      />
+                    </div>
+                  )}
                 </div>
 
                   <div className="md:col-span-2">
