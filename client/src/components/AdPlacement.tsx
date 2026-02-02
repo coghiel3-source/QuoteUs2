@@ -26,16 +26,19 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
   const [ad, setAd] = useState<Advertisement | null>(null);
   const [loading, setLoading] = useState(true);
   const [popupOpen, setPopupOpen] = useState(false);
-  const impressionTracked = useRef(false);
+  const lastTrackedAdId = useRef<string | null>(null);
 
   useEffect(() => {
+    lastTrackedAdId.current = null;
+    setAd(null);
+    setLoading(true);
     fetchActiveAd();
   }, [page]);
 
   useEffect(() => {
-    if (ad && !impressionTracked.current) {
+    if (ad && ad.id !== lastTrackedAdId.current) {
       trackImpression(ad.id);
-      impressionTracked.current = true;
+      lastTrackedAdId.current = ad.id;
     }
   }, [ad]);
 
@@ -46,6 +49,8 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
         const data = await res.json();
         if (data && data.id) {
           setAd(data);
+        } else {
+          setAd(null);
         }
       }
     } catch (error) {

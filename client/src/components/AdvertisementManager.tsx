@@ -208,7 +208,7 @@ export default function AdvertisementManager() {
           <h2 className="text-2xl font-bold">Advertisements</h2>
           <p className="text-muted-foreground">Manage ads displayed on quote pages</p>
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button onClick={openCreateDialog} data-testid="button-new-advertisement">
           <Plus className="mr-2 h-4 w-4" /> New Advertisement
         </Button>
       </div>
@@ -262,10 +262,10 @@ export default function AdvertisementManager() {
                     <TableCell className="text-right">{ad.clicks.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{getCTR(ad.impressions, ad.clicks)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(ad)}>
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(ad)} data-testid={`button-edit-ad-${ad.id}`}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(ad.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(ad.id)} data-testid={`button-delete-ad-${ad.id}`}>
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </TableCell>
@@ -291,6 +291,7 @@ export default function AdvertisementManager() {
                   value={formData.name} 
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g., Winter Tires Promo"
+                  data-testid="input-ad-name"
                 />
               </div>
               <div className="space-y-2">
@@ -313,6 +314,7 @@ export default function AdvertisementManager() {
                 value={formData.mediaUrl} 
                 onChange={(e) => setFormData(prev => ({ ...prev, mediaUrl: e.target.value }))}
                 placeholder="https://example.com/ad-image.jpg"
+                data-testid="input-ad-media-url"
               />
               <p className="text-xs text-muted-foreground">Enter the URL of the image or video. Recommended size: 728x90 for banners.</p>
             </div>
@@ -335,6 +337,7 @@ export default function AdvertisementManager() {
                   value={formData.linkUrl} 
                   onChange={(e) => setFormData(prev => ({ ...prev, linkUrl: e.target.value }))}
                   placeholder="https://external-site.com"
+                  data-testid="input-ad-link-url"
                 />
               </div>
               <div className="space-y-2">
@@ -345,6 +348,7 @@ export default function AdvertisementManager() {
                   max={10}
                   value={formData.priority} 
                   onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) || 1 }))}
+                  data-testid="input-ad-priority"
                 />
               </div>
             </div>
@@ -354,6 +358,7 @@ export default function AdvertisementManager() {
                 id="openInPopup"
                 checked={formData.openInPopup}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, openInPopup: checked as boolean }))}
+                data-testid="checkbox-ad-popup"
               />
               <Label htmlFor="openInPopup" className="cursor-pointer">Open link in popup window</Label>
             </div>
@@ -368,6 +373,7 @@ export default function AdvertisementManager() {
                     variant={formData.targetPages.includes(page.value) ? "default" : "outline"}
                     size="sm"
                     onClick={() => togglePage(page.value)}
+                    data-testid={`button-target-page-${page.value}`}
                   >
                     {page.label}
                   </Button>
@@ -396,6 +402,7 @@ export default function AdvertisementManager() {
                   type="date"
                   value={formData.startDate} 
                   onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                  data-testid="input-ad-start-date"
                 />
               </div>
               <div className="space-y-2">
@@ -404,14 +411,15 @@ export default function AdvertisementManager() {
                   type="date"
                   value={formData.endDate} 
                   onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                  data-testid="input-ad-end-date"
                 />
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} data-testid="button-cancel-ad">Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} data-testid="button-save-ad">
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingAd ? "Update" : "Create"}
             </Button>
