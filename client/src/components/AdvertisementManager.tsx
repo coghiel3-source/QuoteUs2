@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check, CheckCircle } from "lucide-react";
 
 interface Advertisement {
   id: string;
@@ -178,6 +178,22 @@ export default function AdvertisementManager() {
     }
   };
 
+  const handleAdminApprove = async (ad: Advertisement) => {
+    try {
+      const res = await fetch(`/api/admin/advertisements/${ad.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...ad, approvalStatus: "approved", status: "active" }),
+      });
+      if (res.ok) {
+        toast({ title: "Success", description: "Advertisement approved and activated" });
+        fetchAds();
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to approve advertisement", variant: "destructive" });
+    }
+  };
+
   const togglePage = (page: string) => {
     setFormData(prev => ({
       ...prev,
@@ -317,6 +333,17 @@ export default function AdvertisementManager() {
                     <TableCell className="text-right">{ad.clicks.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{getCTR(ad.impressions, ad.clicks)}</TableCell>
                     <TableCell className="text-right">
+                      {ad.approvalStatus !== "approved" && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleAdminApprove(ad)} 
+                          title="Approve and activate immediately"
+                          data-testid={`button-admin-approve-${ad.id}`}
+                        >
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </Button>
+                      )}
                       <Button 
                         variant="ghost" 
                         size="sm" 
