@@ -1,7 +1,7 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -36,6 +36,16 @@ export interface IStorage {
   // System Settings operations
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string, updatedBy?: string): Promise<SystemSetting>;
+  
+  // Advertisement operations
+  getAllAdvertisements(): Promise<Advertisement[]>;
+  getAdvertisement(id: string): Promise<Advertisement | undefined>;
+  getActiveAdsForPage(page: string): Promise<Advertisement[]>;
+  createAdvertisement(ad: InsertAdvertisement): Promise<Advertisement>;
+  updateAdvertisement(id: string, data: Partial<InsertAdvertisement>): Promise<Advertisement | undefined>;
+  deleteAdvertisement(id: string): Promise<boolean>;
+  incrementAdImpression(id: string): Promise<void>;
+  incrementAdClick(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -274,6 +284,69 @@ export class DatabaseStorage implements IStorage {
     });
     
     return { user, transaction };
+  }
+
+  // Advertisement operations
+  async getAllAdvertisements(): Promise<Advertisement[]> {
+    return await db.select().from(advertisements).orderBy(desc(advertisements.createdAt));
+  }
+
+  async getAdvertisement(id: string): Promise<Advertisement | undefined> {
+    const [ad] = await db.select().from(advertisements).where(eq(advertisements.id, id));
+    return ad || undefined;
+  }
+
+  async getActiveAdsForPage(page: string): Promise<Advertisement[]> {
+    const now = new Date();
+    const ads = await db.select().from(advertisements).where(
+      and(
+        eq(advertisements.status, "active"),
+        or(
+          isNull(advertisements.startDate),
+          lte(advertisements.startDate, now)
+        ),
+        or(
+          isNull(advertisements.endDate),
+          gte(advertisements.endDate, now)
+        )
+      )
+    ).orderBy(desc(advertisements.priority));
+    
+    // Filter by target page
+    return ads.filter(ad => 
+      ad.targetPages.length === 0 || ad.targetPages.includes(page) || ad.targetPages.includes("all")
+    );
+  }
+
+  async createAdvertisement(ad: InsertAdvertisement): Promise<Advertisement> {
+    const [created] = await db.insert(advertisements).values(ad).returning();
+    return created;
+  }
+
+  async updateAdvertisement(id: string, data: Partial<InsertAdvertisement>): Promise<Advertisement | undefined> {
+    const [updated] = await db
+      .update(advertisements)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(advertisements.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteAdvertisement(id: string): Promise<boolean> {
+    const result = await db.delete(advertisements).where(eq(advertisements.id, id));
+    return true;
+  }
+
+  async incrementAdImpression(id: string): Promise<void> {
+    await db.update(advertisements)
+      .set({ impressions: sql`${advertisements.impressions} + 1` })
+      .where(eq(advertisements.id, id));
+  }
+
+  async incrementAdClick(id: string): Promise<void> {
+    await db.update(advertisements)
+      .set({ clicks: sql`${advertisements.clicks} + 1` })
+      .where(eq(advertisements.id, id));
   }
 }
 
