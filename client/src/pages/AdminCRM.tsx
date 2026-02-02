@@ -17,7 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone } from "lucide-react";
+import AdvertisementManager from "@/components/AdvertisementManager";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -844,6 +845,15 @@ export default function AdminCRMPage() {
                         <Key size={18} className="mr-3" /> Manage
                       </Button>
                     )}
+                    {user?.role === 'admin' && (
+                      <Button 
+                        variant={activeTab === 'advertisements' ? 'secondary' : 'ghost'} 
+                        className="justify-start mb-1"
+                        onClick={() => { setActiveTab('advertisements'); setMobileMenuOpen(false); }}
+                      >
+                        <Megaphone size={18} className="mr-3" /> Advertisements
+                      </Button>
+                    )}
                     <div className="border-t my-2" />
                     {(user?.role === 'admin' || hasPermission('viewSettings')) && (
                       <Button 
@@ -922,6 +932,17 @@ export default function AdminCRMPage() {
                     data-testid="nav-manage"
                   >
                     <Key size={16} className="mr-2" /> Manage
+                  </Button>
+                )}
+                {user?.role === 'admin' && (
+                  <Button 
+                    variant={activeTab === 'advertisements' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setActiveTab('advertisements')}
+                    className={activeTab === 'advertisements' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                    data-testid="nav-advertisements"
+                  >
+                    <Megaphone size={16} className="mr-2" /> Ads
                   </Button>
                 )}
               </nav>
@@ -2763,6 +2784,11 @@ export default function AdminCRMPage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* ADVERTISEMENTS TAB */}
+        {activeTab === 'advertisements' && user?.role === 'admin' && (
+          <AdvertisementManager />
         )}
 
         {/* SETTINGS TAB - Manager Permissions */}
