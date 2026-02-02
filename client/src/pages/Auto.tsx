@@ -122,6 +122,10 @@ export default function AutoPage() {
   const [tenantAddressSame, setTenantAddressSame] = useState(true);
   const [homeAddress, setHomeAddress] = useState("");
   const [homePostalCode, setHomePostalCode] = useState("");
+  const [homePurchaseYear, setHomePurchaseYear] = useState("");
+  const [homeRoofYear, setHomeRoofYear] = useState("");
+  const [homeFurnaceYear, setHomeFurnaceYear] = useState("");
+  const [homeBasementFinished, setHomeBasementFinished] = useState<"yes" | "no" | "">("");
   const [tenantAddress, setTenantAddress] = useState("");
   const [tenantPostalCode, setTenantPostalCode] = useState("");
 
@@ -875,6 +879,62 @@ export default function AutoPage() {
                               </div>
                             </div>
                           )}
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                            <div className="space-y-2">
+                              <Label>Year Home Was Purchased</Label>
+                              <Input 
+                                type="number"
+                                value={homePurchaseYear}
+                                onChange={(e) => setHomePurchaseYear(e.target.value)}
+                                placeholder="e.g. 2015"
+                                min="1900"
+                                max={new Date().getFullYear()}
+                                data-testid="input-home-purchase-year"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Year Roof Was Last Changed</Label>
+                              <Input 
+                                type="number"
+                                value={homeRoofYear}
+                                onChange={(e) => setHomeRoofYear(e.target.value)}
+                                placeholder="e.g. 2020"
+                                min="1900"
+                                max={new Date().getFullYear()}
+                                data-testid="input-home-roof-year"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Year Furnace Was Changed</Label>
+                              <Input 
+                                type="number"
+                                value={homeFurnaceYear}
+                                onChange={(e) => setHomeFurnaceYear(e.target.value)}
+                                placeholder="e.g. 2018"
+                                min="1900"
+                                max={new Date().getFullYear()}
+                                data-testid="input-home-furnace-year"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Is Your Basement Finished?</Label>
+                              <RadioGroup 
+                                value={homeBasementFinished}
+                                onValueChange={(val: "yes" | "no") => setHomeBasementFinished(val)} 
+                                className="flex gap-6 pt-2"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="basement-yes" />
+                                  <Label htmlFor="basement-yes" className="font-normal cursor-pointer">Yes</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="basement-no" />
+                                  <Label htmlFor="basement-no" className="font-normal cursor-pointer">No</Label>
+                                </div>
+                              </RadioGroup>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
