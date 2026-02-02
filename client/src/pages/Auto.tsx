@@ -26,12 +26,15 @@ const autoSchema = z.object({
     email: z.string().min(1, "Email address is required").email("Invalid email format"),
     phone: z.string().min(10, "Valid phone number required"),
     dob: z.string().min(1, "Date of birth required"),
+    maritalStatus: z.enum(["single", "married", "commonLaw", "divorced", "widowed"]).optional(),
     postalCode: z.string().regex(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/, "Invalid Ontario postal code"),
     address: z.string().min(5, "Valid mailing address required"),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
     licenseDateG2: z.string().optional(),
     licenseDateG1: z.string().optional(),
+    hasInsurance: z.enum(["yes", "no"], { required_error: "Please select if you have insurance" }),
+    currentInsuranceDate: z.string().optional(),
     priorInsurance: z.enum(["yes", "no"], { required_error: "Please select if you have prior insurance" }),
     priorInsuranceYears: z.string().optional(),
     accidents: z.array(z.object({
@@ -119,6 +122,8 @@ export default function AutoPage() {
     defaultValues: {
       primaryDriver: {
         licenseType: "G",
+        maritalStatus: "single",
+        hasInsurance: "yes",
         priorInsurance: "yes",
         accidents: [],
         tickets: [],
@@ -296,6 +301,21 @@ export default function AutoPage() {
                   {form.formState.errors.primaryDriver?.dob && <p className="text-destructive text-xs">{form.formState.errors.primaryDriver.dob.message}</p>}
                 </div>
                 <div className="space-y-2">
+                  <Label>Marital Status</Label>
+                  <Select onValueChange={(val: any) => form.setValue("primaryDriver.maritalStatus", val)} defaultValue="single">
+                    <SelectTrigger data-testid="select-marital-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Single</SelectItem>
+                      <SelectItem value="married">Married</SelectItem>
+                      <SelectItem value="commonLaw">Common Law</SelectItem>
+                      <SelectItem value="divorced">Divorced</SelectItem>
+                      <SelectItem value="widowed">Widowed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
                   <Input id="phone" placeholder="(555) 555-5555" {...form.register("primaryDriver.phone")} data-testid="input-phone" />
                 </div>
@@ -363,6 +383,37 @@ export default function AutoPage() {
                     />
                   </div>
                   
+                  <div className="md:col-span-2 pt-4 border-t space-y-3">
+                    <Label>Current Insurance</Label>
+                    <p className="text-sm text-muted-foreground mb-2">Do you currently have auto insurance?</p>
+                    <RadioGroup 
+                      onValueChange={(val: "yes" | "no") => form.setValue("primaryDriver.hasInsurance", val)} 
+                      defaultValue="yes"
+                      className="flex gap-6"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="has-insurance-yes" />
+                        <Label htmlFor="has-insurance-yes" className="font-normal cursor-pointer">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="has-insurance-no" />
+                        <Label htmlFor="has-insurance-no" className="font-normal cursor-pointer">No</Label>
+                      </div>
+                    </RadioGroup>
+
+                    {form.watch("primaryDriver.hasInsurance") === "yes" && (
+                      <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <Label className="mb-2 block">Date of Most Current Insurance</Label>
+                        <Input 
+                          type="date" 
+                          {...form.register("primaryDriver.currentInsuranceDate")} 
+                          className="w-full md:w-[300px]"
+                          data-testid="input-current-insurance-date"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="md:col-span-2 pt-4 border-t space-y-3">
                     <Label>Prior Insurance History</Label>
                     <p className="text-sm text-muted-foreground mb-2">Have you had prior insurance in Canada or the United States?</p>
