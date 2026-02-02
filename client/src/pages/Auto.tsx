@@ -474,7 +474,7 @@ export default function AutoPage() {
 
                     {form.watch("primaryDriver.priorInsurance") === "yes" && (
                       <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <Label className="mb-2 block">How many years of continuous insurance?</Label>
+                        <Label className="mb-2 block">How many years of prior insurance?</Label>
                         <Select onValueChange={(val) => form.setValue("primaryDriver.priorInsuranceYears", val)}>
                           <SelectTrigger className="w-full md:w-[300px]">
                             <SelectValue placeholder="Select number of years" />
@@ -608,7 +608,7 @@ export default function AutoPage() {
 
                                {form.watch(`drivers.${index}.priorInsurance`) === "yes" && (
                                  <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                   <Label className="mb-2 block">How many years of continuous insurance?</Label>
+                                   <Label className="mb-2 block">How many years of prior insurance?</Label>
                                    <Select onValueChange={(val) => form.setValue(`drivers.${index}.priorInsuranceYears`, val)}>
                                      <SelectTrigger className="w-full md:w-[300px]">
                                        <SelectValue placeholder="Select number of years" />
