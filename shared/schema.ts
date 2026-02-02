@@ -11,6 +11,8 @@ export const quoteStatusEnum = pgEnum("quote_status", ["New", "Contacted", "Quot
 export const priorityEnum = pgEnum("priority", ["High", "Medium", "Low"]);
 export const activityTypeEnum = pgEnum("activity_type", ["status_change", "assignment", "note", "email_sent", "system"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["credit_purchase", "lead_deduction", "manual_credit", "adjustment", "refund"]);
+export const adMediaTypeEnum = pgEnum("ad_media_type", ["image", "video"]);
+export const adStatusEnum = pgEnum("ad_status", ["active", "paused", "scheduled", "expired"]);
 
 // Users Table
 export const users = pgTable("users", {
@@ -90,6 +92,26 @@ export const activities = pgTable("activities", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Advertisements Table
+export const advertisements = pgTable("advertisements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  mediaType: adMediaTypeEnum("media_type").notNull().default("image"),
+  mediaUrl: text("media_url").notNull(),
+  linkUrl: text("link_url"),
+  openInPopup: boolean("open_in_popup").notNull().default(false),
+  targetPages: text("target_pages").array().notNull().default([]),
+  status: adStatusEnum("status").notNull().default("active"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  priority: integer("priority").notNull().default(1),
+  impressions: integer("impressions").notNull().default(0),
+  clicks: integer("clicks").notNull().default(0),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -118,6 +140,14 @@ export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit
   updatedAt: true,
 });
 
+export const insertAdvertisementSchema = createInsertSchema(advertisements).omit({
+  id: true,
+  impressions: true,
+  clicks: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Select Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -133,3 +163,6 @@ export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+
+export type Advertisement = typeof advertisements.$inferSelect;
+export type InsertAdvertisement = z.infer<typeof insertAdvertisementSchema>;
