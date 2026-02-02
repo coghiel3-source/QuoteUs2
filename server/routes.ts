@@ -1301,5 +1301,125 @@ export async function registerRoutes(
     }
   });
 
+  // ========== ADVERTISEMENT ROUTES ==========
+  
+  // Get all advertisements (admin)
+  app.get("/api/admin/advertisements", async (req, res) => {
+    try {
+      const ads = await storage.getAllAdvertisements();
+      res.json(ads);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single advertisement
+  app.get("/api/admin/advertisements/:id", async (req, res) => {
+    try {
+      const ad = await storage.getAdvertisement(req.params.id);
+      if (!ad) {
+        return res.status(404).json({ error: "Advertisement not found" });
+      }
+      res.json(ad);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create advertisement
+  app.post("/api/admin/advertisements", async (req, res) => {
+    try {
+      const { name, mediaType, mediaUrl, linkUrl, openInPopup, targetPages, status, startDate, endDate, priority, createdBy } = req.body;
+      
+      if (!name || !mediaUrl) {
+        return res.status(400).json({ error: "Name and media URL are required" });
+      }
+      
+      const ad = await storage.createAdvertisement({
+        name,
+        mediaType: mediaType || "image",
+        mediaUrl,
+        linkUrl: linkUrl || null,
+        openInPopup: openInPopup || false,
+        targetPages: targetPages || [],
+        status: status || "active",
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        priority: priority || 1,
+        createdBy: createdBy || null,
+      });
+      
+      res.status(201).json(ad);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update advertisement
+  app.patch("/api/admin/advertisements/:id", async (req, res) => {
+    try {
+      const updates: any = {};
+      const fields = ["name", "mediaType", "mediaUrl", "linkUrl", "openInPopup", "targetPages", "status", "startDate", "endDate", "priority"];
+      
+      fields.forEach(field => {
+        if (req.body[field] !== undefined) {
+          if (field === "startDate" || field === "endDate") {
+            updates[field] = req.body[field] ? new Date(req.body[field]) : null;
+          } else {
+            updates[field] = req.body[field];
+          }
+        }
+      });
+      
+      const ad = await storage.updateAdvertisement(req.params.id, updates);
+      if (!ad) {
+        return res.status(404).json({ error: "Advertisement not found" });
+      }
+      res.json(ad);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete advertisement
+  app.delete("/api/admin/advertisements/:id", async (req, res) => {
+    try {
+      await storage.deleteAdvertisement(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public: Get active ads for a page
+  app.get("/api/ads/:page", async (req, res) => {
+    try {
+      const ads = await storage.getActiveAdsForPage(req.params.page);
+      res.json(ads);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Track ad impression
+  app.post("/api/ads/:id/impression", async (req, res) => {
+    try {
+      await storage.incrementAdImpression(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Track ad click
+  app.post("/api/ads/:id/click", async (req, res) => {
+    try {
+      await storage.incrementAdClick(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
