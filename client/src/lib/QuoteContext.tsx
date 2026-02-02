@@ -13,7 +13,7 @@ export interface Activity {
 export interface Quote {
   id: string;
   quoteNumber: string;
-  type: 'Auto' | 'Home' | 'Tenant' | 'Business' | 'Life' | 'Travel' | 'Pet' | 'General';
+  type: 'Auto' | 'Home' | 'Tenant' | 'Business' | 'Life' | 'Travel' | 'Pet' | 'Mortgage' | 'General';
   clientName: string;
   email?: string;
   phone?: string;

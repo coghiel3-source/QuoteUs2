@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuotes } from "@/lib/QuoteContext";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import AdPlacement from "@/components/AdPlacement";
 
 const autoSchema = z.object({
   primaryDriver: z.object({
@@ -286,6 +287,7 @@ export default function AutoPage() {
       </div>
 
       <div className="container mx-auto max-w-4xl px-4 -mt-8">
+        <AdPlacement page="Auto" className="mb-6" />
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="space-y-8">
             

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Heart } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import AdPlacement from "@/components/AdPlacement";
 
 import { useQuotes } from "@/lib/QuoteContext";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -67,6 +68,7 @@ export default function LifePage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
+        <AdPlacement page="Life" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Heart className="text-accent" /> Personal Details</CardTitle>

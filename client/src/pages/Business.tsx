@@ -9,6 +9,7 @@ import { Briefcase, UploadCloud } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import AdPlacement from "@/components/AdPlacement";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -70,6 +71,7 @@ export default function BusinessPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
+        <AdPlacement page="Business" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Briefcase className="text-accent" /> Business Details</CardTitle>

@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Plane } from "lucide-react";
 import { useState } from "react";
+import AdPlacement from "@/components/AdPlacement";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -67,6 +68,7 @@ export default function TravelPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
+        <AdPlacement page="Travel" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Plane className="text-accent" /> Trip Details</CardTitle>

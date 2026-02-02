@@ -11,6 +11,7 @@ import { useState } from "react";
 import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { VehicleSelector } from "@/components/VehicleSelector";
+import AdPlacement from "@/components/AdPlacement";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -83,6 +84,7 @@ export default function TenantPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
+        <AdPlacement page="Tenant" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Building2 className="text-accent" /> Rental Details</CardTitle>

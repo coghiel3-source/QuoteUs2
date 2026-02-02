@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Dog } from "lucide-react";
 import { useState } from "react";
+import AdPlacement from "@/components/AdPlacement";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
@@ -60,6 +61,7 @@ export default function PetPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
+        <AdPlacement page="Pet" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Dog className="text-accent" /> Pet Details</CardTitle>
