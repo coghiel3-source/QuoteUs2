@@ -118,6 +118,12 @@ export default function AutoPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [wantHomeQuote, setWantHomeQuote] = useState(false);
   const [wantTenantQuote, setWantTenantQuote] = useState(false);
+  const [homeAddressSame, setHomeAddressSame] = useState(true);
+  const [tenantAddressSame, setTenantAddressSame] = useState(true);
+  const [homeAddress, setHomeAddress] = useState("");
+  const [homePostalCode, setHomePostalCode] = useState("");
+  const [tenantAddress, setTenantAddress] = useState("");
+  const [tenantPostalCode, setTenantPostalCode] = useState("");
 
   const form = useForm<AutoFormValues>({
     resolver: zodResolver(autoSchema),
@@ -812,37 +818,126 @@ export default function AutoPage() {
                     Would you also like quotes for other types of insurance? Check the options below to bundle your request.
                   </p>
                   <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <Checkbox 
-                        id="wantHomeQuote" 
-                        checked={wantHomeQuote}
-                        onCheckedChange={(checked) => setWantHomeQuote(checked as boolean)}
-                        data-testid="checkbox-want-home"
-                      />
-                      <div className="space-y-1">
-                        <Label htmlFor="wantHomeQuote" className="font-medium cursor-pointer">
-                          I'd also like a Home Insurance quote
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Protect your home with comprehensive coverage. Bundle and save!
-                        </p>
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox 
+                          id="wantHomeQuote" 
+                          checked={wantHomeQuote}
+                          onCheckedChange={(checked) => setWantHomeQuote(checked as boolean)}
+                          data-testid="checkbox-want-home"
+                        />
+                        <div className="space-y-1">
+                          <Label htmlFor="wantHomeQuote" className="font-medium cursor-pointer">
+                            I'd also like a Home Insurance quote
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Protect your home with comprehensive coverage. Bundle and save!
+                          </p>
+                        </div>
                       </div>
+                      
+                      {wantHomeQuote && (
+                        <div className="ml-6 mt-3 p-4 bg-muted/50 rounded-lg space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="flex items-center space-x-3">
+                            <Checkbox 
+                              id="homeAddressSame" 
+                              checked={homeAddressSame}
+                              onCheckedChange={(checked) => setHomeAddressSame(checked as boolean)}
+                              data-testid="checkbox-home-address-same"
+                            />
+                            <Label htmlFor="homeAddressSame" className="font-normal cursor-pointer">
+                              Property address is the same as above
+                            </Label>
+                          </div>
+                          
+                          {!homeAddressSame && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="space-y-2">
+                                <Label>Property Address</Label>
+                                <AddressAutocomplete
+                                  id="homePropertyAddress"
+                                  value={homeAddress}
+                                  onChange={(val) => setHomeAddress(val)}
+                                  onPostalCodeChange={(val) => setHomePostalCode(val)}
+                                  placeholder="Enter property address..."
+                                  data-testid="input-home-property-address"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Property Postal Code</Label>
+                                <Input 
+                                  value={homePostalCode}
+                                  onChange={(e) => setHomePostalCode(e.target.value)}
+                                  placeholder="M5V 2H1"
+                                  className="uppercase w-full md:w-[200px]"
+                                  data-testid="input-home-postal-code"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-start space-x-3">
-                      <Checkbox 
-                        id="wantTenantQuote" 
-                        checked={wantTenantQuote}
-                        onCheckedChange={(checked) => setWantTenantQuote(checked as boolean)}
-                        data-testid="checkbox-want-tenant"
-                      />
-                      <div className="space-y-1">
-                        <Label htmlFor="wantTenantQuote" className="font-medium cursor-pointer">
-                          I'd also like a Tenant Insurance quote
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          Affordable protection for your belongings as a renter.
-                        </p>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox 
+                          id="wantTenantQuote" 
+                          checked={wantTenantQuote}
+                          onCheckedChange={(checked) => setWantTenantQuote(checked as boolean)}
+                          data-testid="checkbox-want-tenant"
+                        />
+                        <div className="space-y-1">
+                          <Label htmlFor="wantTenantQuote" className="font-medium cursor-pointer">
+                            I'd also like a Tenant Insurance quote
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Affordable protection for your belongings as a renter.
+                          </p>
+                        </div>
                       </div>
+                      
+                      {wantTenantQuote && (
+                        <div className="ml-6 mt-3 p-4 bg-muted/50 rounded-lg space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="flex items-center space-x-3">
+                            <Checkbox 
+                              id="tenantAddressSame" 
+                              checked={tenantAddressSame}
+                              onCheckedChange={(checked) => setTenantAddressSame(checked as boolean)}
+                              data-testid="checkbox-tenant-address-same"
+                            />
+                            <Label htmlFor="tenantAddressSame" className="font-normal cursor-pointer">
+                              Rental address is the same as above
+                            </Label>
+                          </div>
+                          
+                          {!tenantAddressSame && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <div className="space-y-2">
+                                <Label>Rental Address</Label>
+                                <AddressAutocomplete
+                                  id="tenantRentalAddress"
+                                  value={tenantAddress}
+                                  onChange={(val) => setTenantAddress(val)}
+                                  onPostalCodeChange={(val) => setTenantPostalCode(val)}
+                                  placeholder="Enter rental address..."
+                                  data-testid="input-tenant-rental-address"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Rental Postal Code</Label>
+                                <Input 
+                                  value={tenantPostalCode}
+                                  onChange={(e) => setTenantPostalCode(e.target.value)}
+                                  placeholder="M5V 2H1"
+                                  className="uppercase w-full md:w-[200px]"
+                                  data-testid="input-tenant-postal-code"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
