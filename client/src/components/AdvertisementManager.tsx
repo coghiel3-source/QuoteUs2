@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check } from "lucide-react";
 
 interface Advertisement {
   id: string;
@@ -25,6 +25,8 @@ interface Advertisement {
   priority: number;
   impressions: number;
   clicks: number;
+  previewToken: string | null;
+  approvalStatus: string | null;
   createdAt: string;
 }
 
@@ -47,6 +49,9 @@ export default function AdvertisementManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -182,6 +187,63 @@ export default function AdvertisementManager() {
     }));
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploading(true);
+    const formDataObj = new FormData();
+    formDataObj.append("file", file);
+    
+    try {
+      const res = await fetch("/api/admin/advertisements/upload", {
+        method: "POST",
+        body: formDataObj,
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setFormData(prev => ({ ...prev, mediaUrl: data.url }));
+        
+        // Auto-detect media type from file
+        const isVideo = file.type.startsWith("video/");
+        setFormData(prev => ({ ...prev, mediaType: isVideo ? "video" : "image" }));
+        
+        toast({ title: "Success", description: "File uploaded successfully" });
+      } else {
+        toast({ title: "Error", description: "Failed to upload file", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to upload file", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const copyPreviewLink = async (ad: Advertisement) => {
+    if (!ad.previewToken) return;
+    
+    const previewUrl = `${window.location.origin}/ad-preview/${ad.previewToken}`;
+    try {
+      await navigator.clipboard.writeText(previewUrl);
+      setCopiedId(ad.id);
+      toast({ title: "Copied!", description: "Preview link copied to clipboard" });
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to copy link", variant: "destructive" });
+    }
+  };
+
+  const getApprovalBadge = (status: string | null) => {
+    if (!status || status === "pending") return <Badge variant="outline">Pending Approval</Badge>;
+    if (status === "approved") return <Badge className="bg-green-100 text-green-800">Approved</Badge>;
+    if (status === "rejected") return <Badge className="bg-red-100 text-red-800">Rejected</Badge>;
+    return null;
+  };
+
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       active: "bg-green-100 text-green-800",
@@ -222,7 +284,7 @@ export default function AdvertisementManager() {
                 <TableHead>Type</TableHead>
                 <TableHead>Pages</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Schedule</TableHead>
+                <TableHead>Approval</TableHead>
                 <TableHead className="text-right">Views</TableHead>
                 <TableHead className="text-right">Clicks</TableHead>
                 <TableHead className="text-right">CTR</TableHead>
@@ -250,18 +312,20 @@ export default function AdvertisementManager() {
                       {ad.targetPages.length > 2 && <Badge variant="outline">+{ad.targetPages.length - 2}</Badge>}
                     </TableCell>
                     <TableCell>{getStatusBadge(ad.status)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {ad.startDate || ad.endDate ? (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {ad.startDate?.split("T")[0]} - {ad.endDate?.split("T")[0] || "∞"}
-                        </div>
-                      ) : "Always"}
-                    </TableCell>
+                    <TableCell>{getApprovalBadge(ad.approvalStatus)}</TableCell>
                     <TableCell className="text-right">{ad.impressions.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{ad.clicks.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{getCTR(ad.impressions, ad.clicks)}</TableCell>
                     <TableCell className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => copyPreviewLink(ad)} 
+                        title="Copy preview link for customer approval"
+                        data-testid={`button-copy-preview-${ad.id}`}
+                      >
+                        {copiedId === ad.id ? <Check className="h-4 w-4 text-green-500" /> : <Link className="h-4 w-4" />}
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEditDialog(ad)} data-testid={`button-edit-ad-${ad.id}`}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -309,14 +373,34 @@ export default function AdvertisementManager() {
             </div>
 
             <div className="space-y-2">
-              <Label>Media URL *</Label>
-              <Input 
-                value={formData.mediaUrl} 
-                onChange={(e) => setFormData(prev => ({ ...prev, mediaUrl: e.target.value }))}
-                placeholder="https://example.com/ad-image.jpg"
-                data-testid="input-ad-media-url"
-              />
-              <p className="text-xs text-muted-foreground">Enter the URL of the image or video. Recommended size: 728x90 for banners.</p>
+              <Label>Media *</Label>
+              <div className="flex gap-2">
+                <Input 
+                  value={formData.mediaUrl} 
+                  onChange={(e) => setFormData(prev => ({ ...prev, mediaUrl: e.target.value }))}
+                  placeholder="Enter URL or upload a file"
+                  data-testid="input-ad-media-url"
+                  className="flex-1"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  data-testid="input-ad-file-upload"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  data-testid="button-upload-file"
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Enter a URL or upload an image/video file. Recommended size: 728x90 for banners.</p>
             </div>
 
             {formData.mediaUrl && (

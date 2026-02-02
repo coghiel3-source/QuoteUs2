@@ -107,6 +107,8 @@ export const advertisements = pgTable("advertisements", {
   priority: integer("priority").notNull().default(1),
   impressions: integer("impressions").notNull().default(0),
   clicks: integer("clicks").notNull().default(0),
+  previewToken: varchar("preview_token").default(sql`gen_random_uuid()`),
+  approvalStatus: text("approval_status").default("pending"),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

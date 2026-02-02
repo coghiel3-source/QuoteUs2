@@ -6,6 +6,40 @@ import { z } from "zod";
 import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail, generateThankYouEmail, clearSmtpCache, generatePasswordResetEmail } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import crypto from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for file uploads
+const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const adUploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `ad-${uniqueSuffix}${ext}`);
+  },
+});
+
+const adUpload = multer({
+  storage: adUploadStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|webm|mov/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    }
+    cb(new Error("Only image and video files are allowed"));
+  },
+});
 
 // Default lead costs by type (fallback if not set in database)
 const DEFAULT_LEAD_COSTS: Record<string, number> = {
@@ -1413,6 +1447,90 @@ export async function registerRoutes(
 
   // Track ad click
   app.post("/api/ads/:id/click", async (req, res) => {
+    try {
+      await storage.incrementAdClick(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // File upload for advertisements
+  app.post("/api/admin/advertisements/upload", adUpload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      const fileUrl = `/uploads/${req.file.filename}`;
+      res.json({ url: fileUrl, filename: req.file.filename });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get ad by preview token (public - for customer approval)
+  app.get("/api/advertisements/preview/:token", async (req, res) => {
+    try {
+      const ad = await storage.getAdvertisementByPreviewToken(req.params.token);
+      if (!ad) {
+        return res.status(404).json({ error: "Advertisement not found" });
+      }
+      res.json(ad);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update ad approval status (public - for customer approval)
+  app.post("/api/advertisements/preview/:token/approve", async (req, res) => {
+    try {
+      const { approved } = req.body;
+      const ad = await storage.getAdvertisementByPreviewToken(req.params.token);
+      if (!ad) {
+        return res.status(404).json({ error: "Advertisement not found" });
+      }
+      
+      const updatedAd = await storage.updateAdvertisement(ad.id, {
+        approvalStatus: approved ? "approved" : "rejected",
+        status: approved ? "active" : "paused",
+      });
+      
+      res.json(updatedAd);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get active ad for page (used by AdPlacement component)
+  app.get("/api/advertisements/active", async (req, res) => {
+    try {
+      const page = req.query.page as string;
+      if (!page) {
+        return res.status(400).json({ error: "Page parameter required" });
+      }
+      const ads = await storage.getActiveAdsForPage(page);
+      if (ads.length === 0) {
+        return res.json(null);
+      }
+      // Return highest priority ad
+      res.json(ads[0]);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Track impression for ad
+  app.post("/api/advertisements/:id/impression", async (req, res) => {
+    try {
+      await storage.incrementAdImpression(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Track click for ad
+  app.post("/api/advertisements/:id/click", async (req, res) => {
     try {
       await storage.incrementAdClick(req.params.id);
       res.json({ success: true });

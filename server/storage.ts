@@ -40,6 +40,7 @@ export interface IStorage {
   // Advertisement operations
   getAllAdvertisements(): Promise<Advertisement[]>;
   getAdvertisement(id: string): Promise<Advertisement | undefined>;
+  getAdvertisementByPreviewToken(token: string): Promise<Advertisement | undefined>;
   getActiveAdsForPage(page: string): Promise<Advertisement[]>;
   createAdvertisement(ad: InsertAdvertisement): Promise<Advertisement>;
   updateAdvertisement(id: string, data: Partial<InsertAdvertisement>): Promise<Advertisement | undefined>;
@@ -293,6 +294,11 @@ export class DatabaseStorage implements IStorage {
 
   async getAdvertisement(id: string): Promise<Advertisement | undefined> {
     const [ad] = await db.select().from(advertisements).where(eq(advertisements.id, id));
+    return ad || undefined;
+  }
+
+  async getAdvertisementByPreviewToken(token: string): Promise<Advertisement | undefined> {
+    const [ad] = await db.select().from(advertisements).where(eq(advertisements.previewToken, token));
     return ad || undefined;
   }
 
