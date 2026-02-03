@@ -108,9 +108,16 @@ function SearchableSelect({
   );
 }
 
+interface VehicleTrim {
+  Year: string;
+  Make: string;
+  Model: string;
+  Trim: string;
+}
+
 // Global cache for vehicle and trim data
 let cachedVehicles: Vehicle[] | null = null;
-let cachedTrims: string[] | null = null;
+let cachedVehicleTrims: VehicleTrim[] | null = null;
 
 export function VehicleSelector({ index, register, setValue, watch, showVin = false }: VehicleSelectorProps) {
   const year = watch(`vehicles.${index}.year`);
@@ -119,7 +126,7 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
   const trim = watch(`vehicles.${index}.trim`);
   
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [trims, setTrims] = useState<string[]>([]);
+  const [vehicleTrims, setVehicleTrims] = useState<VehicleTrim[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -138,15 +145,15 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
           }
         }
 
-        // Load trims
-        if (cachedTrims) {
-          setTrims(cachedTrims);
+        // Load vehicle trims
+        if (cachedVehicleTrims) {
+          setVehicleTrims(cachedVehicleTrims);
         } else {
-          const trimResponse = await fetch('/data/trims.json');
+          const trimResponse = await fetch('/data/vehicle-trims.json');
           if (trimResponse.ok) {
             const trimData = await trimResponse.json();
-            cachedTrims = trimData;
-            setTrims(trimData);
+            cachedVehicleTrims = trimData;
+            setVehicleTrims(trimData);
           }
         }
       } catch (error) {
@@ -183,8 +190,13 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
   }, [vehicles, year, make]);
 
   const trimOptions = useMemo(() => {
-    return trims.map(t => ({ label: t, value: t }));
-  }, [trims]);
+    if (!year || !make || !model || vehicleTrims.length === 0) return [];
+    const matchingTrims = vehicleTrims
+      .filter(t => t.Year === year.toString() && t.Make === make && t.Model === model)
+      .map(t => t.Trim);
+    const uniqueTrims = Array.from(new Set(matchingTrims)).sort();
+    return uniqueTrims.map(t => ({ label: t, value: t }));
+  }, [vehicleTrims, year, make, model]);
 
   return (
     <div className="space-y-4">
