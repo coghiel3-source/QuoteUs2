@@ -51,6 +51,23 @@ export default function LifePage() {
     });
 
     setIsSubmitting(false);
+    
+    // Check for configured redirect
+    try {
+      const redirectRes = await fetch("/api/redirects/Life");
+      const redirectData = await redirectRes.json();
+      if (redirectData.redirectUrl) {
+        toast({
+          title: "Redirecting...",
+          description: "Quote submitted! Redirecting to partner site...",
+        });
+        window.location.href = redirectData.redirectUrl;
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to check redirect:", error);
+    }
+    
     toast({
       description: "Thank you for your submission, we will be connecting you with an agent shortly.",
     });
