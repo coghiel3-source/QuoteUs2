@@ -15,6 +15,9 @@ interface Advertisement {
   priority: number;
   impressions: number;
   clicks: number;
+  adText: string | null;
+  textColor: string | null;
+  backgroundColor: string | null;
 }
 
 interface AdPlacementProps {
@@ -95,8 +98,9 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
   return (
     <>
       <div 
-        className={`ad-placement cursor-pointer overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow ${className}`}
+        className={`ad-placement cursor-pointer overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow relative ${className}`}
         onClick={handleAdClick}
+        style={{ backgroundColor: ad.backgroundColor || undefined }}
         data-testid={`ad-placement-${page}`}
       >
         {ad.mediaType === "image" ? (
@@ -116,6 +120,19 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
             playsInline
             data-testid="ad-video"
           />
+        )}
+        {ad.adText && (
+          <div 
+            className="absolute bottom-0 left-0 right-0 p-3 text-center font-semibold text-lg"
+            style={{ 
+              color: ad.textColor || '#ffffff', 
+              backgroundColor: `${ad.backgroundColor || '#1e3a5f'}dd`,
+              textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+            }}
+            data-testid="ad-text-overlay"
+          >
+            {ad.adText}
+          </div>
         )}
       </div>
 

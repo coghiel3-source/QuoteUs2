@@ -27,6 +27,9 @@ interface Advertisement {
   clicks: number;
   previewToken: string | null;
   approvalStatus: string | null;
+  adText: string | null;
+  textColor: string | null;
+  backgroundColor: string | null;
   createdAt: string;
 }
 
@@ -69,6 +72,9 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
     startDate: "",
     endDate: "",
     priority: 1,
+    adText: "",
+    textColor: "#ffffff",
+    backgroundColor: "#1e3a5f",
   });
 
   useEffect(() => {
@@ -101,6 +107,9 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       startDate: "",
       endDate: "",
       priority: 1,
+      adText: "",
+      textColor: "#ffffff",
+      backgroundColor: "#1e3a5f",
     });
     setEditingAd(null);
   };
@@ -123,6 +132,9 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       startDate: ad.startDate ? ad.startDate.split("T")[0] : "",
       endDate: ad.endDate ? ad.endDate.split("T")[0] : "",
       priority: ad.priority,
+      adText: ad.adText || "",
+      textColor: ad.textColor || "#ffffff",
+      backgroundColor: ad.backgroundColor || "#1e3a5f",
     });
     setDialogOpen(true);
   };
@@ -434,39 +446,101 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
               <p className="text-xs text-muted-foreground">Enter a URL or upload an image/video file. Recommended size: 728x90 for banners.</p>
             </div>
 
-            {formData.mediaUrl && (
+            <div className="border rounded-lg p-4 bg-blue-50">
+              <Label className="mb-3 block text-sm font-semibold">Ad Design Options</Label>
               <div className="space-y-4">
-                <div className="border rounded-lg p-4 bg-muted/50">
-                  <Label className="mb-2 block">Media Preview</Label>
-                  {formData.mediaType === "image" ? (
-                    <img src={formData.mediaUrl} alt="Preview" className="max-h-32 object-contain mx-auto" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                  ) : (
-                    <video src={formData.mediaUrl} className="max-h-32 mx-auto" controls muted />
-                  )}
+                <div className="space-y-2">
+                  <Label>Ad Text & Emoji (optional)</Label>
+                  <Input 
+                    value={formData.adText} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, adText: e.target.value }))}
+                    placeholder="🚗 Get 20% off your auto service! 🔧"
+                    data-testid="input-ad-text"
+                  />
+                  <p className="text-xs text-muted-foreground">Add text and emojis to overlay on your ad. Use emoji shortcuts like 🚗 🏠 💰 ⭐ ✨</p>
                 </div>
-
-                <div className="border rounded-lg p-4 bg-slate-100">
-                  <Label className="mb-3 block text-sm font-semibold">Website Preview - How ad appears on quote pages</Label>
-                  <div className="bg-white rounded-lg shadow-sm border p-4 max-w-md mx-auto">
-                    <div className="space-y-3">
-                      <div className="h-3 bg-slate-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-slate-200 rounded w-1/2"></div>
-                      <div className="h-10 bg-orange-500 rounded flex items-center justify-center text-white text-xs font-medium">
-                        Get My Quote Now
-                      </div>
-                      <div className="mt-4 rounded-lg overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow" data-testid="website-preview-ad">
-                        {formData.mediaType === "image" ? (
-                          <img src={formData.mediaUrl} alt={formData.name || "Ad Preview"} className="w-full h-auto object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                        ) : (
-                          <video src={formData.mediaUrl} className="w-full h-auto" muted />
-                        )}
-                      </div>
-                      <p className="text-xs text-center text-muted-foreground">Sponsored</p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Text Color</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color"
+                        value={formData.textColor} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
+                        className="w-12 h-10 p-1 cursor-pointer"
+                        data-testid="input-text-color"
+                      />
+                      <Input 
+                        value={formData.textColor} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
+                        placeholder="#ffffff"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Background Color</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="color"
+                        value={formData.backgroundColor} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                        className="w-12 h-10 p-1 cursor-pointer"
+                        data-testid="input-background-color"
+                      />
+                      <Input 
+                        value={formData.backgroundColor} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                        placeholder="#1e3a5f"
+                        className="flex-1"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="border rounded-lg p-4 bg-slate-100">
+              <Label className="mb-3 block text-sm font-semibold">Website Preview - How ad appears on quote pages</Label>
+              <div className="bg-white rounded-lg shadow-sm border p-4 max-w-md mx-auto">
+                <div className="space-y-3">
+                  <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                  <div className="h-10 bg-orange-500 rounded flex items-center justify-center text-white text-xs font-medium">
+                    Get My Quote Now
+                  </div>
+                  <div 
+                    className="mt-4 rounded-lg overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow relative" 
+                    style={{ backgroundColor: formData.backgroundColor }}
+                    data-testid="website-preview-ad"
+                  >
+                    {formData.mediaUrl ? (
+                      formData.mediaType === "image" ? (
+                        <img src={formData.mediaUrl} alt={formData.name || "Ad Preview"} className="w-full h-auto object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                      ) : (
+                        <video src={formData.mediaUrl} className="w-full h-auto" muted />
+                      )
+                    ) : (
+                      <div className="h-20"></div>
+                    )}
+                    {formData.adText && (
+                      <div 
+                        className="absolute bottom-0 left-0 right-0 p-3 text-center font-semibold text-lg"
+                        style={{ 
+                          color: formData.textColor, 
+                          backgroundColor: `${formData.backgroundColor}dd`,
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                        }}
+                      >
+                        {formData.adText}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">Sponsored</p>
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
