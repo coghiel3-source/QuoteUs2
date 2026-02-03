@@ -117,6 +117,17 @@ export const advertisements = pgTable("advertisements", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Partner Redirects Table - for redirecting users to partner sites after quote submission
+export const partnerRedirects = pgTable("partner_redirects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteType: quoteTypeEnum("quote_type").notNull().unique(),
+  redirectUrl: text("redirect_url").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -153,6 +164,12 @@ export const insertAdvertisementSchema = createInsertSchema(advertisements).omit
   updatedAt: true,
 });
 
+export const insertPartnerRedirectSchema = createInsertSchema(partnerRedirects).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Select Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -171,3 +188,6 @@ export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 
 export type Advertisement = typeof advertisements.$inferSelect;
 export type InsertAdvertisement = z.infer<typeof insertAdvertisementSchema>;
+
+export type PartnerRedirect = typeof partnerRedirects.$inferSelect;
+export type InsertPartnerRedirect = z.infer<typeof insertPartnerRedirectSchema>;

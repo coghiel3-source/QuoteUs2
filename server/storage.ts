@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, partnerRedirects, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type PartnerRedirect, type InsertPartnerRedirect } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -47,6 +47,14 @@ export interface IStorage {
   deleteAdvertisement(id: string): Promise<boolean>;
   incrementAdImpression(id: string): Promise<void>;
   incrementAdClick(id: string): Promise<void>;
+  
+  // Partner Redirect operations
+  getAllPartnerRedirects(): Promise<PartnerRedirect[]>;
+  getPartnerRedirect(id: string): Promise<PartnerRedirect | undefined>;
+  getPartnerRedirectByQuoteType(quoteType: string): Promise<PartnerRedirect | undefined>;
+  createPartnerRedirect(redirect: InsertPartnerRedirect): Promise<PartnerRedirect>;
+  updatePartnerRedirect(id: string, data: Partial<InsertPartnerRedirect>): Promise<PartnerRedirect | undefined>;
+  deletePartnerRedirect(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -353,6 +361,43 @@ export class DatabaseStorage implements IStorage {
     await db.update(advertisements)
       .set({ clicks: sql`${advertisements.clicks} + 1` })
       .where(eq(advertisements.id, id));
+  }
+
+  // Partner Redirect operations
+  async getAllPartnerRedirects(): Promise<PartnerRedirect[]> {
+    return await db.select().from(partnerRedirects).orderBy(desc(partnerRedirects.createdAt));
+  }
+
+  async getPartnerRedirect(id: string): Promise<PartnerRedirect | undefined> {
+    const [redirect] = await db.select().from(partnerRedirects).where(eq(partnerRedirects.id, id));
+    return redirect || undefined;
+  }
+
+  async getPartnerRedirectByQuoteType(quoteType: string): Promise<PartnerRedirect | undefined> {
+    const [redirect] = await db.select().from(partnerRedirects)
+      .where(and(
+        eq(partnerRedirects.quoteType, quoteType as any),
+        eq(partnerRedirects.isActive, true)
+      ));
+    return redirect || undefined;
+  }
+
+  async createPartnerRedirect(redirect: InsertPartnerRedirect): Promise<PartnerRedirect> {
+    const [newRedirect] = await db.insert(partnerRedirects).values(redirect).returning();
+    return newRedirect;
+  }
+
+  async updatePartnerRedirect(id: string, data: Partial<InsertPartnerRedirect>): Promise<PartnerRedirect | undefined> {
+    const [redirect] = await db.update(partnerRedirects)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(partnerRedirects.id, id))
+      .returning();
+    return redirect || undefined;
+  }
+
+  async deletePartnerRedirect(id: string): Promise<boolean> {
+    const result = await db.delete(partnerRedirects).where(eq(partnerRedirects.id, id)).returning();
+    return result.length > 0;
   }
 }
 

@@ -1539,5 +1539,81 @@ export async function registerRoutes(
     }
   });
 
+  // ============== PARTNER REDIRECTS ==============
+  
+  // Get all partner redirects (admin only)
+  app.get("/api/admin/redirects", async (req, res) => {
+    try {
+      const redirects = await storage.getAllPartnerRedirects();
+      res.json(redirects);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create partner redirect (admin only)
+  app.post("/api/admin/redirects", async (req, res) => {
+    try {
+      const { quoteType, redirectUrl, isActive, description } = req.body;
+      if (!quoteType || !redirectUrl) {
+        return res.status(400).json({ error: "Quote type and redirect URL are required" });
+      }
+      const redirect = await storage.createPartnerRedirect({
+        quoteType,
+        redirectUrl,
+        isActive: isActive !== false,
+        description: description || null,
+      });
+      res.json(redirect);
+    } catch (error: any) {
+      if (error.message?.includes("unique constraint")) {
+        return res.status(400).json({ error: "A redirect for this quote type already exists" });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update partner redirect (admin only)
+  app.put("/api/admin/redirects/:id", async (req, res) => {
+    try {
+      const redirect = await storage.updatePartnerRedirect(req.params.id, req.body);
+      if (!redirect) {
+        return res.status(404).json({ error: "Redirect not found" });
+      }
+      res.json(redirect);
+    } catch (error: any) {
+      if (error.message?.includes("unique constraint")) {
+        return res.status(400).json({ error: "A redirect for this quote type already exists" });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete partner redirect (admin only)
+  app.delete("/api/admin/redirects/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deletePartnerRedirect(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Redirect not found" });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public: Get redirect URL for a quote type (used after quote submission)
+  app.get("/api/redirects/:quoteType", async (req, res) => {
+    try {
+      const redirect = await storage.getPartnerRedirectByQuoteType(req.params.quoteType);
+      if (!redirect) {
+        return res.json({ redirectUrl: null });
+      }
+      res.json({ redirectUrl: redirect.redirectUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

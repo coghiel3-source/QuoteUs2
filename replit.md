@@ -41,6 +41,7 @@ Core tables include:
 - `activities` - Activity log for each quote (status changes, notes, emails)
 - `transactions` - All credit balance changes (purchases, deductions, adjustments)
 - `systemSettings` - Platform configuration settings
+- `partnerRedirects` - Redirect URLs for partner sites after quote submission
 
 The schema uses PostgreSQL enums for type safety on user roles, quote statuses, priorities, activity types, and transaction types.
 

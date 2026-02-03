@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2 } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -140,6 +140,27 @@ export default function AdminCRMPage() {
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
   const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
   
+  // Partner Redirects State
+  interface PartnerRedirect {
+    id: string;
+    quoteType: string;
+    redirectUrl: string;
+    isActive: boolean;
+    description: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+  const [redirects, setRedirects] = useState<PartnerRedirect[]>([]);
+  const [loadingRedirects, setLoadingRedirects] = useState(false);
+  const [isAddRedirectOpen, setIsAddRedirectOpen] = useState(false);
+  const [editingRedirect, setEditingRedirect] = useState<PartnerRedirect | null>(null);
+  const [newRedirect, setNewRedirect] = useState({
+    quoteType: "",
+    redirectUrl: "",
+    isActive: true,
+    description: "",
+  });
+  
   // Manager Permissions State
   const [managerPermissions, setManagerPermissions] = useState({
     viewLeads: true,
@@ -195,6 +216,12 @@ export default function AdminCRMPage() {
           setManagerPermissions(prev => ({ ...prev, ...data.permissions }));
         }
       })
+      .catch(console.error);
+    
+    // Load partner redirects
+    fetch("/api/admin/redirects")
+      .then(r => r.json())
+      .then(data => setRedirects(data))
       .catch(console.error);
   }, []);
   
@@ -674,6 +701,95 @@ export default function AdminCRMPage() {
     });
   };
 
+  // Redirect CRUD functions
+  const QUOTE_TYPES = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "General"];
+  
+  const fetchRedirects = async () => {
+    setLoadingRedirects(true);
+    try {
+      const res = await fetch("/api/admin/redirects");
+      const data = await res.json();
+      setRedirects(data);
+    } catch (error) {
+      console.error("Failed to fetch redirects:", error);
+    } finally {
+      setLoadingRedirects(false);
+    }
+  };
+
+  const handleSaveRedirect = async () => {
+    if (!newRedirect.quoteType || !newRedirect.redirectUrl) {
+      toast({ title: "Error", description: "Quote type and redirect URL are required", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      const url = editingRedirect 
+        ? `/api/admin/redirects/${editingRedirect.id}`
+        : "/api/admin/redirects";
+      const method = editingRedirect ? "PUT" : "POST";
+      
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newRedirect),
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to save redirect");
+      }
+      
+      toast({ title: "Success", description: editingRedirect ? "Redirect updated" : "Redirect created" });
+      setIsAddRedirectOpen(false);
+      setEditingRedirect(null);
+      setNewRedirect({ quoteType: "", redirectUrl: "", isActive: true, description: "" });
+      fetchRedirects();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteRedirect = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this redirect?")) return;
+    
+    try {
+      const res = await fetch(`/api/admin/redirects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete redirect");
+      
+      toast({ title: "Success", description: "Redirect deleted" });
+      fetchRedirects();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleToggleRedirectActive = async (redirect: PartnerRedirect) => {
+    try {
+      const res = await fetch(`/api/admin/redirects/${redirect.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !redirect.isActive }),
+      });
+      if (!res.ok) throw new Error("Failed to update redirect");
+      
+      fetchRedirects();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const openEditRedirect = (redirect: PartnerRedirect) => {
+    setEditingRedirect(redirect);
+    setNewRedirect({
+      quoteType: redirect.quoteType,
+      redirectUrl: redirect.redirectUrl,
+      isActive: redirect.isActive,
+      description: redirect.description || "",
+    });
+    setIsAddRedirectOpen(true);
+  };
+
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = 
       quote.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -855,6 +971,15 @@ export default function AdminCRMPage() {
                         <Megaphone size={18} className="mr-3" /> Advertisements
                       </Button>
                     )}
+                    {user?.role === 'admin' && (
+                      <Button 
+                        variant={activeTab === 'redirects' ? 'secondary' : 'ghost'} 
+                        className="justify-start mb-1"
+                        onClick={() => { setActiveTab('redirects'); setMobileMenuOpen(false); }}
+                      >
+                        <Link2 size={18} className="mr-3" /> Redirects
+                      </Button>
+                    )}
                     <div className="border-t my-2" />
                     {(user?.role === 'admin' || hasPermission('viewSettings')) && (
                       <Button 
@@ -944,6 +1069,17 @@ export default function AdminCRMPage() {
                     data-testid="nav-advertisements"
                   >
                     <Megaphone size={16} className="mr-2" /> Ads
+                  </Button>
+                )}
+                {user?.role === 'admin' && (
+                  <Button 
+                    variant={activeTab === 'redirects' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setActiveTab('redirects')}
+                    className={activeTab === 'redirects' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                    data-testid="nav-redirects"
+                  >
+                    <Link2 size={16} className="mr-2" /> Redirects
                   </Button>
                 )}
               </nav>
@@ -2790,6 +2926,186 @@ export default function AdminCRMPage() {
         {/* ADVERTISEMENTS TAB */}
         {activeTab === 'advertisements' && (user?.role === 'admin' || (user?.role === 'manager' && hasPermission('approveAds'))) && (
           <AdvertisementManager canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} />
+        )}
+
+        {/* REDIRECTS TAB */}
+        {activeTab === 'redirects' && user?.role === 'admin' && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Link2 className="h-5 w-5" />
+                    Partner Redirects
+                  </CardTitle>
+                  <CardDescription>Configure redirect URLs for partner sites after quote submissions.</CardDescription>
+                </div>
+                <Dialog open={isAddRedirectOpen} onOpenChange={(open) => {
+                  setIsAddRedirectOpen(open);
+                  if (!open) {
+                    setEditingRedirect(null);
+                    setNewRedirect({ quoteType: "", redirectUrl: "", isActive: true, description: "" });
+                  }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="btn-add-redirect">
+                      <UserPlus className="h-4 w-4 mr-2" /> Add Redirect
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingRedirect ? "Edit Redirect" : "Add Partner Redirect"}</DialogTitle>
+                      <DialogDescription>
+                        Configure a redirect URL that users will be sent to after submitting a quote.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Quote Type</Label>
+                        <Select 
+                          value={newRedirect.quoteType}
+                          onValueChange={(value) => setNewRedirect(prev => ({ ...prev, quoteType: value }))}
+                          disabled={!!editingRedirect}
+                        >
+                          <SelectTrigger data-testid="select-redirect-type">
+                            <SelectValue placeholder="Select quote type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {QUOTE_TYPES.filter(type => 
+                              editingRedirect?.quoteType === type || !redirects.find(r => r.quoteType === type)
+                            ).map(type => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Redirect URL</Label>
+                        <Input 
+                          value={newRedirect.redirectUrl}
+                          onChange={(e) => setNewRedirect(prev => ({ ...prev, redirectUrl: e.target.value }))}
+                          placeholder="https://partner-site.com/quote"
+                          data-testid="input-redirect-url"
+                        />
+                        <p className="text-xs text-muted-foreground">The full URL where users will be redirected after submitting their quote.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description (optional)</Label>
+                        <Textarea 
+                          value={newRedirect.description}
+                          onChange={(e) => setNewRedirect(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Partner name or notes about this redirect"
+                          data-testid="input-redirect-description"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          id="redirectActive"
+                          checked={newRedirect.isActive}
+                          onCheckedChange={(checked) => setNewRedirect(prev => ({ ...prev, isActive: checked }))}
+                          data-testid="switch-redirect-active"
+                        />
+                        <Label htmlFor="redirectActive" className="cursor-pointer">Active</Label>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddRedirectOpen(false)}>Cancel</Button>
+                      <Button onClick={handleSaveRedirect} data-testid="btn-save-redirect">
+                        {editingRedirect ? "Update" : "Create"} Redirect
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  <strong>How it works:</strong> When a customer submits a quote for a type with an active redirect, 
+                  they will be automatically redirected to the partner site after their quote is saved.
+                </p>
+              </div>
+              
+              {redirects.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Link2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No redirects configured yet.</p>
+                  <p className="text-sm">Add a redirect to send customers to partner sites after quote submission.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Quote Type</TableHead>
+                      <TableHead>Redirect URL</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {redirects.map(redirect => (
+                      <TableRow key={redirect.id} data-testid={`redirect-row-${redirect.id}`}>
+                        <TableCell>
+                          <Badge variant="outline">{redirect.quoteType}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <a 
+                            href={redirect.redirectUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm max-w-xs truncate block"
+                          >
+                            {redirect.redirectUrl}
+                          </a>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                          {redirect.description || "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={redirect.isActive ? "default" : "secondary"}>
+                            {redirect.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" data-testid={`redirect-actions-${redirect.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditRedirect(redirect)}>
+                                <Pencil className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleRedirectActive(redirect)}>
+                                {redirect.isActive ? (
+                                  <>
+                                    <Pause className="h-4 w-4 mr-2" /> Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="h-4 w-4 mr-2" /> Activate
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteRedirect(redirect.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* SETTINGS TAB - Manager Permissions */}
