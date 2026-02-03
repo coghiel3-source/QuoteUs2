@@ -42,7 +42,11 @@ const PAGE_OPTIONS = [
   { value: "Mortgage", label: "Mortgage" },
 ];
 
-export default function AdvertisementManager() {
+interface AdvertisementManagerProps {
+  canApproveAds?: boolean;
+}
+
+export default function AdvertisementManager({ canApproveAds = true }: AdvertisementManagerProps) {
   const { toast } = useToast();
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -333,7 +337,7 @@ export default function AdvertisementManager() {
                     <TableCell className="text-right">{ad.clicks.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{getCTR(ad.impressions, ad.clicks)}</TableCell>
                     <TableCell className="text-right">
-                      {ad.approvalStatus !== "approved" && (
+                      {canApproveAds && ad.approvalStatus !== "approved" && (
                         <Button 
                           variant="ghost" 
                           size="sm" 

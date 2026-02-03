@@ -150,6 +150,7 @@ export default function AdminCRMPage() {
     viewSettings: false,
     viewLeadCosts: false,
     editLeadCosts: false,
+    approveAds: false,
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
@@ -845,7 +846,7 @@ export default function AdminCRMPage() {
                         <Key size={18} className="mr-3" /> Manage
                       </Button>
                     )}
-                    {user?.role === 'admin' && (
+                    {(user?.role === 'admin' || hasPermission('approveAds')) && (
                       <Button 
                         variant={activeTab === 'advertisements' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
@@ -934,7 +935,7 @@ export default function AdminCRMPage() {
                     <Key size={16} className="mr-2" /> Manage
                   </Button>
                 )}
-                {user?.role === 'admin' && (
+                {(user?.role === 'admin' || hasPermission('approveAds')) && (
                   <Button 
                     variant={activeTab === 'advertisements' ? 'secondary' : 'ghost'} 
                     size="sm" 
@@ -2787,8 +2788,8 @@ export default function AdminCRMPage() {
         )}
 
         {/* ADVERTISEMENTS TAB */}
-        {activeTab === 'advertisements' && user?.role === 'admin' && (
-          <AdvertisementManager />
+        {activeTab === 'advertisements' && (user?.role === 'admin' || (user?.role === 'manager' && hasPermission('approveAds'))) && (
+          <AdvertisementManager canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} />
         )}
 
         {/* SETTINGS TAB - Manager Permissions */}
@@ -2879,6 +2880,18 @@ export default function AdminCRMPage() {
                     checked={managerPermissions.viewSettings}
                     onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, viewSettings: checked }))}
                     data-testid="toggle-manager-view-settings"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Approve Ads</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to approve advertisements before they go live</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.approveAds}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, approveAds: checked }))}
+                    data-testid="toggle-manager-approve-ads"
                   />
                 </div>
               </div>
