@@ -431,13 +431,36 @@ export default function AdvertisementManager() {
             </div>
 
             {formData.mediaUrl && (
-              <div className="border rounded-lg p-4 bg-muted/50">
-                <Label className="mb-2 block">Preview</Label>
-                {formData.mediaType === "image" ? (
-                  <img src={formData.mediaUrl} alt="Preview" className="max-h-32 object-contain mx-auto" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                ) : (
-                  <video src={formData.mediaUrl} className="max-h-32 mx-auto" controls muted />
-                )}
+              <div className="space-y-4">
+                <div className="border rounded-lg p-4 bg-muted/50">
+                  <Label className="mb-2 block">Media Preview</Label>
+                  {formData.mediaType === "image" ? (
+                    <img src={formData.mediaUrl} alt="Preview" className="max-h-32 object-contain mx-auto" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  ) : (
+                    <video src={formData.mediaUrl} className="max-h-32 mx-auto" controls muted />
+                  )}
+                </div>
+
+                <div className="border rounded-lg p-4 bg-slate-100">
+                  <Label className="mb-3 block text-sm font-semibold">Website Preview - How ad appears on quote pages</Label>
+                  <div className="bg-white rounded-lg shadow-sm border p-4 max-w-md mx-auto">
+                    <div className="space-y-3">
+                      <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                      <div className="h-10 bg-orange-500 rounded flex items-center justify-center text-white text-xs font-medium">
+                        Get My Quote Now
+                      </div>
+                      <div className="mt-4 rounded-lg overflow-hidden shadow-md cursor-pointer hover:shadow-lg transition-shadow" data-testid="website-preview-ad">
+                        {formData.mediaType === "image" ? (
+                          <img src={formData.mediaUrl} alt={formData.name || "Ad Preview"} className="w-full h-auto object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                        ) : (
+                          <video src={formData.mediaUrl} className="w-full h-auto" muted />
+                        )}
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground">Sponsored</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
