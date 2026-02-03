@@ -115,6 +115,7 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
   const year = watch(`vehicles.${index}.year`);
   const make = watch(`vehicles.${index}.make`);
   const model = watch(`vehicles.${index}.model`);
+  const trim = watch(`vehicles.${index}.trim`);
   
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -168,7 +169,7 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="space-y-2">
           <Label htmlFor={`vehicle-${index}-year`}>Year</Label>
           <SearchableSelect
@@ -177,6 +178,7 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
               setValue(`vehicles.${index}.year`, parseInt(val));
               setValue(`vehicles.${index}.make`, "");
               setValue(`vehicles.${index}.model`, "");
+              setValue(`vehicles.${index}.trim`, "");
             }}
             options={yearOptions}
             placeholder="Select Year"
@@ -192,7 +194,8 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
             value={make}
             onChange={(val) => {
               setValue(`vehicles.${index}.make`, val);
-              setValue(`vehicles.${index}.model`, ""); // Reset model on make change
+              setValue(`vehicles.${index}.model`, "");
+              setValue(`vehicles.${index}.trim`, "");
             }}
             options={makeOptions}
             placeholder={year ? "Select Make" : "Select Year First"}
@@ -215,6 +218,17 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
             loading={isLoading}
           />
           <input type="hidden" {...register(`vehicles.${index}.model`)} />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor={`vehicle-${index}-trim`}>Trim (Optional)</Label>
+          <Input
+            id={`vehicle-${index}-trim`}
+            placeholder="e.g., EX, LX, Sport"
+            {...register(`vehicles.${index}.trim`)}
+            disabled={!model}
+            data-testid={`input-trim-${index}`}
+          />
         </div>
       </div>
 

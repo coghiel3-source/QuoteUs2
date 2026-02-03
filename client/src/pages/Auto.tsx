@@ -58,6 +58,7 @@ const autoSchema = z.object({
     year: z.number().min(1990),
     make: z.string().min(1, "Make is required"),
     model: z.string().min(1, "Model is required"),
+    trim: z.string().optional(),
     vin: z.string().optional(),
     usage: z.enum(["commute", "pleasure", "business", "rideshare"]),
     annualKm: z.number().min(0, "Kilometres required"),
@@ -217,7 +218,7 @@ export default function AutoPage() {
           tickets: d.tickets,
           cancellations: d.cancellations,
         })) || [],
-        vehicleSummary: data.vehicles.map(v => `${v.year} ${v.make} ${v.model}`).join(', '),
+        vehicleSummary: data.vehicles.map(v => `${v.year} ${v.make} ${v.model}${v.trim ? ` ${v.trim}` : ''}`).join(', '),
         driverCount: 1 + (data.drivers?.length || 0),
         comments: data.comments,
         crossSellInterest: {
@@ -786,7 +787,7 @@ export default function AutoPage() {
                 ))}
               </AnimatePresence>
               
-              <Button type="button" variant="outline" size="sm" onClick={() => appendVehicle({ year: 2020, make: "", model: "", usage: "commute", annualKm: 10000, coverageType: "liability" })} className="gap-2 w-full border-dashed py-6">
+              <Button type="button" variant="outline" size="sm" onClick={() => appendVehicle({ year: 2020, make: "", model: "", trim: "", usage: "commute", annualKm: 10000, coverageType: "liability" })} className="gap-2 w-full border-dashed py-6">
                 <Plus size={16} /> Add Another Vehicle
               </Button>
             </div>
