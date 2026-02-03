@@ -48,12 +48,27 @@ export default function TravelPage() {
 
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsSubmitting(false);
+    
+    // Check for configured redirect
+    try {
+      const redirectRes = await fetch("/api/redirects/Travel");
+      const redirectData = await redirectRes.json();
+      if (redirectData.redirectUrl) {
+        toast({
+          title: "Redirecting...",
+          description: "Quote submitted! Redirecting to partner site...",
+        });
+        window.location.href = redirectData.redirectUrl;
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to check redirect:", error);
+    }
+    
     toast({
-      title: "Redirecting...",
-      description: "Account Manager notified (CC: info@quoteus.ca). Redirecting to partner site...",
+      title: "Quote Submitted!",
+      description: "Thank you! An account manager will contact you shortly.",
     });
-    // Redirect to Tugo
-    window.location.href = "https://shop.tugo.com/store/AFL801/?utm_group=insurancereferral&utm_source=TAP&utm_medium=insurancereferral&utm_campaign=ce&ps_partner_key=Y29yZXljb2doaWVsMTEwMA&ps_xid=2gfw6vKwwAnoHF&gsxid=2gfw6vKwwAnoHF&gspk=Y29yZXljb2doaWVsMTEwMA";
   };
 
   return (
