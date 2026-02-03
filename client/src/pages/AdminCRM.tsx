@@ -955,11 +955,11 @@ export default function AdminCRMPage() {
                     )}
                     {user?.role === 'admin' && (
                       <Button 
-                        variant={activeTab === 'manage' ? 'secondary' : 'ghost'} 
+                        variant={activeTab === 'connections' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
-                        onClick={() => { setActiveTab('manage'); setMobileMenuOpen(false); }}
+                        onClick={() => { setActiveTab('connections'); setMobileMenuOpen(false); }}
                       >
-                        <Key size={18} className="mr-3" /> Manage
+                        <Link2 size={18} className="mr-3" /> Connections
                       </Button>
                     )}
                     {(user?.role === 'admin' || hasPermission('approveAds')) && (
@@ -969,15 +969,6 @@ export default function AdminCRMPage() {
                         onClick={() => { setActiveTab('advertisements'); setMobileMenuOpen(false); }}
                       >
                         <Megaphone size={18} className="mr-3" /> Advertisements
-                      </Button>
-                    )}
-                    {user?.role === 'admin' && (
-                      <Button 
-                        variant={activeTab === 'redirects' ? 'secondary' : 'ghost'} 
-                        className="justify-start mb-1"
-                        onClick={() => { setActiveTab('redirects'); setMobileMenuOpen(false); }}
-                      >
-                        <Link2 size={18} className="mr-3" /> Redirects
                       </Button>
                     )}
                     <div className="border-t my-2" />
@@ -1051,13 +1042,13 @@ export default function AdminCRMPage() {
                 )}
                 {user?.role === 'admin' && (
                   <Button 
-                    variant={activeTab === 'manage' ? 'secondary' : 'ghost'} 
+                    variant={activeTab === 'connections' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    onClick={() => setActiveTab('manage')}
-                    className={activeTab === 'manage' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
-                    data-testid="nav-manage"
+                    onClick={() => setActiveTab('connections')}
+                    className={activeTab === 'connections' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                    data-testid="nav-connections"
                   >
-                    <Key size={16} className="mr-2" /> Manage
+                    <Link2 size={16} className="mr-2" /> Connections
                   </Button>
                 )}
                 {(user?.role === 'admin' || hasPermission('approveAds')) && (
@@ -1069,17 +1060,6 @@ export default function AdminCRMPage() {
                     data-testid="nav-advertisements"
                   >
                     <Megaphone size={16} className="mr-2" /> Ads
-                  </Button>
-                )}
-                {user?.role === 'admin' && (
-                  <Button 
-                    variant={activeTab === 'redirects' ? 'secondary' : 'ghost'} 
-                    size="sm" 
-                    onClick={() => setActiveTab('redirects')}
-                    className={activeTab === 'redirects' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
-                    data-testid="nav-redirects"
-                  >
-                    <Link2 size={16} className="mr-2" /> Redirects
                   </Button>
                 )}
               </nav>
@@ -2928,186 +2908,6 @@ export default function AdminCRMPage() {
           <AdvertisementManager canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} />
         )}
 
-        {/* REDIRECTS TAB */}
-        {activeTab === 'redirects' && user?.role === 'admin' && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Link2 className="h-5 w-5" />
-                    Partner Redirects
-                  </CardTitle>
-                  <CardDescription>Configure redirect URLs for partner sites after quote submissions.</CardDescription>
-                </div>
-                <Dialog open={isAddRedirectOpen} onOpenChange={(open) => {
-                  setIsAddRedirectOpen(open);
-                  if (!open) {
-                    setEditingRedirect(null);
-                    setNewRedirect({ quoteType: "", redirectUrl: "", isActive: true, description: "" });
-                  }
-                }}>
-                  <DialogTrigger asChild>
-                    <Button data-testid="btn-add-redirect">
-                      <UserPlus className="h-4 w-4 mr-2" /> Add Redirect
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{editingRedirect ? "Edit Redirect" : "Add Partner Redirect"}</DialogTitle>
-                      <DialogDescription>
-                        Configure a redirect URL that users will be sent to after submitting a quote.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Quote Type</Label>
-                        <Select 
-                          value={newRedirect.quoteType}
-                          onValueChange={(value) => setNewRedirect(prev => ({ ...prev, quoteType: value }))}
-                          disabled={!!editingRedirect}
-                        >
-                          <SelectTrigger data-testid="select-redirect-type">
-                            <SelectValue placeholder="Select quote type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {QUOTE_TYPES.filter(type => 
-                              editingRedirect?.quoteType === type || !redirects.find(r => r.quoteType === type)
-                            ).map(type => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Redirect URL</Label>
-                        <Input 
-                          value={newRedirect.redirectUrl}
-                          onChange={(e) => setNewRedirect(prev => ({ ...prev, redirectUrl: e.target.value }))}
-                          placeholder="https://partner-site.com/quote"
-                          data-testid="input-redirect-url"
-                        />
-                        <p className="text-xs text-muted-foreground">The full URL where users will be redirected after submitting their quote.</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Description (optional)</Label>
-                        <Textarea 
-                          value={newRedirect.description}
-                          onChange={(e) => setNewRedirect(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Partner name or notes about this redirect"
-                          data-testid="input-redirect-description"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch 
-                          id="redirectActive"
-                          checked={newRedirect.isActive}
-                          onCheckedChange={(checked) => setNewRedirect(prev => ({ ...prev, isActive: checked }))}
-                          data-testid="switch-redirect-active"
-                        />
-                        <Label htmlFor="redirectActive" className="cursor-pointer">Active</Label>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsAddRedirectOpen(false)}>Cancel</Button>
-                      <Button onClick={handleSaveRedirect} data-testid="btn-save-redirect">
-                        {editingRedirect ? "Update" : "Create"} Redirect
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
-                  <strong>How it works:</strong> When a customer submits a quote for a type with an active redirect, 
-                  they will be automatically redirected to the partner site after their quote is saved.
-                </p>
-              </div>
-              
-              {redirects.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Link2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No redirects configured yet.</p>
-                  <p className="text-sm">Add a redirect to send customers to partner sites after quote submission.</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Quote Type</TableHead>
-                      <TableHead>Redirect URL</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {redirects.map(redirect => (
-                      <TableRow key={redirect.id} data-testid={`redirect-row-${redirect.id}`}>
-                        <TableCell>
-                          <Badge variant="outline">{redirect.quoteType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <a 
-                            href={redirect.redirectUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm max-w-xs truncate block"
-                          >
-                            {redirect.redirectUrl}
-                          </a>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                          {redirect.description || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={redirect.isActive ? "default" : "secondary"}>
-                            {redirect.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" data-testid={`redirect-actions-${redirect.id}`}>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditRedirect(redirect)}>
-                                <Pencil className="h-4 w-4 mr-2" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleRedirectActive(redirect)}>
-                                {redirect.isActive ? (
-                                  <>
-                                    <Pause className="h-4 w-4 mr-2" /> Deactivate
-                                  </>
-                                ) : (
-                                  <>
-                                    <Play className="h-4 w-4 mr-2" /> Activate
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteRedirect(redirect.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {/* SETTINGS TAB - Manager Permissions */}
         {activeTab === 'settings' && user?.role === 'admin' && (
           <Card>
@@ -3266,8 +3066,9 @@ export default function AdminCRMPage() {
           </Card>
         )}
 
-        {/* MANAGE TAB - API Keys & Services */}
-        {activeTab === 'manage' && user?.role === 'admin' && (
+        {/* CONNECTIONS TAB - API Keys, Services & Redirects */}
+        {activeTab === 'connections' && user?.role === 'admin' && (
+          <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -3656,6 +3457,185 @@ export default function AdminCRMPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Partner Redirects Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Link2 className="h-5 w-5" />
+                    Partner Redirects
+                  </CardTitle>
+                  <CardDescription>Configure redirect URLs for partner sites after quote submissions.</CardDescription>
+                </div>
+                <Dialog open={isAddRedirectOpen} onOpenChange={(open) => {
+                  setIsAddRedirectOpen(open);
+                  if (!open) {
+                    setEditingRedirect(null);
+                    setNewRedirect({ quoteType: "", redirectUrl: "", isActive: true, description: "" });
+                  }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="btn-add-redirect">
+                      <UserPlus className="h-4 w-4 mr-2" /> Add Redirect
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingRedirect ? "Edit Redirect" : "Add Partner Redirect"}</DialogTitle>
+                      <DialogDescription>
+                        Configure a redirect URL that users will be sent to after submitting a quote.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Quote Type</Label>
+                        <Select 
+                          value={newRedirect.quoteType}
+                          onValueChange={(value) => setNewRedirect(prev => ({ ...prev, quoteType: value }))}
+                          disabled={!!editingRedirect}
+                        >
+                          <SelectTrigger data-testid="select-redirect-type">
+                            <SelectValue placeholder="Select quote type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {QUOTE_TYPES.filter(type => 
+                              editingRedirect?.quoteType === type || !redirects.find(r => r.quoteType === type)
+                            ).map(type => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Redirect URL</Label>
+                        <Input 
+                          value={newRedirect.redirectUrl}
+                          onChange={(e) => setNewRedirect(prev => ({ ...prev, redirectUrl: e.target.value }))}
+                          placeholder="https://partner-site.com/quote"
+                          data-testid="input-redirect-url"
+                        />
+                        <p className="text-xs text-muted-foreground">The full URL where users will be redirected after submitting their quote.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Description (optional)</Label>
+                        <Textarea 
+                          value={newRedirect.description}
+                          onChange={(e) => setNewRedirect(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Partner name or notes about this redirect"
+                          data-testid="input-redirect-description"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          id="redirectActive"
+                          checked={newRedirect.isActive}
+                          onCheckedChange={(checked) => setNewRedirect(prev => ({ ...prev, isActive: checked }))}
+                          data-testid="switch-redirect-active"
+                        />
+                        <Label htmlFor="redirectActive" className="cursor-pointer">Active</Label>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddRedirectOpen(false)}>Cancel</Button>
+                      <Button onClick={handleSaveRedirect} data-testid="btn-save-redirect">
+                        {editingRedirect ? "Update" : "Create"} Redirect
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  <strong>How it works:</strong> When a customer submits a quote for a type with an active redirect, 
+                  they will be automatically redirected to the partner site after their quote is saved.
+                </p>
+              </div>
+              
+              {redirects.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Link2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No redirects configured yet.</p>
+                  <p className="text-sm">Add a redirect to send customers to partner sites after quote submission.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Quote Type</TableHead>
+                      <TableHead>Redirect URL</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {redirects.map(redirect => (
+                      <TableRow key={redirect.id} data-testid={`redirect-row-${redirect.id}`}>
+                        <TableCell>
+                          <Badge variant="outline">{redirect.quoteType}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <a 
+                            href={redirect.redirectUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm max-w-xs truncate block"
+                          >
+                            {redirect.redirectUrl}
+                          </a>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
+                          {redirect.description || "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={redirect.isActive ? "default" : "secondary"}>
+                            {redirect.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" data-testid={`redirect-actions-${redirect.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditRedirect(redirect)}>
+                                <Pencil className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleToggleRedirectActive(redirect)}>
+                                {redirect.isActive ? (
+                                  <>
+                                    <Pause className="h-4 w-4 mr-2" /> Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="h-4 w-4 mr-2" /> Activate
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteRedirect(redirect.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+          </div>
         )}
 
       </div>
