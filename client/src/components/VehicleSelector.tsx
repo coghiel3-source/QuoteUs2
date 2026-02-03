@@ -191,9 +191,26 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
 
   const trimOptions = useMemo(() => {
     if (!year || !make || !model || vehicleTrims.length === 0) return [];
-    const matchingTrims = vehicleTrims
+    
+    // Try exact year+make+model match first
+    let matchingTrims = vehicleTrims
       .filter(t => t.Year === year.toString() && t.Make === make && t.Model === model)
       .map(t => t.Trim);
+    
+    // If no exact match, try make+model only (any year)
+    if (matchingTrims.length === 0) {
+      matchingTrims = vehicleTrims
+        .filter(t => t.Make === make && t.Model === model)
+        .map(t => t.Trim);
+    }
+    
+    // If still no match, try just make (show all trims for that manufacturer)
+    if (matchingTrims.length === 0) {
+      matchingTrims = vehicleTrims
+        .filter(t => t.Make === make)
+        .map(t => t.Trim);
+    }
+    
     const uniqueTrims = Array.from(new Set(matchingTrims)).sort();
     return uniqueTrims.map(t => ({ label: t, value: t }));
   }, [vehicleTrims, year, make, model]);
