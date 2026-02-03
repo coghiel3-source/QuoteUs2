@@ -61,7 +61,6 @@ export default function PetPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
-        <AdPlacement page="Pet" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Dog className="text-accent" /> Pet Details</CardTitle>
@@ -148,6 +147,8 @@ export default function PetPage() {
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Pet Quote"}
               </Button>
+
+              <AdPlacement page="Pet" className="mt-6" />
             </form>
           </CardContent>
         </Card>

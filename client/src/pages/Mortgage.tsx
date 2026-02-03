@@ -111,7 +111,6 @@ export default function MortgagePage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
-        <AdPlacement page="Mortgage" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Calculator className="text-accent" /> Mortgage Calculator</CardTitle>
@@ -446,6 +445,8 @@ export default function MortgagePage() {
                 <p className="text-xs text-muted-foreground text-center mt-3">
                   By submitting, you agree to be contacted by a licensed mortgage specialist.
                 </p>
+
+                <AdPlacement page="Mortgage" className="mt-6" />
               </div>
             </form>
           </CardContent>

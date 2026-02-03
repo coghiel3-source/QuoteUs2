@@ -68,7 +68,6 @@ export default function LifePage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
-        <AdPlacement page="Life" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Heart className="text-accent" /> Personal Details</CardTitle>
@@ -236,6 +235,8 @@ export default function LifePage() {
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Life Quote"}
               </Button>
+
+              <AdPlacement page="Life" className="mt-6" />
             </form>
           </CardContent>
         </Card>

@@ -68,7 +68,6 @@ export default function TravelPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
-        <AdPlacement page="Travel" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Plane className="text-accent" /> Trip Details</CardTitle>
@@ -178,6 +177,8 @@ export default function TravelPage() {
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Travel Quote"}
               </Button>
+
+              <AdPlacement page="Travel" className="mt-6" />
             </form>
           </CardContent>
         </Card>

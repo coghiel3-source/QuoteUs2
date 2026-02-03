@@ -84,7 +84,6 @@ export default function TenantPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
-        <AdPlacement page="Tenant" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Building2 className="text-accent" /> Rental Details</CardTitle>
@@ -288,6 +287,8 @@ export default function TenantPage() {
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Tenant Quote"}
               </Button>
+
+              <AdPlacement page="Tenant" className="mt-6" />
             </form>
           </CardContent>
         </Card>

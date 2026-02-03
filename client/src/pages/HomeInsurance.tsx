@@ -87,7 +87,6 @@ export default function HomeInsurancePage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
-        <AdPlacement page="Home" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Home className="text-accent" /> Property Details</CardTitle>
@@ -316,6 +315,8 @@ export default function HomeInsurancePage() {
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Home Quote"}
               </Button>
+
+              <AdPlacement page="Home" className="mt-6" />
             </form>
           </CardContent>
         </Card>

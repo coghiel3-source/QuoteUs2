@@ -287,7 +287,6 @@ export default function AutoPage() {
       </div>
 
       <div className="container mx-auto max-w-4xl px-4 -mt-8">
-        <AdPlacement page="Auto" className="mb-6" />
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="space-y-8">
             
@@ -1083,6 +1082,9 @@ export default function AutoPage() {
                 Your data is stored securely and only used for quoting purposes.
               </p>
             </div>
+
+            {/* Advertisement */}
+            <AdPlacement page="Auto" className="mt-6" />
 
             {/* SEO Content */}
             <div className="mt-16 prose prose-slate max-w-none">

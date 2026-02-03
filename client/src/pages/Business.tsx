@@ -71,7 +71,6 @@ export default function BusinessPage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 -mt-8">
-        <AdPlacement page="Business" className="mb-6" />
         <Card className="shadow-lg border-none">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Briefcase className="text-accent" /> Business Details</CardTitle>
@@ -191,6 +190,8 @@ export default function BusinessPage() {
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>
                 {isSubmitting ? "Processing..." : "Get Business Quote"}
               </Button>
+
+              <AdPlacement page="Business" className="mt-6" />
             </form>
           </CardContent>
         </Card>
