@@ -452,7 +452,7 @@ export default function AutoPage() {
 
                     {form.watch("primaryDriver.hasInsurance") === "yes" && (
                       <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <Label className="mb-2 block">Date of Most Current Insurance</Label>
+                        <Label className="mb-2 block">Start Date of Most Current Insurance</Label>
                         <Input 
                           type="date" 
                           {...form.register("primaryDriver.currentInsuranceDate")} 
