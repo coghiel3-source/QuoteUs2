@@ -108,8 +108,9 @@ function SearchableSelect({
   );
 }
 
-// Global cache for vehicle data
+// Global cache for vehicle and trim data
 let cachedVehicles: Vehicle[] | null = null;
+let cachedTrims: string[] | null = null;
 
 export function VehicleSelector({ index, register, setValue, watch, showVin = false }: VehicleSelectorProps) {
   const year = watch(`vehicles.${index}.year`);
@@ -118,24 +119,38 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
   const trim = watch(`vehicles.${index}.trim`);
   
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [trims, setTrims] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (cachedVehicles) {
-      setVehicles(cachedVehicles);
-      return;
-    }
-
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/data/vehicles.json');
-        if (!response.ok) throw new Error("Failed to load vehicle data");
-        const data = await response.json();
-        cachedVehicles = data;
-        setVehicles(data);
+        // Load vehicles
+        if (cachedVehicles) {
+          setVehicles(cachedVehicles);
+        } else {
+          const vehicleResponse = await fetch('/data/vehicles.json');
+          if (vehicleResponse.ok) {
+            const vehicleData = await vehicleResponse.json();
+            cachedVehicles = vehicleData;
+            setVehicles(vehicleData);
+          }
+        }
+
+        // Load trims
+        if (cachedTrims) {
+          setTrims(cachedTrims);
+        } else {
+          const trimResponse = await fetch('/data/trims.json');
+          if (trimResponse.ok) {
+            const trimData = await trimResponse.json();
+            cachedTrims = trimData;
+            setTrims(trimData);
+          }
+        }
       } catch (error) {
-        console.error("Error loading vehicle data:", error);
+        console.error("Error loading data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -166,6 +181,10 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
     )).sort();
     return models.map(m => ({ label: m, value: m }));
   }, [vehicles, year, make]);
+
+  const trimOptions = useMemo(() => {
+    return trims.map(t => ({ label: t, value: t }));
+  }, [trims]);
 
   return (
     <div className="space-y-4">
@@ -222,13 +241,16 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
 
         <div className="space-y-2">
           <Label htmlFor={`vehicle-${index}-trim`}>Trim (Optional)</Label>
-          <Input
-            id={`vehicle-${index}-trim`}
-            placeholder="e.g., EX, LX, Sport"
-            {...register(`vehicles.${index}.trim`)}
+          <SearchableSelect
+            value={trim || ""}
+            onChange={(val) => setValue(`vehicles.${index}.trim`, val)}
+            options={trimOptions}
+            placeholder={model ? "Select Trim" : "Select Model First"}
             disabled={!model}
-            data-testid={`input-trim-${index}`}
+            testId={`select-trim-${index}`}
+            loading={isLoading}
           />
+          <input type="hidden" {...register(`vehicles.${index}.trim`)} />
         </div>
       </div>
 
