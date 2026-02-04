@@ -55,7 +55,7 @@ export default function BusinessPage() {
 
     setIsSubmitting(false);
     
-    // Check for configured redirect
+    // Check for configured redirect BEFORE showing success
     try {
       const redirectRes = await fetch("/api/redirects/Business");
       const redirectData = await redirectRes.json();
@@ -72,6 +72,7 @@ export default function BusinessPage() {
     }
     
     toast({
+      title: "Quote Submitted!",
       description: "Thank you for your submission, we will be connecting you with an agent shortly.",
     });
   };

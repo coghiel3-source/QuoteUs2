@@ -228,10 +228,9 @@ export default function AutoPage() {
       }
     });
 
-    setIsSubmitted(true);
     setIsSubmitting(false);
     
-    // Check for configured redirect
+    // Check for configured redirect BEFORE showing success page
     try {
       const redirectRes = await fetch("/api/redirects/Auto");
       const redirectData = await redirectRes.json();
@@ -247,6 +246,8 @@ export default function AutoPage() {
       console.error("Failed to check redirect:", error);
     }
     
+    // Only show success page if no redirect
+    setIsSubmitted(true);
     toast({
       description: "Thank you for your submission, we will be connecting you with an agent shortly.",
     });
