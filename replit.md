@@ -149,18 +149,23 @@ The platform includes an advertisement management system for displaying controll
 - Scheduling with start/end dates
 - Priority-based ad rotation
 - Analytics tracking (impressions, clicks, CTR)
+- Ad text overlays with customizable text, colors, and position (top/center/bottom)
+- Multi-ad display: configure 1-3 ads per slot (displayed side-by-side)
 
 **Admin Management**:
 - Access via "Ads" tab in Admin panel (admin only)
 - Create, edit, pause, and delete advertisements
 - View analytics for each ad
 - Set targeting to specific quote pages
+- Configure "Ads Per Slot" setting (1-3) for multi-ad display
+- Text position selector for ad text overlays (top, center, bottom)
 
 **Key Components**:
 - `client/src/components/AdvertisementManager.tsx` - Admin interface for managing ads
 - `client/src/components/AdPlacement.tsx` - Display component for quote pages
 - `advertisements` table in database schema
 - `/api/admin/advertisements` - CRUD endpoints
-- `/api/advertisements/active` - Fetch active ad for a page
+- `/api/advertisements/active` - Fetch active ad(s) for a page (supports limit parameter)
 - `/api/advertisements/:id/impression` - Track ad views
 - `/api/advertisements/:id/click` - Track ad clicks
+- `/api/settings/ads-per-slot` - Public endpoint to get ads per slot setting
