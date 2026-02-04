@@ -1501,19 +1501,24 @@ export async function registerRoutes(
     }
   });
 
-  // Get active ad for page (used by AdPlacement component)
+  // Get active ad(s) for page (used by AdPlacement component)
   app.get("/api/advertisements/active", async (req, res) => {
     try {
       const page = req.query.page as string;
+      const limit = parseInt(req.query.limit as string) || 1;
       if (!page) {
         return res.status(400).json({ error: "Page parameter required" });
       }
       const ads = await storage.getActiveAdsForPage(page);
       if (ads.length === 0) {
-        return res.json(null);
+        return res.json(limit === 1 ? null : []);
       }
-      // Return highest priority ad
-      res.json(ads[0]);
+      // Return multiple ads based on limit or single ad for backwards compatibility
+      if (limit === 1) {
+        res.json(ads[0]);
+      } else {
+        res.json(ads.slice(0, Math.min(limit, 3)));
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -18,46 +18,50 @@ interface Advertisement {
   adText: string | null;
   textColor: string | null;
   backgroundColor: string | null;
+  textPosition: string | null;
 }
 
 interface AdPlacementProps {
   page: string;
   className?: string;
+  maxAds?: number;
 }
 
-export default function AdPlacement({ page, className = "" }: AdPlacementProps) {
-  const [ad, setAd] = useState<Advertisement | null>(null);
+export default function AdPlacement({ page, className = "", maxAds = 1 }: AdPlacementProps) {
+  const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [popupOpen, setPopupOpen] = useState(false);
-  const lastTrackedAdId = useRef<string | null>(null);
+  const [popupAd, setPopupAd] = useState<Advertisement | null>(null);
+  const trackedAdIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    lastTrackedAdId.current = null;
-    setAd(null);
+    trackedAdIds.current = new Set();
+    setAds([]);
     setLoading(true);
-    fetchActiveAd();
-  }, [page]);
+    fetchActiveAds();
+  }, [page, maxAds]);
 
   useEffect(() => {
-    if (ad && ad.id !== lastTrackedAdId.current) {
-      trackImpression(ad.id);
-      lastTrackedAdId.current = ad.id;
-    }
-  }, [ad]);
+    ads.forEach(ad => {
+      if (!trackedAdIds.current.has(ad.id)) {
+        trackImpression(ad.id);
+        trackedAdIds.current.add(ad.id);
+      }
+    });
+  }, [ads]);
 
-  const fetchActiveAd = async () => {
+  const fetchActiveAds = async () => {
     try {
-      const res = await fetch(`/api/advertisements/active?page=${encodeURIComponent(page)}`);
+      const res = await fetch(`/api/advertisements/active?page=${encodeURIComponent(page)}&limit=${maxAds}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && data.id) {
-          setAd(data);
+        if (maxAds === 1) {
+          setAds(data ? [data] : []);
         } else {
-          setAd(null);
+          setAds(Array.isArray(data) ? data : []);
         }
       }
     } catch (error) {
-      console.error("Error fetching ad:", error);
+      console.error("Error fetching ads:", error);
     } finally {
       setLoading(false);
     }
@@ -79,64 +83,76 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
     }
   };
 
-  const handleAdClick = () => {
-    if (!ad) return;
-    
+  const handleAdClick = (ad: Advertisement) => {
     trackClick(ad.id);
 
     if (ad.openInPopup) {
-      setPopupOpen(true);
+      setPopupAd(ad);
     } else if (ad.linkUrl) {
       window.open(ad.linkUrl, "_blank", "noopener,noreferrer");
     }
   };
 
-  if (loading || !ad) {
+  if (loading || ads.length === 0) {
     return null;
   }
+
+  const renderAd = (ad: Advertisement, index: number) => (
+    <div 
+      key={ad.id}
+      className="cursor-pointer overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow relative flex-1"
+      onClick={() => handleAdClick(ad)}
+      style={{ backgroundColor: ad.backgroundColor || undefined }}
+      data-testid={`ad-placement-${page}-${index}`}
+    >
+      {ad.mediaType === "image" ? (
+        <img 
+          src={ad.mediaUrl} 
+          alt={ad.name}
+          className="w-full h-auto object-cover"
+          data-testid={`ad-image-${index}`}
+        />
+      ) : (
+        <video 
+          src={ad.mediaUrl}
+          className="w-full h-auto"
+          autoPlay
+          muted
+          loop
+          playsInline
+          data-testid={`ad-video-${index}`}
+        />
+      )}
+      {ad.adText && (
+        <div 
+          className={`absolute left-0 right-0 p-2 text-center font-semibold text-sm md:text-lg ${
+            ad.textPosition === 'top' ? 'top-0' : 
+            ad.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+            'bottom-0'
+          }`}
+          style={{ 
+            color: ad.textColor || '#ffffff', 
+            backgroundColor: `${ad.backgroundColor || '#1e3a5f'}dd`,
+            textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+          }}
+          data-testid={`ad-text-overlay-${index}`}
+        >
+          {ad.adText}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <>
       <div 
-        className={`ad-placement cursor-pointer overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow relative ${className}`}
-        onClick={handleAdClick}
-        style={{ backgroundColor: ad.backgroundColor || undefined }}
+        className={`ad-placement ${ads.length > 1 ? 'flex gap-2' : ''} ${className}`}
         data-testid={`ad-placement-${page}`}
       >
-        {ad.mediaType === "image" ? (
-          <img 
-            src={ad.mediaUrl} 
-            alt={ad.name}
-            className="w-full h-auto object-cover"
-            data-testid="ad-image"
-          />
-        ) : (
-          <video 
-            src={ad.mediaUrl}
-            className="w-full h-auto"
-            autoPlay
-            muted
-            loop
-            playsInline
-            data-testid="ad-video"
-          />
-        )}
-        {ad.adText && (
-          <div 
-            className="absolute bottom-0 left-0 right-0 p-3 text-center font-semibold text-lg"
-            style={{ 
-              color: ad.textColor || '#ffffff', 
-              backgroundColor: `${ad.backgroundColor || '#1e3a5f'}dd`,
-              textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
-            }}
-            data-testid="ad-text-overlay"
-          >
-            {ad.adText}
-          </div>
-        )}
+        {ads.map((ad, index) => renderAd(ad, index))}
       </div>
 
-      {popupOpen && ad.linkUrl && (
+      {popupAd && popupAd.linkUrl && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
           data-testid="ad-popup-overlay"
@@ -145,7 +161,7 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setPopupOpen(false);
+                setPopupAd(null);
               }}
               className="absolute top-3 right-3 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
               data-testid="ad-popup-close"
@@ -153,9 +169,9 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
               <X className="h-5 w-5" />
             </button>
             <iframe
-              src={ad.linkUrl}
+              src={popupAd.linkUrl}
               className="w-full h-full border-0"
-              title={ad.name}
+              title={popupAd.name}
               data-testid="ad-popup-iframe"
             />
           </div>
