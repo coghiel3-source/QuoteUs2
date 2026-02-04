@@ -390,6 +390,41 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
             <DialogTitle>{editingAd ? "Edit Advertisement" : "Create Advertisement"}</DialogTitle>
           </DialogHeader>
           
+          {editingAd && editingAd.mediaUrl && (
+            <div className="border rounded-lg p-4 bg-amber-50 mb-4">
+              <Label className="mb-3 block text-sm font-semibold">Current Advertisement</Label>
+              <div className="relative rounded-lg overflow-hidden shadow-sm" style={{ backgroundColor: editingAd.backgroundColor || '#1e3a5f' }}>
+                {editingAd.mediaType === "image" ? (
+                  <img 
+                    src={editingAd.mediaUrl} 
+                    alt={editingAd.name} 
+                    className="w-full h-auto max-h-48 object-contain"
+                  />
+                ) : (
+                  <video 
+                    src={editingAd.mediaUrl} 
+                    className="w-full h-auto max-h-48" 
+                    muted 
+                    controls
+                  />
+                )}
+                {editingAd.adText && (
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 p-3 text-center font-semibold text-lg"
+                    style={{ 
+                      color: editingAd.textColor || '#ffffff',
+                      backgroundColor: `${editingAd.backgroundColor || '#1e3a5f'}dd`,
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                    }}
+                  >
+                    {editingAd.adText}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">This is how your ad currently appears. Make changes below to update it.</p>
+            </div>
+          )}
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
