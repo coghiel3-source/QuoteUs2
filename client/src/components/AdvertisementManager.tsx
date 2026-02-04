@@ -30,6 +30,7 @@ interface Advertisement {
   adText: string | null;
   textColor: string | null;
   backgroundColor: string | null;
+  textPosition: string | null;
   createdAt: string;
 }
 
@@ -75,6 +76,7 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
     adText: "",
     textColor: "#ffffff",
     backgroundColor: "#1e3a5f",
+    textPosition: "bottom",
   });
 
   useEffect(() => {
@@ -110,6 +112,7 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       adText: "",
       textColor: "#ffffff",
       backgroundColor: "#1e3a5f",
+      textPosition: "bottom",
     });
     setEditingAd(null);
   };
@@ -135,6 +138,7 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       adText: ad.adText || "",
       textColor: ad.textColor || "#ffffff",
       backgroundColor: ad.backgroundColor || "#1e3a5f",
+      textPosition: ad.textPosition || "bottom",
     });
     setDialogOpen(true);
   };
@@ -410,7 +414,11 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                 )}
                 {editingAd.adText && (
                   <div 
-                    className="absolute bottom-0 left-0 right-0 p-3 text-center font-semibold text-lg"
+                    className={`absolute left-0 right-0 p-3 text-center font-semibold text-lg ${
+                      editingAd.textPosition === 'top' ? 'top-0' : 
+                      editingAd.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+                      'bottom-0'
+                    }`}
                     style={{ 
                       color: editingAd.textColor || '#ffffff',
                       backgroundColor: `${editingAd.backgroundColor || '#1e3a5f'}dd`,
@@ -495,7 +503,7 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                   <p className="text-xs text-muted-foreground">Add text and emojis to overlay on your ad. Use emoji shortcuts like 🚗 🏠 💰 ⭐ ✨</p>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Text Color</Label>
                     <div className="flex gap-2">
@@ -532,6 +540,19 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Text Position</Label>
+                    <Select value={formData.textPosition} onValueChange={(v) => setFormData(prev => ({ ...prev, textPosition: v }))}>
+                      <SelectTrigger data-testid="select-text-position">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="top">Top</SelectItem>
+                        <SelectItem value="center">Center</SelectItem>
+                        <SelectItem value="bottom">Bottom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -561,7 +582,11 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                     )}
                     {formData.adText && (
                       <div 
-                        className="absolute bottom-0 left-0 right-0 p-3 text-center font-semibold text-lg"
+                        className={`absolute left-0 right-0 p-3 text-center font-semibold text-lg ${
+                          formData.textPosition === 'top' ? 'top-0' : 
+                          formData.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+                          'bottom-0'
+                        }`}
                         style={{ 
                           color: formData.textColor, 
                           backgroundColor: `${formData.backgroundColor}dd`,
