@@ -1501,6 +1501,18 @@ export async function registerRoutes(
     }
   });
 
+  // Get ads per slot setting (public)
+  app.get("/api/settings/ads-per-slot", async (req, res) => {
+    try {
+      const value = await storage.getSetting("ads_per_slot");
+      const parsed = value ? parseInt(value) : 1;
+      const clamped = isNaN(parsed) ? 1 : Math.max(1, Math.min(3, parsed));
+      res.json({ value: clamped });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get active ad(s) for page (used by AdPlacement component)
   app.get("/api/advertisements/active", async (req, res) => {
     try {
