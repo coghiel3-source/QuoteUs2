@@ -122,6 +122,17 @@ export default function AdminCRMPage() {
   const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
   const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
   
+  // User Filter State
+  const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  
+  // Postal Codes / Cities Assignment Dialog
+  const [isAssignAreaOpen, setIsAssignAreaOpen] = useState(false);
+  const [assigningUserId, setAssigningUserId] = useState<string | null>(null);
+  const [assignedPostalCodes, setAssignedPostalCodes] = useState<string>("");
+  const [assignedCities, setAssignedCities] = useState<string>("");
+  const [savingAreas, setSavingAreas] = useState(false);
+  
   // Timed Pause Dialog State
   const [isPauseDialogOpen, setIsPauseDialogOpen] = useState(false);
   const [pausingUserId, setPausingUserId] = useState<string | null>(null);
@@ -907,6 +918,16 @@ export default function AdminCRMPage() {
   const allBrokers = users.filter(u => u.role === 'broker' && (u.status === 'active' || u.status === 'paused' || u.status === 'cancelled'));
   const pendingBrokers = users.filter(u => u.role === 'broker' && u.status === 'pending');
   
+  // Filtered staff based on role filter and search query
+  const filteredStaff = allStaff.filter(u => {
+    const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
+    const matchesSearch = userSearchQuery === '' || 
+      u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      (u.phone && u.phone.includes(userSearchQuery));
+    return matchesRole && matchesSearch;
+  });
+  
   // Helper to check if broker is currently in pause period
   const isBrokerPaused = (broker: any): boolean => {
     if (broker.status === 'paused') return true;
@@ -1512,6 +1533,86 @@ export default function AdminCRMPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsEditPermissionsOpen(false)}>Cancel</Button>
               <Button onClick={handleSavePermissions}>Save Permissions</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign Areas Dialog */}
+        <Dialog open={isAssignAreaOpen} onOpenChange={setIsAssignAreaOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Assign Service Areas</DialogTitle>
+              <DialogDescription>
+                Assign postal codes and cities to this broker. They will receive leads from these areas.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="assignedCities">Cities</Label>
+                <Textarea 
+                  id="assignedCities" 
+                  placeholder="Toronto, Mississauga, Brampton, Oakville..."
+                  value={assignedCities}
+                  onChange={(e) => setAssignedCities(e.target.value)}
+                  rows={2}
+                  data-testid="input-assigned-cities"
+                />
+                <p className="text-xs text-muted-foreground">Enter city names separated by commas</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assignedPostalCodes">Postal Codes</Label>
+                <Textarea 
+                  id="assignedPostalCodes" 
+                  placeholder="M5V, M5H, L5B, L6Y..."
+                  value={assignedPostalCodes}
+                  onChange={(e) => setAssignedPostalCodes(e.target.value)}
+                  rows={2}
+                  data-testid="input-assigned-postal-codes"
+                />
+                <p className="text-xs text-muted-foreground">Enter postal code prefixes separated by commas (e.g., M5V, L5B)</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsAssignAreaOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={async () => {
+                  if (!assigningUserId) return;
+                  setSavingAreas(true);
+                  try {
+                    const postalCodes = assignedPostalCodes.split(',').map(s => s.trim()).filter(s => s);
+                    const cities = assignedCities.split(',').map(s => s.trim()).filter(s => s);
+                    const res = await fetch(`/api/users/${assigningUserId}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ 
+                        assignedPostalCodes: postalCodes,
+                        assignedCities: cities,
+                        actorId: user?.id 
+                      }),
+                    });
+                    if (res.ok) {
+                      toast({ title: "Success", description: "Service areas updated successfully." });
+                      setIsAssignAreaOpen(false);
+                      window.location.reload();
+                    } else {
+                      const err = await res.json();
+                      toast({ title: "Error", description: err.error || "Failed to update areas", variant: "destructive" });
+                    }
+                  } catch (err) {
+                    toast({ title: "Error", description: "Failed to update areas", variant: "destructive" });
+                  } finally {
+                    setSavingAreas(false);
+                  }
+                }}
+                disabled={savingAreas}
+              >
+                {savingAreas ? "Saving..." : "Save Areas"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -2566,6 +2667,33 @@ export default function AdminCRMPage() {
                   </div>
                 )}
 
+                {/* Search and Filter */}
+                <div className="flex flex-wrap gap-4 mb-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <Input
+                      placeholder="Search by name, email, or phone..."
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      className="w-full"
+                      data-testid="input-user-search"
+                    />
+                  </div>
+                  <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                    <SelectTrigger className="w-[180px]" data-testid="select-role-filter">
+                      <SelectValue placeholder="Filter by role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="admin">Admins</SelectItem>
+                      <SelectItem value="manager">Managers</SelectItem>
+                      <SelectItem value="broker">Brokers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="text-sm text-muted-foreground flex items-center">
+                    Showing {filteredStaff.length} of {allStaff.length} users
+                  </div>
+                </div>
+                
                 {/* Staff Table */}
                 <div className="rounded-md border overflow-hidden">
                   <Table>
@@ -2575,14 +2703,13 @@ export default function AdminCRMPage() {
                         <TableHead>Role</TableHead>
                         <TableHead>Contact</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Last Login</TableHead>
+                        <TableHead>Assigned Areas</TableHead>
                         <TableHead className="text-center">Assigned Leads</TableHead>
-                        <TableHead className="text-center">Performance</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {allStaff.map(staff => (
+                       {filteredStaff.map(staff => (
                          <TableRow 
                            key={staff.id} 
                            className="cursor-pointer hover:bg-slate-50"
@@ -2621,25 +2748,34 @@ export default function AdminCRMPage() {
                                )}
                              </div>
                            </TableCell>
-                           <TableCell className="text-sm text-muted-foreground">
-                             {staff.lastLogin ? format(new Date(staff.lastLogin), 'MMM d, h:mm a') : 'Never'}
+                           <TableCell>
+                             {staff.role === 'broker' ? (
+                               <div className="text-xs">
+                                 {((staff as any).assignedPostalCodes?.length > 0 || (staff as any).assignedCities?.length > 0) ? (
+                                   <div className="space-y-1">
+                                     {(staff as any).assignedCities?.length > 0 && (
+                                       <div className="text-muted-foreground">
+                                         <span className="font-medium">Cities:</span> {(staff as any).assignedCities.slice(0, 2).join(', ')}
+                                         {(staff as any).assignedCities.length > 2 && ` +${(staff as any).assignedCities.length - 2}`}
+                                       </div>
+                                     )}
+                                     {(staff as any).assignedPostalCodes?.length > 0 && (
+                                       <div className="text-muted-foreground">
+                                         <span className="font-medium">Postal:</span> {(staff as any).assignedPostalCodes.slice(0, 3).join(', ')}
+                                         {(staff as any).assignedPostalCodes.length > 3 && ` +${(staff as any).assignedPostalCodes.length - 3}`}
+                                       </div>
+                                     )}
+                                   </div>
+                                 ) : (
+                                   <span className="text-muted-foreground italic">No areas assigned</span>
+                                 )}
+                               </div>
+                             ) : (
+                               <span className="text-muted-foreground">-</span>
+                             )}
                            </TableCell>
                            <TableCell className="text-center font-bold">
                              {quotes.filter(q => q.assignedTo === staff.id).length}
-                           </TableCell>
-                           <TableCell>
-                             {staff.role === 'broker' ? (
-                               <div className="flex flex-col items-center gap-1">
-                                 <Badge variant="secondary" className="text-xs">
-                                   {staff.performance?.conversionRate || 0}% Conv.
-                                 </Badge>
-                                 <span className="text-[10px] text-muted-foreground">
-                                   {staff.performance?.responseTime || 'N/A'} resp.
-                                 </span>
-                               </div>
-                             ) : (
-                               <span className="text-center block text-muted-foreground">-</span>
-                             )}
                            </TableCell>
                            <TableCell className="text-right">
                             {hasPermission('manageBrokers') ? (
@@ -2664,6 +2800,18 @@ export default function AdminCRMPage() {
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditPermissions(staff); }}>
                                     <UserCog className="mr-2 h-4 w-4" />
                                     Edit Permissions
+                                  </DropdownMenuItem>
+                                )}
+                                {staff.role === 'broker' && (
+                                  <DropdownMenuItem onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setAssigningUserId(staff.id);
+                                    setAssignedPostalCodes(((staff as any).assignedPostalCodes || []).join(', '));
+                                    setAssignedCities(((staff as any).assignedCities || []).join(', '));
+                                    setIsAssignAreaOpen(true);
+                                  }}>
+                                    <MapPin className="mr-2 h-4 w-4" />
+                                    Assign Areas
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />

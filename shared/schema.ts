@@ -35,6 +35,8 @@ export const users = pgTable("users", {
   pauseStartDate: timestamp("pause_start_date"),
   pauseEndDate: timestamp("pause_end_date"),
   googleId: text("google_id"),
+  assignedPostalCodes: text("assigned_postal_codes").array(),
+  assignedCities: text("assigned_cities").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
