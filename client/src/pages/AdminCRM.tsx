@@ -2357,7 +2357,7 @@ export default function AdminCRMPage() {
                             <div className="space-y-2">
                               <Label>Products You Sell</Label>
                               <div className="grid grid-cols-2 gap-2">
-                                {['Auto', 'Home', 'Life', 'Travel', 'Business'].map((product) => (
+                                {['Auto', 'Home', 'Life', 'Travel', 'Business', 'Mortgage'].map((product) => (
                                   <label key={product} className="flex items-center gap-2 cursor-pointer">
                                     <input
                                       type="checkbox"
@@ -2375,7 +2375,37 @@ export default function AdminCRMPage() {
                                     <span className="text-sm">{product}</span>
                                   </label>
                                 ))}
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={newUser.productTypes.some(p => p.startsWith('Other:') || p === 'Other')}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setNewUser({...newUser, productTypes: [...newUser.productTypes, 'Other']});
+                                      } else {
+                                        setNewUser({...newUser, productTypes: newUser.productTypes.filter(p => !p.startsWith('Other'))});
+                                      }
+                                    }}
+                                    className="h-4 w-4 rounded border-gray-300"
+                                    data-testid="checkbox-product-other"
+                                  />
+                                  <span className="text-sm">Other</span>
+                                </label>
                               </div>
+                              {newUser.productTypes.some(p => p.startsWith('Other') || p === 'Other') && (
+                                <div className="mt-2">
+                                  <Input
+                                    placeholder="Please describe other products..."
+                                    value={newUser.productTypes.find(p => p.startsWith('Other:'))?.replace('Other: ', '') || ''}
+                                    onChange={(e) => {
+                                      const otherValue = e.target.value ? `Other: ${e.target.value}` : 'Other';
+                                      const filtered = newUser.productTypes.filter(p => !p.startsWith('Other'));
+                                      setNewUser({...newUser, productTypes: [...filtered, otherValue]});
+                                    }}
+                                    data-testid="input-product-other-description"
+                                  />
+                                </div>
+                              )}
                             </div>
                           </>
                         )}
