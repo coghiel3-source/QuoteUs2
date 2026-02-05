@@ -1,8 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { Shield, Menu, X, Phone, Facebook, Instagram, Twitter, Linkedin, Youtube } from "lucide-react";
+import { Shield, Menu, X, Phone, Facebook, Instagram, Twitter, Linkedin, Youtube, Send } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import logoImage from "@assets/FullLogo_Transparent_1769748805647.png";
 
 interface SocialMedia {
@@ -26,6 +29,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     tiktok: "",
   });
   const [customCss, setCustomCss] = useState("");
+  
+  // Contact Form State
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactCategory, setContactCategory] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactSubmitting, setContactSubmitting] = useState(false);
+  const [contactSuccess, setContactSuccess] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings/social-media")
@@ -220,7 +231,116 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           
-          <div className="border-t border-primary-foreground/10 pt-8 text-center text-xs text-primary-foreground/50">
+          {/* Contact Form */}
+          <div className="border-t border-primary-foreground/10 pt-8 mt-8">
+            <h4 className="font-serif font-bold text-lg mb-4 text-white text-center">Contact Us</h4>
+            {contactSuccess ? (
+              <div className="text-center py-4 text-green-400">
+                <p>Thank you for your message! We'll get back to you soon.</p>
+              </div>
+            ) : (
+              <form 
+                className="max-w-2xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!contactName || !contactEmail || !contactCategory || !contactMessage) return;
+                  setContactSubmitting(true);
+                  try {
+                    const res = await fetch("/api/contact", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        name: contactName,
+                        email: contactEmail,
+                        category: contactCategory,
+                        message: contactMessage,
+                      }),
+                    });
+                    if (res.ok) {
+                      setContactSuccess(true);
+                      setContactName("");
+                      setContactEmail("");
+                      setContactCategory("");
+                      setContactMessage("");
+                    }
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setContactSubmitting(false);
+                  }
+                }}
+              >
+                <div>
+                  <Input
+                    placeholder="Your Name"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    required
+                    className="bg-primary-foreground/10 border-primary-foreground/20 text-white placeholder:text-primary-foreground/50"
+                    data-testid="input-contact-name"
+                  />
+                </div>
+                <div>
+                  <Input
+                    type="email"
+                    placeholder="Your Email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    required
+                    className="bg-primary-foreground/10 border-primary-foreground/20 text-white placeholder:text-primary-foreground/50"
+                    data-testid="input-contact-email"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Select value={contactCategory} onValueChange={setContactCategory}>
+                    <SelectTrigger className="bg-primary-foreground/10 border-primary-foreground/20 text-white" data-testid="select-contact-category">
+                      <SelectValue placeholder="Select a Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto Insurance</SelectItem>
+                      <SelectItem value="home">Home Insurance</SelectItem>
+                      <SelectItem value="tenant">Tenant Insurance</SelectItem>
+                      <SelectItem value="travel">Travel Insurance</SelectItem>
+                      <SelectItem value="life">Life Insurance</SelectItem>
+                      <SelectItem value="business">Business Insurance</SelectItem>
+                      <SelectItem value="mortgage">Mortgage</SelectItem>
+                      <SelectItem value="compare">Compare Quotes</SelectItem>
+                      <SelectItem value="advertisement">Advertisement Inquiry</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2">
+                  <Textarea
+                    placeholder="Your Message"
+                    value={contactMessage}
+                    onChange={(e) => setContactMessage(e.target.value)}
+                    required
+                    rows={3}
+                    className="bg-primary-foreground/10 border-primary-foreground/20 text-white placeholder:text-primary-foreground/50"
+                    data-testid="input-contact-message"
+                  />
+                </div>
+                <div className="md:col-span-2 flex justify-center">
+                  <Button 
+                    type="submit" 
+                    disabled={contactSubmitting || !contactCategory}
+                    className="bg-accent hover:bg-accent/90 text-white"
+                    data-testid="button-contact-submit"
+                  >
+                    {contactSubmitting ? "Sending..." : (
+                      <>
+                        <Send className="h-4 w-4 mr-2" />
+                        Send Message
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+          
+          <div className="border-t border-primary-foreground/10 pt-8 mt-8 text-center text-xs text-primary-foreground/50">
             <p>&copy; 2025 QuoteUs.ca. All rights reserved.</p>
             <p className="mt-2 text-primary-foreground/30">Compliant Ontario Canada Privacy Statement Included.</p>
           </div>

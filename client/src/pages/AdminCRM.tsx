@@ -67,6 +67,12 @@ export default function AdminCRMPage() {
       viewSettings: false,
       viewLeadCosts: false,
       editLeadCosts: false,
+      manageAds: false,
+      manageSocialMedia: false,
+      manageCustomCss: false,
+      managePartnerRedirects: false,
+      manageSmtp: false,
+      manageNotificationEmail: false,
     }
   });
   
@@ -78,6 +84,12 @@ export default function AdminCRMPage() {
     assignLeads: true,
     manageBrokers: false,
     viewCredits: false,
+    manageAds: false,
+    manageSocialMedia: false,
+    manageCustomCss: false,
+    managePartnerRedirects: false,
+    manageSmtp: false,
+    manageNotificationEmail: false,
     adjustBalances: false,
     viewSettings: false,
     viewLeadCosts: false,
@@ -406,7 +418,9 @@ export default function AdminCRMPage() {
         permissions: {
           viewLeads: true, assignLeads: true, manageBrokers: false,
           viewCredits: false, adjustBalances: false, viewSettings: false,
-          viewLeadCosts: false, editLeadCosts: false
+          viewLeadCosts: false, editLeadCosts: false,
+          manageAds: false, manageSocialMedia: false, manageCustomCss: false,
+          managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false
         }
       });
       toast({
@@ -2217,10 +2231,12 @@ export default function AdminCRMPage() {
                           </div>
                         </div>
                         
-                        {newUser.role === 'manager' && (
+                        {(newUser.role === 'manager' || newUser.role === 'admin') && (
                           <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <Label className="text-blue-800 font-semibold">Manager Permissions</Label>
-                            <p className="text-xs text-blue-600 mb-2">Select which features this manager can access:</p>
+                            <Label className="text-blue-800 font-semibold">{newUser.role === 'admin' ? 'Admin' : 'Manager'} Permissions</Label>
+                            <p className="text-xs text-blue-600 mb-2">Select which features this {newUser.role} can access:</p>
+                            
+                            <p className="text-xs font-semibold text-blue-700 mt-3">Leads & Users</p>
                             <div className="grid grid-cols-2 gap-2">
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -2317,6 +2333,86 @@ export default function AdminCRMPage() {
                                   className="h-4 w-4 rounded border-gray-300"
                                 />
                                 <span className="text-sm">Edit Lead Costs</span>
+                              </label>
+                            </div>
+                            
+                            <p className="text-xs font-semibold text-blue-700 mt-4">Ads Section</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.manageAds}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, manageAds: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage Advertisements</span>
+                              </label>
+                            </div>
+                            
+                            <p className="text-xs font-semibold text-blue-700 mt-4">Connections Section</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.manageSmtp}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, manageSmtp: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage SMTP Settings</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.manageNotificationEmail}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, manageNotificationEmail: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage Notification Email</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.manageSocialMedia}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, manageSocialMedia: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage Social Media Links</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.manageCustomCss}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, manageCustomCss: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage Custom CSS</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.managePartnerRedirects}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, managePartnerRedirects: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage Partner Redirects</span>
                               </label>
                             </div>
                           </div>

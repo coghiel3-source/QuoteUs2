@@ -553,6 +553,59 @@ export async function registerRoutes(
     }
   });
   
+  // ===== CONTACT FORM ROUTE =====
+  
+  // Handle contact form submissions
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, category, message } = req.body;
+      
+      if (!name || !email || !category || !message) {
+        return res.status(400).json({ error: "All fields are required" });
+      }
+      
+      const categoryLabels: Record<string, string> = {
+        auto: "Auto Insurance",
+        home: "Home Insurance",
+        tenant: "Tenant Insurance",
+        travel: "Travel Insurance",
+        life: "Life Insurance",
+        business: "Business Insurance",
+        mortgage: "Mortgage",
+        compare: "Compare Quotes",
+        advertisement: "Advertisement Inquiry",
+        other: "Other",
+      };
+      
+      const categoryLabel = categoryLabels[category] || category;
+      
+      const emailContent = {
+        subject: `[QuoteUs.ca Contact] ${categoryLabel} - ${name}`,
+        html: `
+          <h2>New Contact Form Submission</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Category:</strong> ${categoryLabel}</p>
+          <p><strong>Message:</strong></p>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+        `,
+        text: `New Contact Form Submission\n\nName: ${name}\nEmail: ${email}\nCategory: ${categoryLabel}\nMessage:\n${message}`,
+      };
+      
+      // Try to send email
+      const sent = await sendEmail({ to: "info@quoteus.ca", subject: emailContent.subject, html: emailContent.html });
+      
+      if (!sent) {
+        console.log('[Contact] Email not sent (SMTP not configured), but form submitted successfully');
+      }
+      
+      res.json({ success: true, message: "Contact form submitted successfully" });
+    } catch (error: any) {
+      console.error('[Contact] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // ===== ACTIVITY ROUTES =====
   
   // Get activities for a quote
