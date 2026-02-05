@@ -1534,6 +1534,16 @@ export async function registerRoutes(
     }
   });
 
+  // Get custom CSS (public)
+  app.get("/api/settings/custom-css", async (req, res) => {
+    try {
+      const value = await storage.getSetting("custom_css");
+      res.json({ value: value || "" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get active ad(s) for page (used by AdPlacement component)
   app.get("/api/advertisements/active", async (req, res) => {
     try {

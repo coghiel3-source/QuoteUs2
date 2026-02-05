@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2 } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -151,6 +151,10 @@ export default function AdminCRMPage() {
   });
   const [savingSocialMedia, setSavingSocialMedia] = useState(false);
   
+  // Custom CSS State
+  const [customCss, setCustomCss] = useState("");
+  const [savingCustomCss, setSavingCustomCss] = useState(false);
+  
   // Partner Redirects State
   interface PartnerRedirect {
     id: string;
@@ -241,6 +245,16 @@ export default function AdminCRMPage() {
       .then(data => {
         if (data && typeof data === 'object') {
           setSocialMedia(prev => ({ ...prev, ...data }));
+        }
+      })
+      .catch(console.error);
+    
+    // Load custom CSS
+    fetch("/api/settings/custom-css")
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.value) {
+          setCustomCss(data.value);
         }
       })
       .catch(console.error);
@@ -3571,6 +3585,59 @@ export default function AdminCRMPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Leave a URL empty to hide that social media icon from the footer.</p>
+              </div>
+
+              {/* Custom CSS */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-purple-100 p-2 rounded-lg">
+                      <Code className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Custom CSS</h3>
+                      <p className="text-sm text-muted-foreground">Add custom styles that will be injected into the website</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Textarea 
+                    placeholder="/* Add your custom CSS here */&#10;.my-class {&#10;  color: blue;&#10;}"
+                    value={customCss}
+                    onChange={(e) => setCustomCss(e.target.value)}
+                    className="font-mono text-sm min-h-[150px]"
+                    data-testid="input-custom-css"
+                  />
+                </div>
+                <div className="flex justify-end mt-4">
+                  <Button 
+                    onClick={async () => {
+                      setSavingCustomCss(true);
+                      try {
+                        const res = await fetch("/api/admin/settings/custom_css", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ value: customCss, actorId: user?.id }),
+                        });
+                        if (res.ok) {
+                          toast({ title: "Saved", description: "Custom CSS updated successfully." });
+                        } else {
+                          const err = await res.json();
+                          toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+                        }
+                      } catch (err) {
+                        toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+                      } finally {
+                        setSavingCustomCss(false);
+                      }
+                    }}
+                    disabled={savingCustomCss}
+                    data-testid="button-save-custom-css"
+                  >
+                    {savingCustomCss ? "Saving..." : "Save CSS"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">CSS will be applied site-wide. Use with caution.</p>
               </div>
 
               <div className="text-sm text-muted-foreground mt-4">

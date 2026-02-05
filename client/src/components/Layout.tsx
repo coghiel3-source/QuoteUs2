@@ -25,6 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     youtube: "",
     tiktok: "",
   });
+  const [customCss, setCustomCss] = useState("");
 
   useEffect(() => {
     fetch("/api/settings/social-media")
@@ -32,6 +33,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       .then(data => {
         if (data && typeof data === 'object') {
           setSocialMedia(data);
+        }
+      })
+      .catch(console.error);
+    
+    fetch("/api/settings/custom-css")
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.value) {
+          setCustomCss(data.value);
         }
       })
       .catch(console.error);
@@ -51,6 +61,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-background text-foreground">
+      {/* Custom CSS Injection */}
+      {customCss && <style dangerouslySetInnerHTML={{ __html: customCss }} />}
+      
       {/* Top Bar */}
       <div className="bg-primary text-primary-foreground py-2 px-4 text-sm hidden md:flex justify-between items-center">
         <div className="container mx-auto max-w-7xl flex justify-between">
