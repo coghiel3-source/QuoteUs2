@@ -140,6 +140,17 @@ export default function AdminCRMPage() {
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
   const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
   
+  // Social Media State
+  const [socialMedia, setSocialMedia] = useState({
+    facebook: "",
+    instagram: "",
+    twitter: "",
+    linkedin: "",
+    youtube: "",
+    tiktok: "",
+  });
+  const [savingSocialMedia, setSavingSocialMedia] = useState(false);
+  
   // Partner Redirects State
   interface PartnerRedirect {
     id: string;
@@ -222,6 +233,16 @@ export default function AdminCRMPage() {
     fetch("/api/admin/redirects")
       .then(r => r.json())
       .then(data => setRedirects(data))
+      .catch(console.error);
+    
+    // Load social media settings
+    fetch("/api/settings/social-media")
+      .then(r => r.json())
+      .then(data => {
+        if (data && typeof data === 'object') {
+          setSocialMedia(prev => ({ ...prev, ...data }));
+        }
+      })
       .catch(console.error);
   }, []);
   
@@ -3450,6 +3471,106 @@ export default function AdminCRMPage() {
                     <p className="text-xs text-muted-foreground">Email address to receive new lead notifications</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Social Media Links */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-pink-100 p-2 rounded-lg">
+                      <Link2 className="h-5 w-5 text-pink-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Social Media Links</h3>
+                      <p className="text-sm text-muted-foreground">Configure social media icons displayed in website footer</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div className="space-y-2">
+                    <Label>Facebook URL</Label>
+                    <Input 
+                      placeholder="https://facebook.com/yourpage"
+                      value={socialMedia.facebook}
+                      onChange={(e) => setSocialMedia(prev => ({ ...prev, facebook: e.target.value }))}
+                      data-testid="input-social-facebook"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Instagram URL</Label>
+                    <Input 
+                      placeholder="https://instagram.com/yourpage"
+                      value={socialMedia.instagram}
+                      onChange={(e) => setSocialMedia(prev => ({ ...prev, instagram: e.target.value }))}
+                      data-testid="input-social-instagram"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Twitter/X URL</Label>
+                    <Input 
+                      placeholder="https://twitter.com/yourhandle"
+                      value={socialMedia.twitter}
+                      onChange={(e) => setSocialMedia(prev => ({ ...prev, twitter: e.target.value }))}
+                      data-testid="input-social-twitter"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>LinkedIn URL</Label>
+                    <Input 
+                      placeholder="https://linkedin.com/company/yourcompany"
+                      value={socialMedia.linkedin}
+                      onChange={(e) => setSocialMedia(prev => ({ ...prev, linkedin: e.target.value }))}
+                      data-testid="input-social-linkedin"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>YouTube URL</Label>
+                    <Input 
+                      placeholder="https://youtube.com/yourchannel"
+                      value={socialMedia.youtube}
+                      onChange={(e) => setSocialMedia(prev => ({ ...prev, youtube: e.target.value }))}
+                      data-testid="input-social-youtube"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>TikTok URL</Label>
+                    <Input 
+                      placeholder="https://tiktok.com/@yourhandle"
+                      value={socialMedia.tiktok}
+                      onChange={(e) => setSocialMedia(prev => ({ ...prev, tiktok: e.target.value }))}
+                      data-testid="input-social-tiktok"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end mt-4">
+                  <Button 
+                    onClick={async () => {
+                      setSavingSocialMedia(true);
+                      try {
+                        const res = await fetch("/api/admin/settings/social_media", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ value: JSON.stringify(socialMedia), actorId: user?.id }),
+                        });
+                        if (res.ok) {
+                          toast({ title: "Saved", description: "Social media links updated successfully." });
+                        } else {
+                          const err = await res.json();
+                          toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+                        }
+                      } catch (err) {
+                        toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+                      } finally {
+                        setSavingSocialMedia(false);
+                      }
+                    }}
+                    disabled={savingSocialMedia}
+                    data-testid="button-save-social-media"
+                  >
+                    {savingSocialMedia ? "Saving..." : "Save Social Links"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Leave a URL empty to hide that social media icon from the footer.</p>
               </div>
 
               <div className="text-sm text-muted-foreground mt-4">

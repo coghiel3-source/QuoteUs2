@@ -1513,6 +1513,27 @@ export async function registerRoutes(
     }
   });
 
+  // Get social media settings (public)
+  app.get("/api/settings/social-media", async (req, res) => {
+    try {
+      const value = await storage.getSetting("social_media");
+      if (value) {
+        res.json(JSON.parse(value));
+      } else {
+        res.json({
+          facebook: "https://www.facebook.com/people/QuoteUsca/100064074608534/",
+          instagram: "https://www.instagram.com/quoteus.ca/",
+          twitter: "",
+          linkedin: "",
+          youtube: "",
+          tiktok: "",
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get active ad(s) for page (used by AdPlacement component)
   app.get("/api/advertisements/active", async (req, res) => {
     try {

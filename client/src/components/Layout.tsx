@@ -1,13 +1,41 @@
 import { Link, useLocation } from "wouter";
-import { Shield, Menu, X, Phone, Facebook, Instagram } from "lucide-react";
-import { useState } from "react";
+import { Shield, Menu, X, Phone, Facebook, Instagram, Twitter, Linkedin, Youtube } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import logoImage from "@assets/FullLogo_Transparent_1769748805647.png";
 
+interface SocialMedia {
+  facebook: string;
+  instagram: string;
+  twitter: string;
+  linkedin: string;
+  youtube: string;
+  tiktok: string;
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [socialMedia, setSocialMedia] = useState<SocialMedia>({
+    facebook: "",
+    instagram: "",
+    twitter: "",
+    linkedin: "",
+    youtube: "",
+    tiktok: "",
+  });
+
+  useEffect(() => {
+    fetch("/api/settings/social-media")
+      .then(r => r.json())
+      .then(data => {
+        if (data && typeof data === 'object') {
+          setSocialMedia(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const navLinks = [
     { href: "/auto", label: "Auto" },
@@ -143,12 +171,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li>info@quoteus.ca</li>
               </ul>
               <div className="flex gap-4 mt-6">
-                <a href="https://www.facebook.com/people/QuoteUsca/100064074608534/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors">
-                  <Facebook size={20} />
-                </a>
-                <a href="https://www.instagram.com/quoteus.ca/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors">
-                  <Instagram size={20} />
-                </a>
+                {socialMedia.facebook && (
+                  <a href={socialMedia.facebook} target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors" data-testid="social-facebook">
+                    <Facebook size={20} />
+                  </a>
+                )}
+                {socialMedia.instagram && (
+                  <a href={socialMedia.instagram} target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors" data-testid="social-instagram">
+                    <Instagram size={20} />
+                  </a>
+                )}
+                {socialMedia.twitter && (
+                  <a href={socialMedia.twitter} target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors" data-testid="social-twitter">
+                    <Twitter size={20} />
+                  </a>
+                )}
+                {socialMedia.linkedin && (
+                  <a href={socialMedia.linkedin} target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors" data-testid="social-linkedin">
+                    <Linkedin size={20} />
+                  </a>
+                )}
+                {socialMedia.youtube && (
+                  <a href={socialMedia.youtube} target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors" data-testid="social-youtube">
+                    <Youtube size={20} />
+                  </a>
+                )}
+                {socialMedia.tiktok && (
+                  <a href={socialMedia.tiktok} target="_blank" rel="noopener noreferrer" className="text-white hover:text-accent transition-colors" data-testid="social-tiktok">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                    </svg>
+                  </a>
+                )}
               </div>
             </div>
           </div>
