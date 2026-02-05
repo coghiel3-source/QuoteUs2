@@ -169,3 +169,19 @@ The platform includes an advertisement management system for displaying controll
 - `/api/advertisements/:id/impression` - Track ad views
 - `/api/advertisements/:id/click` - Track ad clicks
 - `/api/settings/ads-per-slot` - Public endpoint to get ads per slot setting
+
+### Social Media Configuration
+Admin can configure social media links displayed in the website footer:
+
+**Supported Platforms**:
+- Facebook, Instagram, Twitter/X, LinkedIn, YouTube, TikTok
+
+**Admin Management**:
+- Access via "Connections" tab in Admin panel
+- Configure URLs for each social media platform
+- Leave URL empty to hide that platform's icon
+
+**Key Components**:
+- `client/src/components/Layout.tsx` - Footer displays configured social icons
+- `/api/settings/social-media` - Public endpoint returns configured URLs
+- `/api/admin/settings/social_media` - Admin endpoint to save settings (JSON)
