@@ -67,6 +67,7 @@ export default function AdminCRMPage() {
       viewSettings: false,
       viewLeadCosts: false,
       editLeadCosts: false,
+      approveAds: false,
       manageAds: false,
       manageSocialMedia: false,
       manageCustomCss: false,
@@ -84,16 +85,17 @@ export default function AdminCRMPage() {
     assignLeads: true,
     manageBrokers: false,
     viewCredits: false,
+    adjustBalances: false,
+    viewSettings: false,
+    viewLeadCosts: false,
+    editLeadCosts: false,
+    approveAds: false,
     manageAds: false,
     manageSocialMedia: false,
     manageCustomCss: false,
     managePartnerRedirects: false,
     manageSmtp: false,
     manageNotificationEmail: false,
-    adjustBalances: false,
-    viewSettings: false,
-    viewLeadCosts: false,
-    editLeadCosts: false,
   });
 
   // Lead costs from API
@@ -210,6 +212,12 @@ export default function AdminCRMPage() {
     viewLeadCosts: false,
     editLeadCosts: false,
     approveAds: false,
+    manageAds: false,
+    manageSocialMedia: false,
+    manageCustomCss: false,
+    managePartnerRedirects: false,
+    manageSmtp: false,
+    manageNotificationEmail: false,
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
@@ -429,7 +437,7 @@ export default function AdminCRMPage() {
         permissions: {
           viewLeads: true, assignLeads: true, manageBrokers: false,
           viewCredits: false, adjustBalances: false, viewSettings: false,
-          viewLeadCosts: false, editLeadCosts: false,
+          viewLeadCosts: false, editLeadCosts: false, approveAds: false,
           manageAds: false, manageSocialMedia: false, manageCustomCss: false,
           managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false
         }
@@ -459,6 +467,13 @@ export default function AdminCRMPage() {
       viewSettings: false,
       viewLeadCosts: false,
       editLeadCosts: false,
+      approveAds: false,
+      manageAds: false,
+      manageSocialMedia: false,
+      manageCustomCss: false,
+      managePartnerRedirects: false,
+      manageSmtp: false,
+      manageNotificationEmail: false,
     };
     setEditingManagerId(manager.id);
     setEditingPermissions(perms);
@@ -1462,6 +1477,7 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.viewLeads}
                     onChange={(e) => setEditingPermissions({...editingPermissions, viewLeads: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-view-leads"
                   />
                   <span className="text-sm">View Leads</span>
                 </label>
@@ -1471,6 +1487,7 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.assignLeads}
                     onChange={(e) => setEditingPermissions({...editingPermissions, assignLeads: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-assign-leads"
                   />
                   <span className="text-sm">Assign Leads</span>
                 </label>
@@ -1480,6 +1497,7 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.manageBrokers}
                     onChange={(e) => setEditingPermissions({...editingPermissions, manageBrokers: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-brokers"
                   />
                   <span className="text-sm">Manage Brokers</span>
                 </label>
@@ -1489,6 +1507,7 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.viewCredits}
                     onChange={(e) => setEditingPermissions({...editingPermissions, viewCredits: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-view-credits"
                   />
                   <span className="text-sm">View Credits</span>
                 </label>
@@ -1498,6 +1517,7 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.adjustBalances}
                     onChange={(e) => setEditingPermissions({...editingPermissions, adjustBalances: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-adjust-balances"
                   />
                   <span className="text-sm">Adjust Balances</span>
                 </label>
@@ -1507,6 +1527,7 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.viewSettings}
                     onChange={(e) => setEditingPermissions({...editingPermissions, viewSettings: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-view-settings"
                   />
                   <span className="text-sm">View Settings</span>
                 </label>
@@ -1516,6 +1537,7 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.viewLeadCosts}
                     onChange={(e) => setEditingPermissions({...editingPermissions, viewLeadCosts: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-view-lead-costs"
                   />
                   <span className="text-sm">View Lead Costs</span>
                 </label>
@@ -1525,8 +1547,79 @@ export default function AdminCRMPage() {
                     checked={editingPermissions.editLeadCosts}
                     onChange={(e) => setEditingPermissions({...editingPermissions, editLeadCosts: e.target.checked})}
                     className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-edit-lead-costs"
                   />
                   <span className="text-sm">Edit Lead Costs</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.approveAds}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, approveAds: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-approve-ads"
+                  />
+                  <span className="text-sm">Approve Ads</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.manageAds}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, manageAds: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-ads"
+                  />
+                  <span className="text-sm">Manage Ads</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.manageSocialMedia}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, manageSocialMedia: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-social-media"
+                  />
+                  <span className="text-sm">Manage Social Media</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.manageCustomCss}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, manageCustomCss: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-custom-css"
+                  />
+                  <span className="text-sm">Manage Custom CSS</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.managePartnerRedirects}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, managePartnerRedirects: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-partner-redirects"
+                  />
+                  <span className="text-sm">Manage Partner Redirects</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.manageSmtp}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, manageSmtp: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-smtp"
+                  />
+                  <span className="text-sm">Manage SMTP</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.manageNotificationEmail}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, manageNotificationEmail: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-notification-email"
+                  />
+                  <span className="text-sm">Manage Notification Email</span>
                 </label>
               </div>
             </div>
@@ -2442,6 +2535,18 @@ export default function AdminCRMPage() {
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
                                   type="checkbox"
+                                  checked={newUser.permissions.approveAds}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, approveAds: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Approve Ads</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
                                   checked={newUser.permissions.manageAds}
                                   onChange={(e) => setNewUser({
                                     ...newUser, 
@@ -3317,6 +3422,78 @@ export default function AdminCRMPage() {
                     checked={managerPermissions.approveAds}
                     onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, approveAds: checked }))}
                     data-testid="toggle-manager-approve-ads"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage Ads</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to create, edit, and delete advertisements</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.manageAds}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageAds: checked }))}
+                    data-testid="toggle-manager-manage-ads"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage Social Media</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to configure social media links</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.manageSocialMedia}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageSocialMedia: checked }))}
+                    data-testid="toggle-manager-manage-social-media"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage Custom CSS</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to add custom CSS for site-wide styling</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.manageCustomCss}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageCustomCss: checked }))}
+                    data-testid="toggle-manager-manage-custom-css"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage Partner Redirects</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to configure partner redirect URLs</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.managePartnerRedirects}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, managePartnerRedirects: checked }))}
+                    data-testid="toggle-manager-manage-partner-redirects"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage SMTP</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to configure email SMTP settings</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.manageSmtp}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageSmtp: checked }))}
+                    data-testid="toggle-manager-manage-smtp"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage Notification Email</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to change the notification email address</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.manageNotificationEmail}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageNotificationEmail: checked }))}
+                    data-testid="toggle-manager-manage-notification-email"
                   />
                 </div>
               </div>
