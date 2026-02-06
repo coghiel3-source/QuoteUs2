@@ -13,6 +13,7 @@ export default function HomePage() {
     { icon: Heart, label: "Life", href: "/life", desc: "Secure your family's future" },
     { icon: Briefcase, label: "Business", href: "/business", desc: "Liability & property coverage" },
     { icon: Dog, label: "Pet", href: "/pet", desc: "Health plans for cats & dogs" },
+    { icon: Landmark, label: "Mortgage", href: "/mortgage", desc: "Find the best mortgage rates" },
   ];
 
   return (
@@ -63,7 +64,7 @@ export default function HomePage() {
 
       {/* Quick Access Grid */}
       <section className="container mx-auto max-w-7xl px-4 -mt-12 relative z-30">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
           {products.map((p) => (
             <Link key={p.label} href={p.href} className="group">
                 <Card className="h-full border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-white">
