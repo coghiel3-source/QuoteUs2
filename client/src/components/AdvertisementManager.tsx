@@ -69,8 +69,6 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [adsPerSlot, setAdsPerSlot] = useState(1);
-  const [savingAdsPerSlot, setSavingAdsPerSlot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTextPositions, setActiveTextPositions] = useState<Set<string>>(new Set());
   
@@ -103,7 +101,6 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
 
   useEffect(() => {
     fetchAds();
-    fetchAdsPerSlotSetting();
   }, []);
 
   const fetchAds = async () => {
@@ -117,47 +114,6 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       console.error("Error fetching ads:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchAdsPerSlotSetting = async () => {
-    try {
-      const res = await fetch("/api/settings/ads-per-slot");
-      if (res.ok) {
-        const data = await res.json();
-        setAdsPerSlot(data.value || 1);
-      }
-    } catch (error) {
-      console.error("Error fetching ads per slot setting:", error);
-    }
-  };
-
-  const saveAdsPerSlotSetting = async (value: number) => {
-    const clamped = Math.max(1, Math.min(3, value));
-    setSavingAdsPerSlot(true);
-    try {
-      const actorId = localStorage.getItem("userId");
-      if (!actorId) {
-        toast({ title: "Error", description: "Please log in to change this setting", variant: "destructive" });
-        setSavingAdsPerSlot(false);
-        return;
-      }
-      const res = await fetch("/api/admin/settings/ads_per_slot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: clamped.toString(), actorId }),
-      });
-      if (res.ok) {
-        setAdsPerSlot(clamped);
-        toast({ title: "Success", description: `Ads per slot set to ${clamped}` });
-      } else {
-        const data = await res.json();
-        toast({ title: "Error", description: data.error || "Failed to save setting", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save setting", variant: "destructive" });
-    } finally {
-      setSavingAdsPerSlot(false);
     }
   };
 
@@ -407,30 +363,6 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
           <Plus className="mr-2 h-4 w-4" /> New Advertisement
         </Button>
       </div>
-
-      <Card className="p-4">
-        <div className="flex items-center gap-4">
-          <Label className="font-medium">Ads Per Slot:</Label>
-          <Select 
-            value={adsPerSlot.toString()} 
-            onValueChange={(v) => saveAdsPerSlotSetting(parseInt(v))}
-            disabled={savingAdsPerSlot}
-          >
-            <SelectTrigger className="w-24" data-testid="select-ads-per-slot">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1</SelectItem>
-              <SelectItem value="2">2</SelectItem>
-              <SelectItem value="3">3</SelectItem>
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-muted-foreground">
-            Number of ads to display side-by-side on quote pages
-          </span>
-          {savingAdsPerSlot && <Loader2 className="h-4 w-4 animate-spin" />}
-        </div>
-      </Card>
 
       <Card>
         <CardContent className="p-0">

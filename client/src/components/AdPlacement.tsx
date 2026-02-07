@@ -48,19 +48,14 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
   const [popupAd, setPopupAd] = useState<Advertisement | null>(null);
-  const [maxAds, setMaxAds] = useState(1);
   const trackedAdIds = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetchAdsPerSlotSetting();
-  }, []);
 
   useEffect(() => {
     trackedAdIds.current = new Set();
     setAds([]);
     setLoading(true);
     fetchActiveAds();
-  }, [page, maxAds]);
+  }, [page]);
 
   useEffect(() => {
     ads.forEach(ad => {
@@ -71,30 +66,12 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
     });
   }, [ads]);
 
-  const fetchAdsPerSlotSetting = async () => {
-    try {
-      const res = await fetch("/api/settings/ads-per-slot");
-      if (res.ok) {
-        const data = await res.json();
-        const value = data.value || 1;
-        const clamped = isNaN(value) ? 1 : Math.max(1, Math.min(3, value));
-        setMaxAds(clamped);
-      }
-    } catch (error) {
-      console.error("Error fetching ads per slot setting:", error);
-    }
-  };
-
   const fetchActiveAds = async () => {
     try {
-      const res = await fetch(`/api/advertisements/active?page=${encodeURIComponent(page)}&limit=${maxAds}`);
+      const res = await fetch(`/api/advertisements/active?page=${encodeURIComponent(page)}`);
       if (res.ok) {
         const data = await res.json();
-        if (maxAds === 1) {
-          setAds(data ? [data] : []);
-        } else {
-          setAds(Array.isArray(data) ? data : data ? [data] : []);
-        }
+        setAds(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error("Error fetching ads:", error);
