@@ -14,6 +14,10 @@ interface Advertisement {
   linkUrl: string | null;
   targetPages: string[];
   approvalStatus: string | null;
+  adText: string | null;
+  textColor: string | null;
+  backgroundColor: string | null;
+  textPosition: string | null;
 }
 
 export default function AdPreviewPage() {
@@ -112,7 +116,10 @@ export default function AdPreviewPage() {
 
             <div className="space-y-2">
               <h3 className="font-semibold">Preview</h3>
-              <div className="border rounded-lg overflow-hidden bg-gray-100">
+              <div 
+                className="border rounded-lg overflow-hidden relative"
+                style={{ backgroundColor: ad.backgroundColor || '#f3f4f6' }}
+              >
                 {ad.mediaType === "image" ? (
                   <img 
                     src={ad.mediaUrl} 
@@ -127,6 +134,23 @@ export default function AdPreviewPage() {
                     controls
                     data-testid="preview-video"
                   />
+                )}
+                {ad.adText && (
+                  <div 
+                    className={`absolute left-0 right-0 p-3 text-center font-semibold text-lg ${
+                      ad.textPosition === 'top' ? 'top-0' : 
+                      ad.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
+                      'bottom-0'
+                    }`}
+                    style={{ 
+                      color: ad.textColor || '#ffffff',
+                      backgroundColor: `${ad.backgroundColor || '#1e3a5f'}dd`,
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                    }}
+                    data-testid="preview-text-overlay"
+                  >
+                    {ad.adText}
+                  </div>
                 )}
               </div>
             </div>
