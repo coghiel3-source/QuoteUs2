@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
+import ReportsPanel from "@/components/ReportsPanel";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -178,6 +179,7 @@ export default function AdminCRMPage() {
   
   // Custom CSS State
   const [customCss, setCustomCss] = useState("");
+  const [reportAds, setReportAds] = useState<any[]>([]);
   const [savingCustomCss, setSavingCustomCss] = useState(false);
   
   // Partner Redirects State
@@ -288,6 +290,12 @@ export default function AdminCRMPage() {
           setCustomCss(data.value);
         }
       })
+      .catch(console.error);
+    
+    // Load advertisements for reports
+    fetch("/api/admin/advertisements")
+      .then(r => r.json())
+      .then(data => setReportAds(Array.isArray(data) ? data : []))
       .catch(console.error);
   }, []);
   
@@ -2966,29 +2974,15 @@ export default function AdminCRMPage() {
            </Card>
         )}
 
-        {/* REPORTS TAB Placeholder */}
         {activeTab === 'reports' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold mb-6 text-slate-800">Performance Reports</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Conversion Rate by Broker</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground border-dashed border-2 m-4 rounded-lg">
-                   Chart Placeholder
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Leads by Type</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground border-dashed border-2 m-4 rounded-lg">
-                   Chart Placeholder
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          <ReportsPanel
+            quotes={quotes}
+            advertisements={reportAds}
+            allStaff={allStaff}
+            smtpConfigured={smtpConfigured}
+            userEmail={user?.email}
+            userId={user?.id}
+          />
         )}
         
         {/* CREDITS TAB - Admin/Manager with permission */}
