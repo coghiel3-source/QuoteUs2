@@ -1242,6 +1242,131 @@ export async function registerRoutes(
     }
   });
 
+  // Broker Profile: Update tier, preferred insurance types, demographics
+  app.post("/api/admin/broker-profile", async (req, res) => {
+    try {
+      const { brokerId, brokerTier, preferredInsuranceTypes, preferredDemographics, actorId } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can update broker profiles" });
+      }
+      if (!brokerId) return res.status(400).json({ error: "Broker ID is required" });
+      const broker = await storage.getUser(brokerId);
+      if (!broker || broker.role !== "broker") {
+        return res.status(404).json({ error: "Broker not found" });
+      }
+      const updateData: any = {};
+      if (brokerTier !== undefined) updateData.brokerTier = brokerTier || null;
+      if (preferredInsuranceTypes !== undefined) updateData.preferredInsuranceTypes = preferredInsuranceTypes;
+      if (preferredDemographics !== undefined) updateData.preferredDemographics = preferredDemographics;
+      const updated = await storage.updateUser(brokerId, updateData);
+      res.json({ success: true, broker: updated });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Broker Notes: Get notes for a broker (admin/manager only)
+  app.get("/api/admin/broker-notes/:brokerId", async (req, res) => {
+    try {
+      const { brokerId } = req.params;
+      const actorId = req.query.actorId as string;
+      if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can view broker notes" });
+      }
+      const notes = await storage.getBrokerNotes(brokerId);
+      res.json(notes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Broker Notes: Add a note (admin/manager only)
+  app.post("/api/admin/broker-notes", async (req, res) => {
+    try {
+      const { brokerId, content, actorId, authorName } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can add broker notes" });
+      }
+      if (!brokerId || !content) {
+        return res.status(400).json({ error: "Broker ID and content are required" });
+      }
+      const note = await storage.createBrokerNote({
+        brokerId,
+        authorId: actorId,
+        authorName: authorName || actor.name,
+        content,
+      });
+      res.json(note);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Broker Notes: Delete a note (admin/manager only)
+  app.delete("/api/admin/broker-notes/:noteId", async (req, res) => {
+    try {
+      const { noteId } = req.params;
+      const actorId = req.query.actorId as string;
+      if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can delete broker notes" });
+      }
+      const deleted = await storage.deleteBrokerNote(noteId);
+      res.json({ success: deleted });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Broker Stats: Get win rate and lead performance (admin/manager only)
+  app.get("/api/admin/broker-stats/:brokerId", async (req, res) => {
+    try {
+      const { brokerId } = req.params;
+      const actorId = req.query.actorId as string;
+      if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can view broker stats" });
+      }
+      const allQuotes = await storage.getAllQuotes();
+      const brokerQuotes = allQuotes.filter(q => q.assignedTo === brokerId);
+      const totalAssigned = brokerQuotes.length;
+      const bound = brokerQuotes.filter(q => q.status === "Bound").length;
+      const quoted = brokerQuotes.filter(q => q.status === "Quoted").length;
+      const lost = brokerQuotes.filter(q => q.status === "Lost").length;
+      const closed = brokerQuotes.filter(q => q.status === "Closed").length;
+      const contacted = brokerQuotes.filter(q => q.status === "Contacted").length;
+      const followUp = brokerQuotes.filter(q => q.status === "Follow-Up").length;
+      const newLeads = brokerQuotes.filter(q => q.status === "New").length;
+      const winRate = totalAssigned > 0 ? ((bound / totalAssigned) * 100).toFixed(1) : "0.0";
+      const byType: Record<string, number> = {};
+      brokerQuotes.forEach(q => {
+        byType[q.type] = (byType[q.type] || 0) + 1;
+      });
+      res.json({
+        totalAssigned,
+        bound,
+        quoted,
+        lost,
+        closed,
+        contacted,
+        followUp,
+        newLeads,
+        winRate,
+        byType,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Assign lead to broker (with balance deduction)
   // Only admin/manager can assign leads
   app.post("/api/leads/assign", async (req, res) => {

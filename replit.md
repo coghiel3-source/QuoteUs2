@@ -36,14 +36,15 @@ The server handles API routes in `server/routes.ts`, database operations through
 - **Migrations**: Drizzle Kit manages schema migrations in `./migrations`
 
 Core tables include:
-- `users` - Staff and customer accounts with role-based permissions, includes balance for credit system
+- `users` - Staff and customer accounts with role-based permissions, includes balance for credit system, broker tier, preferred insurance types, preferred demographics
 - `quotes` - Insurance quote requests/leads with status tracking
 - `activities` - Activity log for each quote (status changes, notes, emails)
 - `transactions` - All credit balance changes (purchases, deductions, adjustments)
 - `systemSettings` - Platform configuration settings
+- `brokerNotes` - Internal notes on brokers by admin/manager (NOT visible to brokers)
 - `partnerRedirects` - Redirect URLs for partner sites after quote submission
 
-The schema uses PostgreSQL enums for type safety on user roles, quote statuses, priorities, activity types, and transaction types.
+The schema uses PostgreSQL enums for type safety on user roles, quote statuses, priorities, activity types, transaction types, and broker tiers.
 
 ### Authentication
 - Simple email-based authentication (production would need password hashing)
@@ -169,6 +170,25 @@ The platform includes an advertisement management system for displaying controll
 - `/api/advertisements/:id/impression` - Track ad views
 - `/api/advertisements/:id/click` - Track ad clicks
 - `/api/settings/ads-per-slot` - Public endpoint to get ads per slot setting
+
+### Broker Profile Management
+Admin/Manager can view and manage internal broker profiles with features not visible to brokers:
+
+**Features**:
+- **Internal Notes**: Admin/Manager can add timestamped notes on individual brokers (yellow note cards, NOT visible to brokers)
+- **Broker Tier**: Categorize brokers as Bronze, Silver, Gold, or Platinum (displayed as badge on staff table)
+- **Win Rate & Performance Stats**: View total leads, win rate (bound/total %), leads by status breakdown, leads by type
+- **Preferred Insurance Types**: Toggle which insurance types the broker wants to write
+- **Preferred Demographics**: Free-text field for target demographics/areas the broker prefers
+
+**Access**:
+- Via "View Profile" in broker actions dropdown (staff/manager tab)
+- Only admin/manager can access - completely hidden from brokers
+
+**Key Endpoints**:
+- `/api/admin/broker-profile` - Update tier, preferred types, demographics
+- `/api/admin/broker-notes/:brokerId` - Get/add/delete internal notes
+- `/api/admin/broker-stats/:brokerId` - Get performance stats and win rate
 
 ### Social Media Configuration
 Admin can configure social media links displayed in the website footer:

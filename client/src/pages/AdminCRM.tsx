@@ -203,6 +203,113 @@ export default function AdminCRMPage() {
     description: "",
   });
   
+  // Broker Profile State
+  const [isBrokerProfileOpen, setIsBrokerProfileOpen] = useState(false);
+  const [profileBroker, setProfileBroker] = useState<any>(null);
+  const [brokerNotes, setBrokerNotes] = useState<any[]>([]);
+  const [brokerStats, setBrokerStats] = useState<any>(null);
+  const [newBrokerNote, setNewBrokerNote] = useState("");
+  const [brokerTier, setBrokerTier] = useState<string>("");
+  const [brokerPreferredTypes, setBrokerPreferredTypes] = useState<string[]>([]);
+  const [brokerDemographics, setBrokerDemographics] = useState("");
+  const [savingBrokerProfile, setSavingBrokerProfile] = useState(false);
+  const [addingBrokerNote, setAddingBrokerNote] = useState(false);
+
+  const openBrokerProfile = async (broker: any) => {
+    setProfileBroker(broker);
+    setBrokerTier(broker.brokerTier || "");
+    setBrokerPreferredTypes(broker.preferredInsuranceTypes || []);
+    setBrokerDemographics(broker.preferredDemographics || "");
+    setIsBrokerProfileOpen(true);
+    setNewBrokerNote("");
+    try {
+      const [notesRes, statsRes] = await Promise.all([
+        fetch(`/api/admin/broker-notes/${broker.id}?actorId=${user?.id}`),
+        fetch(`/api/admin/broker-stats/${broker.id}?actorId=${user?.id}`),
+      ]);
+      if (notesRes.ok) setBrokerNotes(await notesRes.json());
+      if (statsRes.ok) setBrokerStats(await statsRes.json());
+    } catch (err) {
+      console.error("Failed to load broker profile data", err);
+    }
+  };
+
+  const saveBrokerProfile = async () => {
+    if (!profileBroker) return;
+    setSavingBrokerProfile(true);
+    try {
+      const res = await fetch("/api/admin/broker-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brokerId: profileBroker.id,
+          brokerTier: brokerTier || null,
+          preferredInsuranceTypes: brokerPreferredTypes,
+          preferredDemographics: brokerDemographics,
+          actorId: user?.id,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: "Profile Updated", description: `${profileBroker.name}'s profile has been saved.` });
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to save broker profile", variant: "destructive" });
+    } finally {
+      setSavingBrokerProfile(false);
+    }
+  };
+
+  const addBrokerNote = async () => {
+    if (!profileBroker || !newBrokerNote.trim()) return;
+    setAddingBrokerNote(true);
+    try {
+      const res = await fetch("/api/admin/broker-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brokerId: profileBroker.id,
+          content: newBrokerNote.trim(),
+          actorId: user?.id,
+          authorName: user?.name,
+        }),
+      });
+      if (res.ok) {
+        const note = await res.json();
+        setBrokerNotes(prev => [note, ...prev]);
+        setNewBrokerNote("");
+        toast({ title: "Note Added" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to add note", variant: "destructive" });
+    } finally {
+      setAddingBrokerNote(false);
+    }
+  };
+
+  const deleteBrokerNote = async (noteId: string) => {
+    try {
+      const res = await fetch(`/api/admin/broker-notes/${noteId}?actorId=${user?.id}`, { method: "DELETE" });
+      if (res.ok) {
+        setBrokerNotes(prev => prev.filter(n => n.id !== noteId));
+        toast({ title: "Note Deleted" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to delete note", variant: "destructive" });
+    }
+  };
+
+  const insuranceTypes = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage"];
+  const tierColors: Record<string, string> = {
+    bronze: "bg-amber-700 text-white",
+    silver: "bg-slate-400 text-white",
+    gold: "bg-yellow-500 text-white",
+    platinum: "bg-slate-700 text-white",
+  };
+
   // Manager Permissions State
   const [managerPermissions, setManagerPermissions] = useState({
     viewLeads: true,
@@ -2833,7 +2940,14 @@ export default function AdminCRMPage() {
                                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
                                   {staff.name.charAt(0)}
                                 </div>
-                                {staff.name}
+                                <div>
+                                  {staff.name}
+                                  {staff.role === 'broker' && (staff as any).brokerTier && (
+                                    <Badge className={`ml-2 text-[10px] capitalize ${tierColors[(staff as any).brokerTier] || 'bg-gray-500 text-white'}`}>
+                                      {(staff as any).brokerTier}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                            </TableCell>
                            <TableCell>
@@ -2913,6 +3027,12 @@ export default function AdminCRMPage() {
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditPermissions(staff); }}>
                                     <UserCog className="mr-2 h-4 w-4" />
                                     Edit Permissions
+                                  </DropdownMenuItem>
+                                )}
+                                {staff.role === 'broker' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openBrokerProfile(staff); }}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Profile
                                   </DropdownMenuItem>
                                 )}
                                 {staff.role === 'broker' && (
@@ -4272,6 +4392,221 @@ export default function AdminCRMPage() {
         )}
 
       </div>
+
+      {/* Broker Profile Sheet - Only visible to admin/manager */}
+      <Sheet open={isBrokerProfileOpen} onOpenChange={setIsBrokerProfileOpen}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" data-testid="broker-profile-sheet">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                {profileBroker?.name?.charAt(0)}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  {profileBroker?.name}
+                  {brokerTier && (
+                    <Badge className={`text-xs capitalize ${tierColors[brokerTier] || 'bg-gray-500 text-white'}`}>
+                      {brokerTier}
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-sm font-normal text-muted-foreground">{profileBroker?.email}</div>
+              </div>
+            </SheetTitle>
+            <SheetDescription>Internal broker profile - not visible to brokers</SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-6 mt-6">
+            {/* Win Rate & Performance Stats */}
+            {brokerStats && (
+              <div>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><BarChart size={16} /> Performance Stats</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-blue-700">{brokerStats.totalAssigned}</div>
+                    <div className="text-xs text-blue-600">Total Leads</div>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-green-700">{brokerStats.winRate}%</div>
+                    <div className="text-xs text-green-600">Win Rate</div>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-emerald-700">{brokerStats.bound}</div>
+                    <div className="text-xs text-emerald-600">Bound</div>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-red-700">{brokerStats.lost}</div>
+                    <div className="text-xs text-red-600">Lost</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  <div className="text-center p-2 bg-slate-50 rounded">
+                    <div className="text-sm font-semibold">{brokerStats.quoted}</div>
+                    <div className="text-[10px] text-muted-foreground">Quoted</div>
+                  </div>
+                  <div className="text-center p-2 bg-slate-50 rounded">
+                    <div className="text-sm font-semibold">{brokerStats.contacted}</div>
+                    <div className="text-[10px] text-muted-foreground">Contacted</div>
+                  </div>
+                  <div className="text-center p-2 bg-slate-50 rounded">
+                    <div className="text-sm font-semibold">{brokerStats.followUp}</div>
+                    <div className="text-[10px] text-muted-foreground">Follow-Up</div>
+                  </div>
+                  <div className="text-center p-2 bg-slate-50 rounded">
+                    <div className="text-sm font-semibold">{brokerStats.closed}</div>
+                    <div className="text-[10px] text-muted-foreground">Closed</div>
+                  </div>
+                </div>
+                {brokerStats.byType && Object.keys(brokerStats.byType).length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-muted-foreground mb-1">Leads by Type</div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(brokerStats.byType).map(([type, count]) => (
+                        <Badge key={type} variant="outline" className="text-xs">
+                          {type}: {count as number}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Broker Tier */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Broker Tier</h3>
+              <Select value={brokerTier || "none"} onValueChange={(v) => setBrokerTier(v === "none" ? "" : v)}>
+                <SelectTrigger data-testid="select-broker-tier">
+                  <SelectValue placeholder="Select tier..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Tier</SelectItem>
+                  <SelectItem value="bronze">
+                    <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-amber-700" /> Bronze</span>
+                  </SelectItem>
+                  <SelectItem value="silver">
+                    <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-slate-400" /> Silver</span>
+                  </SelectItem>
+                  <SelectItem value="gold">
+                    <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-yellow-500" /> Gold</span>
+                  </SelectItem>
+                  <SelectItem value="platinum">
+                    <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-slate-700" /> Platinum</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            {/* Preferred Insurance Types */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Preferred Insurance Types</h3>
+              <p className="text-xs text-muted-foreground mb-2">What kind of business this broker wants to write</p>
+              <div className="flex flex-wrap gap-2">
+                {insuranceTypes.map(type => (
+                  <Button
+                    key={type}
+                    size="sm"
+                    variant={brokerPreferredTypes.includes(type) ? "default" : "outline"}
+                    className="text-xs"
+                    onClick={() => {
+                      setBrokerPreferredTypes(prev =>
+                        prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+                      );
+                    }}
+                    data-testid={`btn-pref-type-${type.toLowerCase()}`}
+                  >
+                    {type}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Preferred Demographics */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Preferred Demographics</h3>
+              <p className="text-xs text-muted-foreground mb-2">Target demographics and areas this broker prefers</p>
+              <Textarea
+                value={brokerDemographics}
+                onChange={(e) => setBrokerDemographics(e.target.value)}
+                placeholder="e.g., Young professionals, families, seniors, specific neighborhoods or regions..."
+                rows={3}
+                data-testid="textarea-broker-demographics"
+              />
+            </div>
+
+            <Button 
+              onClick={saveBrokerProfile} 
+              disabled={savingBrokerProfile} 
+              className="w-full"
+              data-testid="btn-save-broker-profile"
+            >
+              {savingBrokerProfile ? "Saving..." : "Save Profile"}
+            </Button>
+
+            <Separator />
+
+            {/* Internal Notes Section */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <MessageSquare size={16} /> Internal Notes
+                <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">Not visible to broker</Badge>
+              </h3>
+              <div className="flex gap-2 mb-4">
+                <Textarea
+                  value={newBrokerNote}
+                  onChange={(e) => setNewBrokerNote(e.target.value)}
+                  placeholder="Add an internal note about this broker..."
+                  rows={2}
+                  className="flex-1"
+                  data-testid="textarea-broker-note"
+                />
+                <Button 
+                  onClick={addBrokerNote} 
+                  disabled={addingBrokerNote || !newBrokerNote.trim()}
+                  size="sm"
+                  className="self-end"
+                  data-testid="btn-add-broker-note"
+                >
+                  Add
+                </Button>
+              </div>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                {brokerNotes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No internal notes yet.</p>
+                ) : (
+                  brokerNotes.map((note: any) => (
+                    <div key={note.id} className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 relative group">
+                      <div className="flex justify-between items-start">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          <span className="font-medium text-yellow-800">{note.authorName}</span>
+                          {" · "}
+                          {note.createdAt ? format(new Date(note.createdAt), "MMM d, yyyy h:mm a") : ""}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+                          onClick={() => deleteBrokerNote(note.id)}
+                          data-testid={`btn-delete-note-${note.id}`}
+                        >
+                          <Trash2 size={12} />
+                        </Button>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

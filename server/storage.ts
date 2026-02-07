@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, partnerRedirects, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type PartnerRedirect, type InsertPartnerRedirect } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -48,6 +48,11 @@ export interface IStorage {
   incrementAdImpression(id: string): Promise<void>;
   incrementAdClick(id: string): Promise<void>;
   
+  // Broker Notes operations
+  getBrokerNotes(brokerId: string): Promise<BrokerNote[]>;
+  createBrokerNote(note: InsertBrokerNote): Promise<BrokerNote>;
+  deleteBrokerNote(id: string): Promise<boolean>;
+
   // Partner Redirect operations
   getAllPartnerRedirects(): Promise<PartnerRedirect[]>;
   getPartnerRedirect(id: string): Promise<PartnerRedirect | undefined>;
@@ -364,6 +369,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Partner Redirect operations
+  // Broker Notes operations
+  async getBrokerNotes(brokerId: string): Promise<BrokerNote[]> {
+    return await db.select().from(brokerNotes)
+      .where(eq(brokerNotes.brokerId, brokerId))
+      .orderBy(desc(brokerNotes.createdAt));
+  }
+
+  async createBrokerNote(note: InsertBrokerNote): Promise<BrokerNote> {
+    const [newNote] = await db.insert(brokerNotes).values(note).returning();
+    return newNote;
+  }
+
+  async deleteBrokerNote(id: string): Promise<boolean> {
+    const result = await db.delete(brokerNotes).where(eq(brokerNotes.id, id)).returning();
+    return result.length > 0;
+  }
+
   async getAllPartnerRedirects(): Promise<PartnerRedirect[]> {
     return await db.select().from(partnerRedirects).orderBy(desc(partnerRedirects.createdAt));
   }
