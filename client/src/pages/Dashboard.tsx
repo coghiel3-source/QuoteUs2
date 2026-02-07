@@ -332,6 +332,8 @@ export default function DashboardPage() {
       case "Contacted": return "bg-yellow-100 text-yellow-700 hover:bg-yellow-200";
       case "Quoted": return "bg-purple-100 text-purple-700 hover:bg-purple-200";
       case "Closed": return "bg-green-100 text-green-700 hover:bg-green-200";
+      case "Win": return "bg-emerald-100 text-emerald-700 hover:bg-emerald-200";
+      case "Lost": return "bg-red-100 text-red-700 hover:bg-red-200";
       default: return "bg-gray-100 text-gray-700";
     }
   };
@@ -470,6 +472,8 @@ export default function DashboardPage() {
                             <SelectItem value="Contacted">Contacted</SelectItem>
                             <SelectItem value="Quoted">Quoted</SelectItem>
                             <SelectItem value="Closed">Closed</SelectItem>
+                            <SelectItem value="Win">Win</SelectItem>
+                            <SelectItem value="Lost">Lost</SelectItem>
                           </SelectContent>
                         </Select>
                     </TableCell>
@@ -603,6 +607,8 @@ export default function DashboardPage() {
                         <SelectItem value="Contacted">Contacted</SelectItem>
                         <SelectItem value="Quoted">Quoted</SelectItem>
                         <SelectItem value="Closed">Closed</SelectItem>
+                        <SelectItem value="Win">Win</SelectItem>
+                        <SelectItem value="Lost">Lost</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
