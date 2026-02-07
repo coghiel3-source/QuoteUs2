@@ -7,7 +7,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["admin", "manager", "broker", "customer"]);
 export const userStatusEnum = pgEnum("user_status", ["active", "pending", "paused", "cancelled", "denied"]);
 export const quoteTypeEnum = pgEnum("quote_type", ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "General"]);
-export const quoteStatusEnum = pgEnum("quote_status", ["New", "Contacted", "Quoted", "Bound", "Follow-Up", "Closed", "Lost", "Win", "Lose"]);
+export const quoteStatusEnum = pgEnum("quote_status", ["New", "Contacted", "Quoted", "Bound", "Follow-Up", "Closed", "Lost", "Win", "Lose", "Expired"]);
 export const priorityEnum = pgEnum("priority", ["High", "Medium", "Low"]);
 export const activityTypeEnum = pgEnum("activity_type", ["status_change", "assignment", "note", "email_sent", "system"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["credit_purchase", "lead_deduction", "manual_credit", "adjustment", "refund"]);
@@ -82,6 +82,7 @@ export const quotes = pgTable("quotes", {
   priority: priorityEnum("priority").notNull().default("Medium"),
   source: text("source").notNull().default("Web Form"),
   assignedTo: varchar("assigned_to").references(() => users.id),
+  assignedAt: timestamp("assigned_at"),
   internalNotes: text("internal_notes").default(""),
   details: jsonb("details").notNull().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),

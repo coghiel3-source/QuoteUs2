@@ -20,8 +20,9 @@ export interface Quote {
   postalCode?: string;
   date?: string; // For backwards compatibility
   createdAt?: string; // From database
-  status: 'New' | 'Contacted' | 'Quoted' | 'Bound' | 'Follow-Up' | 'Closed' | 'Lost';
+  status: 'New' | 'Contacted' | 'Quoted' | 'Bound' | 'Follow-Up' | 'Closed' | 'Lost' | 'Win' | 'Lose' | 'Expired';
   assignedTo?: string;
+  assignedAt?: string;
   priority: 'High' | 'Medium' | 'Low';
   source: string;
   internalNotes: string;

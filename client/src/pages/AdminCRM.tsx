@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import { format } from "date-fns";
@@ -203,6 +203,13 @@ export default function AdminCRMPage() {
     description: "",
   });
   
+  // Lead Expiry Timer State
+  const [leadExpiryHours, setLeadExpiryHours] = useState<number>(24);
+  const [editingExpiryHours, setEditingExpiryHours] = useState<string>("24");
+  const [savingExpiryHours, setSavingExpiryHours] = useState(false);
+  const [reassigningLead, setReassigningLead] = useState<string | null>(null);
+  const [, setTimerTick] = useState(0);
+
   // Broker Profile State
   const [isBrokerProfileOpen, setIsBrokerProfileOpen] = useState(false);
   const [profileBroker, setProfileBroker] = useState<any>(null);
@@ -404,6 +411,37 @@ export default function AdminCRMPage() {
       .then(r => r.json())
       .then(data => setReportAds(Array.isArray(data) ? data : []))
       .catch(console.error);
+
+    // Load lead expiry hours setting
+    fetch("/api/settings/lead-expiry-hours")
+      .then(r => r.json())
+      .then(data => {
+        setLeadExpiryHours(data.hours || 24);
+        setEditingExpiryHours((data.hours || 24).toString());
+      })
+      .catch(console.error);
+
+  }, []);
+
+  // Check for expired leads when user loads (separate effect with user dependency)
+  useEffect(() => {
+    if (user?.id && (user?.role === 'admin' || user?.role === 'manager')) {
+      fetch("/api/leads/check-expiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId: user.id }),
+      }).then(r => r.json())
+        .then(data => {
+          if (data.expiredCount > 0) refreshQuotes();
+        })
+        .catch(console.error);
+    }
+  }, [user?.id]);
+
+  // Tick every 30 seconds to update countdown timers
+  useEffect(() => {
+    const interval = setInterval(() => setTimerTick(t => t + 1), 30000);
+    return () => clearInterval(interval);
   }, []);
   
   // Check if current user has permission for a feature
@@ -424,6 +462,72 @@ export default function AdminCRMPage() {
     return false;
   };
   
+  // Lead expiry timer helpers
+  const getTimeRemaining = (assignedAt: string | Date | null) => {
+    if (!assignedAt) return null;
+    const assigned = new Date(assignedAt);
+    const expiryTime = new Date(assigned.getTime() + leadExpiryHours * 60 * 60 * 1000);
+    const now = new Date();
+    const remaining = expiryTime.getTime() - now.getTime();
+    if (remaining <= 0) return { expired: true, hours: 0, minutes: 0, text: "Expired" };
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    return { expired: false, hours, minutes, text: `${hours}h ${minutes}m` };
+  };
+
+  const saveExpiryHours = async () => {
+    const hours = parseFloat(editingExpiryHours);
+    if (isNaN(hours) || hours < 1 || hours > 720) {
+      toast({ title: "Invalid hours", description: "Must be between 1 and 720", variant: "destructive" });
+      return;
+    }
+    setSavingExpiryHours(true);
+    try {
+      const res = await fetch("/api/settings/lead-expiry-hours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hours, actorId: user?.id }),
+      });
+      if (res.ok) {
+        setLeadExpiryHours(hours);
+        toast({ title: "Expiry Timer Updated", description: `Lead response timer set to ${hours} hours` });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to update expiry timer", variant: "destructive" });
+    } finally {
+      setSavingExpiryHours(false);
+    }
+  };
+
+  const handleReassignLead = async (quoteId: string, brokerId: string, brokerName: string) => {
+    setReassigningLead(quoteId);
+    try {
+      const res = await fetch("/api/leads/reassign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quoteId, brokerId, actorId: user?.id, actorName: user?.name }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({
+          title: "Reassignment Failed",
+          description: data.error || "Could not reassign lead",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Lead Reassigned",
+        description: `Lead reassigned to ${brokerName}. $${data.leadCost} deducted.`,
+      });
+      refreshQuotes();
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to reassign lead", variant: "destructive" });
+    } finally {
+      setReassigningLead(null);
+    }
+  };
+
   const saveManagerPermissions = async () => {
     setSavingPermissions(true);
     try {
@@ -981,6 +1085,9 @@ export default function AdminCRMPage() {
   };
 
   const filteredQuotes = quotes.filter(quote => {
+    // Brokers should not see expired leads in their list
+    if (user?.role === 'broker' && quote.status === 'Expired') return false;
+    
     const matchesSearch = 
       quote.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (quote.email && quote.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -1021,6 +1128,7 @@ export default function AdminCRMPage() {
       case 'Lost': return 'bg-red-500 hover:bg-red-600';
       case 'Win': return 'bg-green-600 hover:bg-green-700';
       case 'Lose': return 'bg-rose-700 hover:bg-rose-800';
+      case 'Expired': return 'bg-gray-500 hover:bg-gray-600';
       default: return 'bg-slate-500';
     }
   };
@@ -1488,6 +1596,7 @@ export default function AdminCRMPage() {
                           <SelectItem value="Lost">Lost</SelectItem>
                           <SelectItem value="Win">Win</SelectItem>
                           <SelectItem value="Lose">Lose</SelectItem>
+                          <SelectItem value="Expired">Expired</SelectItem>
                         </SelectContent>
                       </Select>
                    </div>
@@ -2282,6 +2391,7 @@ export default function AdminCRMPage() {
                       <SelectItem value="Lost">Lost</SelectItem>
                       <SelectItem value="Win">Win</SelectItem>
                       <SelectItem value="Lose">Lose</SelectItem>
+                      <SelectItem value="Expired">Expired</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2333,6 +2443,7 @@ export default function AdminCRMPage() {
                                 <SelectItem value="Lost"><span className="font-bold text-red-600">Lost</span></SelectItem>
                                 <SelectItem value="Win"><span className="font-bold text-red-600">Win</span></SelectItem>
                                 <SelectItem value="Lose"><span className="font-bold text-red-600">Lose</span></SelectItem>
+                                <SelectItem value="Expired"><span className="font-bold text-gray-600">Expired</span></SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -2393,6 +2504,27 @@ export default function AdminCRMPage() {
                             <div className="text-xs text-muted-foreground pl-5">
                               {format(new Date(quote.date || new Date()), 'h:mm a')}
                             </div>
+                            {quote.assignedTo && quote.assignedAt && quote.status === "New" && (
+                              (() => {
+                                const timer = getTimeRemaining(quote.assignedAt);
+                                if (!timer) return null;
+                                if (timer.expired) {
+                                  return (
+                                    <div className="flex items-center gap-1 mt-1 text-xs font-semibold text-red-600">
+                                      <Timer size={12} />
+                                      Expired
+                                    </div>
+                                  );
+                                }
+                                const isUrgent = timer.hours < 2;
+                                return (
+                                  <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${isUrgent ? 'text-red-500 animate-pulse' : 'text-orange-500'}`}>
+                                    <Timer size={12} />
+                                    {timer.text}
+                                  </div>
+                                );
+                              })()
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
@@ -2409,7 +2541,7 @@ export default function AdminCRMPage() {
                                 <Eye size={14} className="mr-1" />
                                 View
                               </Button>
-                              {hasPermission('assignLeads') && quote.assignedTo && (
+                              {hasPermission('assignLeads') && quote.assignedTo && quote.status !== "Expired" && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -2424,6 +2556,39 @@ export default function AdminCRMPage() {
                                   <Mail size={14} className="mr-1" />
                                   {sendingEmailToQuote === quote.id ? "Sending..." : "Send"}
                                 </Button>
+                              )}
+                              {hasPermission('assignLeads') && quote.status === "Expired" && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="text-xs h-7 px-2 text-amber-600 border-amber-200 hover:bg-amber-50"
+                                      data-testid={`button-reassign-${quote.id}`}
+                                      disabled={reassigningLead === quote.id}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <RefreshCw size={14} className="mr-1" />
+                                      {reassigningLead === quote.id ? "..." : "Reassign"}
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuLabel>Reassign to Broker</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {brokers.filter(b => b.id !== quote.assignedTo && b.status === "active").map(broker => (
+                                      <DropdownMenuItem
+                                        key={broker.id}
+                                        onClick={() => handleReassignLead(quote.id, broker.id, broker.name)}
+                                        data-testid={`reassign-to-${broker.id}`}
+                                      >
+                                        {broker.name} (${parseFloat(broker.balance || "0").toFixed(0)})
+                                      </DropdownMenuItem>
+                                    ))}
+                                    {brokers.filter(b => b.id !== quote.assignedTo && b.status === "active").length === 0 && (
+                                      <DropdownMenuItem disabled>No other brokers available</DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               )}
                               {hasPermission('assignLeads') && (
                                 <Button 
@@ -4059,6 +4224,49 @@ export default function AdminCRMPage() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Email address to receive new lead notifications</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lead Response Timer */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-orange-100 p-2 rounded-lg">
+                      <Timer className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Lead Response Timer</h3>
+                      <p className="text-sm text-muted-foreground">Set how long brokers have to respond before a lead expires</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3 mt-4">
+                  <div className="space-y-2">
+                    <Label>Response Time Limit (hours)</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        type="number" 
+                        min="1"
+                        max="720"
+                        placeholder="24"
+                        value={editingExpiryHours}
+                        onChange={(e) => setEditingExpiryHours(e.target.value)}
+                        data-testid="input-expiry-hours"
+                      />
+                      <Button 
+                        variant="outline" 
+                        disabled={savingExpiryHours}
+                        onClick={saveExpiryHours}
+                        data-testid="button-save-expiry-hours"
+                      >
+                        {savingExpiryHours ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Currently set to <span className="font-semibold">{leadExpiryHours} hours</span>. 
+                      If a broker doesn't update a lead's status within this time, it will be marked as expired and can be reassigned.
+                    </p>
                   </div>
                 </div>
               </div>

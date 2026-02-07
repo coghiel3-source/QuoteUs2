@@ -37,7 +37,7 @@ The server handles API routes in `server/routes.ts`, database operations through
 
 Core tables include:
 - `users` - Staff and customer accounts with role-based permissions, includes balance for credit system, broker tier, preferred insurance types, preferred demographics
-- `quotes` - Insurance quote requests/leads with status tracking
+- `quotes` - Insurance quote requests/leads with status tracking, includes `assignedAt` timestamp for expiry timer
 - `activities` - Activity log for each quote (status changes, notes, emails)
 - `transactions` - All credit balance changes (purchases, deductions, adjustments)
 - `systemSettings` - Platform configuration settings
@@ -189,6 +189,29 @@ Admin/Manager can view and manage internal broker profiles with features not vis
 - `/api/admin/broker-profile` - Update tier, preferred types, demographics
 - `/api/admin/broker-notes/:brokerId` - Get/add/delete internal notes
 - `/api/admin/broker-stats/:brokerId` - Get performance stats and win rate
+
+### Lead Response Timer / Expiry System
+Admin/Manager can set a response timer for assigned leads. If a broker doesn't change a lead's status (from "New" to "Contacted" or other) within the allotted time, the lead expires and can be reassigned.
+
+**Features**:
+- Configurable timer (1-720 hours, default 24 hours) set via Admin Settings
+- Countdown timer displayed on each assigned lead in the Leads table
+- Timer pulses red when under 2 hours remaining
+- "Expired" status added to quote status enum
+- Expired leads hidden from broker's view
+- Admin/Manager can reassign expired leads to another broker (with credit deduction)
+- Auto-check on page load marks overdue leads as expired
+- Timer ticks every 30 seconds for live countdown
+
+**Key Endpoints**:
+- `GET /api/settings/lead-expiry-hours` - Get current timer setting
+- `POST /api/settings/lead-expiry-hours` - Update timer (admin/manager)
+- `POST /api/leads/check-expiry` - Auto-expire overdue leads (admin/manager)
+- `POST /api/leads/reassign` - Reassign expired lead to new broker with credit deduction
+
+**Key Fields**:
+- `quotes.assignedAt` - Timestamp set when lead is assigned
+- `systemSettings.lead_expiry_hours` - Configurable timer duration
 
 ### Social Media Configuration
 Admin can configure social media links displayed in the website footer:

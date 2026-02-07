@@ -1479,7 +1479,7 @@ export async function registerRoutes(
       }
       
       // Update quote assignment - SERVER IS THE AUTHORITATIVE SOURCE
-      const updatedQuote = await storage.updateQuote(quoteId, { assignedTo: brokerId } as any);
+      const updatedQuote = await storage.updateQuote(quoteId, { assignedTo: brokerId, assignedAt: new Date() } as any);
       
       // Create activity
       await storage.createActivity({
@@ -1512,6 +1512,183 @@ export async function registerRoutes(
         transaction: debitResult.transaction,
         leadCost,
         quote: updatedQuote
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ========== LEAD EXPIRY TIMER ROUTES ==========
+
+  // Get lead expiry timer setting (hours)
+  app.get("/api/settings/lead-expiry-hours", async (req, res) => {
+    try {
+      const hours = await storage.getSetting("lead_expiry_hours");
+      res.json({ hours: hours ? parseFloat(hours) : 24 });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set lead expiry timer (admin/manager)
+  app.post("/api/settings/lead-expiry-hours", async (req, res) => {
+    try {
+      const { hours, actorId } = req.body;
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required" });
+      }
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can update expiry timer" });
+      }
+      if (typeof hours !== "number" || hours < 1 || hours > 720) {
+        return res.status(400).json({ error: "Hours must be between 1 and 720 (30 days)" });
+      }
+      await storage.setSetting("lead_expiry_hours", hours.toString(), actorId);
+      res.json({ success: true, hours });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Check and expire leads that have exceeded the timer
+  app.post("/api/leads/check-expiry", async (req, res) => {
+    try {
+      const { actorId } = req.body;
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required" });
+      }
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can check lead expiry" });
+      }
+
+      const expiryHoursSetting = await storage.getSetting("lead_expiry_hours");
+      const expiryHours = expiryHoursSetting ? parseFloat(expiryHoursSetting) : 24;
+      const now = new Date();
+      const allQuotes = await storage.getAllQuotes();
+      
+      const expiredLeads: string[] = [];
+      for (const quote of allQuotes) {
+        if (
+          quote.assignedTo &&
+          quote.assignedAt &&
+          quote.status === "New"
+        ) {
+          const assignedTime = new Date(quote.assignedAt);
+          const expiryTime = new Date(assignedTime.getTime() + expiryHours * 60 * 60 * 1000);
+          if (now > expiryTime) {
+            await storage.updateQuote(quote.id, { status: "Expired" } as any);
+            await storage.createActivity({
+              quoteId: quote.id,
+              type: "system",
+              content: `Lead expired - broker did not respond within ${expiryHours} hours`,
+              author: "System",
+            });
+            expiredLeads.push(quote.id);
+          }
+        }
+      }
+
+      res.json({ success: true, expiredCount: expiredLeads.length, expiredLeads });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Reassign an expired lead to a new broker
+  app.post("/api/leads/reassign", async (req, res) => {
+    try {
+      const { quoteId, brokerId, actorId, actorName } = req.body;
+      if (!quoteId || !brokerId) {
+        return res.status(400).json({ error: "Quote ID and broker ID are required" });
+      }
+      if (!actorId) {
+        return res.status(401).json({ error: "Actor ID is required" });
+      }
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can reassign leads" });
+      }
+      if (actor.role === "manager") {
+        const hasPermission = await checkPermission(actorId, "assignLeads");
+        if (!hasPermission) {
+          return res.status(403).json({ error: "You don't have permission to reassign leads" });
+        }
+      }
+
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+
+      const broker = await storage.getUser(brokerId);
+      if (!broker || broker.role !== "broker") {
+        return res.status(400).json({ error: "Invalid broker" });
+      }
+      if (broker.status === "paused") {
+        return res.status(400).json({ error: "Cannot reassign to paused brokers" });
+      }
+
+      // Get lead cost
+      const currentLeadCosts = await getLeadCosts();
+      const defaultCost = currentLeadCosts[quote.type] || currentLeadCosts["General"];
+      const leadCost = broker.leadCostOverride !== null && broker.leadCostOverride !== undefined
+        ? parseFloat(broker.leadCostOverride)
+        : defaultCost;
+
+      // Deduct from new broker's balance
+      const debitResult = await storage.debitBalance(
+        brokerId,
+        leadCost.toFixed(2),
+        `Lead reassigned: ${quote.type} - ${quote.clientName} (${quote.quoteNumber})`,
+        { quoteId, actorId, actorName }
+      );
+
+      if (!debitResult) {
+        return res.status(400).json({
+          error: "Insufficient balance",
+          required: leadCost,
+          currentBalance: broker.balance
+        });
+      }
+
+      // Update quote - reset assignment and timer, change status back to New
+      await storage.updateQuote(quoteId, {
+        assignedTo: brokerId,
+        assignedAt: new Date(),
+        status: "New",
+      } as any);
+
+      await storage.createActivity({
+        quoteId,
+        type: "assignment",
+        content: `Lead reassigned to ${broker.name} ($${leadCost} deducted) by ${actorName || "Admin"}`,
+        author: actorName || "System",
+      });
+
+      // Send assignment email to new broker
+      if (broker.email) {
+        const assignmentEmail = generateAssignmentEmail({
+          brokerName: broker.name,
+          clientName: quote.clientName,
+          type: quote.type,
+          email: quote.email || '',
+          phone: quote.phone || undefined,
+          assignedBy: actorName || 'Admin'
+        });
+        sendEmail({
+          to: broker.email,
+          subject: assignmentEmail.subject,
+          html: assignmentEmail.html
+        }).catch(err => console.error('[Email] Reassignment notification error:', err));
+      }
+
+      res.json({
+        success: true,
+        newBalance: debitResult.user.balance,
+        transaction: debitResult.transaction,
+        leadCost,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
