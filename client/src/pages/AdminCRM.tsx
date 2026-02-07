@@ -1019,6 +1019,8 @@ export default function AdminCRMPage() {
       case 'Follow-Up': return 'bg-orange-500 hover:bg-orange-600';
       case 'Closed': return 'bg-teal-600 hover:bg-teal-700';
       case 'Lost': return 'bg-red-500 hover:bg-red-600';
+      case 'Win': return 'bg-green-600 hover:bg-green-700';
+      case 'Lose': return 'bg-rose-700 hover:bg-rose-800';
       default: return 'bg-slate-500';
     }
   };
@@ -1484,6 +1486,8 @@ export default function AdminCRMPage() {
                           <SelectItem value="Bound">Bound</SelectItem>
                           <SelectItem value="Closed">Closed</SelectItem>
                           <SelectItem value="Lost">Lost</SelectItem>
+                          <SelectItem value="Win">Win</SelectItem>
+                          <SelectItem value="Lose">Lose</SelectItem>
                         </SelectContent>
                       </Select>
                    </div>
@@ -2272,7 +2276,12 @@ export default function AdminCRMPage() {
                       <SelectItem value="New">New</SelectItem>
                       <SelectItem value="Contacted">Contacted</SelectItem>
                       <SelectItem value="Quoted">Quoted</SelectItem>
+                      <SelectItem value="Bound">Bound</SelectItem>
+                      <SelectItem value="Follow-Up">Follow-Up</SelectItem>
                       <SelectItem value="Closed">Closed</SelectItem>
+                      <SelectItem value="Lost">Lost</SelectItem>
+                      <SelectItem value="Win">Win</SelectItem>
+                      <SelectItem value="Lose">Lose</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2311,17 +2320,19 @@ export default function AdminCRMPage() {
                               value={quote.status} 
                               onValueChange={(val: any) => updateStatus(quote.id, val, user?.name)}
                             >
-                              <SelectTrigger className={`w-[110px] h-8 text-xs text-white border-none ${getStatusColor(quote.status).replace('hover:', '')}`}>
+                              <SelectTrigger className={`w-[110px] h-8 text-xs font-bold text-white border-none ${getStatusColor(quote.status).replace('hover:', '')}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="New">New</SelectItem>
-                                <SelectItem value="Contacted">Contacted</SelectItem>
-                                <SelectItem value="Quoted">Quoted</SelectItem>
-                                <SelectItem value="Bound">Bound</SelectItem>
-                                <SelectItem value="Follow-Up">Follow-Up</SelectItem>
-                                <SelectItem value="Closed">Closed</SelectItem>
-                                <SelectItem value="Lost">Lost</SelectItem>
+                                <SelectItem value="New"><span className="font-bold text-red-600">New</span></SelectItem>
+                                <SelectItem value="Contacted"><span className="font-bold text-red-600">Contacted</span></SelectItem>
+                                <SelectItem value="Quoted"><span className="font-bold text-red-600">Quoted</span></SelectItem>
+                                <SelectItem value="Bound"><span className="font-bold text-red-600">Bound</span></SelectItem>
+                                <SelectItem value="Follow-Up"><span className="font-bold text-red-600">Follow-Up</span></SelectItem>
+                                <SelectItem value="Closed"><span className="font-bold text-red-600">Closed</span></SelectItem>
+                                <SelectItem value="Lost"><span className="font-bold text-red-600">Lost</span></SelectItem>
+                                <SelectItem value="Win"><span className="font-bold text-red-600">Win</span></SelectItem>
+                                <SelectItem value="Lose"><span className="font-bold text-red-600">Lose</span></SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>

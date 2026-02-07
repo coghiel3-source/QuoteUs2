@@ -1339,13 +1339,16 @@ export async function registerRoutes(
       const brokerQuotes = allQuotes.filter(q => q.assignedTo === brokerId);
       const totalAssigned = brokerQuotes.length;
       const bound = brokerQuotes.filter(q => q.status === "Bound").length;
+      const win = brokerQuotes.filter(q => q.status === "Win").length;
+      const lose = brokerQuotes.filter(q => q.status === "Lose").length;
       const quoted = brokerQuotes.filter(q => q.status === "Quoted").length;
       const lost = brokerQuotes.filter(q => q.status === "Lost").length;
       const closed = brokerQuotes.filter(q => q.status === "Closed").length;
       const contacted = brokerQuotes.filter(q => q.status === "Contacted").length;
       const followUp = brokerQuotes.filter(q => q.status === "Follow-Up").length;
       const newLeads = brokerQuotes.filter(q => q.status === "New").length;
-      const winRate = totalAssigned > 0 ? ((bound / totalAssigned) * 100).toFixed(1) : "0.0";
+      const totalWins = bound + win;
+      const winRate = totalAssigned > 0 ? ((totalWins / totalAssigned) * 100).toFixed(1) : "0.0";
       const byType: Record<string, number> = {};
       brokerQuotes.forEach(q => {
         byType[q.type] = (byType[q.type] || 0) + 1;
@@ -1353,6 +1356,8 @@ export async function registerRoutes(
       res.json({
         totalAssigned,
         bound,
+        win,
+        lose,
         quoted,
         lost,
         closed,
