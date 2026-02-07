@@ -260,12 +260,21 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
   };
 
   const togglePage = (page: string) => {
-    setFormData(prev => ({
-      ...prev,
-      targetPages: prev.targetPages.includes(page)
-        ? prev.targetPages.filter(p => p !== page)
-        : [...prev.targetPages, page]
-    }));
+    setFormData(prev => {
+      if (page === "all") {
+        return {
+          ...prev,
+          targetPages: prev.targetPages.includes("all") ? [] : ["all"]
+        };
+      }
+      const withoutAll = prev.targetPages.filter(p => p !== "all");
+      return {
+        ...prev,
+        targetPages: withoutAll.includes(page)
+          ? withoutAll.filter(p => p !== page)
+          : [...withoutAll, page]
+      };
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
