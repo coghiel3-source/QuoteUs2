@@ -116,7 +116,7 @@ export default function PrivacyPage() {
 
             <h3>Insurance Quotes</h3>
             <p>
-              If you request an insurance quote, we collect either your postal code or province and may automatically redirect you to a third-party website, hosted by one of our insurance provider partners. Except for your location, any information you submit in the insurance quote process will be submitted directly to such third-party provider, and not to us. Your Personal Information will be treated in accordance with the privacy policy of the applicable third-party insurance provider. We may also offer you the ability to obtain an insurance quote directly from Quoteus.ca by providing Personal Information on the Website. We collect this information so that we can obtain an accurate quote from our third-party insurance partners, and to contact you about your quote.
+              If you request an insurance quote, we collect either your postal code or province and may automatically redirect you to a third-party website, hosted by one of our insurance provider partners. Except for your location, any information you submit in the insurance quote process will be submitted directly to such third-party provider, and not to us. Your Personal Information will be treated in accordance with the privacy policy of the applicable third-party insurance provider. We may also offer you the ability to obtain an insurance quote directly from QuoteUs.ca by providing Personal Information on the Website. We collect this information so that we can obtain an accurate quote from our third-party insurance partners, and to contact you about your quote.
             </p>
 
             <h3>Auto Insurance</h3>
@@ -229,9 +229,9 @@ export default function PrivacyPage() {
               If you have any questions, concerns, or complaints about this Privacy Policy or our privacy practices, please contact us at:
             </p>
             <p>
-              <strong>Quoteus.ca</strong><br />
-              Email: privacy@quoteus.ca<br />
-              Website: www.quoteus.ca
+              <strong>QuoteUs.ca</strong><br />
+              Email: privacy@QuoteUs.ca<br />
+              Website: www.QuoteUs.ca
             </p>
 
           </CardContent>

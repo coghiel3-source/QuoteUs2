@@ -2503,7 +2503,7 @@ export default function AdminCRMPage() {
                             value={newUser.email} 
                             onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                             required 
-                            placeholder="jane@quoteus.ca"
+                            placeholder="jane@QuoteUs.ca"
                           />
                         </div>
                         <div className="space-y-2">
@@ -3811,7 +3811,7 @@ export default function AdminCRMPage() {
                     <Label>Email Username</Label>
                     <Input 
                       type="text" 
-                      placeholder="info@quoteus.ca"
+                      placeholder="info@QuoteUs.ca"
                       value={smtpUsername}
                       onChange={(e) => setSmtpUsername(e.target.value)}
                       data-testid="input-smtp-username"
@@ -3845,7 +3845,7 @@ export default function AdminCRMPage() {
                       <Label>From Email Address</Label>
                       <Input 
                         type="email" 
-                        placeholder="info@quoteus.ca"
+                        placeholder="info@QuoteUs.ca"
                         value={smtpFromEmail}
                         onChange={(e) => setSmtpFromEmail(e.target.value)}
                         data-testid="input-email-from"
@@ -4021,7 +4021,7 @@ export default function AdminCRMPage() {
                     <div className="flex gap-2">
                       <Input 
                         type="email" 
-                        placeholder="info@quoteus.ca"
+                        placeholder="info@QuoteUs.ca"
                         value={notificationEmail}
                         onChange={(e) => setNotificationEmail(e.target.value)}
                         data-testid="input-admin-email"

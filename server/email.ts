@@ -302,7 +302,7 @@ export function generateThankYouEmail(data: {
         <div style="padding: 20px; text-align: center; color: #6b7280; font-size: 14px; background-color: #f3f4f6;">
           <p style="margin: 0 0 8px 0;">Need help? Contact us:</p>
           <p style="margin: 0; font-weight: bold;">1-877-253-2695</p>
-          <p style="margin: 8px 0 0 0;">or email us at <a href="mailto:quote@quoteus.ca" style="color: #16a34a; text-decoration: none;">quote@quoteus.ca</a></p>
+          <p style="margin: 8px 0 0 0;">or email us at <a href="mailto:quote@quoteus.ca" style="color: #16a34a; text-decoration: none;">quote@QuoteUs.ca</a></p>
         </div>
         <div style="padding: 15px; text-align: center; color: #9ca3af; font-size: 12px;">
           <p style="margin: 0;">QuoteUs.ca - Your Trusted Ontario Insurance Partner</p>

@@ -205,7 +205,7 @@ export default function AdPreviewPage() {
         </Card>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          If you have any questions, please contact us at info@quoteus.ca
+          If you have any questions, please contact us at info@QuoteUs.ca
         </p>
       </div>
     </div>
