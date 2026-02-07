@@ -11,6 +11,7 @@ export const quoteStatusEnum = pgEnum("quote_status", ["New", "Contacted", "Quot
 export const priorityEnum = pgEnum("priority", ["High", "Medium", "Low"]);
 export const activityTypeEnum = pgEnum("activity_type", ["status_change", "assignment", "note", "email_sent", "system"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["credit_purchase", "lead_deduction", "manual_credit", "adjustment", "refund"]);
+export const brokerTierEnum = pgEnum("broker_tier", ["bronze", "silver", "gold", "platinum"]);
 export const adMediaTypeEnum = pgEnum("ad_media_type", ["image", "video"]);
 export const adStatusEnum = pgEnum("ad_status", ["active", "paused", "scheduled", "expired"]);
 
@@ -37,6 +38,9 @@ export const users = pgTable("users", {
   googleId: text("google_id"),
   assignedPostalCodes: text("assigned_postal_codes").array(),
   assignedCities: text("assigned_cities").array(),
+  brokerTier: brokerTierEnum("broker_tier"),
+  preferredInsuranceTypes: text("preferred_insurance_types").array(),
+  preferredDemographics: text("preferred_demographics"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -120,6 +124,16 @@ export const advertisements = pgTable("advertisements", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Broker Notes Table - internal notes by admin/manager, NOT visible to brokers
+export const brokerNotes = pgTable("broker_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  brokerId: varchar("broker_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  authorId: varchar("author_id").notNull().references(() => users.id),
+  authorName: text("author_name").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Partner Redirects Table - for redirecting users to partner sites after quote submission
 export const partnerRedirects = pgTable("partner_redirects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -167,6 +181,11 @@ export const insertAdvertisementSchema = createInsertSchema(advertisements).omit
   updatedAt: true,
 });
 
+export const insertBrokerNoteSchema = createInsertSchema(brokerNotes).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertPartnerRedirectSchema = createInsertSchema(partnerRedirects).omit({
   id: true,
   createdAt: true,
@@ -191,6 +210,9 @@ export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
 
 export type Advertisement = typeof advertisements.$inferSelect;
 export type InsertAdvertisement = z.infer<typeof insertAdvertisementSchema>;
+
+export type BrokerNote = typeof brokerNotes.$inferSelect;
+export type InsertBrokerNote = z.infer<typeof insertBrokerNoteSchema>;
 
 export type PartnerRedirect = typeof partnerRedirects.$inferSelect;
 export type InsertPartnerRedirect = z.infer<typeof insertPartnerRedirectSchema>;
