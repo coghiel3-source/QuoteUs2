@@ -1085,8 +1085,8 @@ export default function AdminCRMPage() {
   };
 
   const filteredQuotes = quotes.filter(quote => {
-    // Brokers should not see expired leads in their list
-    if (user?.role === 'broker' && quote.status === 'Expired') return false;
+    // Hide expired leads only from the broker who failed to action them
+    if (user?.role === 'broker' && quote.status === 'Expired' && quote.assignedTo === user.id) return false;
     
     const matchesSearch = 
       quote.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
