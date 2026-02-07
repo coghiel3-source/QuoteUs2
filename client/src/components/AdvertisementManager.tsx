@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check, CheckCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check, CheckCircle, X } from "lucide-react";
 
 interface Advertisement {
   id: string;
@@ -72,6 +72,7 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
   const [adsPerSlot, setAdsPerSlot] = useState(1);
   const [savingAdsPerSlot, setSavingAdsPerSlot] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeTextPositions, setActiveTextPositions] = useState<Set<string>>(new Set());
   
   // Form state
   const [formData, setFormData] = useState({
@@ -187,6 +188,7 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       bottomBgColor: "#1e3a5f",
     });
     setEditingAd(null);
+    setActiveTextPositions(new Set());
   };
 
   const openCreateDialog = () => {
@@ -221,6 +223,11 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       centerBgColor: ad.centerBgColor || "#1e3a5f",
       bottomBgColor: ad.bottomBgColor || "#1e3a5f",
     });
+    const positions = new Set<string>();
+    if (ad.topText) positions.add("top");
+    if (ad.centerText) positions.add("center");
+    if (ad.bottomText) positions.add("bottom");
+    setActiveTextPositions(positions);
     setDialogOpen(true);
   };
 
@@ -628,15 +635,63 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
 
             <div className="border rounded-lg p-4 bg-blue-50">
               <Label className="mb-3 block text-sm font-semibold">Ad Text Overlays</Label>
-              <p className="text-xs text-muted-foreground mb-4">Add text to any or all positions. Each position has its own text, text color, and background color. Use emojis like 🚗 🏠 💰 ⭐ ✨ 🔥</p>
-              <div className="space-y-4">
+              <p className="text-xs text-muted-foreground mb-3">Click a button below to add text at that position. Use emojis like 🚗 🏠 💰 ⭐ ✨ 🔥</p>
+              <div className="flex gap-2 mb-4">
+                {[
+                  { key: "top", label: "Top" },
+                  { key: "center", label: "Center" },
+                  { key: "bottom", label: "Bottom" },
+                ].map((pos) => (
+                  <Button
+                    key={pos.key}
+                    type="button"
+                    size="sm"
+                    variant={activeTextPositions.has(pos.key) ? "default" : "outline"}
+                    onClick={() => {
+                      setActiveTextPositions(prev => {
+                        const next = new Set(prev);
+                        if (next.has(pos.key)) {
+                          next.delete(pos.key);
+                          const textKey = pos.key === "top" ? "topText" : pos.key === "center" ? "centerText" : "bottomText";
+                          setFormData(p => ({ ...p, [textKey]: "" }));
+                        } else {
+                          next.add(pos.key);
+                        }
+                        return next;
+                      });
+                    }}
+                    data-testid={`button-add-${pos.key}-text`}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    {pos.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="space-y-3">
                 {[
                   { key: "top", label: "Top Text", textKey: "topText", colorKey: "topTextColor", bgKey: "topBgColor", placeholder: "PLUMBER AVAILABLE 24/7" },
                   { key: "center", label: "Center Text", textKey: "centerText", colorKey: "centerTextColor", bgKey: "centerBgColor", placeholder: "Fast & Reliable Service" },
                   { key: "bottom", label: "Bottom Text", textKey: "bottomText", colorKey: "bottomTextColor", bgKey: "bottomBgColor", placeholder: "CALL NOW\n555-123-4567" },
-                ].map((pos) => (
+                ].filter(pos => activeTextPositions.has(pos.key)).map((pos) => (
                   <div key={pos.key} className="border rounded-md p-3 bg-white">
-                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 block">{pos.label}</Label>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{pos.label}</Label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTextPositions(prev => {
+                            const next = new Set(prev);
+                            next.delete(pos.key);
+                            return next;
+                          });
+                          setFormData(p => ({ ...p, [pos.textKey]: "" }));
+                        }}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                        data-testid={`button-remove-${pos.key}-text`}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                     <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-start">
                       <Textarea
                         value={(formData as any)[pos.textKey]}
