@@ -76,6 +76,11 @@ app.post(
   }
 );
 
+// Serve uploaded files (ads, etc.) directly from the uploads directory
+import path from "path";
+const uploadsDir = path.join(process.cwd(), "client", "public", "uploads");
+app.use("/uploads", express.static(uploadsDir));
+
 // Now apply JSON middleware for all other routes
 app.use(
   express.json({

@@ -1723,7 +1723,7 @@ export async function registerRoutes(
   // Create advertisement
   app.post("/api/admin/advertisements", async (req, res) => {
     try {
-      const { name, mediaType, mediaUrl, linkUrl, openInPopup, targetPages, status, startDate, endDate, priority, createdBy } = req.body;
+      const { name, mediaType, mediaUrl, linkUrl, openInPopup, targetPages, status, startDate, endDate, priority, createdBy, adText, textColor, backgroundColor, textPosition } = req.body;
       
       if (!name || !mediaUrl) {
         return res.status(400).json({ error: "Name and media URL are required" });
@@ -1741,6 +1741,10 @@ export async function registerRoutes(
         endDate: endDate ? new Date(endDate) : null,
         priority: priority || 1,
         createdBy: createdBy || null,
+        adText: adText || null,
+        textColor: textColor || "#ffffff",
+        backgroundColor: backgroundColor || "#1e3a5f",
+        textPosition: textPosition || "bottom",
       });
       
       res.status(201).json(ad);
@@ -1753,7 +1757,7 @@ export async function registerRoutes(
   app.patch("/api/admin/advertisements/:id", async (req, res) => {
     try {
       const updates: any = {};
-      const fields = ["name", "mediaType", "mediaUrl", "linkUrl", "openInPopup", "targetPages", "status", "startDate", "endDate", "priority"];
+      const fields = ["name", "mediaType", "mediaUrl", "linkUrl", "openInPopup", "targetPages", "status", "startDate", "endDate", "priority", "adText", "textColor", "backgroundColor", "textPosition"];
       
       fields.forEach(field => {
         if (req.body[field] !== undefined) {
