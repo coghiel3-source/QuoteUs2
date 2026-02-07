@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -490,7 +491,8 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                     style={{ 
                       color: editingAd.textColor || '#ffffff',
                       backgroundColor: `${editingAd.backgroundColor || '#1e3a5f'}dd`,
-                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                      whiteSpace: 'pre-line'
                     }}
                   >
                     {editingAd.adText}
@@ -562,13 +564,14 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Ad Text & Emoji (optional)</Label>
-                  <Input 
+                  <Textarea 
                     value={formData.adText} 
                     onChange={(e) => setFormData(prev => ({ ...prev, adText: e.target.value }))}
-                    placeholder="🚗 Get 20% off your auto service! 🔧"
+                    placeholder={"🚗 Get 20% off your auto service! 🔧\nLine 2: Call now for a free estimate!\n⭐ Limited time offer ⭐"}
+                    rows={3}
                     data-testid="input-ad-text"
                   />
-                  <p className="text-xs text-muted-foreground">Add text and emojis to overlay on your ad. Use emoji shortcuts like 🚗 🏠 💰 ⭐ ✨</p>
+                  <p className="text-xs text-muted-foreground">Add multiple lines of text and emojis. Press Enter for a new line. Use emojis like 🚗 🏠 💰 ⭐ ✨ 🔥 💎 🎉</p>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4">
@@ -658,7 +661,8 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                         style={{ 
                           color: formData.textColor, 
                           backgroundColor: `${formData.backgroundColor}dd`,
-                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                          whiteSpace: 'pre-line'
                         }}
                       >
                         {formData.adText}

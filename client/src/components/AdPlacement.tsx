@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type MouseEvent } from "react";
+import { useState, useEffect, useRef, useMemo, type MouseEvent } from "react";
 import { X } from "lucide-react";
 
 interface Advertisement {
@@ -26,13 +26,21 @@ interface AdPlacementProps {
   className?: string;
 }
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export default function AdPlacement({ page, className = "" }: AdPlacementProps) {
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
   const [popupAd, setPopupAd] = useState<Advertisement | null>(null);
   const [maxAds, setMaxAds] = useState(1);
   const trackedAdIds = useRef<Set<string>>(new Set());
-
   useEffect(() => {
     fetchAdsPerSlotSetting();
   }, []);
@@ -75,7 +83,7 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
         if (maxAds === 1) {
           setAds(data ? [data] : []);
         } else {
-          setAds(Array.isArray(data) ? data : []);
+          setAds(Array.isArray(data) ? data : data ? [data] : []);
         }
       }
     } catch (error) {
@@ -113,14 +121,27 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
     }
   };
 
+  const displayAds = useMemo(() => {
+    if (ads.length <= 1) return ads;
+    return shuffleArray(ads);
+  }, [ads]);
+
   if (loading || ads.length === 0) {
     return null;
   }
 
+  const adCount = displayAds.length;
+
+  const getGridClass = () => {
+    if (adCount === 1) return "";
+    if (adCount === 2) return "grid grid-cols-2 gap-3";
+    return "grid grid-cols-3 gap-3";
+  };
+
   const renderAd = (ad: Advertisement, index: number) => (
     <div 
       key={ad.id}
-      className="cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-lg transition-all hover:scale-[1.01] relative flex-1"
+      className="cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-lg transition-all hover:scale-[1.01] relative"
       onClick={(e) => handleAdClick(e, ad)}
       data-testid={`ad-placement-${page}-${index}`}
     >
@@ -130,14 +151,23 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
             src={ad.mediaUrl} 
             alt={ad.name}
             className="w-full h-auto block"
-            style={{ maxHeight: '300px', objectFit: 'contain', width: '100%', backgroundColor: ad.backgroundColor || '#f8f9fa' }}
+            style={{ 
+              maxHeight: adCount === 1 ? '300px' : '200px', 
+              objectFit: 'contain', 
+              width: '100%', 
+              backgroundColor: ad.backgroundColor || '#f8f9fa' 
+            }}
             data-testid={`ad-image-${index}`}
           />
         ) : (
           <video 
             src={ad.mediaUrl}
             className="w-full h-auto block"
-            style={{ maxHeight: '300px', objectFit: 'contain', backgroundColor: ad.backgroundColor || '#000' }}
+            style={{ 
+              maxHeight: adCount === 1 ? '300px' : '200px', 
+              objectFit: 'contain', 
+              backgroundColor: ad.backgroundColor || '#000' 
+            }}
             autoPlay
             muted
             loop
@@ -147,7 +177,9 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
         )}
         {ad.adText && (
           <div 
-            className={`absolute left-0 right-0 p-2 text-center font-semibold text-sm md:text-lg ${
+            className={`absolute left-0 right-0 p-2 text-center font-semibold ${
+              adCount === 1 ? 'text-sm md:text-lg' : 'text-xs md:text-sm'
+            } ${
               ad.textPosition === 'top' ? 'top-0' : 
               ad.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
               'bottom-0'
@@ -155,7 +187,8 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
             style={{ 
               color: ad.textColor || '#ffffff', 
               backgroundColor: `${ad.backgroundColor || '#1e3a5f'}dd`,
-              textShadow: '1px 1px 2px rgba(0,0,0,0.5)'
+              textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+              whiteSpace: 'pre-line'
             }}
             data-testid={`ad-text-overlay-${index}`}
           >
@@ -172,8 +205,8 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
         className={`ad-placement ${className}`}
         data-testid={`ad-placement-${page}`}
       >
-        <div className={`${ads.length > 1 ? 'flex gap-3' : ''}`}>
-          {ads.map((ad, index) => renderAd(ad, index))}
+        <div className={getGridClass()}>
+          {displayAds.map((ad, index) => renderAd(ad, index))}
         </div>
         <p className="text-xs text-center text-muted-foreground mt-1">Sponsored</p>
       </div>
