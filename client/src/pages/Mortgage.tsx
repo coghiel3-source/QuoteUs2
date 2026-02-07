@@ -446,9 +446,9 @@ export default function MortgagePage() {
                   By submitting, you agree to be contacted by a licensed mortgage specialist.
                 </p>
 
-                <AdPlacement page="Mortgage" className="mt-6" />
               </div>
             </form>
+            <AdPlacement page="Mortgage" className="mt-6" />
           </CardContent>
         </Card>
 

@@ -166,8 +166,8 @@ export default function PetPage() {
                 {isSubmitting ? "Processing..." : "Get Pet Quote"}
               </Button>
 
-              <AdPlacement page="Pet" className="mt-6" />
             </form>
+            <AdPlacement page="Pet" className="mt-6" />
           </CardContent>
         </Card>
       </div>

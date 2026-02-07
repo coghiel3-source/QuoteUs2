@@ -209,8 +209,8 @@ export default function BusinessPage() {
                 {isSubmitting ? "Processing..." : "Get Business Quote"}
               </Button>
 
-              <AdPlacement page="Business" className="mt-6" />
             </form>
+            <AdPlacement page="Business" className="mt-6" />
           </CardContent>
         </Card>
       </div>

@@ -193,8 +193,8 @@ export default function TravelPage() {
                 {isSubmitting ? "Processing..." : "Get Travel Quote"}
               </Button>
 
-              <AdPlacement page="Travel" className="mt-6" />
             </form>
+            <AdPlacement page="Travel" className="mt-6" />
           </CardContent>
         </Card>
       </div>

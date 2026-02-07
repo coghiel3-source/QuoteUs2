@@ -254,8 +254,8 @@ export default function LifePage() {
                 {isSubmitting ? "Processing..." : "Get Life Quote"}
               </Button>
 
-              <AdPlacement page="Life" className="mt-6" />
             </form>
+            <AdPlacement page="Life" className="mt-6" />
           </CardContent>
         </Card>
       </div>

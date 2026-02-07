@@ -334,8 +334,8 @@ export default function HomeInsurancePage() {
                 {isSubmitting ? "Processing..." : "Get Home Quote"}
               </Button>
 
-              <AdPlacement page="Home" className="mt-6" />
             </form>
+            <AdPlacement page="Home" className="mt-6" />
           </CardContent>
         </Card>
       </div>

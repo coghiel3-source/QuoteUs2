@@ -306,8 +306,8 @@ export default function TenantPage() {
                 {isSubmitting ? "Processing..." : "Get Tenant Quote"}
               </Button>
 
-              <AdPlacement page="Tenant" className="mt-6" />
             </form>
+            <AdPlacement page="Tenant" className="mt-6" />
           </CardContent>
         </Card>
       </div>

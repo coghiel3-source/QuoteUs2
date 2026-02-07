@@ -1102,22 +1102,22 @@ export default function AutoPage() {
               </p>
             </div>
 
-            {/* Advertisement */}
-            <AdPlacement page="Auto" className="mt-6" />
-
-            {/* SEO Content */}
-            <div className="mt-16 prose prose-slate max-w-none">
-              <h2 className="font-serif text-primary">Auto Insurance — QuoteUs.ca (Ontario)</h2>
-              <p>
-                Save on auto insurance across Ontario without sacrificing coverage. QuoteUs.ca helps Ontario drivers compare multiple carriers and find the policy that fits your driving profile and budget. Our auto quoting tool supports G1, G2 and full G licences, multiple vehicles, and additional drivers — so your quote reflects your real risk and usage. Enter your vehicle year, make and model (we include North American models back to 1990), add drivers and licence dates, and get a fast, Ontario-specific estimate.
-              </p>
-              <p>
-                We focus on transparency: each quote includes a clear breakdown of coverage types (liability, accident benefits, collision, comprehensive) and cost drivers like age, driving history, annual kilometres and garaging postal code. If you opt in, you can provide optional information such as driver licence numbers (stored securely) to speed up the broker review. Our brokers review each lead and can follow up to tailor coverage or identify discounts you may have missed.
-              </p>
-            </div>
-
           </div>
         </form>
+
+        {/* Advertisement */}
+        <AdPlacement page="Auto" className="mt-6" />
+
+        {/* SEO Content */}
+        <div className="mt-16 prose prose-slate max-w-none">
+          <h2 className="font-serif text-primary">Auto Insurance — QuoteUs.ca (Ontario)</h2>
+          <p>
+            Save on auto insurance across Ontario without sacrificing coverage. QuoteUs.ca helps Ontario drivers compare multiple carriers and find the policy that fits your driving profile and budget. Our auto quoting tool supports G1, G2 and full G licences, multiple vehicles, and additional drivers — so your quote reflects your real risk and usage. Enter your vehicle year, make and model (we include North American models back to 1990), add drivers and licence dates, and get a fast, Ontario-specific estimate.
+          </p>
+          <p>
+            We focus on transparency: each quote includes a clear breakdown of coverage types (liability, accident benefits, collision, comprehensive) and cost drivers like age, driving history, annual kilometres and garaging postal code. If you opt in, you can provide optional information such as driver licence numbers (stored securely) to speed up the broker review. Our brokers review each lead and can follow up to tailor coverage or identify discounts you may have missed.
+          </p>
+        </div>
       </div>
     </div>
   );
