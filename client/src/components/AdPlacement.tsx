@@ -19,6 +19,15 @@ interface Advertisement {
   textColor: string | null;
   backgroundColor: string | null;
   textPosition: string | null;
+  topText: string | null;
+  centerText: string | null;
+  bottomText: string | null;
+  topTextColor: string | null;
+  centerTextColor: string | null;
+  bottomTextColor: string | null;
+  topBgColor: string | null;
+  centerBgColor: string | null;
+  bottomBgColor: string | null;
 }
 
 interface AdPlacementProps {
@@ -41,6 +50,7 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
   const [popupAd, setPopupAd] = useState<Advertisement | null>(null);
   const [maxAds, setMaxAds] = useState(1);
   const trackedAdIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     fetchAdsPerSlotSetting();
   }, []);
@@ -131,42 +141,46 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
   }
 
   const adCount = displayAds.length;
+  const hasTopText = (ad: Advertisement) => ad.topText;
+  const hasCenterText = (ad: Advertisement) => ad.centerText;
+  const hasBottomText = (ad: Advertisement) => ad.bottomText;
+  const hasLegacyText = (ad: Advertisement) => ad.adText && !ad.topText && !ad.centerText && !ad.bottomText;
 
   const getGridClass = () => {
     if (adCount === 1) return "";
-    if (adCount === 2) return "grid grid-cols-2 gap-3";
-    return "grid grid-cols-3 gap-3";
+    if (adCount === 2) return "grid grid-cols-2 gap-4";
+    return "grid grid-cols-3 gap-4";
   };
+
+  const textSizeClass = adCount === 1 ? 'text-sm md:text-base' : 'text-xs md:text-sm';
 
   const renderAd = (ad: Advertisement, index: number) => (
     <div 
       key={ad.id}
-      className="cursor-pointer overflow-hidden rounded-lg border border-border/50 shadow-md hover:shadow-lg transition-all hover:scale-[1.01] relative"
+      className="cursor-pointer overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all hover:scale-[1.01] relative"
       onClick={(e) => handleAdClick(e, ad)}
       data-testid={`ad-placement-${page}-${index}`}
     >
-      <div className="relative">
+      <div className="relative" style={{ minHeight: adCount === 1 ? '200px' : '180px' }}>
         {ad.mediaType === "image" ? (
           <img 
             src={ad.mediaUrl} 
             alt={ad.name}
-            className="w-full h-auto block"
+            className="w-full h-full block"
             style={{ 
-              maxHeight: adCount === 1 ? '300px' : '200px', 
-              objectFit: 'contain', 
-              width: '100%', 
-              backgroundColor: ad.backgroundColor || '#f8f9fa' 
+              height: adCount === 1 ? '300px' : '250px',
+              objectFit: 'cover', 
+              width: '100%',
             }}
             data-testid={`ad-image-${index}`}
           />
         ) : (
           <video 
             src={ad.mediaUrl}
-            className="w-full h-auto block"
+            className="w-full h-full block"
             style={{ 
-              maxHeight: adCount === 1 ? '300px' : '200px', 
-              objectFit: 'contain', 
-              backgroundColor: ad.backgroundColor || '#000' 
+              height: adCount === 1 ? '300px' : '250px',
+              objectFit: 'cover',
             }}
             autoPlay
             muted
@@ -175,11 +189,51 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
             data-testid={`ad-video-${index}`}
           />
         )}
-        {ad.adText && (
+        {hasTopText(ad) && (
           <div 
-            className={`absolute left-0 right-0 p-2 text-center font-semibold ${
-              adCount === 1 ? 'text-sm md:text-lg' : 'text-xs md:text-sm'
-            } ${
+            className={`absolute left-0 right-0 top-0 p-2 text-center font-bold ${textSizeClass}`}
+            style={{ 
+              color: ad.topTextColor || '#ffffff', 
+              backgroundColor: `${ad.topBgColor || '#1e3a5f'}dd`,
+              textShadow: '1px 1px 3px rgba(0,0,0,0.7)',
+              whiteSpace: 'pre-line'
+            }}
+            data-testid={`ad-top-text-${index}`}
+          >
+            {ad.topText}
+          </div>
+        )}
+        {hasCenterText(ad) && (
+          <div 
+            className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 p-2 text-center font-semibold italic ${textSizeClass}`}
+            style={{ 
+              color: ad.centerTextColor || '#ffffff', 
+              backgroundColor: `${ad.centerBgColor || '#1e3a5f'}99`,
+              textShadow: '1px 1px 3px rgba(0,0,0,0.7)',
+              whiteSpace: 'pre-line'
+            }}
+            data-testid={`ad-center-text-${index}`}
+          >
+            {ad.centerText}
+          </div>
+        )}
+        {hasBottomText(ad) && (
+          <div 
+            className={`absolute left-0 right-0 bottom-0 p-2 text-center font-bold ${textSizeClass}`}
+            style={{ 
+              color: ad.bottomTextColor || '#ffffff', 
+              backgroundColor: `${ad.bottomBgColor || '#1e3a5f'}dd`,
+              textShadow: '1px 1px 3px rgba(0,0,0,0.7)',
+              whiteSpace: 'pre-line'
+            }}
+            data-testid={`ad-bottom-text-${index}`}
+          >
+            {ad.bottomText}
+          </div>
+        )}
+        {hasLegacyText(ad) && (
+          <div 
+            className={`absolute left-0 right-0 p-2 text-center font-semibold ${textSizeClass} ${
               ad.textPosition === 'top' ? 'top-0' : 
               ad.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
               'bottom-0'

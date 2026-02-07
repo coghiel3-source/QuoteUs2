@@ -32,6 +32,15 @@ interface Advertisement {
   textColor: string | null;
   backgroundColor: string | null;
   textPosition: string | null;
+  topText: string | null;
+  centerText: string | null;
+  bottomText: string | null;
+  topTextColor: string | null;
+  centerTextColor: string | null;
+  bottomTextColor: string | null;
+  topBgColor: string | null;
+  centerBgColor: string | null;
+  bottomBgColor: string | null;
   createdAt: string;
 }
 
@@ -80,6 +89,15 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
     textColor: "#ffffff",
     backgroundColor: "#1e3a5f",
     textPosition: "bottom",
+    topText: "",
+    centerText: "",
+    bottomText: "",
+    topTextColor: "#ffffff",
+    centerTextColor: "#ffffff",
+    bottomTextColor: "#ffffff",
+    topBgColor: "#1e3a5f",
+    centerBgColor: "#1e3a5f",
+    bottomBgColor: "#1e3a5f",
   });
 
   useEffect(() => {
@@ -158,6 +176,15 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       textColor: "#ffffff",
       backgroundColor: "#1e3a5f",
       textPosition: "bottom",
+      topText: "",
+      centerText: "",
+      bottomText: "",
+      topTextColor: "#ffffff",
+      centerTextColor: "#ffffff",
+      bottomTextColor: "#ffffff",
+      topBgColor: "#1e3a5f",
+      centerBgColor: "#1e3a5f",
+      bottomBgColor: "#1e3a5f",
     });
     setEditingAd(null);
   };
@@ -184,6 +211,15 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       textColor: ad.textColor || "#ffffff",
       backgroundColor: ad.backgroundColor || "#1e3a5f",
       textPosition: ad.textPosition || "bottom",
+      topText: ad.topText || "",
+      centerText: ad.centerText || "",
+      bottomText: ad.bottomText || "",
+      topTextColor: ad.topTextColor || "#ffffff",
+      centerTextColor: ad.centerTextColor || "#ffffff",
+      bottomTextColor: ad.bottomTextColor || "#ffffff",
+      topBgColor: ad.topBgColor || "#1e3a5f",
+      centerBgColor: ad.centerBgColor || "#1e3a5f",
+      bottomBgColor: ad.bottomBgColor || "#1e3a5f",
     });
     setDialogOpen(true);
   };
@@ -490,21 +526,43 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                     controls
                   />
                 )}
-                {editingAd.adText && (
+                {editingAd.topText && (
                   <div 
-                    className={`absolute left-0 right-0 p-3 text-center font-semibold text-lg ${
-                      editingAd.textPosition === 'top' ? 'top-0' : 
-                      editingAd.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
-                      'bottom-0'
-                    }`}
+                    className="absolute left-0 right-0 top-0 p-2 text-center font-semibold text-sm"
                     style={{ 
-                      color: editingAd.textColor || '#ffffff',
-                      backgroundColor: `${editingAd.backgroundColor || '#1e3a5f'}dd`,
+                      color: editingAd.topTextColor || '#ffffff',
+                      backgroundColor: `${editingAd.topBgColor || '#1e3a5f'}dd`,
                       textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
                       whiteSpace: 'pre-line'
                     }}
                   >
-                    {editingAd.adText}
+                    {editingAd.topText}
+                  </div>
+                )}
+                {editingAd.centerText && (
+                  <div 
+                    className="absolute left-0 right-0 top-1/2 -translate-y-1/2 p-2 text-center font-semibold text-sm"
+                    style={{ 
+                      color: editingAd.centerTextColor || '#ffffff',
+                      backgroundColor: `${editingAd.centerBgColor || '#1e3a5f'}dd`,
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                      whiteSpace: 'pre-line'
+                    }}
+                  >
+                    {editingAd.centerText}
+                  </div>
+                )}
+                {editingAd.bottomText && (
+                  <div 
+                    className="absolute left-0 right-0 bottom-0 p-2 text-center font-semibold text-sm"
+                    style={{ 
+                      color: editingAd.bottomTextColor || '#ffffff',
+                      backgroundColor: `${editingAd.bottomBgColor || '#1e3a5f'}dd`,
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                      whiteSpace: 'pre-line'
+                    }}
+                  >
+                    {editingAd.bottomText}
                   </div>
                 )}
               </div>
@@ -569,71 +627,48 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
             </div>
 
             <div className="border rounded-lg p-4 bg-blue-50">
-              <Label className="mb-3 block text-sm font-semibold">Ad Design Options</Label>
+              <Label className="mb-3 block text-sm font-semibold">Ad Text Overlays</Label>
+              <p className="text-xs text-muted-foreground mb-4">Add text to any or all positions. Each position has its own text, text color, and background color. Use emojis like 🚗 🏠 💰 ⭐ ✨ 🔥</p>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Ad Text & Emoji (optional)</Label>
-                  <Textarea 
-                    value={formData.adText} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, adText: e.target.value }))}
-                    placeholder={"🚗 Get 20% off your auto service! 🔧\nLine 2: Call now for a free estimate!\n⭐ Limited time offer ⭐"}
-                    rows={3}
-                    data-testid="input-ad-text"
-                  />
-                  <p className="text-xs text-muted-foreground">Add multiple lines of text and emojis. Press Enter for a new line. Use emojis like 🚗 🏠 💰 ⭐ ✨ 🔥 💎 🎉</p>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Text Color</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color"
-                        value={formData.textColor} 
-                        onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
-                        className="w-12 h-10 p-1 cursor-pointer"
-                        data-testid="input-text-color"
+                {[
+                  { key: "top", label: "Top Text", textKey: "topText", colorKey: "topTextColor", bgKey: "topBgColor", placeholder: "PLUMBER AVAILABLE 24/7" },
+                  { key: "center", label: "Center Text", textKey: "centerText", colorKey: "centerTextColor", bgKey: "centerBgColor", placeholder: "Fast & Reliable Service" },
+                  { key: "bottom", label: "Bottom Text", textKey: "bottomText", colorKey: "bottomTextColor", bgKey: "bottomBgColor", placeholder: "CALL NOW\n555-123-4567" },
+                ].map((pos) => (
+                  <div key={pos.key} className="border rounded-md p-3 bg-white">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 block">{pos.label}</Label>
+                    <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-start">
+                      <Textarea
+                        value={(formData as any)[pos.textKey]}
+                        onChange={(e) => setFormData(prev => ({ ...prev, [pos.textKey]: e.target.value }))}
+                        placeholder={pos.placeholder}
+                        rows={2}
+                        className="text-sm"
+                        data-testid={`input-${pos.key}-text`}
                       />
-                      <Input 
-                        value={formData.textColor} 
-                        onChange={(e) => setFormData(prev => ({ ...prev, textColor: e.target.value }))}
-                        placeholder="#ffffff"
-                        className="flex-1"
-                      />
+                      <div className="space-y-1">
+                        <Label className="text-[10px]">Text</Label>
+                        <Input
+                          type="color"
+                          value={(formData as any)[pos.colorKey]}
+                          onChange={(e) => setFormData(prev => ({ ...prev, [pos.colorKey]: e.target.value }))}
+                          className="w-10 h-8 p-0.5 cursor-pointer"
+                          data-testid={`input-${pos.key}-text-color`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px]">BG</Label>
+                        <Input
+                          type="color"
+                          value={(formData as any)[pos.bgKey]}
+                          onChange={(e) => setFormData(prev => ({ ...prev, [pos.bgKey]: e.target.value }))}
+                          className="w-10 h-8 p-0.5 cursor-pointer"
+                          data-testid={`input-${pos.key}-bg-color`}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Background Color</Label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="color"
-                        value={formData.backgroundColor} 
-                        onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
-                        className="w-12 h-10 p-1 cursor-pointer"
-                        data-testid="input-background-color"
-                      />
-                      <Input 
-                        value={formData.backgroundColor} 
-                        onChange={(e) => setFormData(prev => ({ ...prev, backgroundColor: e.target.value }))}
-                        placeholder="#1e3a5f"
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Text Position</Label>
-                    <Select value={formData.textPosition} onValueChange={(v) => setFormData(prev => ({ ...prev, textPosition: v }))}>
-                      <SelectTrigger data-testid="select-text-position">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="top">Top</SelectItem>
-                        <SelectItem value="center">Center</SelectItem>
-                        <SelectItem value="bottom">Bottom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -660,21 +695,43 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                     ) : (
                       <div className="h-20"></div>
                     )}
-                    {formData.adText && (
+                    {formData.topText && (
                       <div 
-                        className={`absolute left-0 right-0 p-3 text-center font-semibold text-lg ${
-                          formData.textPosition === 'top' ? 'top-0' : 
-                          formData.textPosition === 'center' ? 'top-1/2 -translate-y-1/2' : 
-                          'bottom-0'
-                        }`}
+                        className="absolute left-0 right-0 top-0 p-2 text-center font-semibold text-sm"
                         style={{ 
-                          color: formData.textColor, 
-                          backgroundColor: `${formData.backgroundColor}dd`,
+                          color: formData.topTextColor, 
+                          backgroundColor: `${formData.topBgColor}dd`,
                           textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
                           whiteSpace: 'pre-line'
                         }}
                       >
-                        {formData.adText}
+                        {formData.topText}
+                      </div>
+                    )}
+                    {formData.centerText && (
+                      <div 
+                        className="absolute left-0 right-0 top-1/2 -translate-y-1/2 p-2 text-center font-semibold text-sm"
+                        style={{ 
+                          color: formData.centerTextColor, 
+                          backgroundColor: `${formData.centerBgColor}dd`,
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                          whiteSpace: 'pre-line'
+                        }}
+                      >
+                        {formData.centerText}
+                      </div>
+                    )}
+                    {formData.bottomText && (
+                      <div 
+                        className="absolute left-0 right-0 bottom-0 p-2 text-center font-semibold text-sm"
+                        style={{ 
+                          color: formData.bottomTextColor, 
+                          backgroundColor: `${formData.bottomBgColor}dd`,
+                          textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                          whiteSpace: 'pre-line'
+                        }}
+                      >
+                        {formData.bottomText}
                       </div>
                     )}
                   </div>

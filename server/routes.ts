@@ -1723,7 +1723,7 @@ export async function registerRoutes(
   // Create advertisement
   app.post("/api/admin/advertisements", async (req, res) => {
     try {
-      const { name, mediaType, mediaUrl, linkUrl, openInPopup, targetPages, status, startDate, endDate, priority, createdBy, adText, textColor, backgroundColor, textPosition } = req.body;
+      const { name, mediaType, mediaUrl, linkUrl, openInPopup, targetPages, status, startDate, endDate, priority, createdBy, adText, textColor, backgroundColor, textPosition, topText, centerText, bottomText, topTextColor, centerTextColor, bottomTextColor, topBgColor, centerBgColor, bottomBgColor } = req.body;
       
       if (!name || !mediaUrl) {
         return res.status(400).json({ error: "Name and media URL are required" });
@@ -1745,6 +1745,15 @@ export async function registerRoutes(
         textColor: textColor || "#ffffff",
         backgroundColor: backgroundColor || "#1e3a5f",
         textPosition: textPosition || "bottom",
+        topText: topText || null,
+        centerText: centerText || null,
+        bottomText: bottomText || null,
+        topTextColor: topTextColor || "#ffffff",
+        centerTextColor: centerTextColor || "#ffffff",
+        bottomTextColor: bottomTextColor || "#ffffff",
+        topBgColor: topBgColor || "#1e3a5f",
+        centerBgColor: centerBgColor || "#1e3a5f",
+        bottomBgColor: bottomBgColor || "#1e3a5f",
       });
       
       res.status(201).json(ad);
@@ -1757,7 +1766,7 @@ export async function registerRoutes(
   app.patch("/api/admin/advertisements/:id", async (req, res) => {
     try {
       const updates: any = {};
-      const fields = ["name", "mediaType", "mediaUrl", "linkUrl", "openInPopup", "targetPages", "status", "startDate", "endDate", "priority", "adText", "textColor", "backgroundColor", "textPosition"];
+      const fields = ["name", "mediaType", "mediaUrl", "linkUrl", "openInPopup", "targetPages", "status", "startDate", "endDate", "priority", "adText", "textColor", "backgroundColor", "textPosition", "topText", "centerText", "bottomText", "topTextColor", "centerTextColor", "bottomTextColor", "topBgColor", "centerBgColor", "bottomBgColor"];
       
       fields.forEach(field => {
         if (req.body[field] !== undefined) {

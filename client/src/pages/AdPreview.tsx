@@ -18,6 +18,15 @@ interface Advertisement {
   textColor: string | null;
   backgroundColor: string | null;
   textPosition: string | null;
+  topText: string | null;
+  centerText: string | null;
+  bottomText: string | null;
+  topTextColor: string | null;
+  centerTextColor: string | null;
+  bottomTextColor: string | null;
+  topBgColor: string | null;
+  centerBgColor: string | null;
+  bottomBgColor: string | null;
 }
 
 export default function AdPreviewPage() {
@@ -135,7 +144,49 @@ export default function AdPreviewPage() {
                     data-testid="preview-video"
                   />
                 )}
-                {ad.adText && (
+                {ad.topText && (
+                  <div 
+                    className="absolute left-0 right-0 top-0 p-3 text-center font-bold text-lg"
+                    style={{ 
+                      color: ad.topTextColor || '#ffffff',
+                      backgroundColor: `${ad.topBgColor || '#1e3a5f'}dd`,
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                      whiteSpace: 'pre-line'
+                    }}
+                    data-testid="preview-top-text"
+                  >
+                    {ad.topText}
+                  </div>
+                )}
+                {ad.centerText && (
+                  <div 
+                    className="absolute left-0 right-0 top-1/2 -translate-y-1/2 p-3 text-center font-semibold italic text-lg"
+                    style={{ 
+                      color: ad.centerTextColor || '#ffffff',
+                      backgroundColor: `${ad.centerBgColor || '#1e3a5f'}99`,
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                      whiteSpace: 'pre-line'
+                    }}
+                    data-testid="preview-center-text"
+                  >
+                    {ad.centerText}
+                  </div>
+                )}
+                {ad.bottomText && (
+                  <div 
+                    className="absolute left-0 right-0 bottom-0 p-3 text-center font-bold text-lg"
+                    style={{ 
+                      color: ad.bottomTextColor || '#ffffff',
+                      backgroundColor: `${ad.bottomBgColor || '#1e3a5f'}dd`,
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                      whiteSpace: 'pre-line'
+                    }}
+                    data-testid="preview-bottom-text"
+                  >
+                    {ad.bottomText}
+                  </div>
+                )}
+                {ad.adText && !ad.topText && !ad.centerText && !ad.bottomText && (
                   <div 
                     className={`absolute left-0 right-0 p-3 text-center font-semibold text-lg ${
                       ad.textPosition === 'top' ? 'top-0' : 
