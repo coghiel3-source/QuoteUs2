@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign, Landmark } from "lucide-react";
-import heroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1770516244492.jpg";
+import heroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1765553789903.jpg";
 
 export default function HomePage() {
   const products = [
