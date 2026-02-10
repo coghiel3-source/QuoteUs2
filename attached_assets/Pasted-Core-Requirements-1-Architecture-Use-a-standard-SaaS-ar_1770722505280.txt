@@ -1,0 +1,126 @@
+Core Requirements
+1. Architecture
+
+Use a standard SaaS architecture
+
+Backend: Node.js (Express) or Python (FastAPI/Django)
+
+Frontend: React or Next.js
+
+Database: PostgreSQL or MySQL (no proprietary DB)
+
+ORM: Prisma / Sequelize / SQLAlchemy
+
+Authentication: JWT-based auth (no Replit auth dependency)
+
+2. Features
+
+User registration & login
+
+Admin dashboard
+
+User dashboard
+
+Role-based access (Admin / Client / Partner)
+
+Form intake system (quotes, leads, or service requests)
+
+Data storage and retrieval
+
+Email notification system (SMTP-based)
+
+Credit or usage-based system (configurable)
+
+Secure API endpoints
+
+Audit logging
+
+3. Database & Data Portability
+
+Provide:
+
+Full SQL schema
+
+Migration scripts
+
+Seed data (optional)
+
+All database credentials must be stored in .env
+
+No hard-coded secrets
+
+4. File Structure
+
+Organize the project so it can be downloaded as a single ZIP and run locally:
+
+QuoteUs1/
+├── backend/
+│   ├── src/
+│   ├── routes/
+│   ├── models/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── migrations/
+│   └── server.js
+├── frontend/
+│   ├── src/
+│   ├── components/
+│   ├── pages/
+│   └── build/
+├── database/
+│   ├── schema.sql
+│   └── seed.sql
+├── .env.example
+├── docker-compose.yml (optional)
+├── README.md
+└── deployment.md
+
+5. Deployment Readiness
+
+Must support deployment to:
+
+VPS (Ubuntu)
+
+cPanel hosting
+
+Cloud platforms (AWS, DigitalOcean, etc.)
+
+Include:
+
+Docker support (optional but preferred)
+
+Nginx configuration example
+
+Production build steps
+
+No Replit-specific dependencies
+
+6. Download & Transfer
+
+Ensure the entire project can be:
+
+Exported as a ZIP
+
+Pushed to GitHub
+
+Uploaded to a third-party hosting server
+
+No reliance on Replit storage, secrets manager, or databases
+
+7. Documentation
+
+Include a clear README.md with:
+
+Local setup instructions
+
+Environment variable setup
+
+Database initialization
+
+Production deployment steps
+
+How to move from Replit to third-party hosting
+
+Final Instruction
+
+Build QuoteUs1 as a self-hosted SaaS application, designed for long-term scalability and ownership. The code must be clean, well-commented, and easy to maintain.
