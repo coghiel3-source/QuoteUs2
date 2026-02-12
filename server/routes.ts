@@ -226,6 +226,13 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
+      if (error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
+        const existingUsers = await storage.getAllUsers();
+        const existing = existingUsers.find((u: any) => u.email === req.body.email);
+        if (existing) {
+          return res.status(200).json(existing);
+        }
+      }
       res.status(500).json({ error: error.message });
     }
   });
