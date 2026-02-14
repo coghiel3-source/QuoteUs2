@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const foundUser = await apiRequest<User>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email, role, password }),
       });
 
       if (!foundUser) {

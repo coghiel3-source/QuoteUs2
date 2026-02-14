@@ -9,6 +9,17 @@ import crypto from "crypto";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcryptjs";
+
+function safeUser(user: any): any {
+  if (!user) return user;
+  const { password, resetToken, resetTokenExpiry, ...safe } = user;
+  return safe;
+}
+
+function safeUsers(users: any[]): any[] {
+  return users.map(safeUser);
+}
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
@@ -83,10 +94,10 @@ export async function registerRoutes(
   
   // ===== USER / AUTH ROUTES =====
   
-  // Login (simple auth - checks if user exists by email)
+  // Login (checks email + password)
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { email, role } = req.body;
+      const { email, role, password } = req.body;
       
       if (!email) {
         return res.status(400).json({ error: "Email is required" });
@@ -98,12 +109,25 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Simple role check (in production, use proper password auth)
       if (role && user.role !== role) {
         return res.status(403).json({ error: "Invalid role" });
       }
+
+      if (password && user.password) {
+        const isHashed = user.password.startsWith('$2a$') || user.password.startsWith('$2b$');
+        if (isHashed) {
+          const valid = await bcrypt.compare(password, user.password);
+          if (!valid) {
+            return res.status(401).json({ error: "Invalid password" });
+          }
+        } else {
+          if (password !== user.password) {
+            return res.status(401).json({ error: "Invalid password" });
+          }
+        }
+      }
       
-      res.json(user);
+      res.json(safeUser(user));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -203,8 +227,9 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Token has expired" });
       }
       
-      // Update password and clear token
-      await storage.updatePassword(user.id, password);
+      // Update password (hashed) and clear token
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await storage.updatePassword(user.id, hashedPassword);
       await storage.clearResetToken(user.id);
       
       console.log(`[Password Reset] Password updated for ${user.email}`);
@@ -220,8 +245,11 @@ export async function registerRoutes(
   app.post("/api/users", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
+      if (userData.password) {
+        userData.password = await bcrypt.hash(userData.password, 10);
+      }
       const user = await storage.createUser(userData);
-      res.status(201).json(user);
+      res.status(201).json(safeUser(user));
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -230,7 +258,7 @@ export async function registerRoutes(
         const existingUsers = await storage.getAllUsers();
         const existing = existingUsers.find((u: any) => u.email === req.body.email);
         if (existing) {
-          return res.status(200).json(existing);
+          return res.status(200).json(safeUser(existing));
         }
       }
       res.status(500).json({ error: error.message });
@@ -241,7 +269,7 @@ export async function registerRoutes(
   app.get("/api/users", async (req, res) => {
     try {
       const users = await storage.getAllUsers();
-      res.json(users);
+      res.json(safeUsers(users));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -254,7 +282,7 @@ export async function registerRoutes(
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      res.json(user);
+      res.json(safeUser(user));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -284,11 +312,14 @@ export async function registerRoutes(
         }
       }
       
+      if (updateData.password) {
+        updateData.password = await bcrypt.hash(updateData.password, 10);
+      }
       const user = await storage.updateUser(req.params.id, updateData);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      res.json(user);
+      res.json(safeUser(user));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -1242,7 +1273,7 @@ export async function registerRoutes(
       
       res.json({ 
         success: true, 
-        broker: updatedUser 
+        broker: safeUser(updatedUser) 
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1268,7 +1299,7 @@ export async function registerRoutes(
       if (preferredInsuranceTypes !== undefined) updateData.preferredInsuranceTypes = preferredInsuranceTypes;
       if (preferredDemographics !== undefined) updateData.preferredDemographics = preferredDemographics;
       const updated = await storage.updateUser(brokerId, updateData);
-      res.json({ success: true, broker: updated });
+      res.json({ success: true, broker: safeUser(updated) });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
