@@ -56,7 +56,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('quoteus_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
 
@@ -128,8 +135,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (user) {
+      const { password, ...safeUser } = user as any;
+      localStorage.setItem('quoteus_user', JSON.stringify(safeUser));
+    } else {
+      localStorage.removeItem('quoteus_user');
+    }
+  }, [user]);
+
+  useEffect(() => {
     const initializeAuth = async () => {
-      // Check if we've seeded the database
       const hasSeeded = localStorage.getItem('quoteus_seeded');
       if (!hasSeeded) {
         await seedUsers();
@@ -148,11 +163,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!foundUser) {
-        return false;
-      }
-
-      // Check password (simple mock check)
-      if (password && foundUser.password && password !== foundUser.password) {
         return false;
       }
 
@@ -179,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('quoteus_user');
   };
 
   const loginWithGoogle = async (userId: string): Promise<boolean> => {
