@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import { format } from "date-fns";
@@ -179,6 +179,9 @@ export default function AdminCRMPage() {
   
   // Custom CSS State
   const [customCss, setCustomCss] = useState("");
+  const [updateFile, setUpdateFile] = useState<File | null>(null);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<any>(null);
   const [reportAds, setReportAds] = useState<any[]>([]);
   const [savingCustomCss, setSavingCustomCss] = useState(false);
   
@@ -3843,7 +3846,7 @@ export default function AdminCRMPage() {
         )}
 
         {/* CONNECTIONS TAB - API Keys, Services & Redirects */}
-        {activeTab === 'connections' && user?.role === 'admin' && (
+        {activeTab === 'connections' && (user?.role === 'admin' || user?.role === 'manager') && (
           <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -4604,6 +4607,168 @@ export default function AdminCRMPage() {
                     ))}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Update Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PackageCheck className="h-5 w-5" />
+                Update
+              </CardTitle>
+              <CardDescription>
+                Upload a ZIP file to install updates. This will update application files without affecting the database or critical configuration files.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Update Guide:</strong> Select the update ZIP file exported from Replit, then click "Install Update". 
+                  Protected files (database schema, migrations, environment config) will be automatically skipped to keep your system safe.
+                </p>
+              </div>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-amber-800">
+                  <strong>Safety Note:</strong> This will only update application code files (pages, components, styles, routes). 
+                  It will NOT modify your database, user data, environment variables, or critical system files.
+                </p>
+              </div>
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm font-medium mb-2">
+                  {updateFile ? updateFile.name : "Select a ZIP file to upload"}
+                </p>
+                {updateFile && (
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Size: {(updateFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                )}
+                <div className="flex justify-center gap-2">
+                  <label htmlFor="update-file-input">
+                    <input
+                      id="update-file-input"
+                      type="file"
+                      accept=".zip"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setUpdateFile(file);
+                        setUpdateResult(null);
+                      }}
+                      data-testid="input-update-file"
+                    />
+                    <Button variant="outline" asChild>
+                      <span>
+                        <Upload className="h-4 w-4 mr-2" />
+                        {updateFile ? "Change File" : "Choose ZIP File"}
+                      </span>
+                    </Button>
+                  </label>
+                  {updateFile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setUpdateFile(null); setUpdateResult(null); }}
+                      data-testid="button-clear-update-file"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  disabled={!updateFile || installingUpdate}
+                  onClick={async () => {
+                    if (!updateFile) return;
+                    setInstallingUpdate(true);
+                    setUpdateResult(null);
+                    try {
+                      const formData = new FormData();
+                      formData.append("updateFile", updateFile);
+                      formData.append("actorId", String(user?.id || ""));
+                      const res = await fetch("/api/admin/update/install", {
+                        method: "POST",
+                        body: formData,
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        setUpdateResult(data.summary);
+                        toast({ title: "Update Installed", description: `${data.summary.updated} files updated successfully.` });
+                        setUpdateFile(null);
+                        const fileInput = document.getElementById('update-file-input') as HTMLInputElement;
+                        if (fileInput) fileInput.value = '';
+                      } else {
+                        toast({ title: "Update Failed", description: data.error || "Failed to install update", variant: "destructive" });
+                      }
+                    } catch (err) {
+                      toast({ title: "Error", description: "Failed to install update", variant: "destructive" });
+                    } finally {
+                      setInstallingUpdate(false);
+                    }
+                  }}
+                  data-testid="button-install-update"
+                >
+                  {installingUpdate ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Installing...
+                    </>
+                  ) : (
+                    <>
+                      <PackageCheck className="h-4 w-4 mr-2" />
+                      Install Update
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {updateResult && (
+                <div className="border rounded-lg p-4 space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2 text-green-700">
+                    <CheckCircle className="h-4 w-4" />
+                    Update Complete
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <div className="text-lg font-bold">{updateResult.totalFiles}</div>
+                      <div className="text-xs text-muted-foreground">Total Files</div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <div className="text-lg font-bold text-green-700">{updateResult.updated}</div>
+                      <div className="text-xs text-green-600">Updated</div>
+                    </div>
+                    <div className="bg-amber-50 rounded-lg p-3">
+                      <div className="text-lg font-bold text-amber-700">{updateResult.skipped}</div>
+                      <div className="text-xs text-amber-600">Skipped</div>
+                    </div>
+                  </div>
+                  {updateResult.updatedFiles?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-green-700 mb-1">Updated Files:</p>
+                      <div className="bg-green-50 rounded p-2 max-h-40 overflow-y-auto">
+                        {updateResult.updatedFiles.map((f: string, i: number) => (
+                          <div key={i} className="text-xs font-mono text-green-800">{f}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {updateResult.skippedFiles?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-amber-700 mb-1">Skipped Files (protected):</p>
+                      <div className="bg-amber-50 rounded p-2 max-h-40 overflow-y-auto">
+                        {updateResult.skippedFiles.map((f: string, i: number) => (
+                          <div key={i} className="text-xs font-mono text-amber-800">{f}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>

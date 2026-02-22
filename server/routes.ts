@@ -2087,6 +2087,118 @@ export async function registerRoutes(
     }
   });
 
+  // Admin/Manager: Upload and install update ZIP
+  const updateUpload = multer({
+    dest: path.join(process.cwd(), "tmp_updates"),
+    limits: { fileSize: 100 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || file.originalname.endsWith('.zip')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only ZIP files are allowed'));
+      }
+    }
+  });
+
+  app.post("/api/admin/update/install", updateUpload.single("updateFile"), async (req, res) => {
+    try {
+      const actorId = req.body?.actorId ? String(req.body.actorId) : null;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !['admin', 'manager'].includes(actor.role)) {
+        return res.status(403).json({ error: "Only admins and managers can install updates" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No ZIP file uploaded" });
+      }
+
+      const AdmZip = (await import("adm-zip")).default;
+      const zip = new AdmZip(req.file.path);
+      const zipEntries = zip.getEntries();
+      const projectRoot = process.cwd();
+
+      const allowedDirectories = ['client/', 'server/', 'shared/'];
+      const protectedFiles = [
+        'server/storage.ts', 'shared/schema.ts', 'server/index.ts',
+        'client/index.html'
+      ];
+      const protectedPatterns = [
+        'node_modules/', '.git/', 'migrations/', '.config/',
+        '.local/', 'tmp_updates/', '.env'
+      ];
+
+      const updatedFiles: string[] = [];
+      const skippedFiles: string[] = [];
+
+      for (const entry of zipEntries) {
+        if (entry.isDirectory) continue;
+
+        let entryName = entry.entryName;
+        const parts = entryName.split('/');
+        if (parts.length > 1) {
+          const firstDir = parts[0];
+          const isWrapperDir = !['client', 'server', 'shared', 'public'].includes(firstDir);
+          if (isWrapperDir) {
+            entryName = parts.slice(1).join('/');
+          }
+        }
+
+        if (!entryName || entryName.startsWith('.')) {
+          skippedFiles.push(entry.entryName + ' (hidden file)');
+          continue;
+        }
+
+        const inAllowedDir = allowedDirectories.some(d => entryName.startsWith(d));
+        if (!inAllowedDir) {
+          skippedFiles.push(entry.entryName + ' (outside allowed directories)');
+          continue;
+        }
+
+        const isProtected = protectedPatterns.some(p => entryName.includes(p)) ||
+                           protectedFiles.includes(entryName);
+        if (isProtected) {
+          skippedFiles.push(entry.entryName + ' (protected)');
+          continue;
+        }
+
+        const targetPath = path.join(projectRoot, entryName);
+        const resolvedPath = path.resolve(targetPath);
+        if (!resolvedPath.startsWith(projectRoot)) {
+          skippedFiles.push(entry.entryName + ' (path traversal blocked)');
+          continue;
+        }
+
+        const targetDir = path.dirname(targetPath);
+        if (!fs.existsSync(targetDir)) {
+          fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        const content = entry.getData();
+        fs.writeFileSync(targetPath, content);
+        updatedFiles.push(entryName);
+      }
+
+      fs.unlinkSync(req.file.path);
+
+      res.json({
+        success: true,
+        summary: {
+          totalFiles: zipEntries.filter(e => !e.isDirectory).length,
+          updated: updatedFiles.length,
+          skipped: skippedFiles.length,
+          updatedFiles,
+          skippedFiles,
+        }
+      });
+    } catch (error: any) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: error.message || "Failed to install update" });
+    }
+  });
+
   // Public: Get redirect URL for a quote type (used after quote submission)
   app.get("/api/redirects/:quoteType", async (req, res) => {
     try {

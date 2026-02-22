@@ -228,3 +228,25 @@ Admin can configure social media links displayed in the website footer:
 - `client/src/components/Layout.tsx` - Footer displays configured social icons
 - `/api/settings/social-media` - Public endpoint returns configured URLs
 - `/api/admin/settings/social_media` - Admin endpoint to save settings (JSON)
+
+### Update System
+Admin/Manager can upload ZIP files to install application updates without accessing cPanel:
+
+**Features**:
+- Upload ZIP file containing updated application files
+- Automatic extraction and file replacement
+- Only files in allowed directories (client/, server/, shared/) are updated
+- Protected files (database schema, storage, migrations, env) are automatically skipped
+- Path traversal protection for security
+- Detailed summary showing updated vs skipped files
+
+**Safety**:
+- Database is never touched
+- Critical files (schema.ts, storage.ts, index.ts) are protected
+- Hidden files and system directories are skipped
+- ZIP wrapper directories are automatically detected and stripped
+
+**Access**: Admin and Manager roles via "Connections" tab
+
+**Key Endpoint**:
+- `POST /api/admin/update/install` - Upload and install update ZIP (multipart form)
