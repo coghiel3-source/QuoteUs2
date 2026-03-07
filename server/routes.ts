@@ -52,6 +52,34 @@ const adUpload = multer({
   },
 });
 
+const binderUploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const binderDir = path.join(uploadDir, "binders");
+    if (!fs.existsSync(binderDir)) {
+      fs.mkdirSync(binderDir, { recursive: true });
+    }
+    cb(null, binderDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `binder-${uniqueSuffix}${ext}`);
+  },
+});
+
+const binderUpload = multer({
+  storage: binderUploadStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    if (extname) {
+      return cb(null, true);
+    }
+    cb(new Error("Only PDF, Word documents, and image files are allowed"));
+  },
+});
+
 // Default lead costs by type (fallback if not set in database)
 const DEFAULT_LEAD_COSTS: Record<string, number> = {
   "Auto": 10,
@@ -610,6 +638,132 @@ export async function registerRoutes(
     }
   });
   
+  // ===== BINDER MANAGEMENT =====
+
+  app.post("/api/leads/:id/request-binder", async (req, res) => {
+    try {
+      const { actorId } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== 'admin' && actor.role !== 'manager')) {
+        return res.status(403).json({ error: "Only admin/manager can request binders" });
+      }
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) return res.status(404).json({ error: "Lead not found" });
+
+      await storage.updateQuote(req.params.id, { binderRequired: true });
+      await storage.createActivity({
+        quoteId: req.params.id,
+        type: "system",
+        content: "Binder/confirmation of insurance requested before closing",
+        author: actor.name,
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/leads/:id/remove-binder-request", async (req, res) => {
+    try {
+      const { actorId } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== 'admin' && actor.role !== 'manager')) {
+        return res.status(403).json({ error: "Only admin/manager can remove binder requests" });
+      }
+
+      await storage.updateQuote(req.params.id, { binderRequired: false });
+      await storage.createActivity({
+        quoteId: req.params.id,
+        type: "system",
+        content: "Binder requirement removed",
+        author: actor.name,
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/leads/:id/upload-binder", binderUpload.single("binder"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const { actorId } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) return res.status(404).json({ error: "Lead not found" });
+
+      const binderUrl = `/uploads/binders/${req.file.filename}`;
+      await storage.updateQuote(req.params.id, {
+        binderUrl,
+        binderUploadedAt: new Date(),
+      });
+
+      const actor = await storage.getUser(actorId);
+      await storage.createActivity({
+        quoteId: req.params.id,
+        type: "system",
+        content: `Binder/confirmation of insurance uploaded: ${req.file.originalname}`,
+        author: actor?.name || "Broker",
+      });
+
+      res.json({ success: true, binderUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/leads/:id/send-email", async (req, res) => {
+    try {
+      const { actorId, to, subject, body: emailBodyText } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+      if (!to || !subject || !emailBodyText) return res.status(400).json({ error: "Missing required fields (to, subject, body)" });
+
+      const actor = await storage.getUser(actorId);
+      if (!actor) return res.status(403).json({ error: "User not found" });
+
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) return res.status(404).json({ error: "Lead not found" });
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #16a34a; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">QuoteUs.ca</h1>
+          </div>
+          <div style="padding: 30px; background-color: #f9fafb;">
+            <p style="color: #4b5563; white-space: pre-wrap;">${emailBodyText}</p>
+            <p style="color: #4b5563; font-size: 14px; margin-top: 30px;">
+              Best regards,<br>
+              <strong>${actor.name}</strong><br>
+              QuoteUs.ca
+            </p>
+          </div>
+          <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+            <p>QuoteUs.ca - Your Trusted Insurance Partner</p>
+          </div>
+        </div>
+      `;
+
+      const sent = await sendEmail({ to, subject, html: emailHtml });
+
+      await storage.createActivity({
+        quoteId: req.params.id,
+        type: "email_sent",
+        content: sent ? `Email sent to ${to}: "${subject}"` : `Email logged (SMTP not configured) to ${to}: "${subject}"`,
+        author: actor.name,
+      });
+
+      res.json({ success: true, delivered: !!sent });
+    } catch (error: any) {
+      console.error('[Email] Send from lead error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== CONTACT FORM ROUTE =====
   
   // Handle contact form submissions

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard } from "lucide-react";
+import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, AlertCircle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
@@ -20,7 +20,7 @@ import LeadDetailView from "@/components/LeadDetailView";
 
 export default function DashboardPage() {
   const { user, login, logout, register } = useAuth();
-  const { quotes, updateStatus } = useQuotes();
+  const { quotes, updateStatus, refreshQuotes } = useQuotes();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
 
@@ -590,6 +590,76 @@ export default function DashboardPage() {
                     <div>
                       <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Quote Details</h3>
                       <LeadDetailView quoteType={selectedLead.type} details={selectedLead.details} />
+                    </div>
+                  )}
+
+                  {/* Binder Upload Section */}
+                  {(selectedLead as any).binderRequired && (
+                    <div>
+                      <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Binder / Confirmation of Insurance</h3>
+                      {(selectedLead as any).binderUrl ? (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <span className="text-sm font-medium text-green-800">Binder Uploaded</span>
+                              {(selectedLead as any).binderUploadedAt && (
+                                <span className="text-xs text-green-600">
+                                  {format(new Date((selectedLead as any).binderUploadedAt), 'MMM d, yyyy h:mm a')}
+                                </span>
+                              )}
+                            </div>
+                            <a href={(selectedLead as any).binderUrl} target="_blank" rel="noopener noreferrer">
+                              <Button size="sm" variant="outline" className="text-green-700">
+                                <Eye className="h-4 w-4 mr-1" /> View
+                              </Button>
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4 text-amber-600" />
+                              <span className="text-sm text-amber-800">Binder upload required before closing this lead</span>
+                            </div>
+                          </div>
+                          <div>
+                            <input
+                              type="file"
+                              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const formData = new FormData();
+                                formData.append("binder", file);
+                                formData.append("actorId", String(user?.id));
+                                try {
+                                  const res = await fetch(`/api/leads/${selectedLead.id}/upload-binder`, {
+                                    method: "POST",
+                                    body: formData,
+                                  });
+                                  if (res.ok) {
+                                    const data = await res.json();
+                                    toast({ title: "Binder Uploaded", description: "Your confirmation of insurance has been uploaded." });
+                                    setSelectedLead({ ...selectedLead, binderUrl: data.binderUrl, binderUploadedAt: new Date().toISOString() } as any);
+                                    refreshQuotes();
+                                  } else {
+                                    const err = await res.json();
+                                    toast({ title: "Error", description: err.error || "Failed to upload binder", variant: "destructive" });
+                                  }
+                                } catch (err) {
+                                  toast({ title: "Error", description: "Failed to upload binder", variant: "destructive" });
+                                }
+                                e.target.value = '';
+                              }}
+                              data-testid="input-binder-upload"
+                              className="text-sm"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">PDF, Word, or image files up to 20MB</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

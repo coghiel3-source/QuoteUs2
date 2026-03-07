@@ -47,8 +47,10 @@ export default function AdminCRMPage() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [newNote, setNewNote] = useState("");
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   
   // New User Form State
   const [newUser, setNewUser] = useState({
@@ -823,21 +825,38 @@ export default function AdminCRMPage() {
     if (updated) setSelectedQuote(updated);
   };
 
-  const handleSendEmail = (e: React.FormEvent) => {
+  const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedQuote || !emailSubject.trim()) return;
+    if (!selectedQuote || !emailSubject.trim() || !emailTo.trim() || !emailBody.trim()) return;
     
-    logEmail(selectedQuote.id, emailSubject, selectedQuote.email || 'Client', user?.name || 'Admin');
-    setEmailSubject("");
-    setEmailBody("");
-    setIsEmailOpen(false);
-    toast({
-      title: "Email Sent",
-      description: `Email "${emailSubject}" sent to client.`,
-    });
-    // Force refresh
-    const updated = quotes.find(q => q.id === selectedQuote.id);
-    if (updated) setSelectedQuote(updated);
+    setIsSendingEmail(true);
+    try {
+      const res = await fetch(`/api/leads/${selectedQuote.id}/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          actorId: user?.id,
+          to: emailTo,
+          subject: emailSubject,
+          body: emailBody,
+        }),
+      });
+      if (res.ok) {
+        toast({ title: "Email Sent", description: `Email sent to ${emailTo}` });
+        setEmailTo("");
+        setEmailSubject("");
+        setEmailBody("");
+        setIsEmailOpen(false);
+        await refreshQuotes();
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error || "Failed to send email", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to send email", variant: "destructive" });
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handlePasswordReset = (e: React.FormEvent) => {
@@ -1442,7 +1461,7 @@ export default function AdminCRMPage() {
                         <Label className="text-xs text-muted-foreground uppercase">Email</Label>
                         <div className="font-medium flex items-center gap-2">
                            {selectedQuote.email}
-                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEmailOpen(true)}>
+                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEmailTo(selectedQuote.email || ''); setIsEmailOpen(true); }}>
                              <Mail size={14} />
                            </Button>
                         </div>
@@ -1480,6 +1499,81 @@ export default function AdminCRMPage() {
                     <div className="border rounded-lg p-4 bg-slate-50">
                       <h4 className="font-semibold mb-3 flex items-center gap-2"><Car size={16}/> Quote Details</h4>
                       <LeadDetailView quoteType={selectedQuote.type} details={selectedQuote.details} />
+                    </div>
+
+                    {/* Binder / Confirmation of Insurance */}
+                    <div className="border rounded-lg p-4 bg-white">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <FileText size={16} />
+                        Binder / Confirmation of Insurance
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Require binder before closing</p>
+                            <p className="text-xs text-muted-foreground">Broker must upload confirmation of insurance</p>
+                          </div>
+                          <Switch
+                            checked={!!(selectedQuote as any).binderRequired}
+                            onCheckedChange={async (checked) => {
+                              try {
+                                const endpoint = checked ? "request-binder" : "remove-binder-request";
+                                const res = await fetch(`/api/leads/${selectedQuote.id}/${endpoint}`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ actorId: user?.id }),
+                                });
+                                if (!res.ok) {
+                                  const err = await res.json();
+                                  throw new Error(err.error || "Failed to update");
+                                }
+                                setSelectedQuote({ ...selectedQuote, binderRequired: checked } as any);
+                                await refreshQuotes();
+                                toast({
+                                  title: checked ? "Binder Required" : "Binder Requirement Removed",
+                                  description: checked ? "Broker must upload a binder before this lead can be closed." : "Binder requirement has been removed.",
+                                });
+                              } catch (err: any) {
+                                toast({ title: "Error", description: err.message || "Failed to update binder requirement", variant: "destructive" });
+                              }
+                            }}
+                            data-testid="switch-binder-required"
+                          />
+                        </div>
+                        {(selectedQuote as any).binderUrl && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <span className="text-sm font-medium text-green-800">Binder Uploaded</span>
+                                {(selectedQuote as any).binderUploadedAt && (
+                                  <span className="text-xs text-green-600">
+                                    {format(new Date((selectedQuote as any).binderUploadedAt), 'MMM d, yyyy h:mm a')}
+                                  </span>
+                                )}
+                              </div>
+                              <a
+                                href={(selectedQuote as any).binderUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                data-testid="link-view-binder"
+                              >
+                                <Button size="sm" variant="outline" className="text-green-700">
+                                  <Eye className="h-4 w-4 mr-1" /> View
+                                </Button>
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                        {(selectedQuote as any).binderRequired && !(selectedQuote as any).binderUrl && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4 text-amber-600" />
+                              <span className="text-sm text-amber-800">Awaiting binder upload from broker</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </TabsContent>
 
@@ -1557,6 +1651,9 @@ export default function AdminCRMPage() {
                           <SelectItem value="Expired">Expired</SelectItem>
                         </SelectContent>
                       </Select>
+                     <Button variant="outline" size="sm" onClick={() => { setEmailTo(selectedQuote.email || ''); setIsEmailOpen(true); }} data-testid="button-email-from-lead">
+                       <Mail size={14} className="mr-1" /> Email
+                     </Button>
                    </div>
                    <Button variant="outline" onClick={() => setSelectedQuote(null)}>Close</Button>
                 </SheetFooter>
@@ -1569,15 +1666,39 @@ export default function AdminCRMPage() {
         <Dialog open={isEmailOpen} onOpenChange={setIsEmailOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Send Email to Client</DialogTitle>
+              <DialogTitle>Send Email</DialogTitle>
               <DialogDescription>
-                Send a message directly to {selectedQuote?.clientName}. A copy will be logged in the CRM.
+                Send an email regarding {selectedQuote?.clientName}'s lead. The email will be logged in the activity history.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSendEmail} className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>To</Label>
-                <Input value={selectedQuote?.email || ''} disabled />
+                <Input 
+                  type="email"
+                  value={emailTo} 
+                  onChange={(e) => setEmailTo(e.target.value)} 
+                  placeholder="Enter recipient email"
+                  required
+                  data-testid="input-email-to"
+                />
+                {selectedQuote && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedQuote.email && (
+                      <Button type="button" size="sm" variant="outline" className="text-xs h-6" onClick={() => setEmailTo(selectedQuote.email!)}>
+                        Client: {selectedQuote.email}
+                      </Button>
+                    )}
+                    {selectedQuote.assignedTo && (() => {
+                      const broker = users.find(u => u.id === selectedQuote.assignedTo);
+                      return broker?.email ? (
+                        <Button type="button" size="sm" variant="outline" className="text-xs h-6" onClick={() => setEmailTo(broker.email!)}>
+                          Broker: {broker.email}
+                        </Button>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Subject</Label>
@@ -1600,7 +1721,9 @@ export default function AdminCRMPage() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEmailOpen(false)}>Cancel</Button>
-                <Button type="submit"><Mail size={16} className="mr-2"/> Send Email</Button>
+                <Button type="submit" disabled={isSendingEmail}>
+                  <Mail size={16} className="mr-2"/> {isSendingEmail ? "Sending..." : "Send Email"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
