@@ -1650,13 +1650,20 @@ export default function AdminCRMPage() {
                     </div>
 
                     {/* Binder / Confirmation of Insurance */}
-                    <div className={`border rounded-lg p-4 ${(selectedQuote as any).binderDocuments?.length > 0 ? 'bg-green-50 border-green-200' : 'bg-white'}`}>
+                    {(() => {
+                      const adminDocs = (selectedQuote as any).binderDocuments?.length > 0
+                        ? (selectedQuote as any).binderDocuments
+                        : (selectedQuote as any).binderUrl
+                          ? [{ url: (selectedQuote as any).binderUrl, filename: (selectedQuote as any).binderUrl.split('/').pop() || 'Document', uploadedAt: (selectedQuote as any).binderUploadedAt || (selectedQuote as any).updatedAt, uploadedBy: 'Broker' }]
+                          : [];
+                      return (
+                    <div className={`border rounded-lg p-4 ${adminDocs.length > 0 ? 'bg-green-50 border-green-200' : 'bg-white'}`}>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <FileText size={16} />
                         Binder / Confirmation of Insurance
-                        {((selectedQuote as any).binderDocuments?.length > 0) && (
+                        {adminDocs.length > 0 && (
                           <Badge className="bg-green-100 text-green-800 border-green-300" variant="outline">
-                            {(selectedQuote as any).binderDocuments.length} Doc{(selectedQuote as any).binderDocuments.length > 1 ? 's' : ''}
+                            {adminDocs.length} Doc{adminDocs.length > 1 ? 's' : ''}
                           </Badge>
                         )}
                       </h4>
@@ -1693,9 +1700,9 @@ export default function AdminCRMPage() {
                             data-testid="switch-binder-required"
                           />
                         </div>
-                        {((selectedQuote as any).binderDocuments?.length > 0) && (
+                        {adminDocs.length > 0 && (
                           <div className="space-y-2">
-                            {((selectedQuote as any).binderDocuments as Array<{url: string; filename: string; uploadedAt: string; uploadedBy: string}>).map((doc, idx) => (
+                            {(adminDocs as Array<{url: string; filename: string; uploadedAt: string; uploadedBy: string}>).map((doc, idx) => (
                               <div key={idx} className="bg-green-50 border border-green-200 rounded-lg p-3" data-testid={`admin-binder-doc-${idx}`}>
                                 <div className="flex items-center justify-between">
                                   <div className="min-w-0 flex-1">
@@ -1704,7 +1711,7 @@ export default function AdminCRMPage() {
                                       <p className="text-sm font-medium text-green-800 truncate">{doc.filename}</p>
                                     </div>
                                     <p className="text-xs text-green-600 ml-6">
-                                      {format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a')} — by {doc.uploadedBy}
+                                      {doc.uploadedAt ? format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a') : ''} {doc.uploadedBy ? `— by ${doc.uploadedBy}` : ''}
                                     </p>
                                   </div>
                                   <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
@@ -1717,7 +1724,7 @@ export default function AdminCRMPage() {
                             ))}
                           </div>
                         )}
-                        {(selectedQuote as any).binderRequired && !((selectedQuote as any).binderDocuments?.length > 0) && (
+                        {(selectedQuote as any).binderRequired && adminDocs.length === 0 && (
                           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                             <div className="flex items-center gap-2">
                               <AlertCircle className="h-4 w-4 text-amber-600" />
@@ -1725,7 +1732,7 @@ export default function AdminCRMPage() {
                             </div>
                           </div>
                         )}
-                        {selectedQuote.status === 'Closed' && !((selectedQuote as any).binderDocuments?.length > 0) && !(selectedQuote as any).binderRequired && (
+                        {selectedQuote.status === 'Closed' && adminDocs.length === 0 && !(selectedQuote as any).binderRequired && (
                           <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
                             <div className="flex items-center gap-2">
                               <AlertCircle className="h-4 w-4 text-slate-500" />
@@ -1735,6 +1742,8 @@ export default function AdminCRMPage() {
                         )}
                       </div>
                     </div>
+                    );
+                    })()}
                   </TabsContent>
 
                   <TabsContent value="activity" className="h-[400px]">

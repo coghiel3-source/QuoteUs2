@@ -597,39 +597,48 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Binder / Confirmation of Insurance</h3>
                     <div className="space-y-3">
-                      {(selectedLead as any).binderRequired && !((selectedLead as any).binderDocuments?.length > 0) && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 text-amber-600" />
-                            <span className="text-sm text-amber-800">Binder upload required by admin</span>
-                          </div>
-                        </div>
-                      )}
-                      {((selectedLead as any).binderDocuments?.length > 0) && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-green-800 flex items-center gap-1">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            {(selectedLead as any).binderDocuments.length} Document{(selectedLead as any).binderDocuments.length > 1 ? 's' : ''} Uploaded
-                          </p>
-                          {((selectedLead as any).binderDocuments as Array<{url: string; filename: string; uploadedAt: string; uploadedBy: string}>).map((doc, idx) => (
-                            <div key={idx} className="bg-green-50 border border-green-200 rounded-lg p-3" data-testid={`binder-doc-${idx}`}>
-                              <div className="flex items-center justify-between">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-green-800 truncate">{doc.filename}</p>
-                                  <p className="text-xs text-green-600">
-                                    {format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a')} — by {doc.uploadedBy}
-                                  </p>
-                                </div>
-                                <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
-                                  <Button size="sm" variant="outline" className="text-green-700 ml-2 shrink-0">
-                                    <Eye className="h-4 w-4 mr-1" /> View
-                                  </Button>
-                                </a>
+                      {(() => {
+                        const docs = (selectedLead as any).binderDocuments?.length > 0
+                          ? (selectedLead as any).binderDocuments
+                          : (selectedLead as any).binderUrl
+                            ? [{ url: (selectedLead as any).binderUrl, filename: (selectedLead as any).binderUrl.split('/').pop() || 'Document', uploadedAt: (selectedLead as any).binderUploadedAt || (selectedLead as any).updatedAt, uploadedBy: 'Broker' }]
+                            : [];
+                        return <>
+                          {(selectedLead as any).binderRequired && docs.length === 0 && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 text-amber-600" />
+                                <span className="text-sm text-amber-800">Binder upload required by admin</span>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          )}
+                          {docs.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-green-800 flex items-center gap-1">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                {docs.length} Document{docs.length > 1 ? 's' : ''} Uploaded
+                              </p>
+                              {(docs as Array<{url: string; filename: string; uploadedAt: string; uploadedBy: string}>).map((doc, idx) => (
+                                <div key={idx} className="bg-green-50 border border-green-200 rounded-lg p-3" data-testid={`binder-doc-${idx}`}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm font-medium text-green-800 truncate">{doc.filename}</p>
+                                      <p className="text-xs text-green-600">
+                                        {doc.uploadedAt ? format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a') : ''} {doc.uploadedBy ? `— by ${doc.uploadedBy}` : ''}
+                                      </p>
+                                    </div>
+                                    <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
+                                      <Button size="sm" variant="outline" className="text-green-700 ml-2 shrink-0">
+                                        <Eye className="h-4 w-4 mr-1" /> View
+                                      </Button>
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>;
+                      })()}
                       <div className="border rounded-lg p-3 bg-slate-50">
                         <p className="text-sm font-medium mb-2 flex items-center gap-1">
                           <Upload className="h-4 w-4" />
