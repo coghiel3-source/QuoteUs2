@@ -223,6 +223,7 @@ export default function AdminCRMPage() {
   const [brokerTier, setBrokerTier] = useState<string>("");
   const [brokerPreferredTypes, setBrokerPreferredTypes] = useState<string[]>([]);
   const [brokerDemographics, setBrokerDemographics] = useState("");
+  const [brokerReferenceId, setBrokerReferenceId] = useState("");
   const [savingBrokerProfile, setSavingBrokerProfile] = useState(false);
   const [addingBrokerNote, setAddingBrokerNote] = useState(false);
 
@@ -231,6 +232,7 @@ export default function AdminCRMPage() {
     setBrokerTier(broker.brokerTier || "");
     setBrokerPreferredTypes(broker.preferredInsuranceTypes || []);
     setBrokerDemographics(broker.preferredDemographics || "");
+    setBrokerReferenceId(broker.referenceId || "");
     setIsBrokerProfileOpen(true);
     setNewBrokerNote("");
     try {
@@ -257,6 +259,7 @@ export default function AdminCRMPage() {
           brokerTier: brokerTier || null,
           preferredInsuranceTypes: brokerPreferredTypes,
           preferredDemographics: brokerDemographics,
+          referenceId: brokerReferenceId || null,
           actorId: user?.id,
         }),
       });
@@ -1458,6 +1461,12 @@ export default function AdminCRMPage() {
                         <Label className="text-xs text-muted-foreground uppercase">Current Status</Label>
                         <Badge className={`${getStatusColor(selectedQuote.status).replace('hover:', '')} border-none`}>{selectedQuote.status}</Badge>
                       </div>
+                      {(selectedQuote as any).referenceId && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground uppercase">Reference ID</Label>
+                          <div className="font-medium font-mono">{(selectedQuote as any).referenceId}</div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="border rounded-lg p-4 bg-slate-50">
@@ -2107,6 +2116,7 @@ export default function AdminCRMPage() {
                                     <SelectItem key={broker.id} value={broker.id}>
                                       <span className="flex items-center gap-1">
                                         {broker.name}
+                                        {(broker as any).referenceId && <span className="text-[10px] font-mono text-blue-600">[{(broker as any).referenceId}]</span>}
                                         <span className="text-xs text-muted-foreground">
                                           (${parseFloat(broker.balance || "0").toFixed(0)})
                                         </span>
@@ -4793,6 +4803,22 @@ export default function AdminCRMPage() {
                 )}
               </div>
             )}
+
+            <Separator />
+
+            {/* Reference ID */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Reference ID</h3>
+              <p className="text-xs text-muted-foreground mb-2">6-character code that customers can enter on quote forms to link leads to this broker</p>
+              <Input
+                value={brokerReferenceId}
+                onChange={(e) => setBrokerReferenceId(e.target.value.toUpperCase().slice(0, 6))}
+                placeholder="e.g. ABC123"
+                maxLength={6}
+                className="uppercase"
+                data-testid="input-broker-reference-id"
+              />
+            </div>
 
             <Separator />
 

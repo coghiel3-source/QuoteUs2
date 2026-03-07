@@ -66,6 +66,7 @@ export default function MortgagePage() {
       email: data.email,
       phone: data.phone,
       postalCode: data.postalCode,
+      referenceId: data.referenceId || undefined,
       details: {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -436,6 +437,12 @@ export default function MortgagePage() {
                   className="w-full min-h-[100px] px-3 py-2 rounded-md border border-input bg-background text-sm"
                   data-testid="textarea-notes"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Reference ID (optional)</Label>
+                <Input {...register("referenceId")} placeholder="e.g. ABC123" maxLength={6} className="uppercase" data-testid="input-reference-id" />
+                <p className="text-xs text-muted-foreground">If you were given a reference code, enter it here.</p>
               </div>
 
               <div className="pt-4">

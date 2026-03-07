@@ -171,10 +171,29 @@ The platform includes an advertisement management system for displaying controll
 - `/api/advertisements/:id/click` - Track ad clicks
 - `/api/settings/ads-per-slot` - Public endpoint to get ads per slot setting
 
+### Reference ID System
+Allows admin/manager to assign a 6-character reference code to brokers. Customers can enter this code on any quote form to link leads directly to a specific broker.
+
+**Flow**:
+1. Admin/Manager sets a Reference ID on a broker's profile (e.g. "ABC123")
+2. Customer fills out any quote form and optionally enters the reference code
+3. When the lead is submitted with a matching reference ID, it is automatically assigned to that broker (without credit deduction)
+4. The reference ID is displayed in lead details for both AdminCRM and Dashboard views
+
+**Key Fields**:
+- `users.referenceId` - 6-char code assigned to brokers by admin/manager
+- `quotes.referenceId` - 6-char code entered by customer on quote form
+- Reference ID field appears on all 8 quote forms (Auto, Home, Tenant, Business, Life, Travel, Pet, Mortgage)
+
+**Key Endpoints**:
+- `POST /api/admin/broker-profile` - Includes `referenceId` field
+- `POST /api/quotes` - Auto-assigns lead if referenceId matches a broker
+
 ### Broker Profile Management
 Admin/Manager can view and manage internal broker profiles with features not visible to brokers:
 
 **Features**:
+- **Reference ID**: 6-character code for lead routing (displayed in broker profile and assignment dropdowns)
 - **Internal Notes**: Admin/Manager can add timestamped notes on individual brokers (yellow note cards, NOT visible to brokers)
 - **Broker Tier**: Categorize brokers as Bronze, Silver, Gold, or Platinum (displayed as badge on staff table)
 - **Win Rate & Performance Stats**: View total leads, win rate (bound/total %), leads by status breakdown, leads by type

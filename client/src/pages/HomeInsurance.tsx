@@ -42,6 +42,7 @@ export default function HomeInsurancePage() {
       email: data.email,
       phone: data.phone,
       postalCode: data.postalCode,
+      referenceId: data.referenceId || undefined,
       details: {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -328,6 +329,12 @@ export default function HomeInsurancePage() {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Reference ID (optional)</Label>
+                <Input {...register("referenceId")} placeholder="e.g. ABC123" maxLength={6} className="uppercase" data-testid="input-reference-id" />
+                <p className="text-xs text-muted-foreground">If you were given a reference code, enter it here.</p>
               </div>
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>

@@ -42,6 +42,7 @@ export default function TenantPage() {
       email: data.email,
       phone: data.phone,
       postalCode: data.postalCode,
+      referenceId: data.referenceId || undefined,
       details: {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -96,7 +97,7 @@ export default function TenantPage() {
         <div className="container mx-auto max-w-4xl">
            <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Tenant Insurance Quote</h1>
            <p className="text-lg text-primary-foreground/80 max-w-2xl">
-             Affordable protection for your personal belongings and liability coverage for renters.
+             Affordable protection for your personal belongings and liability coverage for renters across Canada.
            </p>
         </div>
       </div>
@@ -139,6 +140,7 @@ export default function TenantPage() {
                     onChange={(val) => setValue("address", val)}
                     onPostalCodeChange={(val) => setValue("postalCode", val)}
                     placeholder="Start typing your address..."
+                    nationwide={true}
                   />
                   <p className="text-xs text-muted-foreground">Start typing for suggestions, or enter manually</p>
                 </div>
@@ -300,6 +302,12 @@ export default function TenantPage() {
                     </CardContent>
                   </Card>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Reference ID (optional)</Label>
+                <Input {...register("referenceId")} placeholder="e.g. ABC123" maxLength={6} className="uppercase" data-testid="input-reference-id" />
+                <p className="text-xs text-muted-foreground">If you were given a reference code, enter it here.</p>
               </div>
 
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting}>

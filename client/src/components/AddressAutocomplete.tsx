@@ -9,8 +9,30 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   className?: string;
   id?: string;
+  nationwide?: boolean;
   "data-testid"?: string;
 }
+
+const CANADA_CITIES_WITH_POSTAL: Record<string, { prefix: string; province: string }> = {
+  "Vancouver": { prefix: "V5K", province: "BC" },
+  "Victoria": { prefix: "V8W", province: "BC" },
+  "Surrey": { prefix: "V3T", province: "BC" },
+  "Burnaby": { prefix: "V5A", province: "BC" },
+  "Calgary": { prefix: "T2P", province: "AB" },
+  "Edmonton": { prefix: "T5J", province: "AB" },
+  "Red Deer": { prefix: "T4N", province: "AB" },
+  "Winnipeg": { prefix: "R3C", province: "MB" },
+  "Saskatoon": { prefix: "S7K", province: "SK" },
+  "Regina": { prefix: "S4P", province: "SK" },
+  "Montreal": { prefix: "H2X", province: "QC" },
+  "Quebec City": { prefix: "G1R", province: "QC" },
+  "Halifax": { prefix: "B3H", province: "NS" },
+  "Saint John": { prefix: "E2L", province: "NB" },
+  "Fredericton": { prefix: "E3B", province: "NB" },
+  "Moncton": { prefix: "E1C", province: "NB" },
+  "Charlottetown": { prefix: "C1A", province: "PE" },
+  "St. John's": { prefix: "A1C", province: "NL" },
+};
 
 // Ontario cities with typical postal code prefixes
 const ONTARIO_CITIES_WITH_POSTAL: Record<string, string> = {
@@ -41,6 +63,7 @@ export default function AddressAutocomplete({
   placeholder = "Start typing your address...",
   className,
   id,
+  nationwide = false,
   "data-testid": testId
 }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -70,24 +93,34 @@ export default function AddressAutocomplete({
     const newSuggestions: string[] = [];
 
     const hasNumber = /^\d+/.test(input);
+
+    const allCities: { name: string; province: string }[] = [];
+    if (nationwide) {
+      Object.entries(CANADA_CITIES_WITH_POSTAL).forEach(([name, data]) => {
+        allCities.push({ name, province: data.province });
+      });
+    }
+    ONTARIO_CITIES.forEach(name => {
+      allCities.push({ name, province: "ON" });
+    });
     
     if (hasNumber) {
       const streetNumber = input.match(/^\d+/)?.[0] || "";
       const streetPart = input.replace(/^\d+\s*/, "").toLowerCase();
       
-      ONTARIO_CITIES.slice(0, 10).forEach(city => {
+      allCities.slice(0, 10).forEach(({ name: city, province }) => {
         STREET_TYPES.slice(0, 4).forEach(type => {
-          const suggestion = `${streetNumber} ${streetPart ? streetPart.charAt(0).toUpperCase() + streetPart.slice(1) : "Main"} ${type}, ${city}, ON`;
+          const suggestion = `${streetNumber} ${streetPart ? streetPart.charAt(0).toUpperCase() + streetPart.slice(1) : "Main"} ${type}, ${city}, ${province}`;
           if (suggestion.toLowerCase().includes(inputLower) || newSuggestions.length < 5) {
             newSuggestions.push(suggestion);
           }
         });
       });
     } else {
-      ONTARIO_CITIES.filter(city => 
+      allCities.filter(({ name: city }) => 
         city.toLowerCase().includes(inputLower)
-      ).slice(0, 5).forEach(city => {
-        newSuggestions.push(`123 Main Street, ${city}, ON`);
+      ).slice(0, 5).forEach(({ name: city, province }) => {
+        newSuggestions.push(`123 Main Street, ${city}, ${province}`);
       });
     }
 
@@ -107,16 +140,26 @@ export default function AddressAutocomplete({
     setShowSuggestions(false);
     setSuggestions([]);
     
-    // Extract city from suggestion and prepopulate postal code
     if (onPostalCodeChange) {
-      for (const city of ONTARIO_CITIES) {
-        if (suggestion.includes(city)) {
-          const postalPrefix = ONTARIO_CITIES_WITH_POSTAL[city];
-          if (postalPrefix) {
-            // Generate a sample postal code with the prefix (e.g., M5A 1A1)
-            onPostalCodeChange(`${postalPrefix} 1A1`);
+      let matched = false;
+      if (nationwide) {
+        for (const [city, data] of Object.entries(CANADA_CITIES_WITH_POSTAL)) {
+          if (suggestion.includes(city)) {
+            onPostalCodeChange(`${data.prefix} 1A1`);
+            matched = true;
+            break;
           }
-          break;
+        }
+      }
+      if (!matched) {
+        for (const city of ONTARIO_CITIES) {
+          if (suggestion.includes(city)) {
+            const postalPrefix = ONTARIO_CITIES_WITH_POSTAL[city];
+            if (postalPrefix) {
+              onPostalCodeChange(`${postalPrefix} 1A1`);
+            }
+            break;
+          }
         }
       }
     }

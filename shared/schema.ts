@@ -41,6 +41,7 @@ export const users = pgTable("users", {
   brokerTier: brokerTierEnum("broker_tier"),
   preferredInsuranceTypes: text("preferred_insurance_types").array(),
   preferredDemographics: text("preferred_demographics"),
+  referenceId: varchar("reference_id", { length: 6 }).unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -84,6 +85,7 @@ export const quotes = pgTable("quotes", {
   assignedTo: varchar("assigned_to").references(() => users.id),
   assignedAt: timestamp("assigned_at"),
   internalNotes: text("internal_notes").default(""),
+  referenceId: varchar("reference_id", { length: 6 }),
   details: jsonb("details").notNull().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

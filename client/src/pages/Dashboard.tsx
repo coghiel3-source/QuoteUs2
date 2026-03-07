@@ -576,6 +576,12 @@ export default function DashboardPage() {
                           {getIconForType(selectedLead.type)} {selectedLead.type}
                         </div>
                       </div>
+                      {(selectedLead as any).referenceId && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Reference ID</Label>
+                          <div className="font-medium font-mono">{(selectedLead as any).referenceId}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

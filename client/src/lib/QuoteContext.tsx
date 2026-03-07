@@ -103,6 +103,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
           source: quoteData.source || 'Web Form',
           details: quoteData.details || {},
           assignedTo: quoteData.assignedTo,
+          referenceId: quoteData.referenceId || undefined,
           internalNotes: '',
         }),
       });

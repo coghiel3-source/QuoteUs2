@@ -340,6 +340,25 @@ export async function registerRoutes(
         content: `Lead created via ${quote.source}`,
         author: "System",
       });
+
+      // Auto-assign if referenceId matches a broker
+      let finalQuote = quote;
+      if (quote.referenceId) {
+        const allUsers = await storage.getAllUsers();
+        const matchingBroker = allUsers.find(
+          (u) => u.role === "broker" && u.status === "active" && u.referenceId && u.referenceId.toUpperCase() === quote.referenceId!.toUpperCase()
+        );
+        if (matchingBroker) {
+          const updated = await storage.updateQuote(quote.id, { assignedTo: matchingBroker.id, assignedAt: new Date() } as any);
+          if (updated) finalQuote = updated;
+          await storage.createActivity({
+            quoteId: quote.id,
+            type: "assignment",
+            content: `Lead auto-assigned to ${matchingBroker.name} via Reference ID ${quote.referenceId}`,
+            author: "System",
+          });
+        }
+      }
       
       // Send notification email to admin
       const adminEmail = generateNewLeadEmail({
@@ -373,7 +392,7 @@ export async function registerRoutes(
         }).catch(err => console.error('[Email] Thank you email error:', err));
       }
       
-      res.status(201).json(quote);
+      res.status(201).json(finalQuote);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -1283,7 +1302,7 @@ export async function registerRoutes(
   // Broker Profile: Update tier, preferred insurance types, demographics
   app.post("/api/admin/broker-profile", async (req, res) => {
     try {
-      const { brokerId, brokerTier, preferredInsuranceTypes, preferredDemographics, actorId } = req.body;
+      const { brokerId, brokerTier, preferredInsuranceTypes, preferredDemographics, referenceId, actorId } = req.body;
       if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
       const actor = await storage.getUser(actorId);
       if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
@@ -1298,6 +1317,22 @@ export async function registerRoutes(
       if (brokerTier !== undefined) updateData.brokerTier = brokerTier || null;
       if (preferredInsuranceTypes !== undefined) updateData.preferredInsuranceTypes = preferredInsuranceTypes;
       if (preferredDemographics !== undefined) updateData.preferredDemographics = preferredDemographics;
+      if (referenceId !== undefined) {
+        if (referenceId !== null) {
+          const normalizedRefId = String(referenceId).toUpperCase().trim();
+          if (!/^[A-Z0-9]{1,6}$/.test(normalizedRefId)) {
+            return res.status(400).json({ error: "Reference ID must be 1-6 alphanumeric characters" });
+          }
+          const allUsers = await storage.getAllUsers();
+          const existingHolder = allUsers.find(u => u.referenceId && u.referenceId.toUpperCase() === normalizedRefId && u.id !== brokerId);
+          if (existingHolder) {
+            return res.status(409).json({ error: `Reference ID "${normalizedRefId}" is already assigned to ${existingHolder.name}` });
+          }
+          updateData.referenceId = normalizedRefId;
+        } else {
+          updateData.referenceId = null;
+        }
+      }
       const updated = await storage.updateUser(brokerId, updateData);
       res.json({ success: true, broker: safeUser(updated) });
     } catch (error: any) {
