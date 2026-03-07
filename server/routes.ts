@@ -369,7 +369,7 @@ export async function registerRoutes(
         author: "System",
       });
 
-      // Auto-assign if referenceId matches a broker
+      // Auto-assign if referenceId matches a broker or referral partner
       let finalQuote = quote;
       if (quote.referenceId) {
         const allUsers = await storage.getAllUsers();
@@ -385,6 +385,16 @@ export async function registerRoutes(
             content: `Lead auto-assigned to ${matchingBroker.name} via Reference ID ${quote.referenceId}`,
             author: "System",
           });
+        } else {
+          const matchingPartner = await storage.getReferralPartnerByReferenceId(quote.referenceId);
+          if (matchingPartner && matchingPartner.status === "active") {
+            await storage.createActivity({
+              quoteId: quote.id,
+              type: "system",
+              content: `Lead linked to referral partner ${matchingPartner.contactName} via Reference ID ${matchingPartner.referenceId}`,
+              author: "System",
+            });
+          }
         }
       }
       
@@ -760,6 +770,121 @@ export async function registerRoutes(
       res.json({ success: true, delivered: !!sent });
     } catch (error: any) {
       console.error('[Email] Send from lead error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== REFERRAL PARTNERS ROUTES =====
+
+  app.get("/api/referral-partners", async (req, res) => {
+    try {
+      const partners = await storage.getAllReferralPartners();
+      res.json(partners);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/referral-partners/generate-id/:province", async (req, res) => {
+    try {
+      const validProvinces = ["ON", "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "PE", "QC", "SK", "YT"];
+      const province = req.params.province.toUpperCase();
+      if (!validProvinces.includes(province)) {
+        return res.status(400).json({ error: "Invalid province code" });
+      }
+      const referenceId = await storage.getNextReferenceIdForProvince(province);
+      res.json({ referenceId });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/referral-partners/:id", async (req, res) => {
+    try {
+      const partner = await storage.getReferralPartner(req.params.id);
+      if (!partner) return res.status(404).json({ error: "Partner not found" });
+      res.json(partner);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/referral-partners", async (req, res) => {
+    try {
+      const { actorId, contactName, email, phone, address, province, businessDescription, relationships } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin or manager can create referral partners" });
+      }
+
+      if (!contactName || !email || !province) {
+        return res.status(400).json({ error: "Contact name, email, and province are required" });
+      }
+
+      const validProvinces = ["ON", "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "PE", "QC", "SK", "YT"];
+      const upperProvince = province.toUpperCase();
+      if (!validProvinces.includes(upperProvince)) {
+        return res.status(400).json({ error: "Invalid province code" });
+      }
+
+      const referenceId = await storage.getNextReferenceIdForProvince(upperProvince);
+
+      const partner = await storage.createReferralPartner({
+        contactName,
+        email,
+        phone: phone || null,
+        address: address || null,
+        province: upperProvince,
+        businessDescription: businessDescription || null,
+        relationships: relationships || null,
+        referenceId,
+        status: "active",
+        createdBy: actorId,
+      });
+
+      res.json(partner);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/referral-partners/:id", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin or manager can update referral partners" });
+      }
+
+      const existing = await storage.getReferralPartner(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Partner not found" });
+
+      const { referenceId, createdBy, ...updateData } = data;
+      const partner = await storage.updateReferralPartner(req.params.id, updateData);
+      res.json(partner);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/referral-partners/:id", async (req, res) => {
+    try {
+      const { actorId } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin or manager can delete referral partners" });
+      }
+
+      const deleted = await storage.deleteReferralPartner(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Partner not found" });
+      res.json({ success: true });
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

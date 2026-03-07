@@ -85,7 +85,7 @@ export const quotes = pgTable("quotes", {
   assignedTo: varchar("assigned_to").references(() => users.id),
   assignedAt: timestamp("assigned_at"),
   internalNotes: text("internal_notes").default(""),
-  referenceId: varchar("reference_id", { length: 6 }),
+  referenceId: varchar("reference_id", { length: 12 }),
   binderRequired: boolean("binder_required").default(false),
   binderUrl: text("binder_url"),
   binderUploadedAt: timestamp("binder_uploaded_at"),
@@ -160,6 +160,23 @@ export const partnerRedirects = pgTable("partner_redirects", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Referral Partners Table - accounts for reference ID holders
+export const referralPartners = pgTable("referral_partners", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactName: text("contact_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  address: text("address"),
+  province: varchar("province", { length: 2 }).notNull(),
+  businessDescription: text("business_description"),
+  relationships: text("relationships"),
+  referenceId: varchar("reference_id", { length: 12 }).notNull().unique(),
+  status: userStatusEnum("status").notNull().default("active"),
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -207,6 +224,12 @@ export const insertPartnerRedirectSchema = createInsertSchema(partnerRedirects).
   updatedAt: true,
 });
 
+export const insertReferralPartnerSchema = createInsertSchema(referralPartners).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Select Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -231,3 +254,6 @@ export type InsertBrokerNote = z.infer<typeof insertBrokerNoteSchema>;
 
 export type PartnerRedirect = typeof partnerRedirects.$inferSelect;
 export type InsertPartnerRedirect = z.infer<typeof insertPartnerRedirectSchema>;
+
+export type ReferralPartner = typeof referralPartners.$inferSelect;
+export type InsertReferralPartner = z.infer<typeof insertReferralPartnerSchema>;

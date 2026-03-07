@@ -253,7 +253,7 @@ export default function LifePage() {
 
               <div className="space-y-2">
                 <Label>Reference ID (optional)</Label>
-                <Input {...register("referenceId")} placeholder="e.g. ABC123" maxLength={6} className="uppercase" data-testid="input-reference-id" />
+                <Input {...register("referenceId")} placeholder="e.g. ABC123 or ON0000001" maxLength={12} className="uppercase" data-testid="input-reference-id" />
                 <p className="text-xs text-muted-foreground">If you were given a reference code, enter it here.</p>
               </div>
 

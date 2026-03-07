@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
@@ -51,6 +51,21 @@ export default function AdminCRMPage() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Referral Partners State
+  const [referralPartners, setReferralPartners] = useState<any[]>([]);
+  const [isAddPartnerOpen, setIsAddPartnerOpen] = useState(false);
+  const [editingPartner, setEditingPartner] = useState<any>(null);
+  const [partnerForm, setPartnerForm] = useState({
+    contactName: "",
+    email: "",
+    phone: "",
+    address: "",
+    province: "",
+    businessDescription: "",
+    relationships: "",
+  });
+  const [partnerSearch, setPartnerSearch] = useState("");
   
   // New User Form State
   const [newUser, setNewUser] = useState({
@@ -429,6 +444,12 @@ export default function AdminCRMPage() {
         setLeadExpiryHours(data.hours || 24);
         setEditingExpiryHours((data.hours || 24).toString());
       })
+      .catch(console.error);
+
+    // Load referral partners
+    fetch("/api/referral-partners")
+      .then(r => r.json())
+      .then(data => setReferralPartners(Array.isArray(data) ? data : []))
       .catch(console.error);
 
   }, []);
@@ -859,6 +880,114 @@ export default function AdminCRMPage() {
     }
   };
 
+  const PROVINCES = [
+    { code: "ON", name: "Ontario" },
+    { code: "AB", name: "Alberta" },
+    { code: "BC", name: "British Columbia" },
+    { code: "MB", name: "Manitoba" },
+    { code: "NB", name: "New Brunswick" },
+    { code: "NL", name: "Newfoundland & Labrador" },
+    { code: "NS", name: "Nova Scotia" },
+    { code: "NT", name: "Northwest Territories" },
+    { code: "NU", name: "Nunavut" },
+    { code: "PE", name: "Prince Edward Island" },
+    { code: "QC", name: "Quebec" },
+    { code: "SK", name: "Saskatchewan" },
+    { code: "YT", name: "Yukon" },
+  ];
+
+  const fetchReferralPartners = () => {
+    fetch("/api/referral-partners")
+      .then(r => r.json())
+      .then(data => setReferralPartners(Array.isArray(data) ? data : []))
+      .catch(console.error);
+  };
+
+  const resetPartnerForm = () => {
+    setPartnerForm({ contactName: "", email: "", phone: "", address: "", province: "", businessDescription: "", relationships: "" });
+    setEditingPartner(null);
+  };
+
+  const handleSavePartner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerForm.contactName || !partnerForm.email || !partnerForm.province) {
+      toast({ title: "Missing Fields", description: "Contact name, email, and province are required.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      if (editingPartner) {
+        const res = await fetch(`/api/referral-partners/${editingPartner.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actorId: user?.id, ...partnerForm }),
+        });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+        toast({ title: "Partner Updated", description: `${partnerForm.contactName} has been updated.` });
+      } else {
+        const res = await fetch("/api/referral-partners", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ actorId: user?.id, ...partnerForm }),
+        });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+        const data = await res.json();
+        toast({ title: "Partner Created", description: `Reference ID ${data.referenceId} assigned to ${partnerForm.contactName}.` });
+      }
+      resetPartnerForm();
+      setIsAddPartnerOpen(false);
+      fetchReferralPartners();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to save partner", variant: "destructive" });
+    }
+  };
+
+  const handleDeletePartner = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete partner "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/referral-partners/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId: user?.id }),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      toast({ title: "Partner Deleted", description: `${name} has been removed.` });
+      fetchReferralPartners();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete partner", variant: "destructive" });
+    }
+  };
+
+  const handleTogglePartnerStatus = async (partner: any) => {
+    const newStatus = partner.status === "active" ? "paused" : "active";
+    try {
+      const res = await fetch(`/api/referral-partners/${partner.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId: user?.id, status: newStatus }),
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      toast({ title: "Status Updated", description: `Partner is now ${newStatus}.` });
+      fetchReferralPartners();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to update status", variant: "destructive" });
+    }
+  };
+
+  const filteredPartners = referralPartners.filter(p => {
+    if (!partnerSearch) return true;
+    const search = partnerSearch.toLowerCase();
+    return p.contactName?.toLowerCase().includes(search) || 
+           p.email?.toLowerCase().includes(search) || 
+           p.referenceId?.toLowerCase().includes(search) ||
+           p.province?.toLowerCase().includes(search);
+  });
+
+  const partnerLeadCounts = referralPartners.reduce((acc: Record<string, number>, p: any) => {
+    acc[p.referenceId] = quotes.filter(q => q.referenceId && q.referenceId.toUpperCase() === p.referenceId.toUpperCase()).length;
+    return acc;
+  }, {});
+
   const handlePasswordReset = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedUserForReset && newPassword) {
@@ -1273,6 +1402,15 @@ export default function AdminCRMPage() {
                       <FileText size={18} className="mr-3" /> Leads
                     </Button>
                     )}
+                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    <Button 
+                      variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { setActiveTab('partners'); setMobileMenuOpen(false); }}
+                    >
+                      <UserCog size={18} className="mr-3" /> Partners
+                    </Button>
+                    )}
                     <Button 
                       variant={activeTab === 'manager' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
@@ -1355,6 +1493,16 @@ export default function AdminCRMPage() {
                   className={activeTab === 'leads' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                 >
                   <FileText size={16} className="mr-2" /> Leads
+                </Button>
+                )}
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                <Button 
+                  variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setActiveTab('partners')}
+                  className={activeTab === 'partners' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                >
+                  <UserCog size={16} className="mr-2" /> Partners
                 </Button>
                 )}
                 <Button 
@@ -2737,6 +2885,233 @@ export default function AdminCRMPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* PARTNERS TAB */}
+        {activeTab === 'partners' && (user?.role === 'admin' || user?.role === 'manager') && (
+          <Card className="shadow-lg border-none">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Referral Partners</CardTitle>
+                  <CardDescription>Manage referral partner accounts and auto-generated Reference IDs</CardDescription>
+                </div>
+                <Button onClick={() => { resetPartnerForm(); setIsAddPartnerOpen(true); }} data-testid="button-add-partner">
+                  <Plus size={16} className="mr-2" /> Add Partner
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <div className="relative max-w-sm">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input 
+                    placeholder="Search partners..." 
+                    value={partnerSearch} 
+                    onChange={(e) => setPartnerSearch(e.target.value)} 
+                    className="pl-10"
+                    data-testid="input-partner-search"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-indigo-900 mb-2">How Partner Reference IDs Work</h4>
+                <ol className="list-decimal list-inside text-sm text-indigo-800 space-y-1">
+                  <li>Create a partner account below with their province of business</li>
+                  <li>The system generates a unique Reference ID based on province (e.g., ON0000001 for Ontario)</li>
+                  <li>Share the Reference ID with the partner</li>
+                  <li>When a client enters this code on a quote form, the lead is tagged to this partner</li>
+                </ol>
+              </div>
+
+              {filteredPartners.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <UserCog className="mx-auto h-12 w-12 mb-3 opacity-40" />
+                  <p className="font-medium">No referral partners yet</p>
+                  <p className="text-sm mt-1">Click "Add Partner" to create your first referral partner account</p>
+                </div>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Contact Name</TableHead>
+                        <TableHead>Reference ID</TableHead>
+                        <TableHead>Province</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Leads</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPartners.map((partner) => (
+                        <TableRow key={partner.id} data-testid={`row-partner-${partner.id}`}>
+                          <TableCell className="font-medium">{partner.contactName}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono text-sm bg-indigo-50 text-indigo-700 border-indigo-300">
+                              {partner.referenceId}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{PROVINCES.find(p => p.code === partner.province)?.name || partner.province}</TableCell>
+                          <TableCell>{partner.email}</TableCell>
+                          <TableCell>{partner.phone || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{partnerLeadCounts[partner.referenceId] || 0}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={partner.status === 'active' ? 'bg-green-100 text-green-800 border-green-300' : 'bg-yellow-100 text-yellow-800 border-yellow-300'} variant="outline">
+                              {partner.status === 'active' ? 'Active' : 'Paused'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => {
+                                setEditingPartner(partner);
+                                setPartnerForm({
+                                  contactName: partner.contactName,
+                                  email: partner.email,
+                                  phone: partner.phone || "",
+                                  address: partner.address || "",
+                                  province: partner.province,
+                                  businessDescription: partner.businessDescription || "",
+                                  relationships: partner.relationships || "",
+                                });
+                                setIsAddPartnerOpen(true);
+                              }} data-testid={`button-edit-partner-${partner.id}`}>
+                                <Pencil size={14} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleTogglePartnerStatus(partner)} data-testid={`button-toggle-partner-${partner.id}`}>
+                                {partner.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-800" onClick={() => handleDeletePartner(partner.id, partner.contactName)} data-testid={`button-delete-partner-${partner.id}`}>
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              <div className="mt-4 text-sm text-muted-foreground">
+                Total Partners: {referralPartners.length} | Active: {referralPartners.filter(p => p.status === 'active').length} | Paused: {referralPartners.filter(p => p.status !== 'active').length}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add/Edit Partner Dialog */}
+        <Dialog open={isAddPartnerOpen} onOpenChange={(open) => { if (!open) { resetPartnerForm(); } setIsAddPartnerOpen(open); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingPartner ? 'Edit Partner' : 'Add Referral Partner'}</DialogTitle>
+              <DialogDescription>
+                {editingPartner 
+                  ? `Update details for ${editingPartner.contactName} (${editingPartner.referenceId})`
+                  : 'Create a new referral partner account. A unique Reference ID will be auto-generated based on the selected province.'
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSavePartner} className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Primary Contact Name *</Label>
+                  <Input 
+                    value={partnerForm.contactName} 
+                    onChange={(e) => setPartnerForm(f => ({ ...f, contactName: e.target.value }))} 
+                    placeholder="John Smith"
+                    required
+                    data-testid="input-partner-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input 
+                    type="email"
+                    value={partnerForm.email} 
+                    onChange={(e) => setPartnerForm(f => ({ ...f, email: e.target.value }))} 
+                    placeholder="partner@example.com"
+                    required
+                    data-testid="input-partner-email"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <Input 
+                    value={partnerForm.phone} 
+                    onChange={(e) => setPartnerForm(f => ({ ...f, phone: e.target.value }))} 
+                    placeholder="416-555-0100"
+                    data-testid="input-partner-phone"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Province / Territory *</Label>
+                  <Select 
+                    value={partnerForm.province} 
+                    onValueChange={(val) => setPartnerForm(f => ({ ...f, province: val }))}
+                    disabled={!!editingPartner}
+                  >
+                    <SelectTrigger data-testid="select-partner-province">
+                      <SelectValue placeholder="Select province" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROVINCES.map(p => (
+                        <SelectItem key={p.code} value={p.code}>{p.name} ({p.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Address</Label>
+                <Input 
+                  value={partnerForm.address} 
+                  onChange={(e) => setPartnerForm(f => ({ ...f, address: e.target.value }))} 
+                  placeholder="123 Main Street, Toronto, ON"
+                  data-testid="input-partner-address"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Business Description</Label>
+                <Textarea 
+                  value={partnerForm.businessDescription} 
+                  onChange={(e) => setPartnerForm(f => ({ ...f, businessDescription: e.target.value }))} 
+                  placeholder="Describe the partner's business, services, and how they generate referrals..."
+                  className="min-h-[80px]"
+                  data-testid="input-partner-business"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Relationships</Label>
+                <Textarea 
+                  value={partnerForm.relationships} 
+                  onChange={(e) => setPartnerForm(f => ({ ...f, relationships: e.target.value }))} 
+                  placeholder="Key contacts, affiliated companies, broker connections..."
+                  className="min-h-[80px]"
+                  data-testid="input-partner-relationships"
+                />
+              </div>
+              {editingPartner && (
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <Label className="text-xs text-muted-foreground">Reference ID (auto-generated)</Label>
+                  <p className="font-mono text-lg font-bold text-indigo-700">{editingPartner.referenceId}</p>
+                </div>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => { resetPartnerForm(); setIsAddPartnerOpen(false); }}>Cancel</Button>
+                <Button type="submit" data-testid="button-save-partner">
+                  {editingPartner ? 'Update Partner' : 'Create Partner'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* MANAGER TAB (Users) */}
         {activeTab === 'manager' && (

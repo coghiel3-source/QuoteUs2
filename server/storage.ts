@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -60,6 +60,15 @@ export interface IStorage {
   createPartnerRedirect(redirect: InsertPartnerRedirect): Promise<PartnerRedirect>;
   updatePartnerRedirect(id: string, data: Partial<InsertPartnerRedirect>): Promise<PartnerRedirect | undefined>;
   deletePartnerRedirect(id: string): Promise<boolean>;
+
+  // Referral Partner operations
+  getAllReferralPartners(): Promise<ReferralPartner[]>;
+  getReferralPartner(id: string): Promise<ReferralPartner | undefined>;
+  getReferralPartnerByReferenceId(referenceId: string): Promise<ReferralPartner | undefined>;
+  createReferralPartner(partner: InsertReferralPartner): Promise<ReferralPartner>;
+  updateReferralPartner(id: string, data: Partial<InsertReferralPartner>): Promise<ReferralPartner | undefined>;
+  deleteReferralPartner(id: string): Promise<boolean>;
+  getNextReferenceIdForProvince(province: string): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -420,6 +429,56 @@ export class DatabaseStorage implements IStorage {
   async deletePartnerRedirect(id: string): Promise<boolean> {
     const result = await db.delete(partnerRedirects).where(eq(partnerRedirects.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Referral Partner operations
+  async getAllReferralPartners(): Promise<ReferralPartner[]> {
+    return await db.select().from(referralPartners).orderBy(desc(referralPartners.createdAt));
+  }
+
+  async getReferralPartner(id: string): Promise<ReferralPartner | undefined> {
+    const [partner] = await db.select().from(referralPartners).where(eq(referralPartners.id, id));
+    return partner || undefined;
+  }
+
+  async getReferralPartnerByReferenceId(referenceId: string): Promise<ReferralPartner | undefined> {
+    const allPartners = await db.select().from(referralPartners);
+    return allPartners.find(p => p.referenceId.toUpperCase() === referenceId.toUpperCase());
+  }
+
+  async createReferralPartner(partner: InsertReferralPartner): Promise<ReferralPartner> {
+    const [newPartner] = await db.insert(referralPartners).values(partner).returning();
+    return newPartner;
+  }
+
+  async updateReferralPartner(id: string, data: Partial<InsertReferralPartner>): Promise<ReferralPartner | undefined> {
+    const [partner] = await db.update(referralPartners)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(referralPartners.id, id))
+      .returning();
+    return partner || undefined;
+  }
+
+  async deleteReferralPartner(id: string): Promise<boolean> {
+    const result = await db.delete(referralPartners).where(eq(referralPartners.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getNextReferenceIdForProvince(province: string): Promise<string> {
+    const prefix = province.toUpperCase();
+    const existing = await db.select().from(referralPartners)
+      .where(sql`UPPER(LEFT(${referralPartners.referenceId}, 2)) = ${prefix}`);
+    
+    let maxNum = 0;
+    for (const p of existing) {
+      const numPart = parseInt(p.referenceId.substring(2), 10);
+      if (!isNaN(numPart) && numPart > maxNum) {
+        maxNum = numPart;
+      }
+    }
+    
+    const nextNum = maxNum + 1;
+    return `${prefix}${String(nextNum).padStart(7, '0')}`;
   }
 }
 
