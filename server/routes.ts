@@ -708,9 +708,10 @@ export async function registerRoutes(
       if (!quote) return res.status(404).json({ error: "Lead not found" });
 
       const binderUrl = `/uploads/binders/${req.file.filename}`;
+      const binderUploadedAt = new Date();
       await storage.updateQuote(req.params.id, {
         binderUrl,
-        binderUploadedAt: new Date(),
+        binderUploadedAt,
       });
 
       const actor = await storage.getUser(actorId);
@@ -721,7 +722,7 @@ export async function registerRoutes(
         author: actor?.name || "Broker",
       });
 
-      res.json({ success: true, binderUrl });
+      res.json({ success: true, binderUrl, binderUploadedAt: binderUploadedAt.toISOString() });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

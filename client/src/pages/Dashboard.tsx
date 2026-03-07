@@ -594,74 +594,76 @@ export default function DashboardPage() {
                   )}
 
                   {/* Binder Upload Section */}
-                  {(selectedLead as any).binderRequired && (
-                    <div>
-                      <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Binder / Confirmation of Insurance</h3>
-                      {(selectedLead as any).binderUrl ? (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div>
+                    <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Binder / Confirmation of Insurance</h3>
+                    <div className="space-y-3">
+                      {(selectedLead as any).binderRequired && !(selectedLead as any).binderUrl && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <span className="text-sm text-amber-800">Binder upload required by admin</span>
+                          </div>
+                        </div>
+                      )}
+                      {(selectedLead as any).binderUrl && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                              <span className="text-sm font-medium text-green-800">Binder Uploaded</span>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <span className="text-sm font-semibold text-green-800">Binder Uploaded</span>
+                              </div>
                               {(selectedLead as any).binderUploadedAt && (
-                                <span className="text-xs text-green-600">
-                                  {format(new Date((selectedLead as any).binderUploadedAt), 'MMM d, yyyy h:mm a')}
+                                <span className="text-xs text-green-600 ml-7">
+                                  Uploaded on {format(new Date((selectedLead as any).binderUploadedAt), 'MMM d, yyyy h:mm a')}
                                 </span>
                               )}
                             </div>
-                            <a href={(selectedLead as any).binderUrl} target="_blank" rel="noopener noreferrer">
-                              <Button size="sm" variant="outline" className="text-green-700">
-                                <Eye className="h-4 w-4 mr-1" /> View
+                            <a href={(selectedLead as any).binderUrl} target="_blank" rel="noopener noreferrer" data-testid="link-view-binder-broker">
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                <Eye className="h-4 w-4 mr-1" /> View Binder
                               </Button>
                             </a>
                           </div>
                         </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                            <div className="flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4 text-amber-600" />
-                              <span className="text-sm text-amber-800">Binder upload required before closing this lead</span>
-                            </div>
-                          </div>
-                          <div>
-                            <input
-                              type="file"
-                              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const formData = new FormData();
-                                formData.append("binder", file);
-                                formData.append("actorId", String(user?.id));
-                                try {
-                                  const res = await fetch(`/api/leads/${selectedLead.id}/upload-binder`, {
-                                    method: "POST",
-                                    body: formData,
-                                  });
-                                  if (res.ok) {
-                                    const data = await res.json();
-                                    toast({ title: "Binder Uploaded", description: "Your confirmation of insurance has been uploaded." });
-                                    setSelectedLead({ ...selectedLead, binderUrl: data.binderUrl, binderUploadedAt: new Date().toISOString() } as any);
-                                    refreshQuotes();
-                                  } else {
-                                    const err = await res.json();
-                                    toast({ title: "Error", description: err.error || "Failed to upload binder", variant: "destructive" });
-                                  }
-                                } catch (err) {
-                                  toast({ title: "Error", description: "Failed to upload binder", variant: "destructive" });
-                                }
-                                e.target.value = '';
-                              }}
-                              data-testid="input-binder-upload"
-                              className="text-sm"
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">PDF, Word, or image files up to 20MB</p>
-                          </div>
-                        </div>
                       )}
+                      <div className="border rounded-lg p-3 bg-slate-50">
+                        <p className="text-sm font-medium mb-2">{(selectedLead as any).binderUrl ? 'Upload New Document (replaces current)' : 'Upload Binder Document'}</p>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append("binder", file);
+                            formData.append("actorId", String(user?.id));
+                            try {
+                              const res = await fetch(`/api/leads/${selectedLead.id}/upload-binder`, {
+                                method: "POST",
+                                body: formData,
+                              });
+                              if (res.ok) {
+                                const data = await res.json();
+                                toast({ title: "Binder Uploaded", description: `Document uploaded on ${format(new Date(data.binderUploadedAt), 'MMM d, yyyy h:mm a')}` });
+                                setSelectedLead({ ...selectedLead, binderUrl: data.binderUrl, binderUploadedAt: data.binderUploadedAt } as any);
+                                refreshQuotes();
+                              } else {
+                                const err = await res.json();
+                                toast({ title: "Error", description: err.error || "Failed to upload binder", variant: "destructive" });
+                              }
+                            } catch (err) {
+                              toast({ title: "Error", description: "Failed to upload binder", variant: "destructive" });
+                            }
+                            e.target.value = '';
+                          }}
+                          data-testid="input-binder-upload"
+                          className="text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">PDF, Word, or image files up to 20MB</p>
+                      </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Status */}
                   <div>
