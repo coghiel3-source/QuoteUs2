@@ -20,6 +20,7 @@ export default function TenantPage() {
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [wantAutoQuote, setWantAutoQuote] = useState(false);
+  const [hasInsurance, setHasInsurance] = useState("");
   const { register, handleSubmit, control, setValue, watch } = useForm<any>({
     defaultValues: {
       claims: [],
@@ -33,6 +34,14 @@ export default function TenantPage() {
   });
 
   const onSubmit = async (data: any) => {
+    if (!hasInsurance) {
+      toast({ title: "Missing Field", description: "Please select whether you currently have tenant insurance.", variant: "destructive" });
+      return;
+    }
+    if (hasInsurance === "yes" && !data.insuranceYears) {
+      toast({ title: "Missing Field", description: "Please select how many years of insurance you have.", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 1500));
     
@@ -46,6 +55,7 @@ export default function TenantPage() {
       details: {
         firstName: data.firstName,
         lastName: data.lastName,
+        dob: data.dob,
         email: data.email,
         phone: data.phone,
         address: data.address,
@@ -53,6 +63,8 @@ export default function TenantPage() {
         postalCode: data.postalCode,
         contentsValue: data.contentsValue,
         yearsAtAddress: data.yearsAtAddress,
+        hasInsurance: hasInsurance,
+        insuranceYears: hasInsurance === "yes" ? data.insuranceYears : null,
         claims: data.claims || [],
         claimsCount: data.claims?.length || 0,
         crossSellInterest: {
@@ -123,9 +135,16 @@ export default function TenantPage() {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>Date of Birth</Label>
+                  <Input {...register("dob")} type="date" required data-testid="input-dob" />
+                </div>
+                <div className="space-y-2">
                   <Label>Email</Label>
                   <Input {...register("email")} type="email" placeholder="john@example.com" required />
                 </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Phone Number</Label>
                   <Input {...register("phone")} type="tel" placeholder="(555) 123-4567" required />
@@ -168,6 +187,38 @@ export default function TenantPage() {
                       <SelectItem value="5_plus">5+ years</SelectItem>
                     </SelectContent>
                  </Select>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Do you have tenant insurance now?</Label>
+                  <Select onValueChange={(val) => setHasInsurance(val)}>
+                    <SelectTrigger data-testid="select-has-insurance">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {hasInsurance === "yes" && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label>How many years of insurance?</Label>
+                    <Select onValueChange={(val) => setValue("insuranceYears", val)}>
+                      <SelectTrigger data-testid="select-insurance-years">
+                        <SelectValue placeholder="Select years" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="less_than_1">Less than 1 year</SelectItem>
+                        <SelectItem value="1_to_3">1 - 3 years</SelectItem>
+                        <SelectItem value="3_to_5">3 - 5 years</SelectItem>
+                        <SelectItem value="5_to_10">5 - 10 years</SelectItem>
+                        <SelectItem value="10_plus">10+ years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">

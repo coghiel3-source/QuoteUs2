@@ -90,6 +90,7 @@ const homeSections: DetailSection[] = [
     fields: [
       { label: "First Name", key: "firstName" },
       { label: "Last Name", key: "lastName" },
+      { label: "Date of Birth", key: "dob" },
       { label: "Email", key: "email" },
       { label: "Phone", key: "phone" },
     ]
@@ -104,6 +105,8 @@ const homeSections: DetailSection[] = [
       { label: "Roof Age", key: "roofAge" },
       { label: "Furnace Age", key: "furnaceAge" },
       { label: "Years at Address", key: "yearsAtAddress" },
+      { label: "Currently Insured", key: "hasInsurance" },
+      { label: "Years of Insurance", key: "insuranceYears" },
     ]
   },
   {
@@ -132,6 +135,7 @@ const tenantSections: DetailSection[] = [
     fields: [
       { label: "First Name", key: "firstName" },
       { label: "Last Name", key: "lastName" },
+      { label: "Date of Birth", key: "dob" },
       { label: "Email", key: "email" },
       { label: "Phone", key: "phone" },
     ]
@@ -142,6 +146,8 @@ const tenantSections: DetailSection[] = [
     fields: [
       { label: "Contents Value", key: "contentsValue" },
       { label: "Years at Address", key: "yearsAtAddress" },
+      { label: "Currently Insured", key: "hasInsurance" },
+      { label: "Years of Insurance", key: "insuranceYears" },
       { label: "Claims Count", key: "claimsCount" },
       { label: "Claims", key: "claims" },
     ]
