@@ -1650,10 +1650,13 @@ export default function AdminCRMPage() {
                     </div>
 
                     {/* Binder / Confirmation of Insurance */}
-                    <div className="border rounded-lg p-4 bg-white">
+                    <div className={`border rounded-lg p-4 ${(selectedQuote as any).binderUrl ? 'bg-green-50 border-green-200' : 'bg-white'}`}>
                       <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <FileText size={16} />
                         Binder / Confirmation of Insurance
+                        {(selectedQuote as any).binderUrl && (
+                          <Badge className="bg-green-100 text-green-800 border-green-300" variant="outline">Uploaded</Badge>
+                        )}
                       </h4>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -1689,14 +1692,16 @@ export default function AdminCRMPage() {
                           />
                         </div>
                         {(selectedQuote as any).binderUrl && (
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                <span className="text-sm font-medium text-green-800">Binder Uploaded</span>
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <CheckCircle className="h-5 w-5 text-green-600" />
+                                  <span className="text-sm font-semibold text-green-800">Binder Uploaded</span>
+                                </div>
                                 {(selectedQuote as any).binderUploadedAt && (
-                                  <span className="text-xs text-green-600">
-                                    {format(new Date((selectedQuote as any).binderUploadedAt), 'MMM d, yyyy h:mm a')}
+                                  <span className="text-xs text-green-600 ml-7">
+                                    Uploaded on {format(new Date((selectedQuote as any).binderUploadedAt), 'MMM d, yyyy h:mm a')}
                                   </span>
                                 )}
                               </div>
@@ -1706,8 +1711,8 @@ export default function AdminCRMPage() {
                                 rel="noopener noreferrer"
                                 data-testid="link-view-binder"
                               >
-                                <Button size="sm" variant="outline" className="text-green-700">
-                                  <Eye className="h-4 w-4 mr-1" /> View
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                                  <Eye className="h-4 w-4 mr-1" /> View Binder
                                 </Button>
                               </a>
                             </div>
@@ -1718,6 +1723,14 @@ export default function AdminCRMPage() {
                             <div className="flex items-center gap-2">
                               <AlertCircle className="h-4 w-4 text-amber-600" />
                               <span className="text-sm text-amber-800">Awaiting binder upload from broker</span>
+                            </div>
+                          </div>
+                        )}
+                        {selectedQuote.status === 'Closed' && !(selectedQuote as any).binderUrl && !(selectedQuote as any).binderRequired && (
+                          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="h-4 w-4 text-slate-500" />
+                              <span className="text-sm text-slate-600">Lead is closed. No binder was uploaded. Toggle the switch above to request one from the broker.</span>
                             </div>
                           </div>
                         )}

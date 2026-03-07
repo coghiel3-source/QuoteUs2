@@ -473,7 +473,7 @@ export default function DashboardPage() {
                     <TableCell>
                       <Select 
                           value={lead.status} 
-                          onValueChange={(val: any) => updateStatus(lead.id, val)}
+                          onValueChange={(val: any) => updateStatus(lead.id, val, user?.name || 'Broker')}
                         >
                           <SelectTrigger className={`w-[110px] h-7 text-xs border-none ${getStatusColor(lead.status)}`}>
                             <SelectValue />
@@ -669,7 +669,7 @@ export default function DashboardPage() {
                     <Select 
                       value={selectedLead.status} 
                       onValueChange={(val: any) => {
-                        updateStatus(selectedLead.id, val);
+                        updateStatus(selectedLead.id, val, user?.name || 'Broker');
                         setSelectedLead({ ...selectedLead, status: val });
                       }}
                     >
