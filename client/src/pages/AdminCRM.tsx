@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
+import LeadDetailView from "@/components/LeadDetailView";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -1461,70 +1462,7 @@ export default function AdminCRMPage() {
 
                     <div className="border rounded-lg p-4 bg-slate-50">
                       <h4 className="font-semibold mb-3 flex items-center gap-2"><Car size={16}/> Quote Details</h4>
-                      <div className="space-y-3">
-                        {selectedQuote.details && (() => {
-                          const formatLabel = (k: string) => k
-                            .replace(/([A-Z])/g, ' $1')
-                            .replace(/^./, str => str.toUpperCase())
-                            .replace(/_/g, ' ')
-                            .trim();
-                          
-                          const renderValue = (v: any, depth: number = 0): React.ReactNode => {
-                            if (v === null || v === undefined || v === '') return <span className="text-slate-400 italic">Not provided</span>;
-                            if (typeof v === 'boolean') return v ? 'Yes' : 'No';
-                            if (typeof v === 'string' || typeof v === 'number') return String(v);
-                            
-                            if (Array.isArray(v)) {
-                              if (v.length === 0) return <span className="text-slate-400 italic">None</span>;
-                              return (
-                                <div className="space-y-2">
-                                  {v.map((item, i) => (
-                                    <div key={i} className={`${depth > 0 ? 'pl-3 border-l-2 border-slate-200' : ''}`}>
-                                      {typeof item === 'object' && item !== null ? (
-                                        <div className="bg-slate-50 rounded p-2 space-y-1">
-                                          {Object.entries(item).map(([k, val]) => (
-                                            <div key={k} className="flex gap-2">
-                                              <span className="text-xs text-slate-500 min-w-[80px]">{formatLabel(k)}:</span>
-                                              <span className="text-xs font-medium">{renderValue(val, depth + 1)}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <span className="text-sm">{String(item)}</span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            }
-                            
-                            if (typeof v === 'object') {
-                              return (
-                                <div className="bg-slate-50 rounded p-2 space-y-1">
-                                  {Object.entries(v).map(([k, val]) => (
-                                    <div key={k} className="flex gap-2">
-                                      <span className="text-xs text-slate-500 min-w-[80px]">{formatLabel(k)}:</span>
-                                      <span className="text-xs font-medium">{renderValue(val, depth + 1)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            }
-                            
-                            return String(v);
-                          };
-
-                          return Object.entries(selectedQuote.details).map(([key, value]) => (
-                            <div key={key} className="py-2 border-b border-slate-200 last:border-0">
-                              <div className="text-sm text-slate-500 mb-1">{formatLabel(key)}</div>
-                              <div className="text-sm font-semibold text-primary">{renderValue(value)}</div>
-                            </div>
-                          ));
-                        })()}
-                        {(!selectedQuote.details || Object.keys(selectedQuote.details).length === 0) && (
-                          <p className="text-sm text-muted-foreground">No additional details available.</p>
-                        )}
-                      </div>
+                      <LeadDetailView quoteType={selectedQuote.type} details={selectedQuote.details} />
                     </div>
                   </TabsContent>
 

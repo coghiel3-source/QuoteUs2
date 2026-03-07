@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
+import LeadDetailView from "@/components/LeadDetailView";
 
 export default function DashboardPage() {
   const { user, login, logout, register } = useAuth();
@@ -582,20 +583,7 @@ export default function DashboardPage() {
                   {selectedLead.details && Object.keys(selectedLead.details).length > 0 && (
                     <div>
                       <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Quote Details</h3>
-                      <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                        {Object.entries(selectedLead.details).map(([key, value]) => {
-                          if (!value || key === 'email' || key === 'phone' || key === 'postalCode' || key === 'firstName' || key === 'lastName') return null;
-                          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                          return (
-                            <div key={key} className="flex justify-between items-start border-b border-slate-200 pb-2 last:border-0 last:pb-0">
-                              <span className="text-sm text-muted-foreground">{label}</span>
-                              <span className="text-sm font-medium text-right max-w-[60%]">
-                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <LeadDetailView quoteType={selectedLead.type} details={selectedLead.details} />
                     </div>
                   )}
 
