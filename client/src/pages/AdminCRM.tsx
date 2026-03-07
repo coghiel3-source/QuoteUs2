@@ -33,6 +33,7 @@ export default function AdminCRMPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [refIdFilter, setRefIdFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -1102,8 +1103,15 @@ export default function AdminCRMPage() {
     
     const matchesType = typeFilter === "all" || quote.type === typeFilter;
     const matchesStatus = statusFilter === "all" || quote.status === statusFilter;
+    const matchesRefId = refIdFilter === "all" 
+      ? true 
+      : refIdFilter === "has_ref" 
+        ? !!(quote as any).referenceId 
+        : refIdFilter === "no_ref" 
+          ? !(quote as any).referenceId 
+          : (quote as any).referenceId === refIdFilter;
 
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesType && matchesStatus && matchesRefId;
   });
 
   // Sort by date descending
@@ -2343,6 +2351,34 @@ export default function AdminCRMPage() {
                       <SelectItem value="Win">Win</SelectItem>
                       <SelectItem value="Lose">Lose</SelectItem>
                       <SelectItem value="Expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="w-full md:w-48">
+                  <Select value={refIdFilter} onValueChange={setRefIdFilter}>
+                    <SelectTrigger className="bg-white" data-testid="select-ref-id-filter">
+                      <div className="flex items-center gap-2">
+                        <Key size={16} className="text-muted-foreground" />
+                        <SelectValue placeholder="Reference ID" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Leads</SelectItem>
+                      <SelectItem value="has_ref">Has Reference ID</SelectItem>
+                      <SelectItem value="no_ref">No Reference ID</SelectItem>
+                      {(() => {
+                        const uniqueRefIds = [...new Set(quotes.map(q => (q as any).referenceId).filter(Boolean))];
+                        return uniqueRefIds.map(refId => (
+                          <SelectItem key={refId} value={refId}>
+                            <span className="font-mono">{refId}</span>
+                            {(() => {
+                              const matchingBroker = users.find(u => (u as any).referenceId === refId);
+                              return matchingBroker ? <span className="text-muted-foreground ml-1">({matchingBroker.name})</span> : null;
+                            })()}
+                          </SelectItem>
+                        ));
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>
@@ -4373,6 +4409,91 @@ export default function AdminCRMPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">CSS will be applied site-wide. Use with caution.</p>
+              </div>
+
+              {/* Reference ID Management */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-indigo-100 p-2 rounded-lg">
+                      <Key className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Reference ID Management</h3>
+                      <p className="text-sm text-muted-foreground">Assign unique codes to brokers for direct lead routing</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mt-4 space-y-2">
+                  <p className="text-sm text-indigo-900 font-semibold">How Reference IDs Work</p>
+                  <ol className="text-sm text-indigo-800 list-decimal list-inside space-y-1">
+                    <li>Go to the <strong>Staff</strong> tab and click the actions menu (three dots) next to a broker</li>
+                    <li>Select <strong>"View Profile"</strong> to open the broker's profile panel</li>
+                    <li>In the profile panel, enter a unique 6-character code (letters and numbers) in the <strong>Reference ID</strong> field</li>
+                    <li>Click <strong>"Save Profile"</strong> to assign the code to that broker</li>
+                    <li>Share the Reference ID code with the broker so they can give it to their clients</li>
+                    <li>When a customer fills out any quote form and enters that code, the lead is <strong>automatically assigned</strong> to the broker — no credit deduction</li>
+                  </ol>
+                </div>
+
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold mb-3">Current Reference ID Assignments</h4>
+                  {(() => {
+                    const brokersWithRefId = users.filter(u => u.role === 'broker' && (u as any).referenceId);
+                    const brokersWithoutRefId = users.filter(u => u.role === 'broker' && !(u as any).referenceId && (u.status === 'active' || u.status === 'paused'));
+                    return (
+                      <div className="space-y-3">
+                        {brokersWithRefId.length > 0 ? (
+                          <div className="rounded-md border overflow-hidden">
+                            <Table>
+                              <TableHeader className="bg-slate-50">
+                                <TableRow>
+                                  <TableHead>Broker</TableHead>
+                                  <TableHead>Reference ID</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead className="text-right">Leads Using This Code</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {brokersWithRefId.map(broker => {
+                                  const leadCount = quotes.filter(q => (q as any).referenceId === (broker as any).referenceId).length;
+                                  return (
+                                    <TableRow key={broker.id} data-testid={`refid-row-${broker.id}`}>
+                                      <TableCell className="font-medium">{broker.name}</TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline" className="font-mono text-indigo-700 bg-indigo-50">
+                                          {(broker as any).referenceId}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant={broker.status === 'active' ? 'default' : 'secondary'}>
+                                          {broker.status}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right font-medium">{leadCount}</TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 text-muted-foreground border rounded-lg bg-slate-50">
+                            <Key className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                            <p className="text-sm">No Reference IDs assigned yet.</p>
+                            <p className="text-xs mt-1">Go to the Staff tab, click a broker's actions menu, then "View Profile" to assign one.</p>
+                          </div>
+                        )}
+                        {brokersWithoutRefId.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-2">
+                            <span className="font-medium">{brokersWithoutRefId.length} broker{brokersWithoutRefId.length > 1 ? 's' : ''}</span> without a Reference ID: {brokersWithoutRefId.map(b => b.name).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
 
               <div className="text-sm text-muted-foreground mt-4">
