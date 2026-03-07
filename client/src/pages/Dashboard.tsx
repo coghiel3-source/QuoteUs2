@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, AlertCircle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard } from "lucide-react";
+import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, AlertCircle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
@@ -597,7 +597,7 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">Binder / Confirmation of Insurance</h3>
                     <div className="space-y-3">
-                      {(selectedLead as any).binderRequired && !(selectedLead as any).binderUrl && (
+                      {(selectedLead as any).binderRequired && !((selectedLead as any).binderDocuments?.length > 0) && (
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                           <div className="flex items-center gap-2">
                             <AlertCircle className="h-4 w-4 text-amber-600" />
@@ -605,30 +605,36 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       )}
-                      {(selectedLead as any).binderUrl && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                                <span className="text-sm font-semibold text-green-800">Binder Uploaded</span>
+                      {((selectedLead as any).binderDocuments?.length > 0) && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-green-800 flex items-center gap-1">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            {(selectedLead as any).binderDocuments.length} Document{(selectedLead as any).binderDocuments.length > 1 ? 's' : ''} Uploaded
+                          </p>
+                          {((selectedLead as any).binderDocuments as Array<{url: string; filename: string; uploadedAt: string; uploadedBy: string}>).map((doc, idx) => (
+                            <div key={idx} className="bg-green-50 border border-green-200 rounded-lg p-3" data-testid={`binder-doc-${idx}`}>
+                              <div className="flex items-center justify-between">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-green-800 truncate">{doc.filename}</p>
+                                  <p className="text-xs text-green-600">
+                                    {format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a')} — by {doc.uploadedBy}
+                                  </p>
+                                </div>
+                                <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
+                                  <Button size="sm" variant="outline" className="text-green-700 ml-2 shrink-0">
+                                    <Eye className="h-4 w-4 mr-1" /> View
+                                  </Button>
+                                </a>
                               </div>
-                              {(selectedLead as any).binderUploadedAt && (
-                                <span className="text-xs text-green-600 ml-7">
-                                  Uploaded on {format(new Date((selectedLead as any).binderUploadedAt), 'MMM d, yyyy h:mm a')}
-                                </span>
-                              )}
                             </div>
-                            <a href={(selectedLead as any).binderUrl} target="_blank" rel="noopener noreferrer" data-testid="link-view-binder-broker">
-                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                                <Eye className="h-4 w-4 mr-1" /> View Binder
-                              </Button>
-                            </a>
-                          </div>
+                          ))}
                         </div>
                       )}
                       <div className="border rounded-lg p-3 bg-slate-50">
-                        <p className="text-sm font-medium mb-2">{(selectedLead as any).binderUrl ? 'Upload New Document (replaces current)' : 'Upload Binder Document'}</p>
+                        <p className="text-sm font-medium mb-2 flex items-center gap-1">
+                          <Upload className="h-4 w-4" />
+                          Add New Document
+                        </p>
                         <input
                           type="file"
                           accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
@@ -646,7 +652,7 @@ export default function DashboardPage() {
                               if (res.ok) {
                                 const data = await res.json();
                                 toast({ title: "Binder Uploaded", description: `Document uploaded on ${format(new Date(data.binderUploadedAt), 'MMM d, yyyy h:mm a')}` });
-                                setSelectedLead({ ...selectedLead, binderUrl: data.binderUrl, binderUploadedAt: data.binderUploadedAt } as any);
+                                setSelectedLead({ ...selectedLead, binderUrl: data.binderUrl, binderUploadedAt: data.binderUploadedAt, binderDocuments: data.binderDocuments } as any);
                                 refreshQuotes();
                               } else {
                                 const err = await res.json();

@@ -89,6 +89,7 @@ export const quotes = pgTable("quotes", {
   binderRequired: boolean("binder_required").default(false),
   binderUrl: text("binder_url"),
   binderUploadedAt: timestamp("binder_uploaded_at"),
+  binderDocuments: jsonb("binder_documents").default([]),
   details: jsonb("details").notNull().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

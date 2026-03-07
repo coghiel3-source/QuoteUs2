@@ -709,12 +709,23 @@ export async function registerRoutes(
 
       const binderUrl = `/uploads/binders/${req.file.filename}`;
       const binderUploadedAt = new Date();
+      const actor = await storage.getUser(actorId);
+
+      const existingDocs = (quote as any).binderDocuments || [];
+      const newDoc = {
+        url: binderUrl,
+        filename: req.file.originalname,
+        uploadedAt: binderUploadedAt.toISOString(),
+        uploadedBy: actor?.name || "Broker",
+      };
+      const updatedDocs = [...existingDocs, newDoc];
+
       await storage.updateQuote(req.params.id, {
         binderUrl,
         binderUploadedAt,
+        binderDocuments: updatedDocs,
       });
 
-      const actor = await storage.getUser(actorId);
       await storage.createActivity({
         quoteId: req.params.id,
         type: "system",
@@ -722,7 +733,7 @@ export async function registerRoutes(
         author: actor?.name || "Broker",
       });
 
-      res.json({ success: true, binderUrl, binderUploadedAt: binderUploadedAt.toISOString() });
+      res.json({ success: true, binderUrl, binderUploadedAt: binderUploadedAt.toISOString(), binderDocuments: updatedDocs });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
