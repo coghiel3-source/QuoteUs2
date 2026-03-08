@@ -739,6 +739,87 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/leads/:id/email-binder", async (req, res) => {
+    try {
+      const { actorId, to, binderUrl, binderFilename } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Unauthorized" });
+      if (!to || !binderUrl) return res.status(400).json({ error: "Missing required fields (to, binderUrl)" });
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(to)) return res.status(400).json({ error: "Invalid email address" });
+
+      const actor = await storage.getUser(actorId);
+      if (!actor) return res.status(403).json({ error: "User not found" });
+
+      if (!['admin', 'manager', 'broker'].includes(actor.role)) {
+        return res.status(403).json({ error: "Insufficient permissions" });
+      }
+
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) return res.status(404).json({ error: "Lead not found" });
+
+      if (actor.role === 'broker' && quote.assignedTo !== actor.id) {
+        return res.status(403).json({ error: "Not authorized for this lead" });
+      }
+
+      const docs = Array.isArray(quote.binderDocuments) ? quote.binderDocuments as Array<{url: string}> : [];
+      const legacyUrl = quote.binderUrl;
+      const validUrls = [...docs.map(d => d.url), ...(legacyUrl ? [legacyUrl] : [])];
+      if (!validUrls.includes(binderUrl)) {
+        return res.status(400).json({ error: "Invalid binder document URL" });
+      }
+
+      const fullUrl = `${req.protocol}://${req.get('host')}${binderUrl}`;
+      const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const safeClientName = esc(quote.clientName || '');
+      const safeFilename = esc(binderFilename || 'Binder Document');
+      const safeType = esc(quote.type || '');
+      const safeActorName = esc(actor.name || '');
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #16a34a; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">QuoteUs.ca</h1>
+          </div>
+          <div style="padding: 30px; background-color: #f9fafb;">
+            <h2 style="color: #1f2937;">Binder / Confirmation of Insurance</h2>
+            <p style="color: #4b5563;">Please find the attached binder document for <strong>${safeClientName}</strong>.</p>
+            <p style="color: #4b5563;"><strong>Document:</strong> ${safeFilename}</p>
+            <p style="color: #4b5563;"><strong>Insurance Type:</strong> ${safeType}</p>
+            <div style="margin: 20px 0;">
+              <a href="${fullUrl}" style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View / Download Binder</a>
+            </div>
+            <p style="color: #4b5563; font-size: 14px; margin-top: 30px;">
+              Best regards,<br>
+              <strong>${safeActorName}</strong><br>
+              QuoteUs.ca
+            </p>
+          </div>
+          <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+            <p>QuoteUs.ca - Your Trusted Insurance Partner</p>
+          </div>
+        </div>
+      `;
+
+      const sent = await sendEmail({
+        to,
+        subject: `Binder - ${quote.clientName} (${quote.type} Insurance)`,
+        html: emailHtml,
+      });
+
+      await storage.createActivity({
+        quoteId: req.params.id,
+        type: "email_sent",
+        content: sent ? `Binder emailed to ${to}: ${binderFilename || 'Binder Document'}` : `Binder email logged (SMTP not configured) to ${to}: ${binderFilename || 'Binder Document'}`,
+        author: actor.name,
+      });
+
+      res.json({ success: true, delivered: !!sent });
+    } catch (error: any) {
+      console.error('[Email] Send binder error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/leads/:id/send-email", async (req, res) => {
     try {
       const { actorId, to, subject, body: emailBodyText } = req.body;

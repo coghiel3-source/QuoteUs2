@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send } from "lucide-react";
 import AdvertisementManager from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
@@ -769,6 +769,9 @@ export default function AdminCRMPage() {
 
   // Send email to broker state
   const [sendingEmailToQuote, setSendingEmailToQuote] = useState<string | null>(null);
+  const [binderEmailDoc, setBinderEmailDoc] = useState<{url: string; filename: string; quoteId: string} | null>(null);
+  const [binderEmailTo, setBinderEmailTo] = useState("");
+  const [binderEmailSending, setBinderEmailSending] = useState(false);
 
   const handleSendLeadToBroker = async (quoteId: string) => {
     setSendingEmailToQuote(quoteId);
@@ -1714,11 +1717,17 @@ export default function AdminCRMPage() {
                                       {doc.uploadedAt ? format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a') : ''} {doc.uploadedBy ? `— by ${doc.uploadedBy}` : ''}
                                     </p>
                                   </div>
-                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
-                                    <Button size="sm" variant="outline" className="text-green-700 ml-2 shrink-0">
-                                      <Eye className="h-4 w-4 mr-1" /> View
+                                  <div className="flex gap-1 ml-2 shrink-0">
+                                    <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
+                                      <Button size="sm" variant="outline" className="text-green-700">
+                                        <Eye className="h-4 w-4 mr-1" /> View
+                                      </Button>
+                                    </a>
+                                    <Button size="sm" variant="outline" className="text-blue-700" data-testid={`btn-admin-email-binder-${idx}`}
+                                      onClick={() => { setBinderEmailDoc({ url: doc.url, filename: doc.filename, quoteId: (selectedQuote as any).id }); setBinderEmailTo(""); }}>
+                                      <Send className="h-4 w-4 mr-1" /> Email
                                     </Button>
-                                  </a>
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -5595,6 +5604,78 @@ export default function AdminCRMPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Binder Email Dialog */}
+      <Dialog open={!!binderEmailDoc} onOpenChange={(open) => { if (!open) setBinderEmailDoc(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5" />
+              Email Binder Document
+            </DialogTitle>
+            <DialogDescription>
+              Send "{binderEmailDoc?.filename}" to a third party via email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="admin-binder-email-to">Recipient Email</Label>
+              <Input
+                id="admin-binder-email-to"
+                type="email"
+                placeholder="Enter email address"
+                value={binderEmailTo}
+                onChange={(e) => setBinderEmailTo(e.target.value)}
+                data-testid="input-admin-binder-email-to"
+              />
+            </div>
+            {selectedQuote?.email && (
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setBinderEmailTo(selectedQuote.email!)} data-testid="btn-admin-fill-client-email">
+                  <Mail className="h-3 w-3 mr-1" /> Client ({selectedQuote.email})
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBinderEmailDoc(null)}>Cancel</Button>
+            <Button
+              disabled={!binderEmailTo || binderEmailSending}
+              data-testid="btn-admin-send-binder-email"
+              onClick={async () => {
+                if (!binderEmailDoc) return;
+                setBinderEmailSending(true);
+                try {
+                  const res = await fetch(`/api/leads/${binderEmailDoc.quoteId}/email-binder`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      actorId: user?.id,
+                      to: binderEmailTo,
+                      binderUrl: binderEmailDoc.url,
+                      binderFilename: binderEmailDoc.filename,
+                    }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    toast({ title: "Binder Sent", description: data.delivered ? `Binder emailed to ${binderEmailTo}` : `Email logged (SMTP not configured)` });
+                    setBinderEmailDoc(null);
+                    refreshQuotes();
+                  } else {
+                    const err = await res.json();
+                    toast({ title: "Error", description: err.error || "Failed to send", variant: "destructive" });
+                  }
+                } catch (err) {
+                  toast({ title: "Error", description: "Failed to send binder email", variant: "destructive" });
+                }
+                setBinderEmailSending(false);
+              }}
+            >
+              {binderEmailSending ? "Sending..." : "Send Email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

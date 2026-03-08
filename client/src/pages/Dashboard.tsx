@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, AlertCircle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard, Upload } from "lucide-react";
+import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, AlertCircle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard, Upload, Send } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
@@ -40,6 +40,9 @@ export default function DashboardPage() {
   const [registerProductTypes, setRegisterProductTypes] = useState<string[]>([]);
   const [registerOtherServices, setRegisterOtherServices] = useState("");
   const [selectedLead, setSelectedLead] = useState<Quote | null>(null);
+  const [binderEmailDoc, setBinderEmailDoc] = useState<{url: string; filename: string} | null>(null);
+  const [binderEmailTo, setBinderEmailTo] = useState("");
+  const [binderEmailSending, setBinderEmailSending] = useState(false);
   const [isFundDialogOpen, setIsFundDialogOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
   const [balance, setBalance] = useState<number>(0);
@@ -627,11 +630,17 @@ export default function DashboardPage() {
                                         {doc.uploadedAt ? format(new Date(doc.uploadedAt), 'MMM d, yyyy h:mm a') : ''} {doc.uploadedBy ? `— by ${doc.uploadedBy}` : ''}
                                       </p>
                                     </div>
-                                    <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
-                                      <Button size="sm" variant="outline" className="text-green-700 ml-2 shrink-0">
-                                        <Eye className="h-4 w-4 mr-1" /> View
+                                    <div className="flex gap-1 ml-2 shrink-0">
+                                      <a href={doc.url} target="_blank" rel="noopener noreferrer" data-testid={`link-view-binder-${idx}`}>
+                                        <Button size="sm" variant="outline" className="text-green-700">
+                                          <Eye className="h-4 w-4 mr-1" /> View
+                                        </Button>
+                                      </a>
+                                      <Button size="sm" variant="outline" className="text-blue-700" data-testid={`btn-email-binder-${idx}`}
+                                        onClick={() => { setBinderEmailDoc({ url: doc.url, filename: doc.filename }); setBinderEmailTo(""); }}>
+                                        <Send className="h-4 w-4 mr-1" /> Email
                                       </Button>
-                                    </a>
+                                    </div>
                                   </div>
                                 </div>
                               ))}
@@ -712,6 +721,78 @@ export default function DashboardPage() {
             )}
           </SheetContent>
         </Sheet>
+
+        {/* Binder Email Dialog */}
+        <Dialog open={!!binderEmailDoc} onOpenChange={(open) => { if (!open) setBinderEmailDoc(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                Email Binder Document
+              </DialogTitle>
+              <DialogDescription>
+                Send "{binderEmailDoc?.filename}" to a third party via email.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="binder-email-to">Recipient Email</Label>
+                <Input
+                  id="binder-email-to"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={binderEmailTo}
+                  onChange={(e) => setBinderEmailTo(e.target.value)}
+                  data-testid="input-binder-email-to"
+                />
+              </div>
+              {selectedLead?.email && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setBinderEmailTo(selectedLead.email!)} data-testid="btn-fill-client-email">
+                    <Mail className="h-3 w-3 mr-1" /> Client ({selectedLead.email})
+                  </Button>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBinderEmailDoc(null)}>Cancel</Button>
+              <Button
+                disabled={!binderEmailTo || binderEmailSending}
+                data-testid="btn-send-binder-email"
+                onClick={async () => {
+                  if (!binderEmailDoc || !selectedLead) return;
+                  setBinderEmailSending(true);
+                  try {
+                    const res = await fetch(`/api/leads/${selectedLead.id}/email-binder`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        actorId: user?.id,
+                        to: binderEmailTo,
+                        binderUrl: binderEmailDoc.url,
+                        binderFilename: binderEmailDoc.filename,
+                      }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      toast({ title: "Binder Sent", description: data.delivered ? `Binder emailed to ${binderEmailTo}` : `Email logged (SMTP not configured)` });
+                      setBinderEmailDoc(null);
+                      refreshQuotes();
+                    } else {
+                      const err = await res.json();
+                      toast({ title: "Error", description: err.error || "Failed to send", variant: "destructive" });
+                    }
+                  } catch (err) {
+                    toast({ title: "Error", description: "Failed to send binder email", variant: "destructive" });
+                  }
+                  setBinderEmailSending(false);
+                }}
+              >
+                {binderEmailSending ? "Sending..." : "Send Email"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Fund Account Dialog */}
         <Dialog open={isFundDialogOpen} onOpenChange={setIsFundDialogOpen}>
