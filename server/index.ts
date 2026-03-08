@@ -81,6 +81,14 @@ import path from "path";
 const uploadsDir = path.join(process.cwd(), "client", "public", "uploads");
 app.use("/uploads", express.static(uploadsDir));
 
+// Serve downloadable project zip
+const projectZipPath = path.join(process.cwd(), "quoteus-full-project.zip");
+app.get("/download/quoteus-full-project.zip", (_req, res) => {
+  res.download(projectZipPath, "quoteus-full-project.zip", (err) => {
+    if (err) res.status(404).json({ error: "Zip file not found" });
+  });
+});
+
 // Now apply JSON middleware for all other routes
 app.use(
   express.json({
