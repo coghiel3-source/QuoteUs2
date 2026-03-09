@@ -76,3 +76,12 @@ The system allows admins/managers to require brokers to upload a binder (confirm
 - Replit-specific plugins (dev banner, cartographer)
 - Custom Vite plugin (OpenGraph image meta tags)
 - PostCSS with Autoprefixer
+
+## PHP/MySQL Version
+
+A complete PHP port of the backend exists in `php-version/` for third-party PHP hosting. It includes:
+- **Database**: MySQL (converted from PostgreSQL), with web-based installer (`install.php`)
+- **Backend**: Pure PHP API with PDO/prepared statements, matching all Node.js Express routes
+- **Frontend**: Pre-built React static files served by PHP/Apache
+- **Files**: config.php, database.php, storage.php, email.php, api/*.php, .htaccess
+- **Download**: Available at `/download/QuoteUs_PHP.zip` (4MB)
