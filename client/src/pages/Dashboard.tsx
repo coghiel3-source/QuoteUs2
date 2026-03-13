@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, AlertCircle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard, Upload } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -19,7 +19,8 @@ import { Label } from "@/components/ui/label";
 import LeadDetailView from "@/components/LeadDetailView";
 
 export default function DashboardPage() {
-  const { user, login, logout, register, isSessionAuthenticated, clearSessionAuth } = useAuth();
+  const { user, login, logout, register } = useAuth();
+  const loggedInThisMount = useRef(false);
   const { quotes, updateStatus, refreshQuotes } = useQuotes();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
@@ -47,9 +48,7 @@ export default function DashboardPage() {
   const [creditPackages, setCreditPackages] = useState<{amount: number; label: string}[]>([]);
 
   useEffect(() => {
-    if (!isSessionAuthenticated) {
-      clearSessionAuth();
-    }
+    logout();
   }, []);
 
   useEffect(() => {
@@ -126,6 +125,7 @@ export default function DashboardPage() {
     e.preventDefault();
     const success = await login(email, role, password);
     if (success) {
+      loggedInThisMount.current = true;
       if (role === 'admin' || role === 'manager') {
         setLocation('/admin');
       } else {
@@ -161,7 +161,7 @@ export default function DashboardPage() {
     toast({ title: "Registration Submitted", description: "Your account is pending approval from an Account Manager." });
   };
 
-  if (!user || !isSessionAuthenticated) {
+  if (!user || !loggedInThisMount.current) {
     return (
       <div className="min-h-[calc(100vh-80px)] bg-secondary/30 flex items-center justify-center p-4">
         <Card id="login-form" className="w-full max-w-md shadow-xl border-none">
