@@ -41,9 +41,11 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   loading: boolean;
+  isSessionAuthenticated: boolean;
   login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => Promise<boolean>;
   loginWithGoogle: (userId: string) => Promise<boolean>;
   logout: () => void;
+  clearSessionAuth: () => void;
   register: (name: string, email: string, password?: string, role?: 'broker' | 'customer' | 'manager' | 'admin', phone?: string, brokerFields?: { brokerage?: string; yearsOfService?: number; productTypes?: string[] }) => Promise<void>;
   approveBroker: (id: string) => Promise<void>;
   denyBroker: (id: string) => Promise<void>;
@@ -66,6 +68,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
+  const [isSessionAuthenticated, setIsSessionAuthenticated] = useState(() => {
+    return sessionStorage.getItem('quoteus_session_auth') === 'true';
+  });
 
   // Seed database with initial users
   const seedUsers = async () => {
@@ -180,6 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(foundUser);
+      setIsSessionAuthenticated(true);
+      sessionStorage.setItem('quoteus_session_auth', 'true');
       return true;
     } catch (error) {
       console.error('Login failed:', error);
@@ -189,7 +196,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    setIsSessionAuthenticated(false);
     localStorage.removeItem('quoteus_user');
+    sessionStorage.removeItem('quoteus_session_auth');
+  };
+
+  const clearSessionAuth = () => {
+    setIsSessionAuthenticated(false);
+    setUser(null);
+    localStorage.removeItem('quoteus_user');
+    sessionStorage.removeItem('quoteus_session_auth');
   };
 
   const loginWithGoogle = async (userId: string): Promise<boolean> => {
@@ -304,7 +320,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, loading, login, loginWithGoogle, logout, register, approveBroker, denyBroker, updateUser, resetPassword, refreshUser }}>
+    <AuthContext.Provider value={{ user, users, loading, isSessionAuthenticated, login, loginWithGoogle, logout, clearSessionAuth, register, approveBroker, denyBroker, updateUser, resetPassword, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

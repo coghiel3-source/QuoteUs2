@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import LeadDetailView from "@/components/LeadDetailView";
 
 export default function DashboardPage() {
-  const { user, login, logout, register } = useAuth();
+  const { user, login, logout, register, isSessionAuthenticated, clearSessionAuth } = useAuth();
   const { quotes, updateStatus, refreshQuotes } = useQuotes();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
@@ -46,31 +46,10 @@ export default function DashboardPage() {
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [creditPackages, setCreditPackages] = useState<{amount: number; label: string}[]>([]);
 
-  const [validatingSession, setValidatingSession] = useState(!!user);
-
   useEffect(() => {
-    const validateSession = async () => {
-      if (!user) {
-        setValidatingSession(false);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/users/${user.id}`);
-        if (!res.ok) {
-          logout();
-          setValidatingSession(false);
-          return;
-        }
-        const serverUser = await res.json();
-        if (!serverUser || serverUser.status !== 'active') {
-          logout();
-        }
-      } catch {
-        logout();
-      }
-      setValidatingSession(false);
-    };
-    validateSession();
+    if (!isSessionAuthenticated) {
+      clearSessionAuth();
+    }
   }, []);
 
   useEffect(() => {
@@ -182,28 +161,7 @@ export default function DashboardPage() {
     toast({ title: "Registration Submitted", description: "Your account is pending approval from an Account Manager." });
   };
 
-  useEffect(() => {
-    if (!user) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      const loginCard = document.getElementById('login-form');
-      if (loginCard) {
-        loginCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }, [user]);
-
-  if (validatingSession) {
-    return (
-      <div className="min-h-[calc(100vh-80px)] bg-secondary/30 flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Verifying session...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
+  if (!user || !isSessionAuthenticated) {
     return (
       <div className="min-h-[calc(100vh-80px)] bg-secondary/30 flex items-center justify-center p-4">
         <Card id="login-form" className="w-full max-w-md shadow-xl border-none">
