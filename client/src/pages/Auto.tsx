@@ -29,7 +29,7 @@ const autoSchema = z.object({
     dob: z.string().min(1, "Date of birth required"),
     maritalStatus: z.enum(["single", "married", "commonLaw", "divorced", "widowed"]).optional(),
     postalCode: z.string().regex(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/, "Invalid Ontario postal code"),
-    address: z.string().min(5, "Valid mailing address required"),
+    address: z.string().min(5, "Valid garaging address required"),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
     licenseDateG2: z.string().optional(),
@@ -368,7 +368,7 @@ export default function AutoPage() {
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address">Mailing Address</Label>
+                  <Label htmlFor="address">Garaging Address</Label>
                   <AddressAutocomplete
                     id="address"
                     value={form.watch("primaryDriver.address") || ""}
