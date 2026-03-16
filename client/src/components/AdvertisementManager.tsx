@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -116,12 +116,17 @@ function formDataEqual(a: FormData, b: FormData): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+export interface AdvertisementManagerHandle {
+  save: () => Promise<boolean>;
+  discard: () => void;
+}
+
 interface AdvertisementManagerProps {
   canApproveAds?: boolean;
   onHasUnsavedChanges?: (hasChanges: boolean) => void;
 }
 
-export default function AdvertisementManager({ canApproveAds = true, onHasUnsavedChanges }: AdvertisementManagerProps) {
+const AdvertisementManager = forwardRef<AdvertisementManagerHandle, AdvertisementManagerProps>(function AdvertisementManager({ canApproveAds = true, onHasUnsavedChanges }, ref) {
   const { toast } = useToast();
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,6 +159,24 @@ export default function AdvertisementManager({ canApproveAds = true, onHasUnsave
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [hasUnsavedChanges]);
+
+  const handleDiscard = useCallback(() => {
+    if (editingAd) {
+      const data = adToFormData(editingAd);
+      setFormData(data);
+      setSavedFormData(data);
+    } else {
+      setFormData({ ...DEFAULT_FORM });
+      setSavedFormData({ ...DEFAULT_FORM });
+    }
+  }, [editingAd]);
+
+  const saveRef = useRef<() => Promise<boolean>>(() => Promise.resolve(false));
+
+  useImperativeHandle(ref, () => ({
+    save: () => saveRef.current(),
+    discard: handleDiscard,
+  }), [handleDiscard]);
 
   useEffect(() => {
     fetchAds();
@@ -244,16 +267,32 @@ export default function AdvertisementManager({ canApproveAds = true, onHasUnsave
     });
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     if (editingAd) {
+      try {
+        const res = await fetch(`/api/admin/advertisements`);
+        if (res.ok) {
+          const allAds: Advertisement[] = await res.json();
+          const freshAd = allAds.find(a => a.id === editingAd.id);
+          if (freshAd) {
+            const data = adToFormData(freshAd);
+            setFormData(data);
+            setSavedFormData(data);
+            setEditingAd(freshAd);
+            const positions = new Set<string>();
+            if (freshAd.topText) positions.add("top");
+            if (freshAd.centerText) positions.add("center");
+            if (freshAd.bottomText) positions.add("bottom");
+            setActiveTextPositions(positions);
+            setAds(allAds);
+            toast({ title: "Refreshed", description: "Loaded latest saved data from server" });
+            return;
+          }
+        }
+      } catch {}
       const data = adToFormData(editingAd);
       setFormData(data);
       setSavedFormData(data);
-      const positions = new Set<string>();
-      if (editingAd.topText) positions.add("top");
-      if (editingAd.centerText) positions.add("center");
-      if (editingAd.bottomText) positions.add("bottom");
-      setActiveTextPositions(positions);
       toast({ title: "Refreshed", description: "Form reset to last saved data" });
     } else {
       const fresh = { ...DEFAULT_FORM };
@@ -264,10 +303,10 @@ export default function AdvertisementManager({ canApproveAds = true, onHasUnsave
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<boolean> => {
     if (!formData.name || !formData.mediaUrl) {
       toast({ title: "Error", description: "Name and media URL are required", variant: "destructive" });
-      return;
+      return false;
     }
     
     setSaving(true);
@@ -297,16 +336,21 @@ export default function AdvertisementManager({ canApproveAds = true, onHasUnsave
         setSavedFormData(updatedData);
         setEditingAd(savedAd);
         fetchAds();
+        return true;
       } else {
         const error = await res.json();
         toast({ title: "Error", description: error.error, variant: "destructive" });
+        return false;
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to save advertisement", variant: "destructive" });
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  saveRef.current = handleSave;
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this advertisement?")) return;
@@ -974,4 +1018,6 @@ export default function AdvertisementManager({ canApproveAds = true, onHasUnsave
       </Dialog>
     </div>
   );
-}
+});
+
+export default AdvertisementManager;

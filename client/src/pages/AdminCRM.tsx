@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send } from "lucide-react";
-import AdvertisementManager from "@/components/AdvertisementManager";
+import AdvertisementManager, { AdvertisementManagerHandle } from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
 import { format } from "date-fns";
@@ -36,6 +36,7 @@ export default function AdminCRMPage() {
   const [refIdFilter, setRefIdFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("dashboard");
   const adHasUnsavedChanges = useRef(false);
+  const adManagerRef = useRef<AdvertisementManagerHandle>(null);
   const [adUnsavedDialogOpen, setAdUnsavedDialogOpen] = useState(false);
   const pendingTabRef = useRef<string | null>(null);
 
@@ -52,9 +53,23 @@ export default function AdminCRMPage() {
     }
   }, [activeTab]);
 
+  const handleAdTabSaveAndContinue = useCallback(async () => {
+    if (adManagerRef.current) {
+      const success = await adManagerRef.current.save();
+      if (success) {
+        setAdUnsavedDialogOpen(false);
+        adHasUnsavedChanges.current = false;
+        const tab = pendingTabRef.current;
+        pendingTabRef.current = null;
+        if (tab) setActiveTab(tab);
+      }
+    }
+  }, []);
+
   const handleAdTabDiscard = useCallback(() => {
     setAdUnsavedDialogOpen(false);
     adHasUnsavedChanges.current = false;
+    if (adManagerRef.current) adManagerRef.current.discard();
     const tab = pendingTabRef.current;
     pendingTabRef.current = null;
     if (tab) setActiveTab(tab);
@@ -4153,7 +4168,7 @@ export default function AdminCRMPage() {
 
         {/* ADVERTISEMENTS TAB */}
         {activeTab === 'advertisements' && (user?.role === 'admin' || (user?.role === 'manager' && hasPermission('approveAds'))) && (
-          <AdvertisementManager canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} onHasUnsavedChanges={handleAdUnsavedChanges} />
+          <AdvertisementManager ref={adManagerRef} canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} onHasUnsavedChanges={handleAdUnsavedChanges} />
         )}
 
         {/* SETTINGS TAB - Manager Permissions */}
@@ -5711,12 +5726,13 @@ export default function AdminCRMPage() {
           <DialogHeader>
             <DialogTitle>Unsaved Changes</DialogTitle>
             <DialogDescription>
-              You have unsaved changes in the Advertisement Manager. Do you want to discard them?
+              You have unsaved changes in the Advertisement Manager. Would you like to save them before leaving?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={handleAdTabCancel}>Cancel</Button>
-            <Button variant="destructive" onClick={handleAdTabDiscard}>Discard Changes</Button>
+            <Button variant="destructive" onClick={handleAdTabDiscard}>Discard</Button>
+            <Button onClick={handleAdTabSaveAndContinue}>Save & Continue</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
