@@ -154,6 +154,7 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
     const handler = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
+        e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handler);
@@ -217,8 +218,9 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
   };
 
   const handleUnsavedSave = async () => {
+    const success = await handleSave();
+    if (!success) return;
     setUnsavedDialogOpen(false);
-    await handleSave();
     const action = pendingAction.current;
     pendingAction.current = null;
     if (action) action();
