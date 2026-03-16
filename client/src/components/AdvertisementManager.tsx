@@ -996,7 +996,7 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
         </Card>
       )}
 
-      <Dialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
+      <Dialog open={unsavedDialogOpen} onOpenChange={(open) => { if (!open) handleUnsavedCancel(); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Unsaved Changes</DialogTitle>
