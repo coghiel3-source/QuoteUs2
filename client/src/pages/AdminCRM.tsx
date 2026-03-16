@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { useAuth } from "@/lib/AuthContext";
 import { DollarSign } from "lucide-react";
@@ -35,6 +35,35 @@ export default function AdminCRMPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [refIdFilter, setRefIdFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("dashboard");
+  const adHasUnsavedChanges = useRef(false);
+  const [adUnsavedDialogOpen, setAdUnsavedDialogOpen] = useState(false);
+  const pendingTabRef = useRef<string | null>(null);
+
+  const handleAdUnsavedChanges = useCallback((hasChanges: boolean) => {
+    adHasUnsavedChanges.current = hasChanges;
+  }, []);
+
+  const switchTab = useCallback((tab: string) => {
+    if (activeTab === 'advertisements' && adHasUnsavedChanges.current && tab !== 'advertisements') {
+      pendingTabRef.current = tab;
+      setAdUnsavedDialogOpen(true);
+    } else {
+      setActiveTab(tab);
+    }
+  }, [activeTab]);
+
+  const handleAdTabDiscard = useCallback(() => {
+    setAdUnsavedDialogOpen(false);
+    adHasUnsavedChanges.current = false;
+    const tab = pendingTabRef.current;
+    pendingTabRef.current = null;
+    if (tab) setActiveTab(tab);
+  }, []);
+
+  const handleAdTabCancel = useCallback(() => {
+    setAdUnsavedDialogOpen(false);
+    pendingTabRef.current = null;
+  }, []);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -1392,7 +1421,7 @@ export default function AdminCRMPage() {
                     <Button 
                       variant={activeTab === 'dashboard' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
-                      onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                      onClick={() => { switchTab('dashboard'); setMobileMenuOpen(false); }}
                     >
                       <LayoutDashboard size={18} className="mr-3" /> Dashboard
                     </Button>
@@ -1400,7 +1429,7 @@ export default function AdminCRMPage() {
                     <Button 
                       variant={activeTab === 'leads' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
-                      onClick={() => { setActiveTab('leads'); setMobileMenuOpen(false); }}
+                      onClick={() => { switchTab('leads'); setMobileMenuOpen(false); }}
                     >
                       <FileText size={18} className="mr-3" /> Leads
                     </Button>
@@ -1409,7 +1438,7 @@ export default function AdminCRMPage() {
                     <Button 
                       variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
-                      onClick={() => { setActiveTab('partners'); setMobileMenuOpen(false); }}
+                      onClick={() => { switchTab('partners'); setMobileMenuOpen(false); }}
                     >
                       <UserCog size={18} className="mr-3" /> Partners
                     </Button>
@@ -1417,7 +1446,7 @@ export default function AdminCRMPage() {
                     <Button 
                       variant={activeTab === 'manager' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
-                      onClick={() => { setActiveTab('manager'); setMobileMenuOpen(false); }}
+                      onClick={() => { switchTab('manager'); setMobileMenuOpen(false); }}
                     >
                       <Users size={18} className="mr-3" /> Manager
                       {pendingBrokers.length > 0 && <Badge className="ml-auto bg-red-500 text-white border-none">{pendingBrokers.length}</Badge>}
@@ -1425,7 +1454,7 @@ export default function AdminCRMPage() {
                     <Button 
                       variant={activeTab === 'reports' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
-                      onClick={() => { setActiveTab('reports'); setMobileMenuOpen(false); }}
+                      onClick={() => { switchTab('reports'); setMobileMenuOpen(false); }}
                     >
                       <BarChart size={18} className="mr-3" /> Reports
                     </Button>
@@ -1433,7 +1462,7 @@ export default function AdminCRMPage() {
                       <Button 
                         variant={activeTab === 'credits' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
-                        onClick={() => { setActiveTab('credits'); setMobileMenuOpen(false); }}
+                        onClick={() => { switchTab('credits'); setMobileMenuOpen(false); }}
                       >
                         <DollarSign size={18} className="mr-3" /> Credits
                       </Button>
@@ -1442,7 +1471,7 @@ export default function AdminCRMPage() {
                       <Button 
                         variant={activeTab === 'connections' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
-                        onClick={() => { setActiveTab('connections'); setMobileMenuOpen(false); }}
+                        onClick={() => { switchTab('connections'); setMobileMenuOpen(false); }}
                       >
                         <Link2 size={18} className="mr-3" /> Connections
                       </Button>
@@ -1451,7 +1480,7 @@ export default function AdminCRMPage() {
                       <Button 
                         variant={activeTab === 'advertisements' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
-                        onClick={() => { setActiveTab('advertisements'); setMobileMenuOpen(false); }}
+                        onClick={() => { switchTab('advertisements'); setMobileMenuOpen(false); }}
                       >
                         <Megaphone size={18} className="mr-3" /> Advertisements
                       </Button>
@@ -1461,7 +1490,7 @@ export default function AdminCRMPage() {
                       <Button 
                         variant={activeTab === 'settings' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
-                        onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}
+                        onClick={() => { switchTab('settings'); setMobileMenuOpen(false); }}
                       >
                         <Settings size={18} className="mr-3" /> Settings
                       </Button>
@@ -1483,7 +1512,7 @@ export default function AdminCRMPage() {
                 <Button 
                   variant={activeTab === 'dashboard' ? 'secondary' : 'ghost'} 
                   size="sm" 
-                  onClick={() => setActiveTab('dashboard')}
+                  onClick={() => switchTab('dashboard')}
                   className={activeTab === 'dashboard' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                 >
                   <LayoutDashboard size={16} className="mr-2" /> Dashboard
@@ -1492,7 +1521,7 @@ export default function AdminCRMPage() {
                 <Button 
                   variant={activeTab === 'leads' ? 'secondary' : 'ghost'} 
                   size="sm" 
-                  onClick={() => setActiveTab('leads')}
+                  onClick={() => switchTab('leads')}
                   className={activeTab === 'leads' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                 >
                   <FileText size={16} className="mr-2" /> Leads
@@ -1502,7 +1531,7 @@ export default function AdminCRMPage() {
                 <Button 
                   variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
                   size="sm" 
-                  onClick={() => setActiveTab('partners')}
+                  onClick={() => switchTab('partners')}
                   className={activeTab === 'partners' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                 >
                   <UserCog size={16} className="mr-2" /> Partners
@@ -1511,7 +1540,7 @@ export default function AdminCRMPage() {
                 <Button 
                   variant={activeTab === 'manager' ? 'secondary' : 'ghost'} 
                   size="sm" 
-                  onClick={() => setActiveTab('manager')}
+                  onClick={() => switchTab('manager')}
                   className={activeTab === 'manager' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                 >
                   <Users size={16} className="mr-2" /> Manager
@@ -1520,7 +1549,7 @@ export default function AdminCRMPage() {
                 <Button 
                   variant={activeTab === 'reports' ? 'secondary' : 'ghost'} 
                   size="sm" 
-                  onClick={() => setActiveTab('reports')}
+                  onClick={() => switchTab('reports')}
                   className={activeTab === 'reports' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                 >
                   <BarChart size={16} className="mr-2" /> Reports
@@ -1529,7 +1558,7 @@ export default function AdminCRMPage() {
                   <Button 
                     variant={activeTab === 'credits' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    onClick={() => setActiveTab('credits')}
+                    onClick={() => switchTab('credits')}
                     className={activeTab === 'credits' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                   >
                     <DollarSign size={16} className="mr-2" /> Credits
@@ -1539,7 +1568,7 @@ export default function AdminCRMPage() {
                   <Button 
                     variant={activeTab === 'connections' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    onClick={() => setActiveTab('connections')}
+                    onClick={() => switchTab('connections')}
                     className={activeTab === 'connections' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                     data-testid="nav-connections"
                   >
@@ -1550,7 +1579,7 @@ export default function AdminCRMPage() {
                   <Button 
                     variant={activeTab === 'advertisements' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    onClick={() => setActiveTab('advertisements')}
+                    onClick={() => switchTab('advertisements')}
                     className={activeTab === 'advertisements' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
                     data-testid="nav-advertisements"
                   >
@@ -1565,7 +1594,7 @@ export default function AdminCRMPage() {
                 <div className="text-sm font-medium">{user.name}</div>
                 <div className="text-xs text-white/70 capitalize">{user.role}</div>
               </div>
-              <Button variant="ghost" size="icon" className="hidden md:flex text-white hover:bg-white/10" onClick={() => setActiveTab('settings')}>
+              <Button variant="ghost" size="icon" className="hidden md:flex text-white hover:bg-white/10" onClick={() => switchTab('settings')}>
                 <Settings size={18} />
               </Button>
               <Button variant="ghost" size="icon" className="hidden md:flex text-white hover:bg-red-500/20 hover:text-red-200" onClick={handleLogout}>
@@ -2445,7 +2474,7 @@ export default function AdminCRMPage() {
                       ))
                     )}
                   </div>
-                  <Button variant="link" className="w-full mt-4" onClick={() => setActiveTab('leads')}>View All Leads</Button>
+                  <Button variant="link" className="w-full mt-4" onClick={() => switchTab('leads')}>View All Leads</Button>
                 </CardContent>
               </Card>
 
@@ -4124,7 +4153,7 @@ export default function AdminCRMPage() {
 
         {/* ADVERTISEMENTS TAB */}
         {activeTab === 'advertisements' && (user?.role === 'admin' || (user?.role === 'manager' && hasPermission('approveAds'))) && (
-          <AdvertisementManager canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} />
+          <AdvertisementManager canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} onHasUnsavedChanges={handleAdUnsavedChanges} />
         )}
 
         {/* SETTINGS TAB - Manager Permissions */}
@@ -5673,6 +5702,21 @@ export default function AdminCRMPage() {
             >
               {binderEmailSending ? "Sending..." : "Send Email"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={adUnsavedDialogOpen} onOpenChange={(open) => { if (!open) handleAdTabCancel(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes in the Advertisement Manager. Do you want to discard them?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleAdTabCancel}>Cancel</Button>
+            <Button variant="destructive" onClick={handleAdTabDiscard}>Discard Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

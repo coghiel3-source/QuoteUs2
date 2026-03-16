@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check, CheckCircle, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check, CheckCircle, X, Save, RefreshCw, ChevronUp } from "lucide-react";
 
 interface Advertisement {
   id: string;
@@ -56,48 +56,104 @@ const PAGE_OPTIONS = [
   { value: "Mortgage", label: "Mortgage" },
 ];
 
-interface AdvertisementManagerProps {
-  canApproveAds?: boolean;
+const DEFAULT_FORM = {
+  name: "",
+  mediaType: "image" as "image" | "video",
+  mediaUrl: "",
+  linkUrl: "",
+  openInPopup: false,
+  targetPages: [] as string[],
+  status: "active" as "active" | "paused" | "scheduled",
+  startDate: "",
+  endDate: "",
+  priority: 1,
+  adText: "",
+  textColor: "#ffffff",
+  backgroundColor: "#1e3a5f",
+  textPosition: "bottom",
+  topText: "",
+  centerText: "",
+  bottomText: "",
+  topTextColor: "#ffffff",
+  centerTextColor: "#ffffff",
+  bottomTextColor: "#ffffff",
+  topBgColor: "#1e3a5f",
+  centerBgColor: "#1e3a5f",
+  bottomBgColor: "#1e3a5f",
+};
+
+type FormData = typeof DEFAULT_FORM;
+
+function adToFormData(ad: Advertisement): FormData {
+  return {
+    name: ad.name,
+    mediaType: ad.mediaType,
+    mediaUrl: ad.mediaUrl,
+    linkUrl: ad.linkUrl || "",
+    openInPopup: ad.openInPopup,
+    targetPages: [...ad.targetPages],
+    status: ad.status === "expired" ? "paused" : ad.status,
+    startDate: ad.startDate ? ad.startDate.split("T")[0] : "",
+    endDate: ad.endDate ? ad.endDate.split("T")[0] : "",
+    priority: ad.priority,
+    adText: ad.adText || "",
+    textColor: ad.textColor || "#ffffff",
+    backgroundColor: ad.backgroundColor || "#1e3a5f",
+    textPosition: ad.textPosition || "bottom",
+    topText: ad.topText || "",
+    centerText: ad.centerText || "",
+    bottomText: ad.bottomText || "",
+    topTextColor: ad.topTextColor || "#ffffff",
+    centerTextColor: ad.centerTextColor || "#ffffff",
+    bottomTextColor: ad.bottomTextColor || "#ffffff",
+    topBgColor: ad.topBgColor || "#1e3a5f",
+    centerBgColor: ad.centerBgColor || "#1e3a5f",
+    bottomBgColor: ad.bottomBgColor || "#1e3a5f",
+  };
 }
 
-export default function AdvertisementManager({ canApproveAds = true }: AdvertisementManagerProps) {
+function formDataEqual(a: FormData, b: FormData): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+interface AdvertisementManagerProps {
+  canApproveAds?: boolean;
+  onHasUnsavedChanges?: (hasChanges: boolean) => void;
+}
+
+export default function AdvertisementManager({ canApproveAds = true, onHasUnsavedChanges }: AdvertisementManagerProps) {
   const { toast } = useToast();
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [activeTextPositions, setActiveTextPositions] = useState<Set<string>>(new Set());
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
+  const pendingAction = useRef<(() => void) | null>(null);
   
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    mediaType: "image" as "image" | "video",
-    mediaUrl: "",
-    linkUrl: "",
-    openInPopup: false,
-    targetPages: [] as string[],
-    status: "active" as "active" | "paused" | "scheduled",
-    startDate: "",
-    endDate: "",
-    priority: 1,
-    adText: "",
-    textColor: "#ffffff",
-    backgroundColor: "#1e3a5f",
-    textPosition: "bottom",
-    topText: "",
-    centerText: "",
-    bottomText: "",
-    topTextColor: "#ffffff",
-    centerTextColor: "#ffffff",
-    bottomTextColor: "#ffffff",
-    topBgColor: "#1e3a5f",
-    centerBgColor: "#1e3a5f",
-    bottomBgColor: "#1e3a5f",
-  });
+  const [formData, setFormData] = useState<FormData>({ ...DEFAULT_FORM });
+  const [savedFormData, setSavedFormData] = useState<FormData>({ ...DEFAULT_FORM });
+
+  const hasUnsavedChanges = isFormOpen && !formDataEqual(formData, savedFormData);
+
+  useEffect(() => {
+    onHasUnsavedChanges?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onHasUnsavedChanges]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     fetchAds();
@@ -109,6 +165,10 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       if (res.ok) {
         const data = await res.json();
         setAds(data);
+        if (editingAd) {
+          const updated = data.find((a: Advertisement) => a.id === editingAd.id);
+          if (updated) setEditingAd(updated);
+        }
       }
     } catch (error) {
       console.error("Error fetching ads:", error);
@@ -117,74 +177,91 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      mediaType: "image",
-      mediaUrl: "",
-      linkUrl: "",
-      openInPopup: false,
-      targetPages: [],
-      status: "active",
-      startDate: "",
-      endDate: "",
-      priority: 1,
-      adText: "",
-      textColor: "#ffffff",
-      backgroundColor: "#1e3a5f",
-      textPosition: "bottom",
-      topText: "",
-      centerText: "",
-      bottomText: "",
-      topTextColor: "#ffffff",
-      centerTextColor: "#ffffff",
-      bottomTextColor: "#ffffff",
-      topBgColor: "#1e3a5f",
-      centerBgColor: "#1e3a5f",
-      bottomBgColor: "#1e3a5f",
-    });
-    setEditingAd(null);
-    setActiveTextPositions(new Set());
+  const guardAction = useCallback((action: () => void) => {
+    if (hasUnsavedChanges) {
+      pendingAction.current = action;
+      setUnsavedDialogOpen(true);
+    } else {
+      action();
+    }
+  }, [hasUnsavedChanges]);
+
+  const handleUnsavedDiscard = () => {
+    setUnsavedDialogOpen(false);
+    const action = pendingAction.current;
+    pendingAction.current = null;
+    if (action) action();
   };
 
-  const openCreateDialog = () => {
-    resetForm();
-    setDialogOpen(true);
+  const handleUnsavedSave = async () => {
+    setUnsavedDialogOpen(false);
+    await handleSave();
+    const action = pendingAction.current;
+    pendingAction.current = null;
+    if (action) action();
   };
 
-  const openEditDialog = (ad: Advertisement) => {
-    setEditingAd(ad);
-    setFormData({
-      name: ad.name,
-      mediaType: ad.mediaType,
-      mediaUrl: ad.mediaUrl,
-      linkUrl: ad.linkUrl || "",
-      openInPopup: ad.openInPopup,
-      targetPages: ad.targetPages,
-      status: ad.status === "expired" ? "paused" : ad.status,
-      startDate: ad.startDate ? ad.startDate.split("T")[0] : "",
-      endDate: ad.endDate ? ad.endDate.split("T")[0] : "",
-      priority: ad.priority,
-      adText: ad.adText || "",
-      textColor: ad.textColor || "#ffffff",
-      backgroundColor: ad.backgroundColor || "#1e3a5f",
-      textPosition: ad.textPosition || "bottom",
-      topText: ad.topText || "",
-      centerText: ad.centerText || "",
-      bottomText: ad.bottomText || "",
-      topTextColor: ad.topTextColor || "#ffffff",
-      centerTextColor: ad.centerTextColor || "#ffffff",
-      bottomTextColor: ad.bottomTextColor || "#ffffff",
-      topBgColor: ad.topBgColor || "#1e3a5f",
-      centerBgColor: ad.centerBgColor || "#1e3a5f",
-      bottomBgColor: ad.bottomBgColor || "#1e3a5f",
+  const handleUnsavedCancel = () => {
+    setUnsavedDialogOpen(false);
+    pendingAction.current = null;
+  };
+
+  const openCreateForm = () => {
+    guardAction(() => {
+      const fresh = { ...DEFAULT_FORM };
+      setFormData(fresh);
+      setSavedFormData(fresh);
+      setEditingAd(null);
+      setActiveTextPositions(new Set());
+      setIsFormOpen(true);
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     });
-    const positions = new Set<string>();
-    if (ad.topText) positions.add("top");
-    if (ad.centerText) positions.add("center");
-    if (ad.bottomText) positions.add("bottom");
-    setActiveTextPositions(positions);
-    setDialogOpen(true);
+  };
+
+  const openEditForm = (ad: Advertisement) => {
+    guardAction(() => {
+      const data = adToFormData(ad);
+      setFormData(data);
+      setSavedFormData(data);
+      setEditingAd(ad);
+      const positions = new Set<string>();
+      if (ad.topText) positions.add("top");
+      if (ad.centerText) positions.add("center");
+      if (ad.bottomText) positions.add("bottom");
+      setActiveTextPositions(positions);
+      setIsFormOpen(true);
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    });
+  };
+
+  const closeForm = () => {
+    guardAction(() => {
+      setIsFormOpen(false);
+      setEditingAd(null);
+      setFormData({ ...DEFAULT_FORM });
+      setSavedFormData({ ...DEFAULT_FORM });
+      setActiveTextPositions(new Set());
+    });
+  };
+
+  const handleRefresh = () => {
+    if (editingAd) {
+      const data = adToFormData(editingAd);
+      setFormData(data);
+      setSavedFormData(data);
+      const positions = new Set<string>();
+      if (editingAd.topText) positions.add("top");
+      if (editingAd.centerText) positions.add("center");
+      if (editingAd.bottomText) positions.add("bottom");
+      setActiveTextPositions(positions);
+      toast({ title: "Refreshed", description: "Form reset to last saved data" });
+    } else {
+      const fresh = { ...DEFAULT_FORM };
+      setFormData(fresh);
+      setSavedFormData(fresh);
+      setActiveTextPositions(new Set());
+      toast({ title: "Refreshed", description: "Form cleared" });
+    }
   };
 
   const handleSave = async () => {
@@ -213,10 +290,13 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       });
       
       if (res.ok) {
+        const savedAd = await res.json();
         toast({ title: "Success", description: editingAd ? "Advertisement updated" : "Advertisement created" });
-        setDialogOpen(false);
+        const updatedData = adToFormData(savedAd);
+        setFormData(updatedData);
+        setSavedFormData(updatedData);
+        setEditingAd(savedAd);
         fetchAds();
-        resetForm();
       } else {
         const error = await res.json();
         toast({ title: "Error", description: error.error, variant: "destructive" });
@@ -235,6 +315,12 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       const res = await fetch(`/api/admin/advertisements/${id}`, { method: "DELETE" });
       if (res.ok) {
         toast({ title: "Success", description: "Advertisement deleted" });
+        if (editingAd?.id === id) {
+          setIsFormOpen(false);
+          setEditingAd(null);
+          setFormData({ ...DEFAULT_FORM });
+          setSavedFormData({ ...DEFAULT_FORM });
+        }
         fetchAds();
       }
     } catch (error) {
@@ -292,12 +378,8 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
       
       if (res.ok) {
         const data = await res.json();
-        setFormData(prev => ({ ...prev, mediaUrl: data.url }));
-        
-        // Auto-detect media type from file
         const isVideo = file.type.startsWith("video/");
-        setFormData(prev => ({ ...prev, mediaType: isVideo ? "video" : "image" }));
-        
+        setFormData(prev => ({ ...prev, mediaUrl: data.url, mediaType: isVideo ? "video" : "image" }));
         toast({ title: "Success", description: "File uploaded successfully" });
       } else {
         toast({ title: "Error", description: "Failed to upload file", variant: "destructive" });
@@ -359,7 +441,7 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
           <h2 className="text-2xl font-bold">Advertisements</h2>
           <p className="text-muted-foreground">Manage ads displayed on quote pages</p>
         </div>
-        <Button onClick={openCreateDialog} data-testid="button-new-advertisement">
+        <Button onClick={openCreateForm} data-testid="button-new-advertisement">
           <Plus className="mr-2 h-4 w-4" /> New Advertisement
         </Button>
       </div>
@@ -389,7 +471,11 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                 </TableRow>
               ) : (
                 ads.map(ad => (
-                  <TableRow key={ad.id}>
+                  <TableRow 
+                    key={ad.id} 
+                    className={editingAd?.id === ad.id ? "bg-primary/5" : "cursor-pointer hover:bg-muted/50"}
+                    onClick={() => openEditForm(ad)}
+                  >
                     <TableCell className="font-medium">{ad.name}</TableCell>
                     <TableCell>
                       {ad.mediaType === "image" ? <Image className="h-4 w-4" /> : <Video className="h-4 w-4" />}
@@ -406,32 +492,34 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                     <TableCell className="text-right">{ad.clicks.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{getCTR(ad.impressions, ad.clicks)}</TableCell>
                     <TableCell className="text-right">
-                      {canApproveAds && ad.approvalStatus !== "approved" && (
+                      <div onClick={(e) => e.stopPropagation()} className="inline-flex">
+                        {canApproveAds && ad.approvalStatus !== "approved" && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleAdminApprove(ad)} 
+                            title="Approve and activate immediately"
+                            data-testid={`button-admin-approve-${ad.id}`}
+                          >
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          </Button>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => handleAdminApprove(ad)} 
-                          title="Approve and activate immediately"
-                          data-testid={`button-admin-approve-${ad.id}`}
+                          onClick={() => copyPreviewLink(ad)} 
+                          title="Copy preview link for customer approval"
+                          data-testid={`button-copy-preview-${ad.id}`}
                         >
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          {copiedId === ad.id ? <Check className="h-4 w-4 text-green-500" /> : <Link className="h-4 w-4" />}
                         </Button>
-                      )}
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => copyPreviewLink(ad)} 
-                        title="Copy preview link for customer approval"
-                        data-testid={`button-copy-preview-${ad.id}`}
-                      >
-                        {copiedId === ad.id ? <Check className="h-4 w-4 text-green-500" /> : <Link className="h-4 w-4" />}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(ad)} data-testid={`button-edit-ad-${ad.id}`}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(ad.id)} data-testid={`button-delete-ad-${ad.id}`}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEditForm(ad)} data-testid={`button-edit-ad-${ad.id}`}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(ad.id)} data-testid={`button-delete-ad-${ad.id}`}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -441,75 +529,91 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingAd ? "Edit Advertisement" : "Create Advertisement"}</DialogTitle>
-          </DialogHeader>
-          
-          {editingAd && editingAd.mediaUrl && (
-            <div className="border rounded-lg p-4 bg-amber-50 mb-4">
-              <Label className="mb-3 block text-sm font-semibold">Current Advertisement</Label>
-              <div className="relative rounded-lg overflow-hidden shadow-sm" style={{ backgroundColor: editingAd.backgroundColor || '#1e3a5f' }}>
-                {editingAd.mediaType === "image" ? (
-                  <img 
-                    src={editingAd.mediaUrl} 
-                    alt={editingAd.name} 
-                    className="w-full h-auto max-h-48 object-contain"
-                  />
-                ) : (
-                  <video 
-                    src={editingAd.mediaUrl} 
-                    className="w-full h-auto max-h-48" 
-                    muted 
-                    controls
-                  />
-                )}
-                {editingAd.topText && (
-                  <div 
-                    className="absolute left-0 right-0 top-0 p-2 text-center font-semibold text-sm"
-                    style={{ 
-                      color: editingAd.topTextColor || '#ffffff',
-                      backgroundColor: `${editingAd.topBgColor || '#1e3a5f'}dd`,
-                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-                      whiteSpace: 'pre-line'
-                    }}
-                  >
-                    {editingAd.topText}
-                  </div>
-                )}
-                {editingAd.centerText && (
-                  <div 
-                    className="absolute left-0 right-0 top-1/2 -translate-y-1/2 p-2 text-center font-semibold text-sm"
-                    style={{ 
-                      color: editingAd.centerTextColor || '#ffffff',
-                      backgroundColor: `${editingAd.centerBgColor || '#1e3a5f'}dd`,
-                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-                      whiteSpace: 'pre-line'
-                    }}
-                  >
-                    {editingAd.centerText}
-                  </div>
-                )}
-                {editingAd.bottomText && (
-                  <div 
-                    className="absolute left-0 right-0 bottom-0 p-2 text-center font-semibold text-sm"
-                    style={{ 
-                      color: editingAd.bottomTextColor || '#ffffff',
-                      backgroundColor: `${editingAd.bottomBgColor || '#1e3a5f'}dd`,
-                      textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-                      whiteSpace: 'pre-line'
-                    }}
-                  >
-                    {editingAd.bottomText}
-                  </div>
-                )}
+      {isFormOpen && (
+        <Card ref={formRef} className="border-2 border-primary/20" data-testid="ad-edit-form">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>{editingAd ? `Editing: ${editingAd.name}` : "Create New Advertisement"}</CardTitle>
+                <CardDescription>
+                  {editingAd ? "Update the fields below and click Save to apply changes" : "Fill in the details below and click Save to create the ad"}
+                </CardDescription>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">This is how your ad currently appears. Make changes below to update it.</p>
+              <div className="flex items-center gap-2">
+                {hasUnsavedChanges && (
+                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                    Unsaved Changes
+                  </Badge>
+                )}
+                <Button variant="ghost" size="sm" onClick={closeForm} data-testid="button-close-ad-form">
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {editingAd && editingAd.mediaUrl && (
+              <div className="border rounded-lg p-4 bg-amber-50">
+                <Label className="mb-3 block text-sm font-semibold">Current Advertisement</Label>
+                <div className="relative rounded-lg overflow-hidden shadow-sm" style={{ backgroundColor: editingAd.backgroundColor || '#1e3a5f' }}>
+                  {editingAd.mediaType === "image" ? (
+                    <img 
+                      src={editingAd.mediaUrl} 
+                      alt={editingAd.name} 
+                      className="w-full h-auto max-h-48 object-contain"
+                    />
+                  ) : (
+                    <video 
+                      src={editingAd.mediaUrl} 
+                      className="w-full h-auto max-h-48" 
+                      muted 
+                      controls
+                    />
+                  )}
+                  {editingAd.topText && (
+                    <div 
+                      className="absolute left-0 right-0 top-0 p-2 text-center font-semibold text-sm"
+                      style={{ 
+                        color: editingAd.topTextColor || '#ffffff',
+                        backgroundColor: `${editingAd.topBgColor || '#1e3a5f'}dd`,
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                        whiteSpace: 'pre-line'
+                      }}
+                    >
+                      {editingAd.topText}
+                    </div>
+                  )}
+                  {editingAd.centerText && (
+                    <div 
+                      className="absolute left-0 right-0 top-1/2 -translate-y-1/2 p-2 text-center font-semibold text-sm"
+                      style={{ 
+                        color: editingAd.centerTextColor || '#ffffff',
+                        backgroundColor: `${editingAd.centerBgColor || '#1e3a5f'}dd`,
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                        whiteSpace: 'pre-line'
+                      }}
+                    >
+                      {editingAd.centerText}
+                    </div>
+                  )}
+                  {editingAd.bottomText && (
+                    <div 
+                      className="absolute left-0 right-0 bottom-0 p-2 text-center font-semibold text-sm"
+                      style={{ 
+                        color: editingAd.bottomTextColor || '#ffffff',
+                        backgroundColor: `${editingAd.bottomBgColor || '#1e3a5f'}dd`,
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+                        whiteSpace: 'pre-line'
+                      }}
+                    >
+                      {editingAd.bottomText}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">This is how your ad currently appears. Make changes below to update it.</p>
+              </div>
+            )}
 
-          <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Name *</Label>
@@ -812,13 +916,58 @@ export default function AdvertisementManager({ canApproveAds = true }: Advertise
                 />
               </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} data-testid="button-cancel-ad">Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} data-testid="button-save-ad">
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingAd ? "Update" : "Create"}
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleRefresh}
+                  data-testid="button-refresh-ad"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {editingAd ? "Reset to Saved" : "Clear Form"}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={closeForm} 
+                  data-testid="button-cancel-ad"
+                >
+                  Cancel
+                </Button>
+              </div>
+              <Button 
+                onClick={handleSave} 
+                disabled={saving} 
+                size="lg"
+                data-testid="button-save-ad"
+              >
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Save className="mr-2 h-4 w-4" />
+                {editingAd ? "Save Changes" : "Save Advertisement"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            You have unsaved changes to this advertisement. Would you like to save before continuing?
+          </p>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleUnsavedCancel} data-testid="button-unsaved-cancel">
+              Go Back
+            </Button>
+            <Button variant="destructive" onClick={handleUnsavedDiscard} data-testid="button-unsaved-discard">
+              Discard
+            </Button>
+            <Button onClick={handleUnsavedSave} data-testid="button-unsaved-save">
+              <Save className="mr-2 h-4 w-4" />
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
