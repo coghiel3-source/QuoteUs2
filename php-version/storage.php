@@ -352,7 +352,7 @@ class Storage {
         if (!isset($data['priority'])) $data['priority'] = 1;
         if (!isset($data['impressions'])) $data['impressions'] = 0;
         if (!isset($data['clicks'])) $data['clicks'] = 0;
-        if (!isset($data['preview_token'])) $data['preview_token'] = Database::generateUUID();
+        if (empty($data['preview_token'])) $data['preview_token'] = Database::generateUUID();
         if (!isset($data['approval_status'])) $data['approval_status'] = 'pending';
         if (!isset($data['open_in_popup'])) $data['open_in_popup'] = 0;
         if (!isset($data['created_at'])) $data['created_at'] = Database::now();
