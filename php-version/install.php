@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $tables = [
             "users" => "CREATE TABLE IF NOT EXISTS `users` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `name` TEXT NOT NULL,
                 `email` VARCHAR(255) NOT NULL,
                 `phone` TEXT,
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "quotes" => "CREATE TABLE IF NOT EXISTS `quotes` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `quote_number` VARCHAR(255) NOT NULL,
                 `type` ENUM('Auto', 'Home', 'Tenant', 'Business', 'Life', 'Travel', 'Pet', 'Mortgage', 'General') NOT NULL,
                 `client_name` TEXT NOT NULL,
@@ -91,8 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 `binder_required` TINYINT(1) DEFAULT 0,
                 `binder_url` TEXT,
                 `binder_uploaded_at` DATETIME DEFAULT NULL,
-                `binder_documents` JSON DEFAULT ('[]'),
-                `details` JSON NOT NULL DEFAULT ('{}'),
+                `binder_documents` JSON DEFAULT NULL,
+                `details` JSON DEFAULT NULL,
                 `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`),
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "transactions" => "CREATE TABLE IF NOT EXISTS `transactions` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `user_id` VARCHAR(36) NOT NULL,
                 `type` ENUM('credit_purchase', 'lead_deduction', 'manual_credit', 'adjustment', 'refund') NOT NULL,
                 `amount` DECIMAL(10, 2) NOT NULL,
@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "system_settings" => "CREATE TABLE IF NOT EXISTS `system_settings` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `key` VARCHAR(255) NOT NULL,
                 `value` TEXT NOT NULL,
                 `updated_by` VARCHAR(36) DEFAULT NULL,
@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "activities" => "CREATE TABLE IF NOT EXISTS `activities` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `quote_id` VARCHAR(36) NOT NULL,
                 `type` ENUM('status_change', 'assignment', 'note', 'email_sent', 'system') NOT NULL,
                 `content` TEXT NOT NULL,
@@ -148,20 +148,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "advertisements" => "CREATE TABLE IF NOT EXISTS `advertisements` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `name` TEXT NOT NULL,
                 `media_type` ENUM('image', 'video') NOT NULL DEFAULT 'image',
                 `media_url` TEXT NOT NULL,
                 `link_url` TEXT,
                 `open_in_popup` TINYINT(1) NOT NULL DEFAULT 0,
-                `target_pages` JSON NOT NULL DEFAULT ('[]'),
+                `target_pages` JSON DEFAULT NULL,
                 `status` ENUM('active', 'paused', 'scheduled', 'expired') NOT NULL DEFAULT 'active',
                 `start_date` DATETIME DEFAULT NULL,
                 `end_date` DATETIME DEFAULT NULL,
                 `priority` INT NOT NULL DEFAULT 1,
                 `impressions` INT NOT NULL DEFAULT 0,
                 `clicks` INT NOT NULL DEFAULT 0,
-                `preview_token` VARCHAR(36) DEFAULT (UUID()),
+                `preview_token` VARCHAR(36) DEFAULT NULL,
                 `approval_status` TEXT DEFAULT 'pending',
                 `ad_text` TEXT,
                 `text_color` TEXT DEFAULT '#ffffff',
@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "broker_notes" => "CREATE TABLE IF NOT EXISTS `broker_notes` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `broker_id` VARCHAR(36) NOT NULL,
                 `author_id` VARCHAR(36) NOT NULL,
                 `author_name` TEXT NOT NULL,
@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "partner_redirects" => "CREATE TABLE IF NOT EXISTS `partner_redirects` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `quote_type` ENUM('Auto', 'Home', 'Tenant', 'Business', 'Life', 'Travel', 'Pet', 'Mortgage', 'General') NOT NULL,
                 `redirect_url` TEXT NOT NULL,
                 `is_active` TINYINT(1) NOT NULL DEFAULT 1,
@@ -211,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
             "referral_partners" => "CREATE TABLE IF NOT EXISTS `referral_partners` (
-                `id` VARCHAR(36) NOT NULL DEFAULT (UUID()),
+                `id` VARCHAR(36) NOT NULL,
                 `contact_name` TEXT NOT NULL,
                 `email` VARCHAR(255) NOT NULL,
                 `phone` TEXT,
