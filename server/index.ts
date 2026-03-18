@@ -82,9 +82,9 @@ const uploadsDir = path.join(process.cwd(), "client", "public", "uploads");
 app.use("/uploads", express.static(uploadsDir));
 
 // Serve downloadable PHP zip
-const phpZipPath = path.join(process.cwd(), "QuoteUs_PHP.zip");
-app.get("/download/QuoteUs_PHP.zip", (_req, res) => {
-  res.download(phpZipPath, "QuoteUs_PHP.zip", (err) => {
+const phpZipPath = path.join(process.cwd(), "QuoteUs_PHP_1.zip");
+app.get("/download/QuoteUs_PHP_1.zip", (_req, res) => {
+  res.download(phpZipPath, "QuoteUs_PHP_1.zip", (err) => {
     if (err) res.status(404).json({ error: "Zip file not found" });
   });
 });
