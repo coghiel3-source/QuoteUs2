@@ -377,9 +377,9 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
   const handleAdminApprove = async (ad: Advertisement) => {
     try {
       const res = await fetch(`/api/admin/advertisements/${ad.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...ad, approvalStatus: "approved", status: "active" }),
+        body: JSON.stringify({ approvalStatus: "approved", status: "active" }),
       });
       if (res.ok) {
         toast({ title: "Success", description: "Advertisement approved and activated" });
@@ -387,6 +387,26 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to approve advertisement", variant: "destructive" });
+    }
+  };
+
+  const handleClearEndDate = async (ad: Advertisement) => {
+    try {
+      const res = await fetch(`/api/admin/advertisements/${ad.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endDate: null }),
+      });
+      if (res.ok) {
+        toast({ title: "Reactivated", description: "End date removed — ad will run indefinitely" });
+        fetchAds();
+        if (editingAd?.id === ad.id) {
+          setFormData(prev => ({ ...prev, endDate: "" }));
+          setSavedFormData(prev => ({ ...prev, endDate: "" }));
+        }
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to reactivate advertisement", variant: "destructive" });
     }
   };
 
@@ -536,7 +556,16 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                       <div className="flex flex-col gap-1">
                         {getStatusBadge(ad.status)}
                         {ad.endDate && new Date(ad.endDate) < new Date() && ad.status === "active" && (
-                          <Badge className="bg-red-100 text-red-800 text-[10px] whitespace-nowrap">End date passed</Badge>
+                          <>
+                            <Badge className="bg-red-100 text-red-800 text-[10px] whitespace-nowrap">End date passed</Badge>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleClearEndDate(ad); }}
+                              className="text-[10px] text-blue-600 hover:underline text-left"
+                              data-testid={`button-reactivate-ad-${ad.id}`}
+                            >
+                              Reactivate →
+                            </button>
+                          </>
                         )}
                       </div>
                     </TableCell>

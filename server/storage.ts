@@ -369,7 +369,7 @@ export class DatabaseStorage implements IStorage {
         ),
         or(
           isNull(advertisements.endDate),
-          gte(advertisements.endDate, now)
+          sql`${advertisements.endDate} + interval '1 day' > ${now}`
         ),
         or(
           isNull(advertisements.approvalStatus),
