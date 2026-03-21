@@ -30,9 +30,13 @@ export default function LoginPage() {
     if (success) {
       toast({
         title: "Welcome!",
-        description: "You have successfully logged in to the broker portal.",
+        description: "You have successfully logged in.",
       });
-      setLocation("/admin");
+      if (selectedRole === "rep") {
+        setLocation("/rep");
+      } else {
+        setLocation("/admin");
+      }
     } else {
       toast({
         variant: "destructive",
@@ -104,6 +108,7 @@ export default function LoginPage() {
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="broker">Broker</SelectItem>
+                    <SelectItem value="rep">Rep (Rent Guarantee)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

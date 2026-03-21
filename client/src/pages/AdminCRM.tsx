@@ -116,7 +116,7 @@ export default function AdminCRMPage() {
     name: "",
     email: "",
     phone: "",
-    role: "broker" as "broker" | "manager" | "admin",
+    role: "broker" as "broker" | "manager" | "admin" | "rep",
     status: "active" as "pending" | "active",
     password: "",
     brokerage: "",
@@ -1500,6 +1500,11 @@ export default function AdminCRMPage() {
                         <Megaphone size={18} className="mr-3" /> Advertisements
                       </Button>
                     )}
+                    <a href="/rep" target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                      <Button variant="ghost" className="justify-start mb-1 w-full text-blue-700 hover:text-blue-800 hover:bg-blue-50">
+                        <Home size={18} className="mr-3" /> Rent Guarantee Portal
+                      </Button>
+                    </a>
                     <div className="border-t my-2" />
                     {(user?.role === 'admin' || hasPermission('viewSettings')) && (
                       <Button 
@@ -1601,6 +1606,11 @@ export default function AdminCRMPage() {
                     <Megaphone size={16} className="mr-2" /> Ads
                   </Button>
                 )}
+                <a href="/rep" target="_blank" rel="noopener noreferrer">
+                  <Button variant="ghost" size="sm" className="text-blue-200 hover:text-white hover:bg-white/10" data-testid="nav-rg-portal">
+                    <Home size={16} className="mr-2" /> RG Portal
+                  </Button>
+                </a>
               </nav>
             </div>
 
@@ -3259,6 +3269,7 @@ export default function AdminCRMPage() {
                                 <SelectItem value="broker">Broker</SelectItem>
                                 <SelectItem value="manager">Manager</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="rep">Rep (Rent Guarantee)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -3646,6 +3657,7 @@ export default function AdminCRMPage() {
                       <SelectItem value="admin">Admins</SelectItem>
                       <SelectItem value="manager">Managers</SelectItem>
                       <SelectItem value="broker">Brokers</SelectItem>
+                      <SelectItem value="rep">Reps</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="text-sm text-muted-foreground flex items-center">

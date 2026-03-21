@@ -80,6 +80,32 @@ const binderUpload = multer({
   },
 });
 
+const repDocUploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const repDocDir = path.join(uploadDir, "rep-docs");
+    if (!fs.existsSync(repDocDir)) {
+      fs.mkdirSync(repDocDir, { recursive: true });
+    }
+    cb(null, repDocDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `doc-${uniqueSuffix}${ext}`);
+  },
+});
+
+const repDocUpload = multer({
+  storage: repDocUploadStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|heic|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    if (extname) return cb(null, true);
+    cb(new Error("Only PDF, Word, and image files are allowed"));
+  },
+});
+
 // Default lead costs by type (fallback if not set in database)
 const DEFAULT_LEAD_COSTS: Record<string, number> = {
   "Auto": 10,
@@ -2614,6 +2640,205 @@ export async function registerRoutes(
         return res.json({ redirectUrl: null });
       }
       res.json({ redirectUrl: redirect.redirectUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============== REP / RENT GUARANTEE LEADS ==============
+
+  // Get rep's own leads (or all leads for admin/manager)
+  app.get("/api/rep/leads", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor) return res.status(403).json({ error: "Unauthorized" });
+      let leads;
+      if (actor.role === "admin" || actor.role === "manager") {
+        leads = await storage.getAllRgLeads();
+      } else if (actor.role === "rep") {
+        leads = await storage.getRgLeadsForRep(actor.id);
+      } else {
+        return res.status(403).json({ error: "Insufficient permissions" });
+      }
+      res.json(leads);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single RG lead
+  app.get("/api/rep/leads/:id", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor) return res.status(403).json({ error: "Unauthorized" });
+      const lead = await storage.getRgLead(req.params.id);
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+      if (actor.role === "rep" && lead.repId !== actor.id) return res.status(403).json({ error: "Access denied" });
+      res.json(lead);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create RG lead
+  app.post("/api/rep/leads", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const lead = await storage.createRgLead({ ...data, repId: actor.id });
+      res.json(lead);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update RG lead
+  app.patch("/api/rep/leads/:id", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor) return res.status(403).json({ error: "Unauthorized" });
+      const lead = await storage.getRgLead(req.params.id);
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+      if (actor.role === "rep" && lead.repId !== actor.id) return res.status(403).json({ error: "Access denied" });
+      const updated = await storage.updateRgLead(req.params.id, data);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete RG lead
+  app.delete("/api/rep/leads/:id", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor) return res.status(403).json({ error: "Unauthorized" });
+      const lead = await storage.getRgLead(req.params.id);
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+      if (actor.role === "rep" && lead.repId !== actor.id) return res.status(403).json({ error: "Access denied" });
+      await storage.deleteRgLead(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get document requests for a lead
+  app.get("/api/rep/leads/:id/requests", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const requests = await storage.getDocumentRequestsForLead(req.params.id);
+      res.json(requests);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send document request (create tokenized link)
+  app.post("/api/rep/leads/:id/request-docs", async (req, res) => {
+    try {
+      const { actorId, recipientType, recipientName, recipientEmail, requiredDocs, expiresInDays } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const lead = await storage.getRgLead(req.params.id);
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+      const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86400000) : new Date(Date.now() + 7 * 86400000);
+      const docRequest = await storage.createDocumentRequest({
+        rgLeadId: req.params.id,
+        recipientType,
+        recipientName,
+        recipientEmail,
+        requiredDocs: requiredDocs || [],
+        expiresAt,
+      });
+      res.json(docRequest);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get documents for a lead
+  app.get("/api/rep/leads/:id/documents", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const docs = await storage.getDocumentsForLead(req.params.id);
+      res.json(docs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a document
+  app.delete("/api/rep/documents/:id", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      await storage.deleteRepDocument(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUBLIC: Get document request info by token (no auth)
+  app.get("/api/upload/:token", async (req, res) => {
+    try {
+      const docReq = await storage.getDocumentRequestByToken(req.params.token);
+      if (!docReq) return res.status(404).json({ error: "Upload link not found or expired" });
+      if (docReq.expiresAt && new Date(docReq.expiresAt) < new Date()) {
+        return res.status(410).json({ error: "This upload link has expired" });
+      }
+      const lead = await storage.getRgLead(docReq.rgLeadId);
+      const docs = await storage.getDocumentsForRequest(docReq.id);
+      res.json({ request: docReq, lead, uploadedDocs: docs });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUBLIC: Upload document via token (no auth)
+  app.post("/api/upload/:token/file", repDocUpload.single("file"), async (req, res) => {
+    try {
+      const docReq = await storage.getDocumentRequestByToken(req.params.token);
+      if (!docReq) return res.status(404).json({ error: "Upload link not found" });
+      if (docReq.expiresAt && new Date(docReq.expiresAt) < new Date()) {
+        return res.status(410).json({ error: "This upload link has expired" });
+      }
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const { docType } = req.body;
+      const fileUrl = `/uploads/rep-docs/${req.file.filename}`;
+      const doc = await storage.createRepDocument({
+        rgLeadId: docReq.rgLeadId,
+        documentRequestId: docReq.id,
+        docType: docType || "Other",
+        fileUrl,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+      });
+      // Update lead status to "Documents Received" if it was pending
+      const lead = await storage.getRgLead(docReq.rgLeadId);
+      if (lead && lead.status === "Documents Pending") {
+        await storage.updateRgLead(lead.id, { status: "Documents Received" });
+      }
+      res.json(doc);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

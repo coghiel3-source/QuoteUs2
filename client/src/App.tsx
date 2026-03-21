@@ -26,6 +26,8 @@ import BrokerCreditsPage from "@/pages/BrokerCredits";
 import LoginPage from "@/pages/Login";
 import AdPreviewPage from "@/pages/AdPreview";
 import RentGuaranteePage from "@/pages/RentGuarantee";
+import RepDashboardPage from "@/pages/RepDashboard";
+import DocUploadPage from "@/pages/DocUpload";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -40,30 +42,38 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={HomePage} />
-        <Route path="/auto" component={AutoPage} />
-        <Route path="/home-insurance" component={HomeInsurancePage} />
-        <Route path="/tenant" component={TenantPage} />
-        <Route path="/travel" component={TravelPage} />
-        <Route path="/life" component={LifePage} />
-        <Route path="/business" component={BusinessPage} />
-        <Route path="/pet" component={PetPage} />
-        <Route path="/mortgage" component={MortgagePage} />
-        <Route path="/compare" component={ComparePage} />
-        <Route path="/about" component={AboutPage} />
-        <Route path="/contact" component={ContactPage} />
-        <Route path="/dashboard" component={DashboardPage} />
-        <Route path="/privacy" component={PrivacyPage} />
-        <Route path="/admin" component={AdminCRMPage} />
-        <Route path="/broker/credits" component={BrokerCreditsPage} />
-        <Route path="/login" component={LoginPage} />
-        <Route path="/ad-preview/:token" component={AdPreviewPage} />
-        <Route path="/rent-guarantee" component={RentGuaranteePage} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      {/* Public standalone pages (no nav/footer) */}
+      <Route path="/doc-upload/:token" component={DocUploadPage} />
+      {/* Main app with layout */}
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={HomePage} />
+            <Route path="/auto" component={AutoPage} />
+            <Route path="/home-insurance" component={HomeInsurancePage} />
+            <Route path="/tenant" component={TenantPage} />
+            <Route path="/travel" component={TravelPage} />
+            <Route path="/life" component={LifePage} />
+            <Route path="/business" component={BusinessPage} />
+            <Route path="/pet" component={PetPage} />
+            <Route path="/mortgage" component={MortgagePage} />
+            <Route path="/compare" component={ComparePage} />
+            <Route path="/about" component={AboutPage} />
+            <Route path="/contact" component={ContactPage} />
+            <Route path="/dashboard" component={DashboardPage} />
+            <Route path="/privacy" component={PrivacyPage} />
+            <Route path="/admin" component={AdminCRMPage} />
+            <Route path="/broker/credits" component={BrokerCreditsPage} />
+            <Route path="/login" component={LoginPage} />
+            <Route path="/ad-preview/:token" component={AdPreviewPage} />
+            <Route path="/rent-guarantee" component={RentGuaranteePage} />
+            <Route path="/rep" component={RepDashboardPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 

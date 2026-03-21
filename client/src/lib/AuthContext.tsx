@@ -17,7 +17,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'manager' | 'broker' | 'customer';
+  role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep';
   status: 'pending' | 'active' | 'denied' | 'paused' | 'cancelled';
   password?: string;
   balance?: string;
@@ -41,7 +41,7 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   loading: boolean;
-  login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string) => Promise<boolean>;
+  login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string) => Promise<boolean>;
   loginWithGoogle: (userId: string) => Promise<boolean>;
   logout: () => void;
   register: (name: string, email: string, password?: string, role?: 'broker' | 'customer' | 'manager' | 'admin', phone?: string, brokerFields?: { brokerage?: string; yearsOfService?: number; productTypes?: string[] }) => Promise<void>;
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  const login = async (email: string, role: 'admin' | 'manager' | 'broker' | 'customer', password?: string): Promise<boolean> => {
+  const login = async (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string): Promise<boolean> => {
     try {
       const foundUser = await apiRequest<User>('/auth/login', {
         method: 'POST',

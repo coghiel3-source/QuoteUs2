@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const userRoleEnum = pgEnum("user_role", ["admin", "manager", "broker", "customer"]);
+export const userRoleEnum = pgEnum("user_role", ["admin", "manager", "broker", "customer", "rep"]);
 export const userStatusEnum = pgEnum("user_status", ["active", "pending", "paused", "cancelled", "denied"]);
 export const quoteTypeEnum = pgEnum("quote_type", ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "Rent Guarantee", "General"]);
 export const quoteStatusEnum = pgEnum("quote_status", ["New", "Contacted", "Quoted", "Bound", "Follow-Up", "Closed", "Lost", "Win", "Lose", "Expired"]);
@@ -178,6 +178,56 @@ export const referralPartners = pgTable("referral_partners", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// RG Lead status enum
+export const rgLeadStatusEnum = pgEnum("rg_lead_status", ["New", "Contacted", "Documents Pending", "Documents Received", "Submitted", "Approved", "Declined"]);
+
+// Rent Guarantee Leads Table (managed by reps)
+export const rgLeads = pgTable("rg_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  repId: varchar("rep_id").notNull().references(() => users.id),
+  tenantName: text("tenant_name").notNull(),
+  landlordName: text("landlord_name").notNull(),
+  landlordEmail: text("landlord_email"),
+  landlordPhone: text("landlord_phone"),
+  propertyAddress: text("property_address").notNull(),
+  monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(),
+  tenantEmail: text("tenant_email").notNull(),
+  tenantPhone: text("tenant_phone").notNull(),
+  employmentStatus: text("employment_status").notNull(),
+  coApplicantName: text("co_applicant_name"),
+  coApplicantEmail: text("co_applicant_email"),
+  moveInDate: text("move_in_date"),
+  notes: text("notes"),
+  status: rgLeadStatusEnum("status").notNull().default("New"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Document Requests Table (tokenized links sent to tenant/landlord)
+export const documentRequests = pgTable("document_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rgLeadId: varchar("rg_lead_id").notNull().references(() => rgLeads.id, { onDelete: "cascade" }),
+  token: varchar("token").notNull().unique().default(sql`gen_random_uuid()`),
+  recipientType: text("recipient_type").notNull(), // "tenant" or "landlord"
+  recipientName: text("recipient_name").notNull(),
+  recipientEmail: text("recipient_email").notNull(),
+  requiredDocs: text("required_docs").array().notNull().default([]),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Uploaded Documents Table
+export const repDocuments = pgTable("rep_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rgLeadId: varchar("rg_lead_id").notNull().references(() => rgLeads.id, { onDelete: "cascade" }),
+  documentRequestId: varchar("document_request_id").references(() => documentRequests.id),
+  docType: text("doc_type").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -258,3 +308,29 @@ export type InsertPartnerRedirect = z.infer<typeof insertPartnerRedirectSchema>;
 
 export type ReferralPartner = typeof referralPartners.$inferSelect;
 export type InsertReferralPartner = z.infer<typeof insertReferralPartnerSchema>;
+
+export const insertRgLeadSchema = createInsertSchema(rgLeads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDocumentRequestSchema = createInsertSchema(documentRequests).omit({
+  id: true,
+  token: true,
+  createdAt: true,
+});
+
+export const insertRepDocumentSchema = createInsertSchema(repDocuments).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type RgLead = typeof rgLeads.$inferSelect;
+export type InsertRgLead = z.infer<typeof insertRgLeadSchema>;
+
+export type DocumentRequest = typeof documentRequests.$inferSelect;
+export type InsertDocumentRequest = z.infer<typeof insertDocumentRequestSchema>;
+
+export type RepDocument = typeof repDocuments.$inferSelect;
+export type InsertRepDocument = z.infer<typeof insertRepDocumentSchema>;

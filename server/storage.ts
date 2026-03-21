@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLeads, documentRequests, repDocuments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -69,6 +69,25 @@ export interface IStorage {
   updateReferralPartner(id: string, data: Partial<InsertReferralPartner>): Promise<ReferralPartner | undefined>;
   deleteReferralPartner(id: string): Promise<boolean>;
   getNextReferenceIdForProvince(province: string): Promise<string>;
+
+  // Rep / RG Lead operations
+  getRgLeadsForRep(repId: string): Promise<RgLead[]>;
+  getAllRgLeads(): Promise<RgLead[]>;
+  getRgLead(id: string): Promise<RgLead | undefined>;
+  createRgLead(lead: InsertRgLead): Promise<RgLead>;
+  updateRgLead(id: string, data: Partial<InsertRgLead>): Promise<RgLead | undefined>;
+  deleteRgLead(id: string): Promise<boolean>;
+
+  // Document Request operations
+  getDocumentRequestsForLead(rgLeadId: string): Promise<DocumentRequest[]>;
+  getDocumentRequestByToken(token: string): Promise<DocumentRequest | undefined>;
+  createDocumentRequest(req: InsertDocumentRequest): Promise<DocumentRequest>;
+
+  // Uploaded Document operations
+  getDocumentsForLead(rgLeadId: string): Promise<RepDocument[]>;
+  getDocumentsForRequest(documentRequestId: string): Promise<RepDocument[]>;
+  createRepDocument(doc: InsertRepDocument): Promise<RepDocument>;
+  deleteRepDocument(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -484,6 +503,69 @@ export class DatabaseStorage implements IStorage {
     
     const nextNum = maxNum + 1;
     return `${prefix}${String(nextNum).padStart(7, '0')}`;
+  }
+
+  // Rep / RG Lead operations
+  async getRgLeadsForRep(repId: string): Promise<RgLead[]> {
+    return db.select().from(rgLeads).where(eq(rgLeads.repId, repId)).orderBy(desc(rgLeads.createdAt));
+  }
+
+  async getAllRgLeads(): Promise<RgLead[]> {
+    return db.select().from(rgLeads).orderBy(desc(rgLeads.createdAt));
+  }
+
+  async getRgLead(id: string): Promise<RgLead | undefined> {
+    const [lead] = await db.select().from(rgLeads).where(eq(rgLeads.id, id));
+    return lead || undefined;
+  }
+
+  async createRgLead(lead: InsertRgLead): Promise<RgLead> {
+    const [created] = await db.insert(rgLeads).values(lead).returning();
+    return created;
+  }
+
+  async updateRgLead(id: string, data: Partial<InsertRgLead>): Promise<RgLead | undefined> {
+    const [updated] = await db.update(rgLeads).set({ ...data, updatedAt: new Date() }).where(eq(rgLeads.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteRgLead(id: string): Promise<boolean> {
+    const result = await db.delete(rgLeads).where(eq(rgLeads.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Document Request operations
+  async getDocumentRequestsForLead(rgLeadId: string): Promise<DocumentRequest[]> {
+    return db.select().from(documentRequests).where(eq(documentRequests.rgLeadId, rgLeadId)).orderBy(desc(documentRequests.createdAt));
+  }
+
+  async getDocumentRequestByToken(token: string): Promise<DocumentRequest | undefined> {
+    const [req] = await db.select().from(documentRequests).where(eq(documentRequests.token, token));
+    return req || undefined;
+  }
+
+  async createDocumentRequest(req: InsertDocumentRequest): Promise<DocumentRequest> {
+    const [created] = await db.insert(documentRequests).values(req).returning();
+    return created;
+  }
+
+  // Uploaded Document operations
+  async getDocumentsForLead(rgLeadId: string): Promise<RepDocument[]> {
+    return db.select().from(repDocuments).where(eq(repDocuments.rgLeadId, rgLeadId)).orderBy(desc(repDocuments.uploadedAt));
+  }
+
+  async getDocumentsForRequest(documentRequestId: string): Promise<RepDocument[]> {
+    return db.select().from(repDocuments).where(eq(repDocuments.documentRequestId, documentRequestId)).orderBy(desc(repDocuments.uploadedAt));
+  }
+
+  async createRepDocument(doc: InsertRepDocument): Promise<RepDocument> {
+    const [created] = await db.insert(repDocuments).values(doc).returning();
+    return created;
+  }
+
+  async deleteRepDocument(id: string): Promise<boolean> {
+    const result = await db.delete(repDocuments).where(eq(repDocuments.id, id)).returning();
+    return result.length > 0;
   }
 }
 

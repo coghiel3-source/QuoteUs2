@@ -1,0 +1,128 @@
+🔐 ROLE: REPS (Rent Guarantee Sales Reps)
+🧩 Overview
+
+The Reps role is designed for internal sales agents who manage and generate their own Rent Guarantee leads, similar to brokers—but with additional control over lead creation and document collection.
+
+👤 Permissions & Access
+
+Reps can:
+
+Access a personalized dashboard
+View leads assigned to them
+Create and manage their own leads/accounts
+Send document request links to tenants and landlords
+Track document upload status
+Update lead/application progress
+
+Reps cannot:
+
+Access other reps' leads
+Access broker-level analytics (unless granted)
+Approve/underwrite applications (admin only)
+📊 Dashboard (Reps View)
+Sections:
+My Leads
+List of all assigned + self-created leads
+Status indicators:
+New
+Contacted
+Documents Pending
+Submitted
+Approved / Declined
+Quick Actions
+➕ Add New Lead
+📩 Send Document Request
+📂 View Uploaded Documents
+Performance Snapshot
+Total Leads
+Pending Documents
+Submitted Applications
+Approval Rate (optional)
+➕ Lead / Account Creation
+
+Reps can manually create a new Rent Guarantee lead:
+
+Required Fields:
+Tenant Name
+Landlord Name
+Property Address
+Monthly Rent Amount
+Tenant Email
+Tenant Phone
+Employment Status
+Optional Fields:
+Co-applicant info
+Notes
+Move-in date
+📩 Document Request System
+Feature: “Send Document Request”
+
+Reps can send a secure upload link via:
+
+Email
+SMS (optional)
+Recipients:
+Tenant
+Landlord
+📎 Documents That Can Be Requested:
+
+Tenant Documents:
+
+Government ID
+Job Letter / Proof of Employment
+Credit Report
+Pay Stubs
+Bank Statements
+
+Landlord Documents:
+
+Rental Agreement / Lease
+Proof of Ownership
+Insurance Documents
+🔗 Upload Experience (User Side)
+
+When tenant/landlord clicks the link:
+
+No login required
+Secure upload portal
+Can upload multiple files
+Shows checklist of required documents
+Progress indicator (e.g., 3/5 documents uploaded)
+📂 Document Management (Rep View)
+
+Each lead will include:
+
+Document checklist
+Upload status:
+✅ Received
+⏳ Pending
+Ability to:
+View files
+Download files
+Request missing documents again
+🔄 Workflow Status Flow
+Lead Created
+Document Request Sent
+Documents Uploaded
+Submission Ready
+Sent to Admin / Underwriting
+Approved / Declined
+🔔 Notifications
+
+Reps receive alerts when:
+
+A document is uploaded
+A lead completes all required documents
+A lead status changes
+🔐 Security & Compliance
+Secure file upload (encrypted storage)
+Unique tokenized links (expire after X days)
+Audit trail of uploads
+GDPR / privacy compliance
+⚠️ Not available in Quebec (for Rent Guarantee feature)
+🧠 Optional Enhancements (Future)
+Auto-reminders for missing documents
+E-signature for lease agreements
+AI document validation (ID, income verification)
+CRM integration
+SMS automati
