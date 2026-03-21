@@ -238,7 +238,7 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Services Offered</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {['Auto', 'Home', 'Life', 'Travel', 'Business'].map((product) => (
+                    {['Auto', 'Home', 'Tenant', 'Life', 'Travel', 'Business', 'Pet', 'Mortgage', 'Rent Guarantee'].map((product) => (
                       <label key={product} className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -261,7 +261,7 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Other Services (optional)</label>
                   <Input 
-                    placeholder="e.g., Pet, Tenant, Motorcycle" 
+                    placeholder="e.g., Motorcycle, Specialty, Boat" 
                     value={registerOtherServices} 
                     onChange={e => setRegisterOtherServices(e.target.value)} 
                     data-testid="input-register-other-services"
