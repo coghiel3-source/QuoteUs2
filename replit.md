@@ -2,7 +2,7 @@
 
 ## Overview
 
-QuoteUs.ca is a full-stack insurance lead generation and CRM platform for Ontario residents. It enables users to request quotes for various insurance types through dynamic forms and provides brokers and administrators with a comprehensive CRM to manage leads, track activities, and process quotes. The platform supports an admin-first lead flow, role-based access control (admin, manager, broker, customer), and features a credit system for lead acquisition by brokers. The business vision is to streamline insurance lead management and provide a robust platform for brokers and customers in Ontario.
+QuoteUs.ca is a full-stack insurance lead generation and CRM platform for Ontario residents. It enables users to request quotes for various insurance types through dynamic forms and provides brokers and administrators with a comprehensive CRM to manage leads, track activities, and process quotes. The platform supports an admin-first lead flow, role-based access control (admin, manager, broker, customer), and features a credit system for lead acquisition by brokers. Insurance products include Auto, Home, Tenant, Business, Life, Travel, Pet, Mortgage, and Rent Guarantee. The business vision is to streamline insurance lead management and provide a robust platform for brokers and customers in Ontario.
 
 ## User Preferences
 

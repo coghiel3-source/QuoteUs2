@@ -25,6 +25,7 @@ import AdminCRMPage from "@/pages/AdminCRM";
 import BrokerCreditsPage from "@/pages/BrokerCredits";
 import LoginPage from "@/pages/Login";
 import AdPreviewPage from "@/pages/AdPreview";
+import RentGuaranteePage from "@/pages/RentGuarantee";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -59,6 +60,7 @@ function Router() {
         <Route path="/broker/credits" component={BrokerCreditsPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/ad-preview/:token" component={AdPreviewPage} />
+        <Route path="/rent-guarantee" component={RentGuaranteePage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

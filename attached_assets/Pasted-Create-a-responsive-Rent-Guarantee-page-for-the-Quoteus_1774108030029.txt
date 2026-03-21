@@ -1,0 +1,108 @@
+Create a responsive Rent Guarantee page for the Quoteus website. The design should be modern, clean, and optimized for conversions.
+
+PAGE STRUCTURE (Build in this order)
+1. Hero / Header Section
+2. Availability Notice
+3. Landlord Form
+4. Submitted Info Display
+5. What Rent Guarantee Covers
+6. Tenant Qualifications
+7. Documents Required
+
+1. HERO SECTION
+* Main Title: Rent Guarantee
+* Heading: Rent Guarantee Protection for Landlords
+* Subtitle: “Secure your rental income and protect your investment.”
+* CTA Button: Get Protected Now
+
+2. AVAILABILITY NOTICE (IMPORTANT)
+Directly below the hero section, add a clearly visible notice banner:
+* Style: subtle alert box (light background, border, or icon)
+* Text (display exactly): “This product is not available in Quebec.”
+* Optional: include an info icon or warning icon
+* Ensure it is mobile responsive and easy to read
+
+3. LANDLORD INFORMATION FORM
+Create a clean, modern form with the following required fields:
+* Full Name (text)
+* Email Address (email)
+* Phone Number (tel)
+* Property Address (text)
+* Monthly Rental Cost (number)
+Requirements:
+* All fields required
+* Input validation (email + phone format)
+* Styled inputs (rounded, modern UI)
+* Submit button labeled: Submit Details
+
+4. DISPLAY SUBMITTED INFORMATION (ON PAGE)
+After form submission:
+* Show a styled summary card directly below the form
+* Display:
+    * Full Name
+    * Property Address
+    * Monthly Rental Cost
+* Show confirmation message: “Your rent guarantee request has been received.”
+* (Optional) Save data to localStorage
+
+5. WHAT RENT GUARANTEE COVERS
+Section Title:
+What Rent Guarantee Covers
+Display EXACTLY as checklist:
+* ✅ Up to 12 months of unpaid rent covered (max $60,000)
+* ✅ Up to $1,500 in legal / eviction cost coverage
+* ✅ Up to $10,000 in damage reimbursement
+* ✅ 1 month of abandoned tenancy coverage
+
+6. TENANT QUALIFICATIONS
+Section Title:
+Tenant Qualifications
+Checklist:
+* Household total rent~income ratio of under 45%
+* No bankruptcy, judgements, or previous evictions reported in the last 3 years
+* At least one member of the household is employed
+* Government ID required
+* Proof of income / employment
+Subsection (styled or indented):
+Existing tenants of 1+ years:
+* Proof of payment for those months
+* No rent arrears greater than 5 days in current tenancy
+
+7. DOCUMENTS REQUIRED
+Section Title:
+Documents Required
+Subtext (small text under title):
+“Required at time of claim (not for approval)”
+Checklist:
+* Executed lease agreement
+* Tenant screening / credit report
+* Proof of income
+* Rent payment history
+* Move-in inspection with photos (only required for property damage claims)
+* Proof of property ownership
+* Proof of renters insurance
+* Proof of property insurance
+
+8. DESIGN REQUIREMENTS
+* Use card-based layout for sections
+* Use green checkmarks or icons
+* Add spacing and visual hierarchy
+* Mobile responsive design
+* Subtle animations (fade-in or slide-up)
+* Highlight sections with soft background colors
+* Clean, professional insurance-style UI
+
+9. NAVIGATION & ROUTING
+* Page name: Rent Guarantee
+* URL slug: /rent-guarantee
+* Add to navigation menu as: Rent Guarantee
+
+10. SEO OPTIMIZATION
+* Meta Title: Rent Guarantee Insurance for Landlords | Quoteus
+* Meta Description: “Protect your rental income with rent guarantee insurance. Coverage for unpaid rent, damages, and legal costs.”
+
+11. OPTIONAL FEATURES
+* Loading spinner on submit
+* “Reset Form” button
+* “Edit Info” button
+* Prepare for backend/API integration

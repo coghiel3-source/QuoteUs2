@@ -378,7 +378,7 @@ export default function AdminCRMPage() {
     }
   };
 
-  const insuranceTypes = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage"];
+  const insuranceTypes = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "Rent Guarantee"];
   const tierColors: Record<string, string> = {
     bronze: "bg-amber-700 text-white",
     silver: "bg-slate-400 text-white",
@@ -1199,7 +1199,7 @@ export default function AdminCRMPage() {
   };
 
   // Redirect CRUD functions
-  const QUOTE_TYPES = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "General"];
+  const QUOTE_TYPES = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "Rent Guarantee", "General"];
   
   const fetchRedirects = async () => {
     setLoadingRedirects(true);
@@ -2605,6 +2605,8 @@ export default function AdminCRMPage() {
                               <SelectItem value="Life">Life</SelectItem>
                               <SelectItem value="Travel">Travel</SelectItem>
                               <SelectItem value="Pet">Pet</SelectItem>
+                              <SelectItem value="Mortgage">Mortgage</SelectItem>
+                              <SelectItem value="Rent Guarantee">Rent Guarantee</SelectItem>
                               <SelectItem value="General">General</SelectItem>
                             </SelectContent>
                           </Select>
@@ -2675,6 +2677,8 @@ export default function AdminCRMPage() {
                       <SelectItem value="Life">Life</SelectItem>
                       <SelectItem value="Travel">Travel</SelectItem>
                       <SelectItem value="Pet">Pet</SelectItem>
+                      <SelectItem value="Mortgage">Mortgage</SelectItem>
+                      <SelectItem value="Rent Guarantee">Rent Guarantee</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

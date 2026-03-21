@@ -67,6 +67,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/business", label: "Business" },
     { href: "/pet", label: "Pet" },
     { href: "/mortgage", label: "Mortgage" },
+    { href: "/rent-guarantee", label: "Rent Guarantee" },
     { href: "/compare", label: "Compare" },
   ];
 
@@ -173,6 +174,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li><Link href="/home-insurance" className="hover:text-white transition-colors">Home Insurance</Link></li>
                 <li><Link href="/tenant" className="hover:text-white transition-colors">Tenant Insurance</Link></li>
                 <li><Link href="/business" className="hover:text-white transition-colors">Business Insurance</Link></li>
+                <li><Link href="/rent-guarantee" className="hover:text-white transition-colors">Rent Guarantee</Link></li>
               </ul>
             </div>
 
