@@ -3524,7 +3524,7 @@ export default function AdminCRMPage() {
                             <div className="space-y-2">
                               <Label>Products You Sell</Label>
                               <div className="grid grid-cols-2 gap-2">
-                                {['Auto', 'Home', 'Life', 'Travel', 'Business', 'Mortgage'].map((product) => (
+                                {['Auto', 'Home', 'Tenant', 'Life', 'Travel', 'Business', 'Pet', 'Mortgage', 'Rent Guarantee'].map((product) => (
                                   <label key={product} className="flex items-center gap-2 cursor-pointer">
                                     <input
                                       type="checkbox"
