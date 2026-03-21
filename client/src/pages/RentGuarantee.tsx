@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useQuotes } from "@/lib/QuoteContext";
 import AdPlacement from "@/components/AdPlacement";
@@ -19,20 +20,27 @@ import {
   Home,
   FileText,
   Users,
+  MapPin,
 } from "lucide-react";
 
 interface FormValues {
   fullName: string;
   email: string;
   phone: string;
+  contactType: string;
   propertyAddress: string;
+  sameRentalAddress: "yes" | "no";
+  rentalUnit?: string;
+  rentalAddress?: string;
   monthlyRentalCost: number;
   referenceId?: string;
 }
 
 interface SubmittedInfo {
   fullName: string;
+  contactType: string;
   propertyAddress: string;
+  rentalAddress: string;
   monthlyRentalCost: number;
 }
 
@@ -53,12 +61,16 @@ const CheckItem = ({ children, sub }: { children: React.ReactNode; sub?: boolean
   </li>
 );
 
+const CONTACT_TYPES = ["Owner", "Landlord", "Real Estate Agent", "Other"];
+
 export default function RentGuaranteePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<SubmittedInfo | null>(null);
   const [editing, setEditing] = useState(false);
+  const [contactType, setContactType] = useState("");
+  const [sameAddress, setSameAddress] = useState<"yes" | "no">("yes");
 
   const {
     register,
@@ -68,8 +80,24 @@ export default function RentGuaranteePage() {
   } = useForm<FormValues>();
 
   const onSubmit = async (data: FormValues) => {
+    if (!contactType) {
+      toast({ title: "Please select a contact type", variant: "destructive" });
+      return;
+    }
+    if (sameAddress === "no" && !data.rentalAddress) {
+      toast({ title: "Please enter the rental address", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
     await new Promise((r) => setTimeout(r, 1200));
+
+    const finalRentalAddress =
+      sameAddress === "yes"
+        ? data.propertyAddress
+        : data.rentalUnit
+        ? `Unit ${data.rentalUnit}, ${data.rentalAddress}`
+        : data.rentalAddress!;
 
     addQuote({
       type: "Rent Guarantee",
@@ -82,14 +110,18 @@ export default function RentGuaranteePage() {
         fullName: data.fullName,
         email: data.email,
         phone: data.phone,
+        contactType,
         propertyAddress: data.propertyAddress,
+        rentalAddress: finalRentalAddress,
         monthlyRentalCost: data.monthlyRentalCost,
       },
     });
 
     const info: SubmittedInfo = {
       fullName: data.fullName,
+      contactType,
       propertyAddress: data.propertyAddress,
+      rentalAddress: finalRentalAddress,
       monthlyRentalCost: data.monthlyRentalCost,
     };
 
@@ -111,6 +143,8 @@ export default function RentGuaranteePage() {
     reset();
     setSubmitted(null);
     setEditing(false);
+    setContactType("");
+    setSameAddress("yes");
   };
 
   const handleEdit = () => {
@@ -188,6 +222,8 @@ export default function RentGuaranteePage() {
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+
+                      {/* Full Name */}
                       <div className="space-y-2">
                         <Label htmlFor="fullName">Full Name *</Label>
                         <Input
@@ -201,6 +237,7 @@ export default function RentGuaranteePage() {
                         )}
                       </div>
 
+                      {/* Email & Phone */}
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="email">Email Address *</Label>
@@ -236,19 +273,120 @@ export default function RentGuaranteePage() {
                         </div>
                       </div>
 
+                      {/* Contact Type */}
                       <div className="space-y-2">
-                        <Label htmlFor="propertyAddress">Property Address *</Label>
+                        <Label htmlFor="contactType">Contact Type *</Label>
+                        <Select value={contactType} onValueChange={setContactType}>
+                          <SelectTrigger data-testid="select-contact-type">
+                            <SelectValue placeholder="Select your role..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CONTACT_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!contactType && (
+                          <p className="text-xs text-muted-foreground">Are you the property owner, landlord, a real estate agent, or other?</p>
+                        )}
+                      </div>
+
+                      {/* Property / Contact Address */}
+                      <div className="space-y-2">
+                        <Label htmlFor="propertyAddress">Your Address *</Label>
                         <Input
                           id="propertyAddress"
                           placeholder="123 Maple Street, Toronto, ON M5A 1A1"
                           data-testid="input-property-address"
-                          {...register("propertyAddress", { required: "Property address is required" })}
+                          {...register("propertyAddress", { required: "Address is required" })}
                         />
                         {errors.propertyAddress && (
                           <p className="text-xs text-red-600">{errors.propertyAddress.message}</p>
                         )}
                       </div>
 
+                      {/* Same rental address? */}
+                      <div className="space-y-3">
+                        <Label className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          Is the rental property address the same as above? *
+                        </Label>
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setSameAddress("yes")}
+                            className={`flex-1 py-2.5 px-4 rounded-lg border text-sm font-medium transition-all ${
+                              sameAddress === "yes"
+                                ? "bg-primary text-white border-primary"
+                                : "bg-white text-gray-700 border-gray-300 hover:border-primary/50"
+                            }`}
+                            data-testid="button-same-address-yes"
+                          >
+                            Yes, same address
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSameAddress("no")}
+                            className={`flex-1 py-2.5 px-4 rounded-lg border text-sm font-medium transition-all ${
+                              sameAddress === "no"
+                                ? "bg-primary text-white border-primary"
+                                : "bg-white text-gray-700 border-gray-300 hover:border-primary/50"
+                            }`}
+                            data-testid="button-same-address-no"
+                          >
+                            No, different address
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Rental Address fields (shown when "No") */}
+                      <AnimatePresence>
+                        {sameAddress === "no" && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-4">
+                              <p className="text-sm font-medium text-blue-800 flex items-center gap-2">
+                                <MapPin className="h-4 w-4" /> Rental Property Address
+                              </p>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-2">
+                                  <Label htmlFor="rentalUnit">Unit # (optional)</Label>
+                                  <Input
+                                    id="rentalUnit"
+                                    placeholder="e.g. 4B"
+                                    data-testid="input-rental-unit"
+                                    {...register("rentalUnit")}
+                                  />
+                                </div>
+                                <div className="col-span-2 space-y-2">
+                                  <Label htmlFor="rentalAddress">Rental Address *</Label>
+                                  <Input
+                                    id="rentalAddress"
+                                    placeholder="456 Oak Ave, Toronto, ON M6K 2P3"
+                                    data-testid="input-rental-address"
+                                    {...register("rentalAddress", {
+                                      validate: (v) =>
+                                        sameAddress === "no" && !v
+                                          ? "Rental address is required"
+                                          : true,
+                                    })}
+                                  />
+                                  {errors.rentalAddress && (
+                                    <p className="text-xs text-red-600">{errors.rentalAddress.message}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Monthly Rental Cost */}
                       <div className="space-y-2">
                         <Label htmlFor="monthlyRentalCost">Monthly Rental Cost ($) *</Label>
                         <Input
@@ -268,6 +406,7 @@ export default function RentGuaranteePage() {
                         )}
                       </div>
 
+                      {/* Reference ID */}
                       <div className="space-y-2">
                         <Label htmlFor="referenceId">Reference ID (optional)</Label>
                         <Input
@@ -329,14 +468,22 @@ export default function RentGuaranteePage() {
                     <CardDescription>Here is a summary of the information submitted.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-3 gap-4">
+                    <div className="grid md:grid-cols-2 gap-4">
                       <div className="bg-secondary/40 rounded-lg p-4">
                         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide font-medium">Full Name</p>
                         <p className="font-semibold" data-testid="submitted-full-name">{submitted?.fullName}</p>
                       </div>
-                      <div className="bg-secondary/40 rounded-lg p-4 md:col-span-2">
-                        <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide font-medium">Property Address</p>
+                      <div className="bg-secondary/40 rounded-lg p-4">
+                        <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide font-medium">Contact Type</p>
+                        <p className="font-semibold" data-testid="submitted-contact-type">{submitted?.contactType}</p>
+                      </div>
+                      <div className="bg-secondary/40 rounded-lg p-4">
+                        <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide font-medium">Your Address</p>
                         <p className="font-semibold" data-testid="submitted-property-address">{submitted?.propertyAddress}</p>
+                      </div>
+                      <div className="bg-secondary/40 rounded-lg p-4">
+                        <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide font-medium">Rental Property Address</p>
+                        <p className="font-semibold" data-testid="submitted-rental-address">{submitted?.rentalAddress}</p>
                       </div>
                       <div className="bg-secondary/40 rounded-lg p-4">
                         <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide font-medium">Monthly Rental Cost</p>
