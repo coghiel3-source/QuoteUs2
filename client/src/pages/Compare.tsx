@@ -6,8 +6,30 @@ import { VehicleSelector } from "@/components/VehicleSelector";
 import { ArrowRightLeft, Shield, Zap, AlertTriangle, TrendingDown } from "lucide-react";
 import { motion } from "framer-motion";
 
+// ─── Vehicle class inference ──────────────────────────────────────────────────
+
+type VehicleClass = "sedan" | "suv" | "truck" | "sports" | "minivan" | "other";
+
+// Keywords in model names used to infer vehicle class
+const CLASS_PATTERNS: { pattern: RegExp; cls: VehicleClass }[] = [
+  { pattern: /\b(f-?\d{3}|silverado|sierra|ram|tundra|tacoma|colorado|ridgeline|titan|frontier|canyon|maverick|ranger)\b/i, cls: "truck" },
+  { pattern: /\b(minivan|odyssey|sienna|caravan|pacifica|sedona|entourage)\b/i, cls: "minivan" },
+  { pattern: /\b(suv|cr-v|rav4|highlander|pilot|pathfinder|explorer|escape|equinox|terrain|rogue|murano|sorento|sportage|santa fe|tucson|cx-5|cx-9|cx-50|4runner|sequoia|suburban|tahoe|yukon|armada|qx60|mdx|rdx|qx80|qx50|gx|lx|rx|nx|ux|traverse|envoy|blazer|trailblazer|wrangler|grand cherokee|cherokee|compass|defender|discovery|range rover|evoque|velar|x3|x5|x7|q5|q7|q8|gle|glb|glc|gls|e-pace|f-pace|i-pace|xt4|xt5|xt6|escalade|navigator|expedition|suburban|ascent|forester|outback|crosstrek|brz|wrx|cx-30|cx-3|hr-v|groove|trax|encore|envision|edge|flex|grand cherokee|durango)\b/i, cls: "suv" },
+  { pattern: /\b(mustang|camaro|corvette|challenger|charger|viper|m3|m4|m5|m6|m8|amg|r8|rs3|rs4|rs5|rs6|rs7|gt3|gt4|cayman|boxster|911|supra|gr86|brz|mx-5|miata|rx-7|rx-8|370z|gt-r|s2000|type r|veloster|stinger|giulia|4c|alpine)\b/i, cls: "sports" },
+  { pattern: /\b(civic|corolla|camry|accord|sonata|elantra|optima|forte|jetta|golf|passat|arteon|sentra|altima|maxima|versa|lancer|eclipse|galant|impreza|legacy|g35|g37|g70|g80|g90|ct5|ct6|a3|a4|a5|a6|a7|a8|c-class|e-class|s-class|3 series|5 series|7 series|is|es|gs|ls|hs|rc|3 series|7 series|series|ghibli|quattroporte|model 3|model s|model y|prius|yaris|vitz|fit|jazz|spark|beat|micra|kicks)\b/i, cls: "sedan" },
+];
+
+function inferVehicleClass(make: string, model: string): VehicleClass {
+  const makeModel = `${make} ${model}`;
+  for (const { pattern, cls } of CLASS_PATTERNS) {
+    if (pattern.test(makeModel)) return cls;
+  }
+  return "other";
+}
+
 // ─── Insurance scoring data ───────────────────────────────────────────────────
 
+// IBC Canada high-theft makes/models
 const HIGH_THEFT_MODELS: Record<string, string[]> = {
   Honda: ["CR-V", "Civic", "Odyssey", "Pilot"],
   Toyota: ["Highlander", "Prado", "4Runner", "Sequoia", "Tundra"],
@@ -34,28 +56,13 @@ const LUXURY_MAKES = [
 
 const ECONOMY_MAKES = ["Toyota", "Honda", "Mazda", "Subaru", "Mitsubishi", "Suzuki"];
 
-const SPORTS_MODELS: Record<string, string[]> = {
-  Ford: ["Mustang", "GT"],
-  Chevrolet: ["Camaro", "Corvette"],
-  Dodge: ["Challenger", "Charger", "Viper"],
-  BMW: ["M3", "M4", "M5", "M6", "M8"],
-  Mercedes: ["AMG", "SL", "GT"],
-  "Mercedes-Benz": ["AMG", "SL", "GT"],
-  Audi: ["R8", "RS3", "RS5", "RS7", "TT"],
-  Porsche: ["911", "Cayman", "Boxster", "GT3", "GT4"],
-  Nissan: ["GT-R", "370Z"],
-  Subaru: ["WRX", "BRZ"],
-  Toyota: ["GR86", "Supra"],
-  Honda: ["Civic Type R", "S2000"],
-  Volkswagen: ["GTI", "Golf R", "R32"],
-  Kia: ["Stinger"],
-  Hyundai: ["Veloster N", "Elantra N"],
-  Mazda: ["MX-5", "RX-7", "RX-8"],
-};
-
-// Labels used in result cards — matches the task spec: Low/Medium/High/Very High
+// ─── Label types (per task spec) ─────────────────────────────────────────────
+// Insurance Cost: 5 tiers
+type InsuranceCostLabel = "Very Low" | "Low" | "Moderate" | "High" | "Very High";
+// Theft Risk: 4 tiers
 type TheftLabel = "Low" | "Medium" | "High" | "Very High";
-type CostLabel = "Low" | "Medium" | "High" | "Very High";
+// Maintenance Cost: 3 tiers
+type MaintenanceLabel = "Low" | "Moderate" | "High";
 
 interface VehicleInput {
   year: number | string;
@@ -65,13 +72,13 @@ interface VehicleInput {
 }
 
 interface VehicleScore {
-  insuranceCost: CostLabel;
+  insuranceCost: InsuranceCostLabel;
   insuranceCostScore: number;
   safetyRating: number;
   safetyScore: number;
   theftRisk: TheftLabel;
   theftScore: number;
-  maintenanceCost: CostLabel;
+  maintenanceCost: MaintenanceLabel;
   maintenanceScore: number;
   totalScore: number;
 }
@@ -85,12 +92,6 @@ interface CompareResult {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function isSportsModel(make: string, model: string): boolean {
-  return (SPORTS_MODELS[make] ?? []).some(
-    m => model.toLowerCase().includes(m.toLowerCase())
-  );
-}
-
 function isHighTheft(make: string, model: string): boolean {
   return (HIGH_THEFT_MODELS[make] ?? []).some(
     m => model.toLowerCase().includes(m.toLowerCase())
@@ -101,62 +102,84 @@ function isHighTheft(make: string, model: string): boolean {
 
 function scoreVehicle(make: string, model: string, year: number | string): VehicleScore {
   const yr = parseInt(String(year));
-  const sports = isSportsModel(make, model);
+  const cls = inferVehicleClass(make, model);
   const highTheft = isHighTheft(make, model);
   const luxury = LUXURY_MAKES.includes(make);
   const economy = ECONOMY_MAKES.includes(make);
 
-  // Theft risk score (1–4 maps to Low/Medium/High/Very High)
-  let theftScore: number;
-  if (highTheft && luxury) theftScore = 4;
-  else if (highTheft) theftScore = 3;
-  else if (luxury || make === "Ford" || make === "RAM" || make === "Chevrolet" || make === "GMC" || sports) theftScore = 2;
-  else theftScore = 1;
+  // ── Safety rating — class baseline + make adjustment ──────────────────────
+  // Baselines by class (NHTSA/IIHS general patterns)
+  let safetyBase: number;
+  switch (cls) {
+    case "minivan":  safetyBase = 9.1; break;
+    case "sedan":    safetyBase = 8.8; break;
+    case "suv":      safetyBase = 8.5; break;
+    case "truck":    safetyBase = 7.9; break;
+    case "sports":   safetyBase = 7.6; break;
+    default:         safetyBase = 8.3; break;
+  }
+  // Make adjustments
+  if (make === "Volvo")                        safetyBase += 0.5;
+  else if (make === "Subaru")                  safetyBase += 0.3;
+  else if (make === "Toyota" || make === "Honda") safetyBase += 0.2;
+  else if (make === "Mazda")                   safetyBase += 0.2;
+  else if (make === "Kia" || make === "Hyundai") safetyBase -= 0.1;
+  // Year adjustment
+  if (yr >= 2020)      safetyBase = Math.min(9.9, safetyBase + 0.3);
+  else if (yr <= 2015) safetyBase = Math.max(5.5, safetyBase - 0.5);
+  const safetyRating = parseFloat(safetyBase.toFixed(1));
+  // safetyScore: lower = cheaper to insure (better safety)
+  const safetyScore = safetyRating >= 9.0 ? 1 : safetyRating >= 8.5 ? 2 : safetyRating >= 7.5 ? 3 : 4;
 
+  // ── Theft risk — class baseline + IBC model override ─────────────────────
+  // Class-based baseline (Low=1, Medium=2, High=3, Very High=4)
+  let theftScore: number;
+  switch (cls) {
+    case "sedan":   theftScore = 1; break; // sedans = Low baseline
+    case "minivan": theftScore = 1; break;
+    case "suv":     theftScore = 2; break; // SUVs = Medium baseline
+    case "truck":   theftScore = 2; break; // trucks = Medium baseline
+    case "sports":  theftScore = 2; break;
+    default:        theftScore = 1; break;
+  }
+  // IBC model override — known high-theft vehicles
+  if (highTheft) {
+    theftScore = luxury ? 4 : 3;
+  }
   const theftRisk: TheftLabel =
     theftScore === 1 ? "Low" :
     theftScore === 2 ? "Medium" :
     theftScore === 3 ? "High" : "Very High";
 
-  // Safety rating (6.0–9.9)
-  let safetyBase = 8.5;
-  if (make === "Volvo") safetyBase = 9.5;
-  else if (make === "Subaru") safetyBase = 9.2;
-  else if (make === "Toyota" || make === "Honda") safetyBase = 9.0;
-  else if (make === "Mazda") safetyBase = 9.0;
-  else if (make === "Kia" || make === "Hyundai") safetyBase = 8.4;
-  else if (sports) safetyBase = 7.8;
-  if (yr >= 2020) safetyBase = Math.min(9.9, safetyBase + 0.3);
-  else if (yr <= 2015) safetyBase = Math.max(6.0, safetyBase - 0.5);
-  const safetyRating = parseFloat(safetyBase.toFixed(1));
-  // Lower safetyScore = better (cheaper to insure)
-  const safetyScore = safetyRating >= 9.0 ? 1 : safetyRating >= 8.5 ? 2 : safetyRating >= 7.5 ? 3 : 4;
+  // ── Maintenance cost — make reputation + class ────────────────────────────
+  // Spec: Low / Moderate / High  (3 tiers)
+  let maintenanceScore: number; // 1=Low, 2=Moderate, 3=High
+  if (luxury && cls === "sports")   maintenanceScore = 3;
+  else if (luxury)                  maintenanceScore = 3;
+  else if (cls === "sports")        maintenanceScore = 3;
+  else if (cls === "truck")         maintenanceScore = 2; // "Domestic trucks → Moderate"
+  else if (economy)                 maintenanceScore = 1;
+  else                              maintenanceScore = 2;
 
-  // Maintenance cost score (1–4)
-  let maintenanceScore: number;
-  if (luxury && sports) maintenanceScore = 4;
-  else if (luxury) maintenanceScore = 3;
-  else if (sports) maintenanceScore = 3;
-  else if (economy) maintenanceScore = 1;
-  else maintenanceScore = 2;
-
-  const maintenanceCost: CostLabel =
+  const maintenanceCost: MaintenanceLabel =
     maintenanceScore === 1 ? "Low" :
-    maintenanceScore === 2 ? "Medium" :
-    maintenanceScore === 3 ? "High" : "Very High";
+    maintenanceScore === 2 ? "Moderate" : "High";
 
-  // Overall insurance cost tier derived from combined scores (3–12 range)
+  // ── Insurance cost tier (5 tiers: Very Low/Low/Moderate/High/Very High) ───
   const combinedRaw = theftScore + safetyScore + maintenanceScore;
+  // Range: 3 (safest/cheapest) to 11 (riskiest)
   let insuranceCostScore: number;
-  if (combinedRaw <= 4) insuranceCostScore = 1;
-  else if (combinedRaw <= 6) insuranceCostScore = 2;
-  else if (combinedRaw <= 8) insuranceCostScore = 3;
-  else insuranceCostScore = 4;
+  if (combinedRaw <= 3)       insuranceCostScore = 1; // Very Low
+  else if (combinedRaw <= 5)  insuranceCostScore = 2; // Low
+  else if (combinedRaw <= 7)  insuranceCostScore = 3; // Moderate
+  else if (combinedRaw <= 9)  insuranceCostScore = 4; // High
+  else                        insuranceCostScore = 5; // Very High
 
-  const insuranceCost: CostLabel =
-    insuranceCostScore === 1 ? "Low" :
-    insuranceCostScore === 2 ? "Medium" :
-    insuranceCostScore === 3 ? "High" : "Very High";
+  const insuranceCost: InsuranceCostLabel =
+    insuranceCostScore === 1 ? "Very Low" :
+    insuranceCostScore === 2 ? "Low" :
+    insuranceCostScore === 3 ? "Moderate" :
+    insuranceCostScore === 4 ? "High" : "Very High";
 
   return {
     insuranceCost,
@@ -205,13 +228,15 @@ function buildReasoning(
   return `The ${cheaper} is typically cheaper to insure than the ${pricier} due to its ${reasons.join(" and ")}.`;
 }
 
-// ─── Label colour map ─────────────────────────────────────────────────────────
+// ─── Colour map ───────────────────────────────────────────────────────────────
 
 const LABEL_COLORS: Record<string, string> = {
-  "Low": "text-green-600",
-  "Medium": "text-yellow-600",
-  "High": "text-orange-500",
-  "Very High": "text-red-600",
+  "Very Low": "text-green-600",
+  "Low":      "text-green-500",
+  "Moderate": "text-yellow-600",
+  "Medium":   "text-yellow-600",
+  "High":     "text-orange-500",
+  "Very High":"text-red-600",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
