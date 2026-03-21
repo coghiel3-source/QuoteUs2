@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLeads, documentRequests, repDocuments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLeads, documentRequests, repDocuments, repReminders, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -88,6 +88,12 @@ export interface IStorage {
   getDocumentsForRequest(documentRequestId: string): Promise<RepDocument[]>;
   createRepDocument(doc: InsertRepDocument): Promise<RepDocument>;
   deleteRepDocument(id: string): Promise<boolean>;
+
+  // Rep Reminder operations
+  getRemindersForRep(repId: string): Promise<RepReminder[]>;
+  createRepReminder(reminder: InsertRepReminder): Promise<RepReminder>;
+  updateRepReminder(id: string, data: Partial<InsertRepReminder>): Promise<RepReminder | undefined>;
+  deleteRepReminder(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -565,6 +571,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRepDocument(id: string): Promise<boolean> {
     const result = await db.delete(repDocuments).where(eq(repDocuments.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Rep Reminder operations
+  async getRemindersForRep(repId: string): Promise<RepReminder[]> {
+    return db.select().from(repReminders).where(eq(repReminders.repId, repId)).orderBy(repReminders.dueDate);
+  }
+
+  async createRepReminder(reminder: InsertRepReminder): Promise<RepReminder> {
+    const [created] = await db.insert(repReminders).values(reminder).returning();
+    return created;
+  }
+
+  async updateRepReminder(id: string, data: Partial<InsertRepReminder>): Promise<RepReminder | undefined> {
+    const [updated] = await db.update(repReminders).set(data).where(eq(repReminders.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteRepReminder(id: string): Promise<boolean> {
+    const result = await db.delete(repReminders).where(eq(repReminders.id, id)).returning();
     return result.length > 0;
   }
 }

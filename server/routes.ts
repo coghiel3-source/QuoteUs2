@@ -2798,6 +2798,74 @@ export async function registerRoutes(
     }
   });
 
+  // ===== REP REMINDER ROUTES =====
+
+  // Get reminders for a rep
+  app.get("/api/rep/reminders", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const reminders = await storage.getRemindersForRep(actorId as string);
+      res.json(reminders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a reminder
+  app.post("/api/rep/reminders", async (req, res) => {
+    try {
+      const { actorId, title, notes, dueDate, leadId } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (!title || !dueDate) return res.status(400).json({ error: "title and dueDate are required" });
+      const reminder = await storage.createRepReminder({
+        repId: actorId,
+        title,
+        notes: notes || null,
+        dueDate: new Date(dueDate),
+        leadId: leadId || null,
+        completed: false,
+      });
+      res.json(reminder);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a reminder (toggle complete, edit)
+  app.patch("/api/rep/reminders/:id", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (data.dueDate) data.dueDate = new Date(data.dueDate);
+      const updated = await storage.updateRepReminder(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Reminder not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a reminder
+  app.delete("/api/rep/reminders/:id", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      await storage.deleteRepReminder(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // PUBLIC: Get document request info by token (no auth)
   app.get("/api/upload/:token", async (req, res) => {
     try {

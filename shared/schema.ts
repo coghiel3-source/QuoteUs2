@@ -228,6 +228,18 @@ export const repDocuments = pgTable("rep_documents", {
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
+// Rep Reminders Table
+export const repReminders = pgTable("rep_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  repId: varchar("rep_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  leadId: varchar("lead_id").references(() => rgLeads.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  notes: text("notes"),
+  dueDate: timestamp("due_date").notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -326,6 +338,11 @@ export const insertRepDocumentSchema = createInsertSchema(repDocuments).omit({
   uploadedAt: true,
 });
 
+export const insertRepReminderSchema = createInsertSchema(repReminders).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type RgLead = typeof rgLeads.$inferSelect;
 export type InsertRgLead = z.infer<typeof insertRgLeadSchema>;
 
@@ -334,3 +351,6 @@ export type InsertDocumentRequest = z.infer<typeof insertDocumentRequestSchema>;
 
 export type RepDocument = typeof repDocuments.$inferSelect;
 export type InsertRepDocument = z.infer<typeof insertRepDocumentSchema>;
+
+export type RepReminder = typeof repReminders.$inferSelect;
+export type InsertRepReminder = z.infer<typeof insertRepReminderSchema>;
