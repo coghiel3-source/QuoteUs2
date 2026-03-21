@@ -15,13 +15,14 @@ import {
   Home, Plus, Search, FileText, Send, Eye, Trash2, ChevronRight,
   X, RefreshCw, Check, Clock, ExternalLink, Copy, BarChart3, Bell,
   BellRing, TrendingUp, AlarmClock, Pencil, MapPin, User, AlertTriangle,
-  Building2, DollarSign, Calendar, Phone, Mail, ChevronDown, ChevronUp,
-  UserPlus, ArrowRight,
+  Building2, DollarSign, Calendar, Phone, Mail, UserPlus, ArrowRight,
+  Calculator, CreditCard, Percent, BadgePercent, CheckCircle2,
 } from "lucide-react";
 
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined";
 type ActiveTab = "overview" | "locations" | "leads" | "reminders";
 type LocationView = "list" | "detail";
+type LeadDetailTab = "info" | "pricing" | "docs";
 
 const STATUS_COLORS: Record<Status, string> = {
   "New": "bg-blue-100 text-blue-800",
@@ -42,6 +43,10 @@ const REMINDER_PRESETS = [
   "Submit application", "Check approval status", "Review credit report", "Confirm move-in date",
 ];
 
+function fmt(n: number) {
+  return n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function StatCard({ label, value, sub, color }: { label: string; value: number | string; sub?: string; color: string }) {
   return (
     <div className={`rounded-xl p-4 border ${color}`}>
@@ -52,12 +57,175 @@ function StatCard({ label, value, sub, color }: { label: string; value: number |
   );
 }
 
-function getLocationStatus(tenants: RgLead[]): { label: string; color: string } {
-  if (tenants.length === 0) return { label: "No tenants", color: "text-gray-400" };
-  const active = tenants.find(t => t.status !== "Declined");
-  if (!active) return { label: "All declined", color: "text-red-600" };
-  if (active.status === "Approved") return { label: "Approved", color: "text-green-600" };
-  return { label: active.status, color: "text-blue-600" };
+function PricingTab({ lead, onSaveMarkup }: { lead: RgLead; onSaveMarkup: (pct: number) => void }) {
+  const rent = Number(lead.monthlyRent) || 0;
+  const [markup, setMarkup] = useState<string>(lead.markupPercent ? String(Number(lead.markupPercent)) : "0");
+  const [saved, setSaved] = useState(false);
+  const markupNum = Math.max(0, parseFloat(markup) || 0);
+
+  const annualRent = rent * 12;
+
+  // Base rates
+  const BASE_ANNUAL_RATE = 4.5;
+  const BASE_MONTHLY_RATE = 5;
+
+  // With markup
+  const finalAnnualRate = BASE_ANNUAL_RATE + markupNum;
+  const finalMonthlyRate = BASE_MONTHLY_RATE + markupNum;
+
+  // Annual plan (pay in full)
+  const annualPremium = (finalAnnualRate / 100) * annualRent;
+  const annualPremiumMonthly = annualPremium / 12; // what you'd pay monthly if annual
+
+  // Monthly plan
+  const monthlyPremium = (finalMonthlyRate / 100) * rent;
+  const monthlyPremiumAnnual = monthlyPremium * 12; // total cost if paying monthly all year
+
+  function handleSave() {
+    onSaveMarkup(markupNum);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Rent summary */}
+      <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-4">
+        <div className="bg-blue-100 rounded-lg p-2.5"><DollarSign className="h-5 w-5 text-blue-600" /></div>
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-wide">Monthly Rent</p>
+          <p className="text-2xl font-bold text-gray-900">${fmt(rent)}<span className="text-sm font-normal text-gray-400">/mo</span></p>
+          <p className="text-xs text-gray-400">Annual: ${fmt(annualRent)}</p>
+        </div>
+      </div>
+
+      {/* Rep markup */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-3">
+          <BadgePercent className="h-4 w-4" /> Additional Markup
+        </p>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="relative">
+              <Input
+                type="number"
+                min="0"
+                max="20"
+                step="0.5"
+                value={markup}
+                onChange={e => { setMarkup(e.target.value); setSaved(false); }}
+                className="pr-8 text-lg font-semibold"
+                data-testid="input-markup-percent"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">%</span>
+            </div>
+            <p className="text-xs text-amber-700 mt-1">Added to base rates</p>
+          </div>
+          <Button onClick={handleSave} size="sm" variant={saved ? "outline" : "default"} className={saved ? "border-green-500 text-green-600" : ""} data-testid="button-save-markup">
+            {saved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 gap-4">
+
+        {/* Annual Plan */}
+        <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
+          <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <span className="font-semibold text-sm">Annual Plan — Pay in Full</span>
+            </div>
+            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalAnnualRate}% of annual rent</span>
+          </div>
+          <div className="p-4">
+            <div className="flex items-end gap-2 mb-1">
+              <p className="text-3xl font-bold text-gray-900">${fmt(annualPremium)}</p>
+              <p className="text-gray-400 text-sm mb-1">one-time payment</p>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">Equivalent to ${fmt(annualPremiumMonthly)}/month</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-500">
+                <span>Annual rent</span>
+                <span>${fmt(annualRent)}</span>
+              </div>
+              <div className="flex justify-between text-gray-500">
+                <span>Base rate ({BASE_ANNUAL_RATE}%)</span>
+                <span>${fmt((BASE_ANNUAL_RATE / 100) * annualRent)}</span>
+              </div>
+              {markupNum > 0 && (
+                <div className="flex justify-between text-amber-600">
+                  <span>Rep markup ({markupNum}%)</span>
+                  <span>+${fmt((markupNum / 100) * annualRent)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t">
+                <span>Total premium</span>
+                <span>${fmt(annualPremium)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Plan */}
+        <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
+          <div className="bg-green-600 text-white px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              <span className="font-semibold text-sm">Monthly Plan</span>
+            </div>
+            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalMonthlyRate}% of monthly rent</span>
+          </div>
+          <div className="p-4">
+            <div className="flex items-end gap-2 mb-1">
+              <p className="text-3xl font-bold text-gray-900">${fmt(monthlyPremium)}</p>
+              <p className="text-gray-400 text-sm mb-1">/month</p>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">Total annual cost: ${fmt(monthlyPremiumAnnual)}</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-500">
+                <span>Monthly rent</span>
+                <span>${fmt(rent)}</span>
+              </div>
+              <div className="flex justify-between text-gray-500">
+                <span>Base rate ({BASE_MONTHLY_RATE}%)</span>
+                <span>${fmt((BASE_MONTHLY_RATE / 100) * rent)}/mo</span>
+              </div>
+              {markupNum > 0 && (
+                <div className="flex justify-between text-amber-600">
+                  <span>Rep markup ({markupNum}%)</span>
+                  <span>+${fmt((markupNum / 100) * rent)}/mo</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t">
+                <span>Monthly premium</span>
+                <span>${fmt(monthlyPremium)}/mo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Savings comparison */}
+      {rent > 0 && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm">
+          <p className="font-semibold text-indigo-800 mb-2 flex items-center gap-2">
+            <Calculator className="h-4 w-4" /> Savings Comparison
+          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-indigo-700">Annual plan saves:</p>
+              <p className="text-xs text-indigo-500 mt-0.5">vs paying monthly all year</p>
+            </div>
+            <p className={`text-xl font-bold ${monthlyPremiumAnnual > annualPremium ? "text-green-600" : "text-gray-500"}`}>
+              {monthlyPremiumAnnual > annualPremium ? `$${fmt(monthlyPremiumAnnual - annualPremium)}` : "—"}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function RepDashboard() {
@@ -71,7 +239,7 @@ export default function RepDashboard() {
   const [reminders, setReminders] = useState<RepReminder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Location tenants cache { [locationId]: RgLead[] }
+  // Location tenants cache
   const [locationTenants, setLocationTenants] = useState<Record<string, RgLead[]>>({});
 
   // UI state
@@ -81,12 +249,20 @@ export default function RepDashboard() {
   const [selectedLead, setSelectedLead] = useState<RgLead | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [detailTab, setDetailTab] = useState<LeadDetailTab>("info");
 
   // Lead docs
   const [docRequests, setDocRequests] = useState<DocumentRequest[]>([]);
   const [documents, setDocuments] = useState<RepDocument[]>([]);
-  const [detailTab, setDetailTab] = useState<"info" | "docs">("info");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Edit lead dialog
+  const [showEditLead, setShowEditLead] = useState(false);
+  const [editLeadForm, setEditLeadForm] = useState({
+    tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "",
+    coApplicantName: "", coApplicantEmail: "", monthlyRent: "", moveInDate: "", notes: "",
+  });
+  const [savingLead, setSavingLead] = useState(false);
 
   // Doc request dialog
   const [showDocRequest, setShowDocRequest] = useState(false);
@@ -107,13 +283,13 @@ export default function RepDashboard() {
   const [savingReminder, setSavingReminder] = useState(false);
   const [deleteReminderConfirm, setDeleteReminderConfirm] = useState<string | null>(null);
 
-  // Location form (create / edit)
+  // Location form
   const [showLocationForm, setShowLocationForm] = useState(false);
   const [editingLocation, setEditingLocation] = useState<RgLocation | null>(null);
   const [locationForm, setLocationForm] = useState({ propertyAddress: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "" });
   const [savingLocation, setSavingLocation] = useState(false);
 
-  // Tenant form (add tenant to location)
+  // Tenant form
   const [showTenantForm, setShowTenantForm] = useState(false);
   const [tenantTargetLocation, setTenantTargetLocation] = useState<RgLocation | null>(null);
   const [tenantForm, setTenantForm] = useState({ tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", coApplicantName: "", coApplicantEmail: "", notes: "" });
@@ -156,9 +332,7 @@ export default function RepDashboard() {
       const result = tenants || [];
       setLocationTenants(prev => ({ ...prev, [locationId]: result }));
       return result;
-    } catch {
-      return [];
-    }
+    } catch { return []; }
   }
 
   async function openLocation(loc: RgLocation) {
@@ -192,12 +366,7 @@ export default function RepDashboard() {
 
   function openEditLocation(loc: RgLocation, e?: React.MouseEvent) {
     e?.stopPropagation();
-    setLocationForm({
-      propertyAddress: loc.propertyAddress, unit: loc.unit || "",
-      landlordName: loc.landlordName, landlordEmail: loc.landlordEmail || "",
-      landlordPhone: loc.landlordPhone || "", monthlyRent: loc.monthlyRent,
-      moveInDate: loc.moveInDate || "", notes: loc.notes || "",
-    });
+    setLocationForm({ propertyAddress: loc.propertyAddress, unit: loc.unit || "", landlordName: loc.landlordName, landlordEmail: loc.landlordEmail || "", landlordPhone: loc.landlordPhone || "", monthlyRent: loc.monthlyRent, moveInDate: loc.moveInDate || "", notes: loc.notes || "" });
     setEditingLocation(loc);
     setShowLocationForm(true);
   }
@@ -279,15 +448,81 @@ export default function RepDashboard() {
     }
   }
 
+  // ===== EDIT LEAD =====
+  function openEditLead() {
+    if (!selectedLead) return;
+    setEditLeadForm({
+      tenantName: selectedLead.tenantName,
+      tenantEmail: selectedLead.tenantEmail,
+      tenantPhone: selectedLead.tenantPhone,
+      employmentStatus: selectedLead.employmentStatus,
+      coApplicantName: selectedLead.coApplicantName || "",
+      coApplicantEmail: selectedLead.coApplicantEmail || "",
+      monthlyRent: selectedLead.monthlyRent,
+      moveInDate: selectedLead.moveInDate || "",
+      notes: selectedLead.notes || "",
+    });
+    setShowEditLead(true);
+  }
+
+  async function handleSaveEditLead() {
+    if (!user || !selectedLead) return;
+    if (!editLeadForm.tenantName || !editLeadForm.tenantEmail || !editLeadForm.tenantPhone || !editLeadForm.employmentStatus) {
+      toast({ title: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+    setSavingLead(true);
+    try {
+      const updated = await apiRequest<RgLead>(`/rep/leads/${selectedLead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          actorId: user.id,
+          tenantName: editLeadForm.tenantName,
+          tenantEmail: editLeadForm.tenantEmail,
+          tenantPhone: editLeadForm.tenantPhone,
+          employmentStatus: editLeadForm.employmentStatus,
+          coApplicantName: editLeadForm.coApplicantName || null,
+          coApplicantEmail: editLeadForm.coApplicantEmail || null,
+          monthlyRent: editLeadForm.monthlyRent,
+          moveInDate: editLeadForm.moveInDate || null,
+          notes: editLeadForm.notes || null,
+        }),
+      });
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? updated : l));
+      if (updated.locationId) {
+        setLocationTenants(prev => ({ ...prev, [updated.locationId!]: (prev[updated.locationId!] || []).map(t => t.id === updated.id ? updated : t) }));
+      }
+      setSelectedLead(updated);
+      setShowEditLead(false);
+      toast({ title: "Tenant details updated" });
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to update tenant", variant: "destructive" });
+    } finally {
+      setSavingLead(false);
+    }
+  }
+
+  async function handleSaveMarkup(markupPct: number) {
+    if (!user || !selectedLead) return;
+    try {
+      const updated = await apiRequest<RgLead>(`/rep/leads/${selectedLead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ actorId: user.id, markupPercent: String(markupPct) }),
+      });
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? updated : l));
+      setSelectedLead(updated);
+    } catch {
+      toast({ title: "Failed to save markup", variant: "destructive" });
+    }
+  }
+
   async function handleStatusChange(leadId: string, status: string) {
     if (!user) return;
     setUpdatingStatus(true);
     try {
       const updated = await apiRequest<RgLead>(`/rep/leads/${leadId}`, { method: "PATCH", body: JSON.stringify({ actorId: user.id, status }) });
       setLeads(prev => prev.map(l => l.id === leadId ? updated : l));
-      if (updated.locationId) {
-        setLocationTenants(prev => ({ ...prev, [updated.locationId!]: (prev[updated.locationId!] || []).map(t => t.id === leadId ? updated : t) }));
-      }
+      if (updated.locationId) setLocationTenants(prev => ({ ...prev, [updated.locationId!]: (prev[updated.locationId!] || []).map(t => t.id === leadId ? updated : t) }));
       setSelectedLead(updated);
       toast({ title: "Status updated" });
     } catch {
@@ -304,9 +539,7 @@ export default function RepDashboard() {
       const lead = leads.find(l => l.id === deleteLeadConfirm);
       await apiRequest(`/rep/leads/${deleteLeadConfirm}?actorId=${user.id}`, { method: "DELETE" });
       setLeads(prev => prev.filter(l => l.id !== deleteLeadConfirm));
-      if (lead?.locationId) {
-        setLocationTenants(prev => ({ ...prev, [lead.locationId!]: (prev[lead.locationId!] || []).filter(t => t.id !== deleteLeadConfirm) }));
-      }
+      if (lead?.locationId) setLocationTenants(prev => ({ ...prev, [lead.locationId!]: (prev[lead.locationId!] || []).filter(t => t.id !== deleteLeadConfirm) }));
       setSelectedLead(null);
       setDeleteLeadConfirm(null);
       toast({ title: "Tenant removed" });
@@ -348,8 +581,7 @@ export default function RepDashboard() {
   function openNewReminder(preset?: string) {
     const now = new Date(); now.setDate(now.getDate() + 1);
     setReminderForm({ title: preset || "", notes: "", dueDate: now.toISOString().split("T")[0], dueTime: "09:00", leadId: "" });
-    setEditingReminder(null);
-    setShowReminderForm(true);
+    setEditingReminder(null); setShowReminderForm(true);
   }
 
   function openEditReminder(r: RepReminder) {
@@ -399,7 +631,6 @@ export default function RepDashboard() {
   function copyLink(link: string) { navigator.clipboard.writeText(link); toast({ title: "Link copied to clipboard" }); }
 
   // Stats
-  const statsNew = leads.filter(l => l.status === "New").length;
   const statsInProgress = leads.filter(l => (IN_PROGRESS_STATUSES as string[]).includes(l.status)).length;
   const statsApproved = leads.filter(l => l.status === "Approved").length;
   const statsDeclined = leads.filter(l => l.status === "Declined").length;
@@ -429,7 +660,14 @@ export default function RepDashboard() {
   const currentLocationTenants = selectedLocation ? (locationTenants[selectedLocation.id] || []) : [];
   const hasDeclinedTenant = currentLocationTenants.some(t => t.status === "Declined");
   const hasApprovedTenant = currentLocationTenants.some(t => t.status === "Approved");
-  const activeTenantsExist = currentLocationTenants.some(t => t.status !== "Declined");
+
+  function getLocationStatus(tenants: RgLead[]) {
+    if (tenants.length === 0) return { label: "No tenants", color: "text-gray-400" };
+    const active = tenants.find(t => t.status !== "Declined");
+    if (!active) return { label: "All declined", color: "text-red-600" };
+    if (active.status === "Approved") return { label: "Approved", color: "text-green-600" };
+    return { label: active.status, color: "text-blue-600" };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -462,12 +700,7 @@ export default function RepDashboard() {
             { id: "leads", icon: null, label: `All Leads (${leads.length})` },
             ...(isRep ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
           ] as { id: ActiveTab; icon: React.ReactNode; label: string }[]).map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); }}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}
-              data-testid={`tab-${tab.id}`}
-            >
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); }} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`} data-testid={`tab-${tab.id}`}>
               {tab.icon}{tab.label}
             </button>
           ))}
@@ -499,10 +732,7 @@ export default function RepDashboard() {
                       const status = getLocationStatus(tenants);
                       return (
                         <div key={loc.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 cursor-pointer" onClick={() => { setActiveTab("locations"); openLocation(loc); }} data-testid={`overview-location-${loc.id}`}>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{loc.propertyAddress}{loc.unit ? ` — Unit ${loc.unit}` : ""}</p>
-                            <p className="text-xs text-gray-400">Landlord: {loc.landlordName}</p>
-                          </div>
+                          <div><p className="text-sm font-medium text-gray-900">{loc.propertyAddress}{loc.unit ? ` — Unit ${loc.unit}` : ""}</p><p className="text-xs text-gray-400">Landlord: {loc.landlordName}</p></div>
                           <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
                         </div>
                       );
@@ -568,12 +798,7 @@ export default function RepDashboard() {
                       const status = getLocationStatus(tenants);
                       const allDeclined = tenants.length > 0 && tenants.every(t => t.status === "Declined");
                       return (
-                        <div
-                          key={loc.id}
-                          className={`bg-white border rounded-xl p-4 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all ${allDeclined ? "border-red-200" : ""}`}
-                          onClick={() => openLocation(loc)}
-                          data-testid={`location-card-${loc.id}`}
-                        >
+                        <div key={loc.id} className={`bg-white border rounded-xl p-4 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all ${allDeclined ? "border-red-200" : ""}`} onClick={() => openLocation(loc)} data-testid={`location-card-${loc.id}`}>
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-start gap-3">
                               <div className={`rounded-lg p-2 mt-0.5 ${allDeclined ? "bg-red-50" : "bg-blue-50"}`}>
@@ -586,11 +811,7 @@ export default function RepDashboard() {
                             </div>
                             <div className="flex gap-1.5">
                               {allDeclined && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); openAddTenant(loc); }}
-                                  className="flex items-center gap-1 text-xs px-2.5 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                                  data-testid={`button-add-tenant-declined-${loc.id}`}
-                                >
+                                <button onClick={e => { e.stopPropagation(); openAddTenant(loc); }} className="flex items-center gap-1 text-xs px-2.5 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium" data-testid={`button-add-tenant-declined-${loc.id}`}>
                                   <UserPlus className="h-3.5 w-3.5" /> New Tenant
                                 </button>
                               )}
@@ -603,13 +824,9 @@ export default function RepDashboard() {
                           </div>
                           <div className="flex items-center justify-between mt-3 pt-3 border-t">
                             <div className="flex gap-1.5 flex-wrap">
-                              {tenants.length === 0 ? (
-                                <span className="text-xs text-gray-400 italic">No tenants yet</span>
-                              ) : (
-                                tenants.map(t => (
-                                  <span key={t.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status as Status]}`}>{t.tenantName.split(" ")[0]}: {t.status}</span>
-                                ))
-                              )}
+                              {tenants.length === 0 ? <span className="text-xs text-gray-400 italic">No tenants yet</span> : tenants.map(t => (
+                                <span key={t.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status as Status]}`}>{t.tenantName.split(" ")[0]}: {t.status}</span>
+                              ))}
                             </div>
                             <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           </div>
@@ -620,15 +837,12 @@ export default function RepDashboard() {
                 )}
               </>
             ) : (
-              /* LOCATION DETAIL VIEW */
               selectedLocation && (
                 <div>
                   <button onClick={() => { setLocationView("list"); setSelectedLocation(null); }} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4" data-testid="button-back-to-locations">
                     <ChevronRight className="h-4 w-4 rotate-180" /> Back to Locations
                   </button>
-
                   <div className="bg-white border rounded-xl overflow-hidden mb-4">
-                    {/* Location header */}
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5">
                       <div className="flex items-start justify-between">
                         <div>
@@ -651,60 +865,41 @@ export default function RepDashboard() {
                         {selectedLocation.landlordEmail && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{selectedLocation.landlordEmail}</span>}
                       </div>
                     </div>
-
-                    {/* Tenant section */}
                     <div className="p-5">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                          <User className="h-4 w-4 text-blue-600" />
-                          Tenant Applications
+                          <User className="h-4 w-4 text-blue-600" /> Tenant Applications
                           <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{currentLocationTenants.length}</span>
                         </h3>
-                        <Button size="sm" onClick={() => openAddTenant(selectedLocation)} data-testid="button-add-tenant-to-location">
-                          <UserPlus className="h-3.5 w-3.5 mr-1" /> Add Tenant
-                        </Button>
+                        <Button size="sm" onClick={() => openAddTenant(selectedLocation)} data-testid="button-add-tenant-to-location"><UserPlus className="h-3.5 w-3.5 mr-1" /> Add Tenant</Button>
                       </div>
-
-                      {/* Declined alert + replace prompt */}
                       {hasDeclinedTenant && !hasApprovedTenant && (
                         <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
                           <div className="flex items-start gap-3">
                             <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                             <div className="flex-1">
                               <p className="font-semibold text-red-800 text-sm">Tenant Declined</p>
-                              <p className="text-red-700 text-xs mt-0.5">The current tenant application was declined. You can add a new tenant for this property without re-entering the property details.</p>
+                              <p className="text-red-700 text-xs mt-0.5">Add a new tenant for this property without re-entering property details.</p>
                               <Button size="sm" className="mt-3 bg-red-600 hover:bg-red-700 text-white" onClick={() => openAddTenant(selectedLocation)} data-testid="button-replace-tenant">
-                                <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Add New Tenant for This Property
-                                <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                                <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Add New Tenant <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                               </Button>
                             </div>
                           </div>
                         </div>
                       )}
-
                       {currentLocationTenants.length === 0 ? (
                         <div className="text-center py-10 border-2 border-dashed rounded-xl">
                           <User className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                           <p className="text-gray-500 text-sm font-medium">No tenants yet</p>
-                          <p className="text-gray-400 text-xs mb-3">Add the first tenant for this rental application</p>
-                          <Button size="sm" onClick={() => openAddTenant(selectedLocation)} data-testid="button-first-tenant">
-                            <UserPlus className="h-4 w-4 mr-1" /> Add First Tenant
-                          </Button>
+                          <Button size="sm" onClick={() => openAddTenant(selectedLocation)} className="mt-3" data-testid="button-first-tenant"><UserPlus className="h-4 w-4 mr-1" /> Add First Tenant</Button>
                         </div>
                       ) : (
                         <div className="space-y-2">
                           {currentLocationTenants.map((tenant, idx) => (
-                            <div
-                              key={tenant.id}
-                              className={`border rounded-xl p-4 cursor-pointer hover:shadow-sm transition-all ${tenant.status === "Declined" ? "border-red-200 bg-red-50/30 opacity-80" : tenant.status === "Approved" ? "border-green-200 bg-green-50/30" : "hover:border-blue-300"}`}
-                              onClick={() => openLead(tenant)}
-                              data-testid={`tenant-card-${tenant.id}`}
-                            >
+                            <div key={tenant.id} className={`border rounded-xl p-4 cursor-pointer hover:shadow-sm transition-all ${tenant.status === "Declined" ? "border-red-200 bg-red-50/30 opacity-80" : tenant.status === "Approved" ? "border-green-200 bg-green-50/30" : "hover:border-blue-300"}`} onClick={() => openLead(tenant)} data-testid={`tenant-card-${tenant.id}`}>
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ${tenant.status === "Declined" ? "bg-red-100 text-red-600" : tenant.status === "Approved" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}>
-                                    {idx + 1}
-                                  </div>
+                                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ${tenant.status === "Declined" ? "bg-red-100 text-red-600" : tenant.status === "Approved" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}>{idx + 1}</div>
                                   <div>
                                     <p className="font-semibold text-gray-900">{tenant.tenantName}</p>
                                     <p className="text-xs text-gray-500">{tenant.tenantEmail} · {tenant.employmentStatus}</p>
@@ -719,13 +914,7 @@ export default function RepDashboard() {
                           ))}
                         </div>
                       )}
-
-                      {selectedLocation.notes && (
-                        <div className="mt-4 bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
-                          <p className="font-medium text-xs text-gray-400 uppercase mb-1">Notes</p>
-                          {selectedLocation.notes}
-                        </div>
-                      )}
+                      {selectedLocation.notes && <div className="mt-4 bg-gray-50 rounded-lg p-3 text-sm text-gray-600"><p className="font-medium text-xs text-gray-400 uppercase mb-1">Notes</p>{selectedLocation.notes}</div>}
                     </div>
                   </div>
                 </div>
@@ -750,13 +939,8 @@ export default function RepDashboard() {
                 </SelectContent>
               </Select>
             </div>
-            {loading ? (
-              <div className="text-center py-12 text-gray-500">Loading...</div>
-            ) : filteredLeads.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-xl border">
-                <Home className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">No leads found</p>
-              </div>
+            {loading ? <div className="text-center py-12 text-gray-500">Loading...</div> : filteredLeads.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-xl border"><Home className="h-12 w-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">No leads found</p></div>
             ) : (
               <div className="space-y-2">
                 {filteredLeads.map(lead => (
@@ -796,17 +980,11 @@ export default function RepDashboard() {
             </div>
             <div className="mb-4 flex flex-wrap gap-2">
               {REMINDER_PRESETS.map(preset => (
-                <button key={preset} onClick={() => openNewReminder(preset)} className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" data-testid={`preset-reminder-${preset.toLowerCase().replace(/\s+/g, "-")}`}>
-                  + {preset}
-                </button>
+                <button key={preset} onClick={() => openNewReminder(preset)} className="text-xs px-3 py-1.5 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" data-testid={`preset-reminder-${preset.toLowerCase().replace(/\s+/g, "-")}`}>+ {preset}</button>
               ))}
             </div>
             {filteredReminders.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-xl border">
-                <Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">No {reminderFilter !== "all" ? reminderFilter : ""} reminders</p>
-                <Button onClick={() => openNewReminder()} size="sm" className="mt-4"><Plus className="h-4 w-4 mr-1" /> Set a Reminder</Button>
-              </div>
+              <div className="text-center py-16 bg-white rounded-xl border"><Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">No {reminderFilter !== "all" ? reminderFilter : ""} reminders</p><Button onClick={() => openNewReminder()} size="sm" className="mt-4"><Plus className="h-4 w-4 mr-1" /> Set a Reminder</Button></div>
             ) : (
               <div className="space-y-2">
                 {filteredReminders.map(r => {
@@ -847,14 +1025,18 @@ export default function RepDashboard() {
         <div className="fixed inset-0 z-40 flex">
           <div className="flex-1 bg-black/30" onClick={() => setSelectedLead(null)} />
           <div className="w-full max-w-2xl bg-white shadow-2xl overflow-y-auto flex flex-col">
+            {/* Header */}
             <div className="p-5 border-b flex items-start justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white">
               <div>
                 <h2 className="text-xl font-bold">{selectedLead.tenantName}</h2>
                 <p className="text-blue-100 text-sm mt-0.5">{selectedLead.propertyAddress}</p>
+                <p className="text-blue-200 text-xs mt-0.5">${Number(selectedLead.monthlyRent).toLocaleString()}/month</p>
               </div>
               <button onClick={() => setSelectedLead(null)} className="text-blue-100 hover:text-white" data-testid="button-close-lead"><X className="h-5 w-5" /></button>
             </div>
-            <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between">
+
+            {/* Status + actions bar */}
+            <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">Status:</span>
                 <Select value={selectedLead.status} onValueChange={v => handleStatusChange(selectedLead.id, v)} disabled={updatingStatus}>
@@ -864,7 +1046,10 @@ export default function RepDashboard() {
                   <SelectContent>{Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={openEditLead} data-testid="button-edit-lead">
+                  <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                </Button>
                 {isRep && (
                   <Button size="sm" variant="outline" onClick={() => { openNewReminder(`Follow up · ${selectedLead.tenantName}`); setSelectedLead(null); }} data-testid="button-set-reminder-lead">
                     <Bell className="h-3.5 w-3.5 mr-1" /> Remind
@@ -877,32 +1062,30 @@ export default function RepDashboard() {
               </div>
             </div>
 
-            {/* Declined alert inside lead panel */}
+            {/* Declined alert */}
             {selectedLead.status === "Declined" && selectedLead.locationId && (
               <div className="mx-5 mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-semibold text-red-800">This tenant was declined</p>
-                  <p className="text-xs text-red-600 mt-0.5">You can add a new tenant for this property without re-entering the property details.</p>
-                  <button
-                    onClick={() => {
-                      const loc = locations.find(l => l.id === selectedLead.locationId);
-                      if (loc) { setSelectedLead(null); openAddTenant(loc); }
-                    }}
-                    className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors"
-                    data-testid="button-add-new-tenant-from-declined"
-                  >
+                  <button onClick={() => { const loc = locations.find(l => l.id === selectedLead.locationId); if (loc) { setSelectedLead(null); openAddTenant(loc); } }} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors" data-testid="button-add-new-tenant-from-declined">
                     <UserPlus className="h-3.5 w-3.5" /> Add New Tenant for This Property
                   </button>
                 </div>
               </div>
             )}
 
+            {/* Detail tabs */}
             <div className="flex gap-1 px-5 pt-4">
-              <button onClick={() => setDetailTab("info")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${detailTab === "info" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-info">Info</button>
+              <button onClick={() => setDetailTab("info")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "info" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-info">Info</button>
+              <button onClick={() => setDetailTab("pricing")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "pricing" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-pricing">
+                <Calculator className="h-3.5 w-3.5" /> Pricing
+              </button>
               <button onClick={() => setDetailTab("docs")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${detailTab === "docs" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-docs">Documents ({documents.length})</button>
             </div>
+
             <div className="flex-1 p-5">
+              {/* INFO TAB */}
               {detailTab === "info" && (
                 <div className="space-y-4">
                   <Card>
@@ -952,6 +1135,13 @@ export default function RepDashboard() {
                   )}
                 </div>
               )}
+
+              {/* PRICING TAB */}
+              {detailTab === "pricing" && (
+                <PricingTab lead={selectedLead} onSaveMarkup={handleSaveMarkup} />
+              )}
+
+              {/* DOCS TAB */}
               {detailTab === "docs" && (
                 <div>
                   {documents.length === 0 ? (
@@ -976,7 +1166,49 @@ export default function RepDashboard() {
         </div>
       )}
 
-      {/* ===== NEW / EDIT LOCATION DIALOG ===== */}
+      {/* ===== EDIT LEAD DIALOG ===== */}
+      <Dialog open={showEditLead} onOpenChange={setShowEditLead}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Edit Tenant Details</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tenant Information</p>
+              <div className="space-y-3">
+                <div className="space-y-1.5"><Label>Full Name *</Label><Input value={editLeadForm.tenantName} onChange={e => setEditLeadForm(p => ({ ...p, tenantName: e.target.value }))} data-testid="input-edit-tenant-name" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label>Email *</Label><Input type="email" value={editLeadForm.tenantEmail} onChange={e => setEditLeadForm(p => ({ ...p, tenantEmail: e.target.value }))} data-testid="input-edit-tenant-email" /></div>
+                  <div className="space-y-1.5"><Label>Phone *</Label><Input value={editLeadForm.tenantPhone} onChange={e => setEditLeadForm(p => ({ ...p, tenantPhone: e.target.value }))} data-testid="input-edit-tenant-phone" /></div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Employment Status *</Label>
+                  <Select value={editLeadForm.employmentStatus} onValueChange={v => setEditLeadForm(p => ({ ...p, employmentStatus: v }))}>
+                    <SelectTrigger data-testid="select-edit-employment"><SelectValue /></SelectTrigger>
+                    <SelectContent>{EMPLOYMENT_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label>Co-Applicant Name</Label><Input value={editLeadForm.coApplicantName} onChange={e => setEditLeadForm(p => ({ ...p, coApplicantName: e.target.value }))} data-testid="input-edit-coapplicant-name" /></div>
+                  <div className="space-y-1.5"><Label>Co-Applicant Email</Label><Input type="email" value={editLeadForm.coApplicantEmail} onChange={e => setEditLeadForm(p => ({ ...p, coApplicantEmail: e.target.value }))} data-testid="input-edit-coapplicant-email" /></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Lease Details</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label>Monthly Rent ($)</Label><Input type="number" min="0" step="0.01" value={editLeadForm.monthlyRent} onChange={e => setEditLeadForm(p => ({ ...p, monthlyRent: e.target.value }))} data-testid="input-edit-monthly-rent" /></div>
+                <div className="space-y-1.5"><Label>Move-In Date</Label><Input type="date" value={editLeadForm.moveInDate} onChange={e => setEditLeadForm(p => ({ ...p, moveInDate: e.target.value }))} data-testid="input-edit-movein" /></div>
+              </div>
+            </div>
+            <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={3} value={editLeadForm.notes} onChange={e => setEditLeadForm(p => ({ ...p, notes: e.target.value }))} data-testid="input-edit-notes" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditLead(false)}>Cancel</Button>
+            <Button onClick={handleSaveEditLead} disabled={savingLead} data-testid="button-confirm-edit-lead">{savingLead ? "Saving..." : "Save Changes"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== LOCATION FORM DIALOG ===== */}
       <Dialog open={showLocationForm} onOpenChange={setShowLocationForm}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editingLocation ? "Edit Location" : "New Rental Location"}</DialogTitle></DialogHeader>
@@ -1008,9 +1240,7 @@ export default function RepDashboard() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLocationForm(false)}>Cancel</Button>
-            <Button onClick={handleSaveLocation} disabled={savingLocation} data-testid="button-save-location">
-              {savingLocation ? "Saving..." : editingLocation ? "Update Location" : "Create Location"}
-            </Button>
+            <Button onClick={handleSaveLocation} disabled={savingLocation} data-testid="button-save-location">{savingLocation ? "Saving..." : editingLocation ? "Update Location" : "Create Location"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1043,14 +1273,12 @@ export default function RepDashboard() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTenantForm(false)}>Cancel</Button>
-            <Button onClick={handleSaveTenant} disabled={savingTenant} data-testid="button-save-tenant">
-              {savingTenant ? "Adding..." : "Add Tenant"}
-            </Button>
+            <Button onClick={handleSaveTenant} disabled={savingTenant} data-testid="button-save-tenant">{savingTenant ? "Adding..." : "Add Tenant"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ===== REMINDER FORM DIALOG ===== */}
+      {/* ===== REMINDER FORM ===== */}
       <Dialog open={showReminderForm} onOpenChange={setShowReminderForm}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editingReminder ? "Edit Reminder" : "Set a Reminder"}</DialogTitle></DialogHeader>
@@ -1058,11 +1286,7 @@ export default function RepDashboard() {
             <div className="space-y-2">
               <Label>Title *</Label>
               <Input placeholder="e.g. Follow up on lease agreement" value={reminderForm.title} onChange={e => setReminderForm(p => ({ ...p, title: e.target.value }))} data-testid="input-reminder-title" />
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {REMINDER_PRESETS.slice(0, 4).map(p => (
-                  <button key={p} type="button" onClick={() => setReminderForm(f => ({ ...f, title: p }))} className="text-xs px-2 py-1 border rounded-md text-gray-500 hover:text-blue-600 hover:border-blue-400 transition-colors">{p}</button>
-                ))}
-              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">{REMINDER_PRESETS.slice(0, 4).map(p => (<button key={p} type="button" onClick={() => setReminderForm(f => ({ ...f, title: p }))} className="text-xs px-2 py-1 border rounded-md text-gray-500 hover:text-blue-600 hover:border-blue-400 transition-colors">{p}</button>))}</div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2"><Label>Date *</Label><Input type="date" value={reminderForm.dueDate} onChange={e => setReminderForm(p => ({ ...p, dueDate: e.target.value }))} data-testid="input-reminder-date" /></div>
@@ -1104,10 +1328,7 @@ export default function RepDashboard() {
             </div>
           ) : (
             <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Recipient Type</Label>
-                <Select value={docReqForm.recipientType} onValueChange={v => setDocReqForm(p => ({ ...p, recipientType: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="tenant">Tenant</SelectItem><SelectItem value="landlord">Landlord</SelectItem></SelectContent></Select>
-              </div>
+              <div className="space-y-2"><Label>Recipient Type</Label><Select value={docReqForm.recipientType} onValueChange={v => setDocReqForm(p => ({ ...p, recipientType: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="tenant">Tenant</SelectItem><SelectItem value="landlord">Landlord</SelectItem></SelectContent></Select></div>
               <div className="space-y-2"><Label>Recipient Name *</Label><Input value={docReqForm.recipientName} onChange={e => setDocReqForm(p => ({ ...p, recipientName: e.target.value }))} data-testid="input-doc-recipient-name" /></div>
               <div className="space-y-2"><Label>Recipient Email *</Label><Input type="email" value={docReqForm.recipientEmail} onChange={e => setDocReqForm(p => ({ ...p, recipientEmail: e.target.value }))} data-testid="input-doc-recipient-email" /></div>
               <div className="space-y-2">
@@ -1131,40 +1352,15 @@ export default function RepDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete lead */}
+      {/* Confirms */}
       <Dialog open={!!deleteLeadConfirm} onOpenChange={() => setDeleteLeadConfirm(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Remove Tenant?</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-500 py-2">This will permanently remove the tenant application and all associated documents.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteLeadConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteLead} disabled={deleting} data-testid="button-confirm-delete-lead">{deleting ? "Removing..." : "Remove"}</Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Remove Tenant?</DialogTitle></DialogHeader><p className="text-sm text-gray-500 py-2">This will permanently remove the tenant application and all associated documents.</p><DialogFooter><Button variant="outline" onClick={() => setDeleteLeadConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={handleDeleteLead} disabled={deleting} data-testid="button-confirm-delete-lead">{deleting ? "Removing..." : "Remove"}</Button></DialogFooter></DialogContent>
       </Dialog>
-
-      {/* Delete location */}
       <Dialog open={!!deleteLocationConfirm} onOpenChange={() => setDeleteLocationConfirm(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Delete Location?</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-500 py-2">This will permanently delete the location. Tenant applications linked to this location will remain but will no longer be grouped under it.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteLocationConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteLocation} disabled={deleting} data-testid="button-confirm-delete-location">{deleting ? "Deleting..." : "Delete Location"}</Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Delete Location?</DialogTitle></DialogHeader><p className="text-sm text-gray-500 py-2">This will permanently delete the location. Tenant applications will remain but will no longer be grouped under it.</p><DialogFooter><Button variant="outline" onClick={() => setDeleteLocationConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={handleDeleteLocation} disabled={deleting} data-testid="button-confirm-delete-location">{deleting ? "Deleting..." : "Delete Location"}</Button></DialogFooter></DialogContent>
       </Dialog>
-
-      {/* Delete reminder */}
       <Dialog open={!!deleteReminderConfirm} onOpenChange={() => setDeleteReminderConfirm(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Delete Reminder?</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-500 py-2">This reminder will be permanently deleted.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteReminderConfirm(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteReminder} data-testid="button-confirm-delete-reminder">Delete</Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Delete Reminder?</DialogTitle></DialogHeader><p className="text-sm text-gray-500 py-2">This reminder will be permanently deleted.</p><DialogFooter><Button variant="outline" onClick={() => setDeleteReminderConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={handleDeleteReminder} data-testid="button-confirm-delete-reminder">Delete</Button></DialogFooter></DialogContent>
       </Dialog>
     </div>
   );

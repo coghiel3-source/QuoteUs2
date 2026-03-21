@@ -215,6 +215,7 @@ export const rgLeads = pgTable("rg_leads", {
   moveInDate: text("move_in_date"),
   notes: text("notes"),
   status: rgLeadStatusEnum("status").notNull().default("New"),
+  markupPercent: decimal("markup_percent", { precision: 5, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
