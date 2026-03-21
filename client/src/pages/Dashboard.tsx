@@ -128,6 +128,8 @@ export default function DashboardPage() {
       loggedInThisMount.current = true;
       if (role === 'admin' || role === 'manager') {
         setLocation('/admin');
+      } else if (role === 'rep') {
+        setLocation('/rep');
       } else {
         toast({ title: "Welcome back!", description: "You are now logged in." });
       }
@@ -310,6 +312,7 @@ export default function DashboardPage() {
                       <SelectItem value="broker">Broker</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="rep">Rep (Rent Guarantee)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
