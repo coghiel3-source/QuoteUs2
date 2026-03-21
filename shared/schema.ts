@@ -182,9 +182,25 @@ export const referralPartners = pgTable("referral_partners", {
 export const rgLeadStatusEnum = pgEnum("rg_lead_status", ["New", "Contacted", "Documents Pending", "Documents Received", "Submitted", "Approved", "Declined"]);
 
 // Rent Guarantee Leads Table (managed by reps)
+// RG Locations Table (property + landlord details)
+export const rgLocations = pgTable("rg_locations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  repId: varchar("rep_id").notNull().references(() => users.id),
+  propertyAddress: text("property_address").notNull(),
+  unit: text("unit"),
+  landlordName: text("landlord_name").notNull(),
+  landlordEmail: text("landlord_email"),
+  landlordPhone: text("landlord_phone"),
+  monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(),
+  moveInDate: text("move_in_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const rgLeads = pgTable("rg_leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   repId: varchar("rep_id").notNull().references(() => users.id),
+  locationId: varchar("location_id").references(() => rgLocations.id, { onDelete: "set null" }),
   tenantName: text("tenant_name").notNull(),
   landlordName: text("landlord_name").notNull(),
   landlordEmail: text("landlord_email"),
@@ -321,6 +337,11 @@ export type InsertPartnerRedirect = z.infer<typeof insertPartnerRedirectSchema>;
 export type ReferralPartner = typeof referralPartners.$inferSelect;
 export type InsertReferralPartner = z.infer<typeof insertReferralPartnerSchema>;
 
+export const insertRgLocationSchema = createInsertSchema(rgLocations).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertRgLeadSchema = createInsertSchema(rgLeads).omit({
   id: true,
   createdAt: true,
@@ -342,6 +363,9 @@ export const insertRepReminderSchema = createInsertSchema(repReminders).omit({
   id: true,
   createdAt: true,
 });
+
+export type RgLocation = typeof rgLocations.$inferSelect;
+export type InsertRgLocation = z.infer<typeof insertRgLocationSchema>;
 
 export type RgLead = typeof rgLeads.$inferSelect;
 export type InsertRgLead = z.infer<typeof insertRgLeadSchema>;

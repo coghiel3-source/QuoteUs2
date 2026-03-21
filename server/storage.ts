@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLeads, documentRequests, repDocuments, repReminders, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -94,6 +94,15 @@ export interface IStorage {
   createRepReminder(reminder: InsertRepReminder): Promise<RepReminder>;
   updateRepReminder(id: string, data: Partial<InsertRepReminder>): Promise<RepReminder | undefined>;
   deleteRepReminder(id: string): Promise<boolean>;
+
+  // RG Location operations
+  getLocationsForRep(repId: string): Promise<RgLocation[]>;
+  getAllLocations(): Promise<RgLocation[]>;
+  getLocation(id: string): Promise<RgLocation | undefined>;
+  createLocation(location: InsertRgLocation): Promise<RgLocation>;
+  updateLocation(id: string, data: Partial<InsertRgLocation>): Promise<RgLocation | undefined>;
+  deleteLocation(id: string): Promise<boolean>;
+  getLeadsForLocation(locationId: string): Promise<RgLead[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -592,6 +601,39 @@ export class DatabaseStorage implements IStorage {
   async deleteRepReminder(id: string): Promise<boolean> {
     const result = await db.delete(repReminders).where(eq(repReminders.id, id)).returning();
     return result.length > 0;
+  }
+
+  // RG Location operations
+  async getLocationsForRep(repId: string): Promise<RgLocation[]> {
+    return db.select().from(rgLocations).where(eq(rgLocations.repId, repId)).orderBy(desc(rgLocations.createdAt));
+  }
+
+  async getAllLocations(): Promise<RgLocation[]> {
+    return db.select().from(rgLocations).orderBy(desc(rgLocations.createdAt));
+  }
+
+  async getLocation(id: string): Promise<RgLocation | undefined> {
+    const [loc] = await db.select().from(rgLocations).where(eq(rgLocations.id, id));
+    return loc || undefined;
+  }
+
+  async createLocation(location: InsertRgLocation): Promise<RgLocation> {
+    const [created] = await db.insert(rgLocations).values(location).returning();
+    return created;
+  }
+
+  async updateLocation(id: string, data: Partial<InsertRgLocation>): Promise<RgLocation | undefined> {
+    const [updated] = await db.update(rgLocations).set(data).where(eq(rgLocations.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteLocation(id: string): Promise<boolean> {
+    const result = await db.delete(rgLocations).where(eq(rgLocations.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getLeadsForLocation(locationId: string): Promise<RgLead[]> {
+    return db.select().from(rgLeads).where(eq(rgLeads.locationId, locationId)).orderBy(desc(rgLeads.createdAt));
   }
 }
 

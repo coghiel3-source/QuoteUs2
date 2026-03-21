@@ -2798,6 +2798,133 @@ export async function registerRoutes(
     }
   });
 
+  // ===== RG LOCATION ROUTES =====
+
+  // Get locations for rep (or all for admin/manager)
+  app.get("/api/rep/locations", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const locations = actor.role === "rep"
+        ? await storage.getLocationsForRep(actorId as string)
+        : await storage.getAllLocations();
+      res.json(locations);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get single location
+  app.get("/api/rep/locations/:id", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+      res.json(location);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get tenants for a location
+  app.get("/api/rep/locations/:id/tenants", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const tenants = await storage.getLeadsForLocation(req.params.id);
+      res.json(tenants);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a location
+  app.post("/api/rep/locations", async (req, res) => {
+    try {
+      const { actorId, propertyAddress, unit, landlordName, landlordEmail, landlordPhone, monthlyRent, moveInDate, notes } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (!propertyAddress || !landlordName || !monthlyRent) return res.status(400).json({ error: "propertyAddress, landlordName, and monthlyRent are required" });
+      const location = await storage.createLocation({
+        repId: actor.role === "rep" ? actorId : actorId,
+        propertyAddress, unit: unit || null, landlordName,
+        landlordEmail: landlordEmail || null, landlordPhone: landlordPhone || null,
+        monthlyRent, moveInDate: moveInDate || null, notes: notes || null,
+      });
+      res.json(location);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update a location
+  app.patch("/api/rep/locations/:id", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const updated = await storage.updateLocation(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Location not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete a location
+  app.delete("/api/rep/locations/:id", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      await storage.deleteLocation(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Add a tenant to a location
+  app.post("/api/rep/locations/:id/tenants", async (req, res) => {
+    try {
+      const { actorId, tenantName, tenantEmail, tenantPhone, employmentStatus, coApplicantName, coApplicantEmail, notes } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (!tenantName || !tenantEmail || !tenantPhone || !employmentStatus) return res.status(400).json({ error: "Tenant name, email, phone, and employment status are required" });
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+      const lead = await storage.createRgLead({
+        repId: actorId,
+        locationId: location.id,
+        tenantName, tenantEmail, tenantPhone, employmentStatus,
+        coApplicantName: coApplicantName || null,
+        coApplicantEmail: coApplicantEmail || null,
+        landlordName: location.landlordName,
+        landlordEmail: location.landlordEmail,
+        landlordPhone: location.landlordPhone,
+        propertyAddress: location.propertyAddress + (location.unit ? ` Unit ${location.unit}` : ""),
+        monthlyRent: location.monthlyRent,
+        moveInDate: location.moveInDate,
+        notes: notes || null,
+        status: "New",
+      });
+      res.json(lead);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ===== REP REMINDER ROUTES =====
 
   // Get reminders for a rep

@@ -56,14 +56,17 @@ This system allows admins/managers to create referral partner accounts. Each par
 The system allows admins/managers to require brokers to upload a binder (confirmation of insurance) for specific leads. Brokers can upload PDF, Word, or image files, which are then visible in the lead detail view. The activity log tracks all binder-related actions.
 
 ### Rep Role & Rent Guarantee Lead System
-A dedicated "rep" user role supports a Rent Guarantee (RG) lead workflow. Reps manage their own RG leads (tenant/landlord/property details, status tracking). Admins and managers can view all RG leads via `/rep`. The system includes:
-- `rgLeads` table (tenant, landlord, property, employment, co-applicant info, status tracking)
+A dedicated "rep" user role supports a Rent Guarantee (RG) lead workflow. Reps manage their own RG leads via a Location → Tenant hierarchy. Admins and managers can view all RG leads via `/rep`. The system includes:
+- `rgLocations` table (property + landlord details: address, unit, landlord info, monthly rent, move-in date)
+- `rgLeads` table (tenant applications: tenant info, employment, co-applicant, status tracking; linked to rgLocations via `locationId`)
+- `repReminders` table (reminders linked to reps and optionally to leads, with due dates)
 - `documentRequests` table (tokenized links for tenant/landlord document uploads, with expiry)
 - `repDocuments` table (uploaded files linked to leads and requests)
-- `/rep` dashboard page (role-gated for rep/admin/manager)
+- `/rep` dashboard page (role-gated for rep/admin/manager) with tabs: Overview, Locations, All Leads, Reminders
 - `/doc-upload/:token` public upload portal (no login required, token-based)
 - AdminCRM shows "RG Portal" link in nav; Login page supports "Rep" role selection
 - File uploads stored at `client/public/uploads/rep-docs/`
+- Location → Tenant workflow: rep creates a Location (property/landlord), then adds Tenants; if a tenant is Declined, a "Add New Tenant" prompt appears to quickly replace without re-entering property info
 
 ## External Dependencies
 
