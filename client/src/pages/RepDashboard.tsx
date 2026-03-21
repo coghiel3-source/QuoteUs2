@@ -985,8 +985,8 @@ export default function RepDashboard() {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Property Details</p>
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2 space-y-1.5"><Label>Street Address *</Label><Input placeholder="123 Main St, Toronto, ON" value={locationForm.propertyAddress} onChange={e => setLocationForm(p => ({ ...p, propertyAddress: e.target.value }))} data-testid="input-location-address" /></div>
-                  <div className="space-y-1.5"><Label>Unit #</Label><Input placeholder="e.g. 4B" value={locationForm.unit} onChange={e => setLocationForm(p => ({ ...p, unit: e.target.value }))} data-testid="input-location-unit" /></div>
+                  <div className="space-y-1.5"><Label>Unit # (optional)</Label><Input placeholder="e.g. 4B" value={locationForm.unit} onChange={e => setLocationForm(p => ({ ...p, unit: e.target.value }))} data-testid="input-location-unit" /></div>
+                  <div className="col-span-2 space-y-1.5"><Label>Property Address *</Label><Input placeholder="456 Oak Ave, Toronto, ON M6K 2P3" value={locationForm.propertyAddress} onChange={e => setLocationForm(p => ({ ...p, propertyAddress: e.target.value }))} data-testid="input-location-address" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5"><Label>Monthly Rent ($) *</Label><Input type="number" min="0" step="0.01" placeholder="2500" value={locationForm.monthlyRent} onChange={e => setLocationForm(p => ({ ...p, monthlyRent: e.target.value }))} data-testid="input-location-rent" /></div>
