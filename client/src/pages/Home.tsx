@@ -31,7 +31,7 @@ export default function HomePage() {
               Ontario's Top Rated Insurance Platform
             </div>
             <h1 className="text-4xl md:text-6xl font-serif font-bold leading-tight">
-              Insurance made simple for <span className="text-accent">Ontarians</span>.
+              Insurance made simple for <span className="text-accent">Canadians</span>.
             </h1>
             <p className="text-lg md:text-xl text-primary-foreground/90 max-w-xl leading-relaxed">
               Compare quotes from Canada's top providers. Save money on Auto, Home, and Business insurance with one simple form.
