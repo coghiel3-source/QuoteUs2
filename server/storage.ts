@@ -336,6 +336,11 @@ export class DatabaseStorage implements IStorage {
         or(
           isNull(advertisements.endDate),
           gte(advertisements.endDate, now)
+        ),
+        or(
+          isNull(advertisements.approvalStatus),
+          eq(advertisements.approvalStatus, "approved"),
+          eq(advertisements.approvalStatus, "pending")
         )
       )
     ).orderBy(desc(advertisements.priority));

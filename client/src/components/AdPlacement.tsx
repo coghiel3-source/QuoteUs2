@@ -138,26 +138,26 @@ export default function AdPlacement({ page, className = "" }: AdPlacementProps) 
       onClick={(e) => handleAdClick(e, ad)}
       data-testid={`ad-placement-${page}-${index}`}
     >
-      <div className="relative" style={{ minHeight: adCount === 1 ? '200px' : '180px' }}>
+      <div className="relative">
         {ad.mediaType === "image" ? (
           <img 
             src={ad.mediaUrl} 
             alt={ad.name}
-            className="w-full h-full block"
+            className="w-full block"
             style={{ 
-              height: adCount === 1 ? '300px' : '250px',
-              objectFit: 'cover', 
+              objectFit: 'contain',
               width: '100%',
+              maxHeight: adCount === 1 ? '400px' : '300px',
             }}
             data-testid={`ad-image-${index}`}
           />
         ) : (
           <video 
             src={ad.mediaUrl}
-            className="w-full h-full block"
+            className="w-full block"
             style={{ 
-              height: adCount === 1 ? '300px' : '250px',
-              objectFit: 'cover',
+              maxHeight: adCount === 1 ? '400px' : '300px',
+              objectFit: 'contain',
             }}
             autoPlay
             muted

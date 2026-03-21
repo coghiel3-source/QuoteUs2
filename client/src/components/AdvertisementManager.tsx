@@ -532,7 +532,14 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                         : ad.targetPages.slice(0, 2).map(p => <Badge key={p} variant="outline" className="mr-1">{p}</Badge>)}
                       {ad.targetPages.length > 2 && <Badge variant="outline">+{ad.targetPages.length - 2}</Badge>}
                     </TableCell>
-                    <TableCell>{getStatusBadge(ad.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {getStatusBadge(ad.status)}
+                        {ad.endDate && new Date(ad.endDate) < new Date() && ad.status === "active" && (
+                          <Badge className="bg-red-100 text-red-800 text-[10px] whitespace-nowrap">End date passed</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{getApprovalBadge(ad.approvalStatus)}</TableCell>
                     <TableCell className="text-right">{ad.impressions.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{ad.clicks.toLocaleString()}</TableCell>
@@ -606,12 +613,14 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                     <img 
                       src={editingAd.mediaUrl} 
                       alt={editingAd.name} 
-                      className="w-full h-auto max-h-48 object-contain"
+                      className="w-full h-auto object-contain"
+                      style={{ maxHeight: '350px' }}
                     />
                   ) : (
                     <video 
                       src={editingAd.mediaUrl} 
-                      className="w-full h-auto max-h-48" 
+                      className="w-full h-auto" 
+                      style={{ maxHeight: '350px' }}
                       muted 
                       controls
                     />
@@ -959,7 +968,11 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                   value={formData.endDate} 
                   onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
                   data-testid="input-ad-end-date"
+                  className={formData.endDate && new Date(formData.endDate) < new Date() ? "border-red-400" : ""}
                 />
+                {formData.endDate && new Date(formData.endDate) < new Date() && (
+                  <p className="text-xs text-red-600 font-medium">End date has passed — this ad will not show on pages. Update the end date or clear it to run indefinitely.</p>
+                )}
               </div>
             </div>
 
