@@ -1135,6 +1135,7 @@ export default function AdminCRMPage() {
           phone: editingUser.phone,
           brokerage: editingUser.brokerage,
           status: editingUser.status,
+          role: editingUser.role,
           actorId: user?.id,
         }),
       });
@@ -1146,6 +1147,7 @@ export default function AdminCRMPage() {
           phone: editingUser.phone,
           brokerage: editingUser.brokerage,
           status: editingUser.status as any,
+          role: editingUser.role as any,
         });
         toast({
           title: "User Updated",
@@ -2376,8 +2378,23 @@ export default function AdminCRMPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Role: <span className="font-medium capitalize">{editingUser.role}</span>
+                <div className="space-y-2">
+                  <Label htmlFor="editRole">Role</Label>
+                  <Select
+                    value={editingUser.role}
+                    onValueChange={(val) => setEditingUser({...editingUser, role: val})}
+                  >
+                    <SelectTrigger data-testid="select-edit-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="broker">Broker</SelectItem>
+                      <SelectItem value="rep">Rep (Rent Guarantee)</SelectItem>
+                      {user?.role === 'admin' && (
+                        <SelectItem value="manager">Manager</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>Cancel</Button>
