@@ -1023,16 +1023,22 @@ export default function RepDashboard() {
       {/* ===== LEAD DETAIL PANEL ===== */}
       {selectedLead && (
         <div className="fixed inset-0 z-40 flex">
-          <div className="flex-1 bg-black/30" onClick={() => setSelectedLead(null)} />
-          <div className="w-full max-w-2xl bg-white shadow-2xl overflow-y-auto flex flex-col">
+          <div className="flex-1 bg-black/40" onClick={() => setSelectedLead(null)} />
+          <div className="w-full max-w-md bg-white shadow-2xl overflow-y-auto flex flex-col">
             {/* Header */}
-            <div className="p-5 border-b flex items-start justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-              <div>
-                <h2 className="text-xl font-bold">{selectedLead.tenantName}</h2>
-                <p className="text-blue-100 text-sm mt-0.5">{selectedLead.propertyAddress}</p>
-                <p className="text-blue-200 text-xs mt-0.5">${Number(selectedLead.monthlyRent).toLocaleString()}/month</p>
+            <div className="p-4 border-b flex items-start justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+              <div className="flex-1 min-w-0 pr-3">
+                <h2 className="text-base font-bold truncate">{selectedLead.tenantName}</h2>
+                <p className="text-blue-100 text-xs mt-0.5 truncate">{selectedLead.propertyAddress}</p>
+                <p className="text-blue-200 text-xs">${Number(selectedLead.monthlyRent).toLocaleString()}/month</p>
               </div>
-              <button onClick={() => setSelectedLead(null)} className="text-blue-100 hover:text-white" data-testid="button-close-lead"><X className="h-5 w-5" /></button>
+              <button
+                onClick={() => setSelectedLead(null)}
+                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex-shrink-0 transition-colors"
+                data-testid="button-close-lead"
+              >
+                <X className="h-3.5 w-3.5" /> Close
+              </button>
             </div>
 
             {/* Status + actions bar */}
