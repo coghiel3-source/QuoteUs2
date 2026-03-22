@@ -392,6 +392,7 @@ export default function RepDashboard() {
         toast({ title: "Location created" });
         setShowLocationForm(false);
         openLocation(created);
+        openAddTenant(created);
         return;
       }
       setShowLocationForm(false);
@@ -1035,7 +1036,7 @@ export default function RepDashboard() {
 
       {/* ===== LEAD DETAIL PANEL ===== */}
       {selectedLead && (
-        <div className="fixed inset-0 z-40 flex">
+        <div className="fixed inset-0 top-16 z-40 flex">
           <div className="flex-1 bg-black/40" onClick={() => setSelectedLead(null)} />
           <div className="w-full max-w-md bg-white shadow-2xl overflow-y-auto flex flex-col">
             {/* Header */}
