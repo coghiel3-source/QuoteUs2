@@ -2897,7 +2897,7 @@ export async function registerRoutes(
   // Add a tenant to a location
   app.post("/api/rep/locations/:id/tenants", async (req, res) => {
     try {
-      const { actorId, tenantName, tenantEmail, tenantPhone, employmentStatus, coApplicantName, coApplicantEmail, notes } = req.body;
+      const { actorId, tenantName, tenantEmail, tenantPhone, employmentStatus, coApplicantName, coApplicantEmail, notes, householdIncome, employerName, paymentMethod } = req.body;
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
@@ -2917,6 +2917,9 @@ export async function registerRoutes(
         monthlyRent: location.monthlyRent,
         moveInDate: location.moveInDate,
         notes: notes || null,
+        householdIncome: householdIncome || null,
+        employerName: employerName || null,
+        paymentMethod: paymentMethod || null,
         status: "New",
       });
       res.json(lead);

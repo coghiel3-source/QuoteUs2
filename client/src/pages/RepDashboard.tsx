@@ -36,6 +36,7 @@ const STATUS_COLORS: Record<Status, string> = {
 
 const IN_PROGRESS_STATUSES: Status[] = ["Contacted", "Documents Pending", "Documents Received", "Submitted"];
 const EMPLOYMENT_STATUSES = ["Employed Full-Time", "Employed Part-Time", "Self-Employed", "Student", "Retired", "Unemployed", "Other"];
+const PAYMENT_METHODS = ["e-Transfer", "Cheque", "Cash", "Direct Deposit", "Pre-Authorized Debit", "Other"];
 const TENANT_DOC_TYPES = ["Pay Stubs (Last 3 Months)", "T4 / Notice of Assessment", "Bank Statements (3 Months)", "Credit Check Authorization", "Government ID", "Employment Letter", "Other"];
 const LANDLORD_DOC_TYPES = ["Lease Agreement", "Property Deed / Ownership Proof", "Property Insurance", "Government ID", "Other"];
 const REMINDER_PRESETS = [
@@ -261,6 +262,7 @@ export default function RepDashboard() {
   const [editLeadForm, setEditLeadForm] = useState({
     tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "",
     coApplicantName: "", coApplicantEmail: "", monthlyRent: "", moveInDate: "", notes: "",
+    householdIncome: "", employerName: "", paymentMethod: "",
   });
   const [savingLead, setSavingLead] = useState(false);
 
@@ -292,7 +294,7 @@ export default function RepDashboard() {
   // Tenant form
   const [showTenantForm, setShowTenantForm] = useState(false);
   const [tenantTargetLocation, setTenantTargetLocation] = useState<RgLocation | null>(null);
-  const [tenantForm, setTenantForm] = useState({ tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", coApplicantName: "", coApplicantEmail: "", notes: "" });
+  const [tenantForm, setTenantForm] = useState({ tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", coApplicantName: "", coApplicantEmail: "", notes: "", householdIncome: "", employerName: "", paymentMethod: "", status: "New" });
   const [savingTenant, setSavingTenant] = useState(false);
 
   const isRep = user?.role === "rep";
@@ -420,7 +422,7 @@ export default function RepDashboard() {
   function openAddTenant(loc: RgLocation, e?: React.MouseEvent) {
     e?.stopPropagation();
     setTenantTargetLocation(loc);
-    setTenantForm({ tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", coApplicantName: "", coApplicantEmail: "", notes: "" });
+    setTenantForm({ tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", coApplicantName: "", coApplicantEmail: "", notes: "", householdIncome: "", employerName: "", paymentMethod: "", status: "New" });
     setShowTenantForm(true);
   }
 
@@ -434,7 +436,7 @@ export default function RepDashboard() {
     try {
       const created = await apiRequest<RgLead>(`/rep/locations/${tenantTargetLocation.id}/tenants`, {
         method: "POST",
-        body: JSON.stringify({ actorId: user.id, ...tenantForm, coApplicantName: tenantForm.coApplicantName || null, coApplicantEmail: tenantForm.coApplicantEmail || null, notes: tenantForm.notes || null }),
+        body: JSON.stringify({ actorId: user.id, ...tenantForm, coApplicantName: tenantForm.coApplicantName || null, coApplicantEmail: tenantForm.coApplicantEmail || null, notes: tenantForm.notes || null, householdIncome: tenantForm.householdIncome || null, employerName: tenantForm.employerName || null, paymentMethod: tenantForm.paymentMethod || null }),
       });
       setLeads(prev => [created, ...prev]);
       setLocationTenants(prev => ({ ...prev, [tenantTargetLocation.id]: [created, ...(prev[tenantTargetLocation.id] || [])] }));
@@ -461,6 +463,9 @@ export default function RepDashboard() {
       monthlyRent: selectedLead.monthlyRent,
       moveInDate: selectedLead.moveInDate || "",
       notes: selectedLead.notes || "",
+      householdIncome: selectedLead.householdIncome || "",
+      employerName: selectedLead.employerName || "",
+      paymentMethod: selectedLead.paymentMethod || "",
     });
     setShowEditLead(true);
   }
@@ -486,6 +491,9 @@ export default function RepDashboard() {
           monthlyRent: editLeadForm.monthlyRent,
           moveInDate: editLeadForm.moveInDate || null,
           notes: editLeadForm.notes || null,
+          householdIncome: editLeadForm.householdIncome || null,
+          employerName: editLeadForm.employerName || null,
+          paymentMethod: editLeadForm.paymentMethod || null,
         }),
       });
       setLeads(prev => prev.map(l => l.id === selectedLead.id ? updated : l));
@@ -905,8 +913,13 @@ export default function RepDashboard() {
                                     <p className="text-xs text-gray-500">{tenant.tenantEmail} · {tenant.employmentStatus}</p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[tenant.status as Status]}`}>{tenant.status}</span>
+                                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                  <Select value={tenant.status} onValueChange={v => handleStatusChange(tenant.id, v)} disabled={updatingStatus}>
+                                    <SelectTrigger className={`h-7 text-xs px-2 py-0.5 rounded-full border-0 font-medium w-auto ${STATUS_COLORS[tenant.status as Status]}`} data-testid={`select-inline-status-${tenant.id}`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>{Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                  </Select>
                                   <ChevronRight className="h-4 w-4 text-gray-400" />
                                 </div>
                               </div>
@@ -1101,6 +1114,9 @@ export default function RepDashboard() {
                       <p><span className="text-gray-500">Email:</span> {selectedLead.tenantEmail}</p>
                       <p><span className="text-gray-500">Phone:</span> {selectedLead.tenantPhone}</p>
                       <p><span className="text-gray-500">Employment:</span> {selectedLead.employmentStatus}</p>
+                      {selectedLead.employerName && <p><span className="text-gray-500">Employer:</span> {selectedLead.employerName}</p>}
+                      {selectedLead.householdIncome && <p><span className="text-gray-500">Household Income:</span> ${Number(selectedLead.householdIncome).toLocaleString()}/yr</p>}
+                      {selectedLead.paymentMethod && <p><span className="text-gray-500">Payment Method:</span> {selectedLead.paymentMethod}</p>}
                       {selectedLead.coApplicantName && <p><span className="text-gray-500">Co-Applicant:</span> {selectedLead.coApplicantName} ({selectedLead.coApplicantEmail})</p>}
                     </CardContent>
                   </Card>
@@ -1193,6 +1209,17 @@ export default function RepDashboard() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label>Employer Name</Label><Input placeholder="Company or employer" value={editLeadForm.employerName} onChange={e => setEditLeadForm(p => ({ ...p, employerName: e.target.value }))} data-testid="input-edit-employer-name" /></div>
+                  <div className="space-y-1.5"><Label>Household Income ($)</Label><Input type="number" placeholder="75000" min={0} value={editLeadForm.householdIncome} onChange={e => setEditLeadForm(p => ({ ...p, householdIncome: e.target.value }))} data-testid="input-edit-household-income" /></div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Payment Method</Label>
+                  <Select value={editLeadForm.paymentMethod} onValueChange={v => setEditLeadForm(p => ({ ...p, paymentMethod: v }))}>
+                    <SelectTrigger data-testid="select-edit-payment-method"><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent>{PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5"><Label>Co-Applicant Name</Label><Input value={editLeadForm.coApplicantName} onChange={e => setEditLeadForm(p => ({ ...p, coApplicantName: e.target.value }))} data-testid="input-edit-coapplicant-name" /></div>
                   <div className="space-y-1.5"><Label>Co-Applicant Email</Label><Input type="email" value={editLeadForm.coApplicantEmail} onChange={e => setEditLeadForm(p => ({ ...p, coApplicantEmail: e.target.value }))} data-testid="input-edit-coapplicant-email" /></div>
                 </div>
@@ -1258,17 +1285,37 @@ export default function RepDashboard() {
             <DialogTitle>Add Tenant Application</DialogTitle>
             {tenantTargetLocation && <p className="text-sm text-gray-500 mt-1">{tenantTargetLocation.propertyAddress}{tenantTargetLocation.unit ? ` — Unit ${tenantTargetLocation.unit}` : ""}</p>}
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 py-2 max-h-[70vh] overflow-y-auto pr-1">
             <div className="space-y-1.5"><Label>Tenant Name *</Label><Input placeholder="Full legal name" value={tenantForm.tenantName} onChange={e => setTenantForm(p => ({ ...p, tenantName: e.target.value }))} data-testid="input-tenant-name" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Email *</Label><Input type="email" value={tenantForm.tenantEmail} onChange={e => setTenantForm(p => ({ ...p, tenantEmail: e.target.value }))} data-testid="input-tenant-email" /></div>
               <div className="space-y-1.5"><Label>Phone *</Label><Input value={tenantForm.tenantPhone} onChange={e => setTenantForm(p => ({ ...p, tenantPhone: e.target.value }))} data-testid="input-tenant-phone" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Employment Status *</Label>
+                <Select value={tenantForm.employmentStatus} onValueChange={v => setTenantForm(p => ({ ...p, employmentStatus: v }))}>
+                  <SelectTrigger data-testid="select-employment-status"><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>{EMPLOYMENT_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Application Status</Label>
+                <Select value={tenantForm.status} onValueChange={v => setTenantForm(p => ({ ...p, status: v }))}>
+                  <SelectTrigger data-testid="select-tenant-status"><SelectValue /></SelectTrigger>
+                  <SelectContent>{Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Employer Name</Label><Input placeholder="Company or employer" value={tenantForm.employerName} onChange={e => setTenantForm(p => ({ ...p, employerName: e.target.value }))} data-testid="input-employer-name" /></div>
+              <div className="space-y-1.5"><Label>Household Income ($)</Label><Input type="number" placeholder="75000" min={0} value={tenantForm.householdIncome} onChange={e => setTenantForm(p => ({ ...p, householdIncome: e.target.value }))} data-testid="input-household-income" /></div>
+            </div>
             <div className="space-y-1.5">
-              <Label>Employment Status *</Label>
-              <Select value={tenantForm.employmentStatus} onValueChange={v => setTenantForm(p => ({ ...p, employmentStatus: v }))}>
-                <SelectTrigger data-testid="select-employment-status"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>{EMPLOYMENT_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              <Label>Payment Method</Label>
+              <Select value={tenantForm.paymentMethod} onValueChange={v => setTenantForm(p => ({ ...p, paymentMethod: v }))}>
+                <SelectTrigger data-testid="select-payment-method"><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>{PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">

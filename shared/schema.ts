@@ -216,6 +216,9 @@ export const rgLeads = pgTable("rg_leads", {
   notes: text("notes"),
   status: rgLeadStatusEnum("status").notNull().default("New"),
   markupPercent: decimal("markup_percent", { precision: 5, scale: 2 }).default("0"),
+  householdIncome: decimal("household_income", { precision: 10, scale: 2 }),
+  employerName: text("employer_name"),
+  paymentMethod: text("payment_method"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
