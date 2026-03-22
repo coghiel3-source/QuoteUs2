@@ -824,6 +824,9 @@ export default function RepDashboard() {
                                   <UserPlus className="h-3.5 w-3.5" /> New Tenant
                                 </button>
                               )}
+                              {tenants.length > 0 && (
+                                <button onClick={e => { e.stopPropagation(); const active = tenants.find(t => t.status !== "Declined") || tenants[0]; openLead(active); }} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500" title="View lead detail" data-testid={`button-view-lead-${loc.id}`}><Eye className="h-3.5 w-3.5" /></button>
+                              )}
                               <button onClick={e => openEditLocation(loc, e)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" data-testid={`button-edit-location-${loc.id}`}><Pencil className="h-3.5 w-3.5" /></button>
                             </div>
                           </div>
