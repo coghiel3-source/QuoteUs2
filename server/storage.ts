@@ -618,7 +618,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLocation(location: InsertRgLocation): Promise<RgLocation> {
-    const [created] = await db.insert(rgLocations).values(location).returning();
+    const year = new Date().getFullYear();
+    const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(rgLocations);
+    const seq = String(Number(count) + 1).padStart(5, "0");
+    const applicationNumber = `RG-${year}-${seq}`;
+    const [created] = await db.insert(rgLocations).values({ ...location, applicationNumber }).returning();
     return created;
   }
 

@@ -2845,6 +2845,36 @@ export async function registerRoutes(
     }
   });
 
+  // Get all doc requests for all tenants at a location
+  app.get("/api/rep/locations/:id/doc-requests", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const tenants = await storage.getLeadsForLocation(req.params.id);
+      const allReqs = await Promise.all(tenants.map(t => storage.getDocumentRequestsForLead(t.id)));
+      res.json(allReqs.flat());
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all uploaded docs for all tenants at a location
+  app.get("/api/rep/locations/:id/documents", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const tenants = await storage.getLeadsForLocation(req.params.id);
+      const allDocs = await Promise.all(tenants.map(t => storage.getDocumentsForLead(t.id)));
+      res.json(allDocs.flat());
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Create a location
   app.post("/api/rep/locations", async (req, res) => {
     try {

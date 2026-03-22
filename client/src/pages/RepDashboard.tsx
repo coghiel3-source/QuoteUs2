@@ -58,39 +58,41 @@ function StatCard({ label, value, sub, color }: { label: string; value: number |
   );
 }
 
-function PricingTab({ lead, onSaveMarkup }: { lead: RgLead; onSaveMarkup: (pct: number) => void }) {
-  const rent = Number(lead.monthlyRent) || 0;
-  const [markup, setMarkup] = useState<string>(lead.markupPercent ? String(Number(lead.markupPercent)) : "0");
-  const [saved, setSaved] = useState(false);
+function PricingTab({
+  monthlyRent, markupPercent, baseAnnualRate = 4.5, baseMonthlyRate = 5,
+  onSaveMarkup, onSaveRates, paymentLink, onSavePaymentLink,
+}: {
+  monthlyRent: number;
+  markupPercent?: number | string | null;
+  baseAnnualRate?: number;
+  baseMonthlyRate?: number;
+  onSaveMarkup?: (pct: number) => void;
+  onSaveRates?: (annual: number, monthly: number) => void;
+  paymentLink?: string | null;
+  onSavePaymentLink?: (link: string) => void;
+}) {
+  const rent = monthlyRent || 0;
+  const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
+  const [editAnnual, setEditAnnual] = useState<string>(String(baseAnnualRate));
+  const [editMonthly, setEditMonthly] = useState<string>(String(baseMonthlyRate));
+  const [editLink, setEditLink] = useState<string>(paymentLink || "");
+  const [markupSaved, setMarkupSaved] = useState(false);
+  const [ratesSaved, setRatesSaved] = useState(false);
+  const [linkSaved, setLinkSaved] = useState(false);
+
   const markupNum = Math.max(0, parseFloat(markup) || 0);
-
+  const annualRateNum = parseFloat(editAnnual) || 4.5;
+  const monthlyRateNum = parseFloat(editMonthly) || 5;
+  const finalAnnualRate = annualRateNum + markupNum;
+  const finalMonthlyRate = monthlyRateNum + markupNum;
   const annualRent = rent * 12;
-
-  // Base rates
-  const BASE_ANNUAL_RATE = 4.5;
-  const BASE_MONTHLY_RATE = 5;
-
-  // With markup
-  const finalAnnualRate = BASE_ANNUAL_RATE + markupNum;
-  const finalMonthlyRate = BASE_MONTHLY_RATE + markupNum;
-
-  // Annual plan (pay in full)
   const annualPremium = (finalAnnualRate / 100) * annualRent;
-  const annualPremiumMonthly = annualPremium / 12; // what you'd pay monthly if annual
-
-  // Monthly plan
+  const annualPremiumMonthly = annualPremium / 12;
   const monthlyPremium = (finalMonthlyRate / 100) * rent;
-  const monthlyPremiumAnnual = monthlyPremium * 12; // total cost if paying monthly all year
-
-  function handleSave() {
-    onSaveMarkup(markupNum);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
+  const monthlyPremiumAnnual = monthlyPremium * 12;
 
   return (
     <div className="space-y-5">
-      {/* Rent summary */}
       <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-4">
         <div className="bg-blue-100 rounded-lg p-2.5"><DollarSign className="h-5 w-5 text-blue-600" /></div>
         <div>
@@ -100,45 +102,57 @@ function PricingTab({ lead, onSaveMarkup }: { lead: RgLead; onSaveMarkup: (pct: 
         </div>
       </div>
 
-      {/* Rep markup */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-        <p className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-3">
-          <BadgePercent className="h-4 w-4" /> Additional Markup
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <div className="relative">
-              <Input
-                type="number"
-                min="0"
-                max="20"
-                step="0.5"
-                value={markup}
-                onChange={e => { setMarkup(e.target.value); setSaved(false); }}
-                className="pr-8 text-lg font-semibold"
-                data-testid="input-markup-percent"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">%</span>
+      {/* Editable base rates (location level only) */}
+      {onSaveRates && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-blue-800 flex items-center gap-2 mb-3"><BadgePercent className="h-4 w-4" /> Base Rates</p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <Label className="text-xs text-blue-700 mb-1 block">Annual Rate (%)</Label>
+              <div className="relative">
+                <Input type="number" min="0" max="30" step="0.1" value={editAnnual} onChange={e => { setEditAnnual(e.target.value); setRatesSaved(false); }} className="pr-8" data-testid="input-annual-rate" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+              </div>
             </div>
-            <p className="text-xs text-amber-700 mt-1">Added to base rates</p>
+            <div>
+              <Label className="text-xs text-blue-700 mb-1 block">Monthly Rate (%)</Label>
+              <div className="relative">
+                <Input type="number" min="0" max="30" step="0.1" value={editMonthly} onChange={e => { setEditMonthly(e.target.value); setRatesSaved(false); }} className="pr-8" data-testid="input-monthly-rate" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+              </div>
+            </div>
           </div>
-          <Button onClick={handleSave} size="sm" variant={saved ? "outline" : "default"} className={saved ? "border-green-500 text-green-600" : ""} data-testid="button-save-markup">
-            {saved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
+          <Button onClick={() => { onSaveRates(annualRateNum, monthlyRateNum); setRatesSaved(true); setTimeout(() => setRatesSaved(false), 2000); }} size="sm" variant={ratesSaved ? "outline" : "default"} className={ratesSaved ? "border-green-500 text-green-600" : ""} data-testid="button-save-rates">
+            {ratesSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save Rates"}
           </Button>
         </div>
-      </div>
+      )}
+
+      {/* Markup (lead level) */}
+      {onSaveMarkup && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-3"><BadgePercent className="h-4 w-4" /> Additional Markup</p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <div className="relative">
+                <Input type="number" min="0" max="20" step="0.5" value={markup} onChange={e => { setMarkup(e.target.value); setMarkupSaved(false); }} className="pr-8 text-lg font-semibold" data-testid="input-markup-percent" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">%</span>
+              </div>
+              <p className="text-xs text-amber-700 mt-1">Added to base rates ({annualRateNum}% / {monthlyRateNum}%)</p>
+            </div>
+            <Button onClick={() => { onSaveMarkup(markupNum); setMarkupSaved(true); setTimeout(() => setMarkupSaved(false), 2000); }} size="sm" variant={markupSaved ? "outline" : "default"} className={markupSaved ? "border-green-500 text-green-600" : ""} data-testid="button-save-markup">
+              {markupSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 gap-4">
-
-        {/* Annual Plan */}
         <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
           <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="font-semibold text-sm">Annual Plan — Pay in Full</span>
-            </div>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalAnnualRate}% of annual rent</span>
+            <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /><span className="font-semibold text-sm">Annual Plan — Pay in Full</span></div>
+            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalAnnualRate.toFixed(2)}% of annual rent</span>
           </div>
           <div className="p-4">
             <div className="flex items-end gap-2 mb-1">
@@ -147,36 +161,17 @@ function PricingTab({ lead, onSaveMarkup }: { lead: RgLead; onSaveMarkup: (pct: 
             </div>
             <p className="text-xs text-gray-400 mb-3">Equivalent to ${fmt(annualPremiumMonthly)}/month</p>
             <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-500">
-                <span>Annual rent</span>
-                <span>${fmt(annualRent)}</span>
-              </div>
-              <div className="flex justify-between text-gray-500">
-                <span>Base rate ({BASE_ANNUAL_RATE}%)</span>
-                <span>${fmt((BASE_ANNUAL_RATE / 100) * annualRent)}</span>
-              </div>
-              {markupNum > 0 && (
-                <div className="flex justify-between text-amber-600">
-                  <span>Rep markup ({markupNum}%)</span>
-                  <span>+${fmt((markupNum / 100) * annualRent)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t">
-                <span>Total premium</span>
-                <span>${fmt(annualPremium)}</span>
-              </div>
+              <div className="flex justify-between text-gray-500"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
+              <div className="flex justify-between text-gray-500"><span>Base rate ({annualRateNum}%)</span><span>${fmt((annualRateNum / 100) * annualRent)}</span></div>
+              {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * annualRent)}</span></div>}
+              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
             </div>
           </div>
         </div>
-
-        {/* Monthly Plan */}
         <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
           <div className="bg-green-600 text-white px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="font-semibold text-sm">Monthly Plan</span>
-            </div>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalMonthlyRate}% of monthly rent</span>
+            <div className="flex items-center gap-2"><CreditCard className="h-4 w-4" /><span className="font-semibold text-sm">Monthly Plan</span></div>
+            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalMonthlyRate.toFixed(2)}% of monthly rent</span>
           </div>
           <div className="p-4">
             <div className="flex items-end gap-2 mb-1">
@@ -185,44 +180,38 @@ function PricingTab({ lead, onSaveMarkup }: { lead: RgLead; onSaveMarkup: (pct: 
             </div>
             <p className="text-xs text-gray-400 mb-3">Total annual cost: ${fmt(monthlyPremiumAnnual)}</p>
             <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-500">
-                <span>Monthly rent</span>
-                <span>${fmt(rent)}</span>
-              </div>
-              <div className="flex justify-between text-gray-500">
-                <span>Base rate ({BASE_MONTHLY_RATE}%)</span>
-                <span>${fmt((BASE_MONTHLY_RATE / 100) * rent)}/mo</span>
-              </div>
-              {markupNum > 0 && (
-                <div className="flex justify-between text-amber-600">
-                  <span>Rep markup ({markupNum}%)</span>
-                  <span>+${fmt((markupNum / 100) * rent)}/mo</span>
-                </div>
-              )}
-              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t">
-                <span>Monthly premium</span>
-                <span>${fmt(monthlyPremium)}/mo</span>
-              </div>
+              <div className="flex justify-between text-gray-500"><span>Monthly rent</span><span>${fmt(rent)}</span></div>
+              <div className="flex justify-between text-gray-500"><span>Base rate ({monthlyRateNum}%)</span><span>${fmt((monthlyRateNum / 100) * rent)}/mo</span></div>
+              {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * rent)}/mo</span></div>}
+              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Savings comparison */}
       {rent > 0 && (
         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm">
-          <p className="font-semibold text-indigo-800 mb-2 flex items-center gap-2">
-            <Calculator className="h-4 w-4" /> Savings Comparison
-          </p>
+          <p className="font-semibold text-indigo-800 mb-2 flex items-center gap-2"><Calculator className="h-4 w-4" /> Savings Comparison</p>
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-indigo-700">Annual plan saves:</p>
-              <p className="text-xs text-indigo-500 mt-0.5">vs paying monthly all year</p>
-            </div>
+            <div><p className="text-indigo-700">Annual plan saves:</p><p className="text-xs text-indigo-500 mt-0.5">vs paying monthly all year</p></div>
             <p className={`text-xl font-bold ${monthlyPremiumAnnual > annualPremium ? "text-green-600" : "text-gray-500"}`}>
               {monthlyPremiumAnnual > annualPremium ? `$${fmt(monthlyPremiumAnnual - annualPremium)}` : "—"}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Payment link */}
+      {onSavePaymentLink !== undefined && (
+        <div className="bg-gray-50 border rounded-xl p-4">
+          <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3"><ExternalLink className="h-4 w-4" /> Payment Page Link</p>
+          <div className="flex gap-2">
+            <Input value={editLink} onChange={e => { setEditLink(e.target.value); setLinkSaved(false); }} placeholder="https://..." className="flex-1" data-testid="input-payment-link" />
+            <Button onClick={() => { onSavePaymentLink(editLink); setLinkSaved(true); setTimeout(() => setLinkSaved(false), 2000); }} size="sm" variant={linkSaved ? "outline" : "default"} className={linkSaved ? "border-green-500 text-green-600" : ""} data-testid="button-save-payment-link">
+              {linkSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
+            </Button>
+          </div>
+          {paymentLink && <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open payment page</a>}
         </div>
       )}
     </div>
@@ -256,6 +245,12 @@ export default function RepDashboard() {
   const [docRequests, setDocRequests] = useState<DocumentRequest[]>([]);
   const [documents, setDocuments] = useState<RepDocument[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Location detail
+  const [locationDetailTab, setLocationDetailTab] = useState<"info" | "pricing" | "docs">("info");
+  const [locationDocRequests, setLocationDocRequests] = useState<DocumentRequest[]>([]);
+  const [locationDocs, setLocationDocs] = useState<RepDocument[]>([]);
+  const [updatingLocationStatus, setUpdatingLocationStatus] = useState(false);
 
   // Edit lead dialog
   const [showEditLead, setShowEditLead] = useState(false);
@@ -341,7 +336,51 @@ export default function RepDashboard() {
     setSelectedLocation(loc);
     setLocationView("detail");
     setSelectedLead(null);
+    setLocationDetailTab("info");
+    setLocationDocRequests([]);
+    setLocationDocs([]);
     await loadTenantsForLocation(loc.id);
+    if (user) {
+      try {
+        const [reqs, docs] = await Promise.all([
+          apiRequest<DocumentRequest[]>(`/rep/locations/${loc.id}/doc-requests?actorId=${user.id}`),
+          apiRequest<RepDocument[]>(`/rep/locations/${loc.id}/documents?actorId=${user.id}`),
+        ]);
+        setLocationDocRequests(reqs || []);
+        setLocationDocs(docs || []);
+      } catch {}
+    }
+  }
+
+  async function handleLocationStatusChange(status: string) {
+    if (!selectedLocation || !user) return;
+    setUpdatingLocationStatus(true);
+    try {
+      const updated = await apiRequest<RgLocation>(`/rep/locations/${selectedLocation.id}`, { method: "PATCH", body: JSON.stringify({ actorId: user.id, status }) });
+      setSelectedLocation(updated);
+      setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+    } catch { toast({ title: "Failed to update status", variant: "destructive" }); }
+    finally { setUpdatingLocationStatus(false); }
+  }
+
+  async function handleSaveLocationRates(annual: number, monthly: number) {
+    if (!selectedLocation || !user) return;
+    try {
+      const updated = await apiRequest<RgLocation>(`/rep/locations/${selectedLocation.id}`, { method: "PATCH", body: JSON.stringify({ actorId: user.id, annualRatePercent: String(annual), monthlyRatePercent: String(monthly) }) });
+      setSelectedLocation(updated);
+      setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+      toast({ title: "Rates saved" });
+    } catch { toast({ title: "Failed to save rates", variant: "destructive" }); }
+  }
+
+  async function handleSaveLocationPaymentLink(link: string) {
+    if (!selectedLocation || !user) return;
+    try {
+      const updated = await apiRequest<RgLocation>(`/rep/locations/${selectedLocation.id}`, { method: "PATCH", body: JSON.stringify({ actorId: user.id, paymentLink: link || null }) });
+      setSelectedLocation(updated);
+      setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+      toast({ title: "Payment link saved" });
+    } catch { toast({ title: "Failed to save payment link", variant: "destructive" }); }
   }
 
   async function openLead(lead: RgLead) {
@@ -854,86 +893,234 @@ export default function RepDashboard() {
                   <button onClick={() => { setLocationView("list"); setSelectedLocation(null); }} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4" data-testid="button-back-to-locations">
                     <ChevronRight className="h-4 w-4 rotate-180" /> Back to Locations
                   </button>
-                  <div className="bg-white border rounded-xl overflow-hidden mb-4">
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Building2 className="h-5 w-5 text-blue-200" />
-                            <h2 className="text-xl font-bold">{selectedLocation.propertyAddress}</h2>
-                            {selectedLocation.unit && <span className="text-blue-200 text-sm">Unit {selectedLocation.unit}</span>}
-                          </div>
-                          <p className="text-blue-100 text-sm">Landlord: {selectedLocation.landlordName}</p>
+
+                  {/* Location header */}
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-xl p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <Building2 className="h-5 w-5 text-blue-200 flex-shrink-0" />
+                          <h2 className="text-xl font-bold truncate">{selectedLocation.propertyAddress}</h2>
+                          {selectedLocation.unit && <span className="text-blue-200 text-sm">Unit {selectedLocation.unit}</span>}
                         </div>
-                        <div className="flex gap-2">
-                          <button onClick={e => openEditLocation(selectedLocation, e)} className="p-2 bg-blue-500/40 rounded-lg hover:bg-blue-500/60 text-white" data-testid="button-edit-location-detail"><Pencil className="h-4 w-4" /></button>
-                          <button onClick={() => setDeleteLocationConfirm(selectedLocation.id)} className="p-2 bg-red-500/40 rounded-lg hover:bg-red-500/60 text-white" data-testid="button-delete-location"><Trash2 className="h-4 w-4" /></button>
-                        </div>
+                        <p className="text-blue-100 text-sm">Landlord: {selectedLocation.landlordName}</p>
+                        {selectedLocation.applicationNumber && (
+                          <span className="mt-2 inline-block text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-mono">{selectedLocation.applicationNumber}</span>
+                        )}
                       </div>
-                      <div className="flex gap-4 mt-3 text-sm text-blue-100">
-                        <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />${Number(selectedLocation.monthlyRent).toLocaleString()}/mo</span>
-                        {selectedLocation.moveInDate && <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{selectedLocation.moveInDate}</span>}
-                        {selectedLocation.landlordPhone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{selectedLocation.landlordPhone}</span>}
-                        {selectedLocation.landlordEmail && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{selectedLocation.landlordEmail}</span>}
+                      <div className="flex gap-1.5 flex-shrink-0 ml-2">
+                        <button onClick={e => openEditLocation(selectedLocation, e)} className="p-2 bg-blue-500/40 rounded-lg hover:bg-blue-500/60 text-white" data-testid="button-edit-location-detail"><Pencil className="h-4 w-4" /></button>
+                        <button onClick={() => setDeleteLocationConfirm(selectedLocation.id)} className="p-2 bg-red-500/40 rounded-lg hover:bg-red-500/60 text-white" data-testid="button-delete-location"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </div>
-                    <div className="p-5">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                          <User className="h-4 w-4 text-blue-600" /> Tenant Applications
-                          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{currentLocationTenants.length}</span>
-                        </h3>
-                        <Button size="sm" onClick={() => openAddTenant(selectedLocation)} data-testid="button-add-tenant-to-location"><UserPlus className="h-3.5 w-3.5 mr-1" /> Add Tenant</Button>
-                      </div>
-                      {hasDeclinedTenant && !hasApprovedTenant && (
-                        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
-                          <div className="flex items-start gap-3">
+                    <div className="flex gap-3 mt-3 text-xs text-blue-100 flex-wrap">
+                      <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />${Number(selectedLocation.monthlyRent).toLocaleString()}/mo</span>
+                      {selectedLocation.moveInDate && <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{selectedLocation.moveInDate}</span>}
+                      {selectedLocation.landlordPhone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{selectedLocation.landlordPhone}</span>}
+                      {selectedLocation.landlordEmail && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{selectedLocation.landlordEmail}</span>}
+                    </div>
+                  </div>
+
+                  {/* Status + actions bar */}
+                  <div className="bg-white border-x border-b px-4 py-3 flex items-center justify-between flex-wrap gap-2 rounded-b-xl mb-4 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Status:</span>
+                      <Select value={selectedLocation.status || "New"} onValueChange={handleLocationStatusChange} disabled={updatingLocationStatus}>
+                        <SelectTrigger className="h-7 text-xs border-none bg-transparent p-0 w-auto gap-1 font-medium" data-testid="select-location-status">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[(selectedLocation.status || "New") as Status]}`}>{selectedLocation.status || "New"}</span>
+                        </SelectTrigger>
+                        <SelectContent>{Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {isRep && (
+                        <Button size="sm" variant="outline" onClick={() => openNewReminder(`Follow up · ${selectedLocation.propertyAddress}`)} data-testid="button-remind-location">
+                          <Bell className="h-3.5 w-3.5 mr-1" /> Remind
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => {
+                        const firstTenant = currentLocationTenants.find(t => t.status !== "Declined") || currentLocationTenants[0];
+                        if (firstTenant) {
+                          setShowDocRequest(true);
+                          setDocReqForm({ recipientType: "tenant", recipientName: firstTenant.tenantName, recipientEmail: firstTenant.tenantEmail, requiredDocs: [], expiresInDays: 7 });
+                          setCreatedLink(null);
+                          openLead(firstTenant);
+                        } else {
+                          openAddTenant(selectedLocation);
+                        }
+                      }} data-testid="button-request-docs-location">
+                        <Send className="h-3.5 w-3.5 mr-1" /> Request Docs
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
+                    <button onClick={() => setLocationDetailTab("info")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${locationDetailTab === "info" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-info">
+                      Info
+                    </button>
+                    <button onClick={() => setLocationDetailTab("pricing")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${locationDetailTab === "pricing" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-pricing">
+                      <Calculator className="h-3.5 w-3.5" /> Pricing
+                    </button>
+                    <button onClick={() => setLocationDetailTab("docs")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${locationDetailTab === "docs" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-docs">
+                      Documents ({locationDocs.length})
+                    </button>
+                  </div>
+
+                  {/* INFO TAB */}
+                  {locationDetailTab === "info" && (
+                    <div className="space-y-4">
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Property & Landlord</CardTitle></CardHeader>
+                        <CardContent className="text-sm space-y-1">
+                          <p><span className="text-gray-500">Address:</span> <strong>{selectedLocation.propertyAddress}{selectedLocation.unit ? `, Unit ${selectedLocation.unit}` : ""}</strong></p>
+                          <p><span className="text-gray-500">Monthly Rent:</span> ${Number(selectedLocation.monthlyRent).toLocaleString()}/month</p>
+                          {selectedLocation.moveInDate && <p><span className="text-gray-500">Move-In Date:</span> {selectedLocation.moveInDate}</p>}
+                          <p><span className="text-gray-500">Landlord:</span> {selectedLocation.landlordName}</p>
+                          {selectedLocation.landlordEmail && <p><span className="text-gray-500">Landlord Email:</span> {selectedLocation.landlordEmail}</p>}
+                          {selectedLocation.landlordPhone && <p><span className="text-gray-500">Landlord Phone:</span> {selectedLocation.landlordPhone}</p>}
+                          {selectedLocation.notes && <p className="mt-2 pt-2 border-t text-gray-600"><span className="text-gray-500">Notes:</span> {selectedLocation.notes}</p>}
+                        </CardContent>
+                      </Card>
+
+                      {/* Doc requests summary in info tab */}
+                      {locationDocRequests.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Document Requests</CardTitle></CardHeader>
+                          <CardContent className="space-y-2">
+                            {locationDocRequests.map(req => {
+                              const link = `${window.location.origin}/doc-upload/${req.token}`;
+                              const expired = req.expiresAt && new Date(req.expiresAt) < new Date();
+                              return (
+                                <div key={req.id} className="bg-gray-50 rounded-lg p-3 text-sm">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium capitalize">{req.recipientType}: {req.recipientName}</span>
+                                    {expired ? <span className="text-xs text-red-600 font-medium">Expired</span> : <span className="text-xs text-green-600 font-medium">Active</span>}
+                                  </div>
+                                  <div className="flex gap-2 mt-1">
+                                    <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
+                                    <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Tenant list */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                            <User className="h-4 w-4 text-blue-600" /> Tenant Applications
+                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{currentLocationTenants.length}</span>
+                          </h3>
+                          <Button size="sm" onClick={() => openAddTenant(selectedLocation)} data-testid="button-add-tenant-to-location"><UserPlus className="h-3.5 w-3.5 mr-1" /> Add Tenant</Button>
+                        </div>
+                        {hasDeclinedTenant && !hasApprovedTenant && (
+                          <div className="mb-3 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
                             <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                             <div className="flex-1">
                               <p className="font-semibold text-red-800 text-sm">Tenant Declined</p>
-                              <p className="text-red-700 text-xs mt-0.5">Add a new tenant for this property without re-entering property details.</p>
-                              <Button size="sm" className="mt-3 bg-red-600 hover:bg-red-700 text-white" onClick={() => openAddTenant(selectedLocation)} data-testid="button-replace-tenant">
+                              <p className="text-red-700 text-xs mt-0.5">Add a new tenant for this property.</p>
+                              <Button size="sm" className="mt-2 bg-red-600 hover:bg-red-700 text-white" onClick={() => openAddTenant(selectedLocation)} data-testid="button-replace-tenant">
                                 <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Add New Tenant <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
                               </Button>
                             </div>
                           </div>
-                        </div>
-                      )}
-                      {currentLocationTenants.length === 0 ? (
-                        <div className="text-center py-10 border-2 border-dashed rounded-xl">
-                          <User className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                          <p className="text-gray-500 text-sm font-medium">No tenants yet</p>
-                          <Button size="sm" onClick={() => openAddTenant(selectedLocation)} className="mt-3" data-testid="button-first-tenant"><UserPlus className="h-4 w-4 mr-1" /> Add First Tenant</Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {currentLocationTenants.map((tenant, idx) => (
-                            <div key={tenant.id} className={`border rounded-xl p-4 cursor-pointer hover:shadow-sm transition-all ${tenant.status === "Declined" ? "border-red-200 bg-red-50/30 opacity-80" : tenant.status === "Approved" ? "border-green-200 bg-green-50/30" : "hover:border-blue-300"}`} onClick={() => openLead(tenant)} data-testid={`tenant-card-${tenant.id}`}>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ${tenant.status === "Declined" ? "bg-red-100 text-red-600" : tenant.status === "Approved" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}>{idx + 1}</div>
-                                  <div>
-                                    <p className="font-semibold text-gray-900">{tenant.tenantName}</p>
-                                    <p className="text-xs text-gray-500">{tenant.tenantEmail} · {tenant.employmentStatus}</p>
+                        )}
+                        {currentLocationTenants.length === 0 ? (
+                          <div className="text-center py-10 border-2 border-dashed rounded-xl">
+                            <User className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                            <p className="text-gray-500 text-sm font-medium">No tenants yet</p>
+                            <Button size="sm" onClick={() => openAddTenant(selectedLocation)} className="mt-3" data-testid="button-first-tenant"><UserPlus className="h-4 w-4 mr-1" /> Add First Tenant</Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {currentLocationTenants.map((tenant, idx) => (
+                              <div key={tenant.id} className={`border rounded-xl p-4 cursor-pointer hover:shadow-sm transition-all ${tenant.status === "Declined" ? "border-red-200 bg-red-50/30 opacity-80" : tenant.status === "Approved" ? "border-green-200 bg-green-50/30" : "hover:border-blue-300"}`} onClick={() => openLead(tenant)} data-testid={`tenant-card-${tenant.id}`}>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ${tenant.status === "Declined" ? "bg-red-100 text-red-600" : tenant.status === "Approved" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}>{idx + 1}</div>
+                                    <div>
+                                      <p className="font-semibold text-gray-900">{tenant.tenantName}</p>
+                                      <p className="text-xs text-gray-500">{tenant.tenantEmail} · {tenant.employmentStatus}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                    <Select value={tenant.status} onValueChange={v => handleStatusChange(tenant.id, v)} disabled={updatingStatus}>
+                                      <SelectTrigger className={`h-7 text-xs px-2 py-0.5 rounded-full border-0 font-medium w-auto ${STATUS_COLORS[tenant.status as Status]}`} data-testid={`select-inline-status-${tenant.id}`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>{Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <ChevronRight className="h-4 w-4 text-gray-400" />
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                  <Select value={tenant.status} onValueChange={v => handleStatusChange(tenant.id, v)} disabled={updatingStatus}>
-                                    <SelectTrigger className={`h-7 text-xs px-2 py-0.5 rounded-full border-0 font-medium w-auto ${STATUS_COLORS[tenant.status as Status]}`} data-testid={`select-inline-status-${tenant.id}`}>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>{Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                                  </Select>
-                                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PRICING TAB */}
+                  {locationDetailTab === "pricing" && (
+                    <PricingTab
+                      monthlyRent={Number(selectedLocation.monthlyRent)}
+                      markupPercent={0}
+                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || 4.5}
+                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || 5}
+                      onSaveRates={handleSaveLocationRates}
+                      paymentLink={selectedLocation.paymentLink}
+                      onSavePaymentLink={handleSaveLocationPaymentLink}
+                    />
+                  )}
+
+                  {/* DOCUMENTS TAB */}
+                  {locationDetailTab === "docs" && (
+                    <div>
+                      {locationDocRequests.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Document Requests</p>
+                          <div className="space-y-2">
+                            {locationDocRequests.map(req => {
+                              const link = `${window.location.origin}/doc-upload/${req.token}`;
+                              const expired = req.expiresAt && new Date(req.expiresAt) < new Date();
+                              return (
+                                <div key={req.id} className="bg-white border rounded-lg p-3 text-sm">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium capitalize">{req.recipientType}: {req.recipientName}</span>
+                                    {expired ? <span className="text-xs text-red-600 font-medium">Expired</span> : <span className="text-xs text-green-600 font-medium">Active</span>}
+                                  </div>
+                                  <div className="flex gap-2 mt-1">
+                                    <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
+                                    <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
-                      {selectedLocation.notes && <div className="mt-4 bg-gray-50 rounded-lg p-3 text-sm text-gray-600"><p className="font-medium text-xs text-gray-400 uppercase mb-1">Notes</p>{selectedLocation.notes}</div>}
+                      {locationDocs.length === 0 && locationDocRequests.length === 0 ? (
+                        <div className="text-center py-12"><FileText className="h-10 w-10 text-gray-300 mx-auto mb-2" /><p className="text-gray-500 text-sm">No documents yet</p><p className="text-gray-400 text-xs mt-1">Request documents from tenants to see them here</p></div>
+                      ) : locationDocs.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Uploaded Documents</p>
+                          <div className="space-y-2">
+                            {locationDocs.map(doc => (
+                              <div key={doc.id} className="bg-white border rounded-lg p-3 flex items-center justify-between">
+                                <div className="flex items-center gap-3"><FileText className="h-5 w-5 text-blue-500" /><div><p className="text-sm font-medium">{doc.fileName}</p><p className="text-xs text-gray-500">{doc.docType}</p></div></div>
+                                <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded hover:bg-gray-100 text-gray-500"><Eye className="h-4 w-4" /></a>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               )
             )}
@@ -1163,9 +1350,18 @@ export default function RepDashboard() {
               )}
 
               {/* PRICING TAB */}
-              {detailTab === "pricing" && (
-                <PricingTab lead={selectedLead} onSaveMarkup={handleSaveMarkup} />
-              )}
+              {detailTab === "pricing" && (() => {
+                const loc = locations.find(l => l.id === selectedLead.locationId);
+                return (
+                  <PricingTab
+                    monthlyRent={Number(selectedLead.monthlyRent)}
+                    markupPercent={selectedLead.markupPercent}
+                    baseAnnualRate={Number(loc?.annualRatePercent) || 4.5}
+                    baseMonthlyRate={Number(loc?.monthlyRatePercent) || 5}
+                    onSaveMarkup={handleSaveMarkup}
+                  />
+                );
+              })()}
 
               {/* DOCS TAB */}
               {detailTab === "docs" && (

@@ -186,6 +186,7 @@ export const rgLeadStatusEnum = pgEnum("rg_lead_status", ["New", "Contacted", "D
 export const rgLocations = pgTable("rg_locations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   repId: varchar("rep_id").notNull().references(() => users.id),
+  applicationNumber: text("application_number").unique(),
   propertyAddress: text("property_address").notNull(),
   unit: text("unit"),
   landlordName: text("landlord_name").notNull(),
@@ -194,6 +195,10 @@ export const rgLocations = pgTable("rg_locations", {
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(),
   moveInDate: text("move_in_date"),
   notes: text("notes"),
+  status: text("status").default("New"),
+  annualRatePercent: decimal("annual_rate_percent", { precision: 5, scale: 2 }).default("4.50"),
+  monthlyRatePercent: decimal("monthly_rate_percent", { precision: 5, scale: 2 }).default("5.00"),
+  paymentLink: text("payment_link"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -343,6 +348,7 @@ export type InsertReferralPartner = z.infer<typeof insertReferralPartnerSchema>;
 
 export const insertRgLocationSchema = createInsertSchema(rgLocations).omit({
   id: true,
+  applicationNumber: true,
   createdAt: true,
 });
 
