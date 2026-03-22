@@ -244,6 +244,79 @@ export default function RentGuaranteePage() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 mt-6 space-y-6">
+        {/* What Rent Guarantee Covers */}
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <Card className="shadow-md border-none bg-green-50/60">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-green-600" />
+                What Rent Guarantee Covers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3" data-testid="covers-list">
+                <CheckItem>Up to 12 months of unpaid rent covered (max $60,000)</CheckItem>
+                <CheckItem>Up to $1,500 in legal / eviction cost coverage</CheckItem>
+                <CheckItem>Up to $10,000 in damage reimbursement</CheckItem>
+                <CheckItem>1 month of abandoned tenancy coverage</CheckItem>
+              </ul>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Tenant Qualifications */}
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <Card className="shadow-md border-none bg-blue-50/40">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                Tenant Qualifications
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-3" data-testid="qualifications-list">
+                <CheckItem>Household total rent-to-income ratio of under 45%</CheckItem>
+                <CheckItem>No bankruptcy, judgements, or previous evictions reported in the last 3 years</CheckItem>
+                <CheckItem>At least one member of the household is employed</CheckItem>
+                <CheckItem>Government ID required</CheckItem>
+                <CheckItem>Proof of income / employment</CheckItem>
+              </ul>
+              <div className="mt-4 border-l-2 border-blue-200 pl-4">
+                <p className="text-sm font-semibold text-blue-800 mb-2">Existing tenants of 1+ years:</p>
+                <ul className="space-y-2">
+                  <CheckItem sub>Proof of payment for those months</CheckItem>
+                  <CheckItem sub>No rent arrears greater than 5 days in current tenancy</CheckItem>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Documents Required */}
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <Card className="shadow-md border-none bg-slate-50/60">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-slate-600" />
+                Documents Required
+              </CardTitle>
+              <CardDescription>Required at time of claim (not for approval)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3" data-testid="documents-list">
+                <CheckItem>Executed lease agreement</CheckItem>
+                <CheckItem>Tenant screening / credit report</CheckItem>
+                <CheckItem>Proof of income</CheckItem>
+                <CheckItem>Rent payment history</CheckItem>
+                <CheckItem>Move-in inspection with photos (only required for property damage claims)</CheckItem>
+                <CheckItem>Proof of property ownership</CheckItem>
+                <CheckItem>Proof of renters insurance</CheckItem>
+                <CheckItem>Proof of property insurance</CheckItem>
+              </ul>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Landlord Form */}
         <motion.div id="landlord-form" initial="hidden" animate="visible" variants={fadeUp}>
           <AnimatePresence mode="wait">
@@ -661,78 +734,6 @@ export default function RentGuaranteePage() {
           </AnimatePresence>
         </motion.div>
 
-        {/* What Rent Guarantee Covers */}
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <Card className="shadow-md border-none bg-green-50/60">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-green-600" />
-                What Rent Guarantee Covers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3" data-testid="covers-list">
-                <CheckItem>Up to 12 months of unpaid rent covered (max $60,000)</CheckItem>
-                <CheckItem>Up to $1,500 in legal / eviction cost coverage</CheckItem>
-                <CheckItem>Up to $10,000 in damage reimbursement</CheckItem>
-                <CheckItem>1 month of abandoned tenancy coverage</CheckItem>
-              </ul>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Tenant Qualifications */}
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <Card className="shadow-md border-none bg-blue-50/40">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                Tenant Qualifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-3" data-testid="qualifications-list">
-                <CheckItem>Household total rent-to-income ratio of under 45%</CheckItem>
-                <CheckItem>No bankruptcy, judgements, or previous evictions reported in the last 3 years</CheckItem>
-                <CheckItem>At least one member of the household is employed</CheckItem>
-                <CheckItem>Government ID required</CheckItem>
-                <CheckItem>Proof of income / employment</CheckItem>
-              </ul>
-              <div className="mt-4 border-l-2 border-blue-200 pl-4">
-                <p className="text-sm font-semibold text-blue-800 mb-2">Existing tenants of 1+ years:</p>
-                <ul className="space-y-2">
-                  <CheckItem sub>Proof of payment for those months</CheckItem>
-                  <CheckItem sub>No rent arrears greater than 5 days in current tenancy</CheckItem>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Documents Required */}
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <Card className="shadow-md border-none bg-slate-50/60">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-slate-600" />
-                Documents Required
-              </CardTitle>
-              <CardDescription>Required at time of claim (not for approval)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3" data-testid="documents-list">
-                <CheckItem>Executed lease agreement</CheckItem>
-                <CheckItem>Tenant screening / credit report</CheckItem>
-                <CheckItem>Proof of income</CheckItem>
-                <CheckItem>Rent payment history</CheckItem>
-                <CheckItem>Move-in inspection with photos (only required for property damage claims)</CheckItem>
-                <CheckItem>Proof of property ownership</CheckItem>
-                <CheckItem>Proof of renters insurance</CheckItem>
-                <CheckItem>Proof of property insurance</CheckItem>
-              </ul>
-            </CardContent>
-          </Card>
-        </motion.div>
       </div>
     </div>
   );
