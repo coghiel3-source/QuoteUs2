@@ -378,6 +378,24 @@ export async function registerRoutes(
       res.status(500).json({ error: error.message });
     }
   });
+
+  // Update rep RG permissions
+  app.patch("/api/admin/users/:id/rg-permissions", async (req, res) => {
+    try {
+      const { actorId, rgPermissions } = req.body;
+      if (!actorId) return res.status(401).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const target = await storage.getUser(req.params.id);
+      if (!target) return res.status(404).json({ error: "User not found" });
+      if (target.role !== "rep") return res.status(400).json({ error: "Only rep users have RG permissions" });
+      const existingPerms = (target.permissions as any) || {};
+      const updated = await storage.updateUser(req.params.id, { permissions: { ...existingPerms, rg: rgPermissions } } as any);
+      res.json(safeUser(updated));
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   // ===== QUOTE / LEAD ROUTES =====
   

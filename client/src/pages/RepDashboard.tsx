@@ -295,6 +295,14 @@ export default function RepDashboard() {
   const isRep = user?.role === "rep";
   const isAdminOrManager = user?.role === "admin" || user?.role === "manager";
 
+  // RG permission helper — admin/manager always have full access; reps default to all true
+  function rgPerm(key: string): boolean {
+    if (!isRep) return true;
+    const rg = (user?.permissions as any)?.rg;
+    if (!rg || rg[key] === undefined) return true;
+    return !!rg[key];
+  }
+
   useEffect(() => {
     if (!user || !["rep", "admin", "manager"].includes(user.role)) {
       navigate("/");
@@ -730,13 +738,13 @@ export default function RepDashboard() {
             </div>
           </div>
           <div className="flex gap-2">
-            {overdueReminders > 0 && isRep && (
+            {overdueReminders > 0 && isRep && rgPerm("canManageReminders") && (
               <button onClick={() => setActiveTab("reminders")} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-lg hover:bg-red-100 transition-colors" data-testid="badge-overdue-reminders">
                 <BellRing className="h-3.5 w-3.5" /> {overdueReminders} overdue
               </button>
             )}
             <Button variant="outline" size="sm" onClick={loadAll} data-testid="button-refresh"><RefreshCw className="h-4 w-4 mr-1" /> Refresh</Button>
-            <Button size="sm" onClick={openNewLocation} data-testid="button-add-location"><Plus className="h-4 w-4 mr-1" /> New Location</Button>
+            {rgPerm("canAddLocations") && <Button size="sm" onClick={openNewLocation} data-testid="button-add-location"><Plus className="h-4 w-4 mr-1" /> New Location</Button>}
           </div>
         </div>
 
@@ -746,7 +754,7 @@ export default function RepDashboard() {
             { id: "overview", icon: <BarChart3 className="h-3.5 w-3.5" />, label: "Overview" },
             { id: "locations", icon: <MapPin className="h-3.5 w-3.5" />, label: `Locations (${locations.length})` },
             { id: "leads", icon: null, label: `All Leads (${leads.length})` },
-            ...(isRep ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
+            ...(isRep && rgPerm("canManageReminders") ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
           ] as { id: ActiveTab; icon: React.ReactNode; label: string }[]).map(tab => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); }} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`} data-testid={`tab-${tab.id}`}>
               {tab.icon}{tab.label}
@@ -837,7 +845,7 @@ export default function RepDashboard() {
                     <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500 font-medium">No locations yet</p>
                     <p className="text-gray-400 text-sm mb-4">Create a location for each rental property</p>
-                    <Button onClick={openNewLocation} size="sm"><Plus className="h-4 w-4 mr-1" /> New Location</Button>
+                    {rgPerm("canAddLocations") && <Button onClick={openNewLocation} size="sm"><Plus className="h-4 w-4 mr-1" /> New Location</Button>}
                   </div>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
@@ -858,7 +866,7 @@ export default function RepDashboard() {
                               </div>
                             </div>
                             <div className="flex gap-1.5">
-                              {allDeclined && (
+                              {allDeclined && rgPerm("canAddTenants") && (
                                 <button onClick={e => { e.stopPropagation(); openAddTenant(loc); }} className="flex items-center gap-1 text-xs px-2.5 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium" data-testid={`button-add-tenant-declined-${loc.id}`}>
                                   <UserPlus className="h-3.5 w-3.5" /> New Tenant
                                 </button>
@@ -866,7 +874,7 @@ export default function RepDashboard() {
                               {tenants.length > 0 && (
                                 <button onClick={e => { e.stopPropagation(); const active = tenants.find(t => t.status !== "Declined") || tenants[0]; openLead(active); }} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500" title="View lead detail" data-testid={`button-view-lead-${loc.id}`}><Eye className="h-3.5 w-3.5" /></button>
                               )}
-                              <button onClick={e => openEditLocation(loc, e)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" data-testid={`button-edit-location-${loc.id}`}><Pencil className="h-3.5 w-3.5" /></button>
+                              {rgPerm("canEditLocations") && <button onClick={e => openEditLocation(loc, e)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" data-testid={`button-edit-location-${loc.id}`}><Pencil className="h-3.5 w-3.5" /></button>}
                             </div>
                           </div>
                           <div className="space-y-1.5 text-xs text-gray-500">
@@ -908,10 +916,12 @@ export default function RepDashboard() {
                           <span className="mt-2 inline-block text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-mono">{selectedLocation.applicationNumber}</span>
                         )}
                       </div>
-                      <div className="flex gap-1.5 flex-shrink-0 ml-2">
-                        <button onClick={e => openEditLocation(selectedLocation, e)} className="p-2 bg-blue-500/40 rounded-lg hover:bg-blue-500/60 text-white" data-testid="button-edit-location-detail"><Pencil className="h-4 w-4" /></button>
-                        <button onClick={() => setDeleteLocationConfirm(selectedLocation.id)} className="p-2 bg-red-500/40 rounded-lg hover:bg-red-500/60 text-white" data-testid="button-delete-location"><Trash2 className="h-4 w-4" /></button>
-                      </div>
+                      {rgPerm("canEditLocations") && (
+                        <div className="flex gap-1.5 flex-shrink-0 ml-2">
+                          <button onClick={e => openEditLocation(selectedLocation, e)} className="p-2 bg-blue-500/40 rounded-lg hover:bg-blue-500/60 text-white" data-testid="button-edit-location-detail"><Pencil className="h-4 w-4" /></button>
+                          <button onClick={() => setDeleteLocationConfirm(selectedLocation.id)} className="p-2 bg-red-500/40 rounded-lg hover:bg-red-500/60 text-white" data-testid="button-delete-location"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-3 mt-3 text-xs text-blue-100 flex-wrap">
                       <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />${Number(selectedLocation.monthlyRent).toLocaleString()}/mo</span>
@@ -933,24 +943,26 @@ export default function RepDashboard() {
                       </Select>
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
-                      {isRep && (
+                      {isRep && rgPerm("canManageReminders") && (
                         <Button size="sm" variant="outline" onClick={() => openNewReminder(`Follow up · ${selectedLocation.propertyAddress}`)} data-testid="button-remind-location">
                           <Bell className="h-3.5 w-3.5 mr-1" /> Remind
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => {
-                        const firstTenant = currentLocationTenants.find(t => t.status !== "Declined") || currentLocationTenants[0];
-                        if (firstTenant) {
-                          setShowDocRequest(true);
-                          setDocReqForm({ recipientType: "tenant", recipientName: firstTenant.tenantName, recipientEmail: firstTenant.tenantEmail, requiredDocs: [], expiresInDays: 7 });
-                          setCreatedLink(null);
-                          openLead(firstTenant);
-                        } else {
-                          openAddTenant(selectedLocation);
-                        }
-                      }} data-testid="button-request-docs-location">
-                        <Send className="h-3.5 w-3.5 mr-1" /> Request Docs
-                      </Button>
+                      {rgPerm("canRequestDocs") && (
+                        <Button size="sm" variant="outline" onClick={() => {
+                          const firstTenant = currentLocationTenants.find(t => t.status !== "Declined") || currentLocationTenants[0];
+                          if (firstTenant) {
+                            setShowDocRequest(true);
+                            setDocReqForm({ recipientType: "tenant", recipientName: firstTenant.tenantName, recipientEmail: firstTenant.tenantEmail, requiredDocs: [], expiresInDays: 7 });
+                            setCreatedLink(null);
+                            openLead(firstTenant);
+                          } else {
+                            openAddTenant(selectedLocation);
+                          }
+                        }} data-testid="button-request-docs-location">
+                          <Send className="h-3.5 w-3.5 mr-1" /> Request Docs
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -959,9 +971,11 @@ export default function RepDashboard() {
                     <button onClick={() => setLocationDetailTab("info")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${locationDetailTab === "info" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-info">
                       Info
                     </button>
-                    <button onClick={() => setLocationDetailTab("pricing")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${locationDetailTab === "pricing" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-pricing">
-                      <Calculator className="h-3.5 w-3.5" /> Pricing
-                    </button>
+                    {rgPerm("canViewPricing") && (
+                      <button onClick={() => setLocationDetailTab("pricing")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${locationDetailTab === "pricing" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-pricing">
+                        <Calculator className="h-3.5 w-3.5" /> Pricing
+                      </button>
+                    )}
                     <button onClick={() => setLocationDetailTab("docs")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${locationDetailTab === "docs" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-docs">
                       Documents ({locationDocs.length})
                     </button>
@@ -1015,7 +1029,7 @@ export default function RepDashboard() {
                             <User className="h-4 w-4 text-blue-600" /> Tenant Applications
                             <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{currentLocationTenants.length}</span>
                           </h3>
-                          <Button size="sm" onClick={() => openAddTenant(selectedLocation)} data-testid="button-add-tenant-to-location"><UserPlus className="h-3.5 w-3.5 mr-1" /> Add Tenant</Button>
+                          {rgPerm("canAddTenants") && <Button size="sm" onClick={() => openAddTenant(selectedLocation)} data-testid="button-add-tenant-to-location"><UserPlus className="h-3.5 w-3.5 mr-1" /> Add Tenant</Button>}
                         </div>
                         {hasDeclinedTenant && !hasApprovedTenant && (
                           <div className="mb-3 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
@@ -1033,7 +1047,7 @@ export default function RepDashboard() {
                           <div className="text-center py-10 border-2 border-dashed rounded-xl">
                             <User className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                             <p className="text-gray-500 text-sm font-medium">No tenants yet</p>
-                            <Button size="sm" onClick={() => openAddTenant(selectedLocation)} className="mt-3" data-testid="button-first-tenant"><UserPlus className="h-4 w-4 mr-1" /> Add First Tenant</Button>
+                            {rgPerm("canAddTenants") && <Button size="sm" onClick={() => openAddTenant(selectedLocation)} className="mt-3" data-testid="button-first-tenant"><UserPlus className="h-4 w-4 mr-1" /> Add First Tenant</Button>}
                           </div>
                         ) : (
                           <div className="space-y-2">
@@ -1072,9 +1086,9 @@ export default function RepDashboard() {
                       markupPercent={0}
                       baseAnnualRate={Number(selectedLocation.annualRatePercent) || 4.5}
                       baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || 5}
-                      onSaveRates={handleSaveLocationRates}
+                      onSaveRates={rgPerm("canEditPricing") ? handleSaveLocationRates : undefined}
                       paymentLink={selectedLocation.paymentLink}
-                      onSavePaymentLink={handleSaveLocationPaymentLink}
+                      onSavePaymentLink={rgPerm("canEditPricing") ? handleSaveLocationPaymentLink : undefined}
                     />
                   )}
 
@@ -1288,9 +1302,11 @@ export default function RepDashboard() {
             {/* Detail tabs */}
             <div className="flex gap-1 px-5 pt-4">
               <button onClick={() => setDetailTab("info")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "info" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-info">Info</button>
-              <button onClick={() => setDetailTab("pricing")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "pricing" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-pricing">
-                <Calculator className="h-3.5 w-3.5" /> Pricing
-              </button>
+              {rgPerm("canViewPricing") && (
+                <button onClick={() => setDetailTab("pricing")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "pricing" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-pricing">
+                  <Calculator className="h-3.5 w-3.5" /> Pricing
+                </button>
+              )}
               <button onClick={() => setDetailTab("docs")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${detailTab === "docs" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-docs">Documents ({documents.length})</button>
             </div>
 
@@ -1358,7 +1374,7 @@ export default function RepDashboard() {
                     markupPercent={selectedLead.markupPercent}
                     baseAnnualRate={Number(loc?.annualRatePercent) || 4.5}
                     baseMonthlyRate={Number(loc?.monthlyRatePercent) || 5}
-                    onSaveMarkup={handleSaveMarkup}
+                    onSaveMarkup={rgPerm("canEditPricing") ? handleSaveMarkup : undefined}
                   />
                 );
               })()}

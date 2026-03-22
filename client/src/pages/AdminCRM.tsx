@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send } from "lucide-react";
 import AdvertisementManager, { AdvertisementManagerHandle } from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
@@ -275,6 +275,52 @@ export default function AdminCRMPage() {
   const [savingExpiryHours, setSavingExpiryHours] = useState(false);
   const [reassigningLead, setReassigningLead] = useState<string | null>(null);
   const [, setTimerTick] = useState(0);
+
+  // Rep RG Permissions State
+  const [isRepPermissionsOpen, setIsRepPermissionsOpen] = useState(false);
+  const [permissionsRep, setPermissionsRep] = useState<any>(null);
+  const [rgPerms, setRgPerms] = useState<Record<string, boolean>>({});
+  const [savingRgPerms, setSavingRgPerms] = useState(false);
+
+  const RG_PERMISSION_LABELS: Record<string, string> = {
+    canAddLocations: "Create new locations",
+    canEditLocations: "Edit & delete locations",
+    canAddTenants: "Add tenants to locations",
+    canRequestDocs: "Request documents from tenants/landlords",
+    canViewPricing: "View pricing calculator",
+    canEditPricing: "Edit markup & base rates",
+    canManageReminders: "Manage reminders",
+  };
+
+  const openRepPermissions = (rep: any) => {
+    setPermissionsRep(rep);
+    const saved = rep.permissions?.rg || {};
+    const defaults: Record<string, boolean> = {};
+    Object.keys(RG_PERMISSION_LABELS).forEach(k => { defaults[k] = saved[k] !== false; });
+    setRgPerms(defaults);
+    setIsRepPermissionsOpen(true);
+  };
+
+  const saveRepPermissions = async () => {
+    if (!permissionsRep || !user) return;
+    setSavingRgPerms(true);
+    try {
+      const res = await fetch(`/api/admin/users/${permissionsRep.id}/rg-permissions`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId: user.id, rgPermissions: rgPerms }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      const updated = await res.json();
+      await updateUser(updated.id, updated);
+      toast({ title: "RG Permissions Saved", description: `${permissionsRep.name}'s RG access has been updated.` });
+      setIsRepPermissionsOpen(false);
+    } catch {
+      toast({ title: "Error", description: "Failed to save RG permissions", variant: "destructive" });
+    } finally {
+      setSavingRgPerms(false);
+    }
+  };
 
   // Broker Profile State
   const [isBrokerProfileOpen, setIsBrokerProfileOpen] = useState(false);
@@ -3803,6 +3849,12 @@ export default function AdminCRMPage() {
                                     View Profile
                                   </DropdownMenuItem>
                                 )}
+                                {staff.role === 'rep' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openRepPermissions(staff); }}>
+                                    <ShieldCheck className="mr-2 h-4 w-4" />
+                                    RG Permissions
+                                  </DropdownMenuItem>
+                                )}
                                 {staff.role === 'broker' && (
                                   <DropdownMenuItem onClick={(e) => { 
                                     e.stopPropagation(); 
@@ -5769,6 +5821,54 @@ export default function AdminCRMPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Rep RG Permissions Sheet */}
+      <Sheet open={isRepPermissionsOpen} onOpenChange={setIsRepPermissionsOpen}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto" data-testid="rep-permissions-sheet">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                {permissionsRep?.name?.charAt(0)}
+              </div>
+              <div>
+                <div>{permissionsRep?.name}</div>
+                <div className="text-sm font-normal text-muted-foreground">{permissionsRep?.email}</div>
+              </div>
+            </SheetTitle>
+            <SheetDescription>Control which Rent Guarantee features this rep can access</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              <ShieldCheck className="h-4 w-4 inline mr-2" />
+              All toggles default to <strong>On</strong>. Disable individual features to restrict access.
+            </div>
+
+            <div className="space-y-3">
+              {Object.entries(RG_PERMISSION_LABELS).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between py-2.5 px-3 rounded-lg border bg-white hover:bg-gray-50 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{label}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 capitalize">{key}</p>
+                  </div>
+                  <Switch
+                    checked={rgPerms[key] !== false}
+                    onCheckedChange={(v) => setRgPerms(prev => ({ ...prev, [key]: v }))}
+                    data-testid={`switch-rg-perm-${key}`}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setIsRepPermissionsOpen(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={saveRepPermissions} disabled={savingRgPerms} data-testid="button-save-rg-permissions">
+                {savingRgPerms ? "Saving..." : "Save Permissions"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

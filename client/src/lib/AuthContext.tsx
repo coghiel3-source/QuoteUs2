@@ -12,6 +12,16 @@ export interface ManagerPermissions {
   editLeadCosts?: boolean;
 }
 
+export interface RgPermissions {
+  canAddLocations?: boolean;
+  canEditLocations?: boolean;
+  canAddTenants?: boolean;
+  canRequestDocs?: boolean;
+  canViewPricing?: boolean;
+  canEditPricing?: boolean;
+  canManageReminders?: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -26,7 +36,7 @@ export interface User {
   yearsOfService?: number;
   productTypes?: string[];
   leadCostOverride?: string;
-  permissions?: ManagerPermissions;
+  permissions?: ManagerPermissions & { rg?: RgPermissions };
   createdAt?: string;
   lastLogin?: string;
   pauseStartDate?: string;
