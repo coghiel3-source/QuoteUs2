@@ -28,10 +28,18 @@ interface FormValues {
   email: string;
   phone: string;
   contactType: string;
-  propertyAddress: string;
-  sameRentalAddress: "yes" | "no";
+  // Your address
+  propertyUnit?: string;
+  propertyStreet: string;
+  propertyCity: string;
+  propertyProvince: string;
+  propertyPostal: string;
+  // Rental address (when different)
   rentalUnit?: string;
-  rentalAddress?: string;
+  rentalStreet?: string;
+  rentalCity?: string;
+  rentalProvince?: string;
+  rentalPostal?: string;
   monthlyRentalCost: number;
   referenceId?: string;
 }
@@ -63,6 +71,21 @@ const CheckItem = ({ children, sub }: { children: React.ReactNode; sub?: boolean
 
 const CONTACT_TYPES = ["Owner", "Landlord", "Real Estate Agent", "Other"];
 
+const PROVINCES = [
+  { value: "ON", label: "ON — Ontario" },
+  { value: "AB", label: "AB — Alberta" },
+  { value: "BC", label: "BC — British Columbia" },
+  { value: "MB", label: "MB — Manitoba" },
+  { value: "NB", label: "NB — New Brunswick" },
+  { value: "NL", label: "NL — Newfoundland & Labrador" },
+  { value: "NS", label: "NS — Nova Scotia" },
+  { value: "NT", label: "NT — Northwest Territories" },
+  { value: "NU", label: "NU — Nunavut" },
+  { value: "PE", label: "PE — Prince Edward Island" },
+  { value: "SK", label: "SK — Saskatchewan" },
+  { value: "YT", label: "YT — Yukon" },
+];
+
 export default function RentGuaranteePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
@@ -71,6 +94,8 @@ export default function RentGuaranteePage() {
   const [editing, setEditing] = useState(false);
   const [contactType, setContactType] = useState("");
   const [sameAddress, setSameAddress] = useState<"yes" | "no">("yes");
+  const [propertyProvince, setPropertyProvince] = useState("ON");
+  const [rentalProvince, setRentalProvince] = useState("ON");
 
   const {
     register,
@@ -79,39 +104,59 @@ export default function RentGuaranteePage() {
     formState: { errors },
   } = useForm<FormValues>();
 
+  const buildAddress = (unit: string | undefined, street: string, city: string, province: string, postal: string) => {
+    const parts: string[] = [];
+    if (unit) parts.push(`Unit ${unit}`);
+    parts.push(street);
+    parts.push(`${city}, ${province} ${postal.toUpperCase()}`);
+    return parts.join(", ");
+  };
+
   const onSubmit = async (data: FormValues) => {
     if (!contactType) {
       toast({ title: "Please select a contact type", variant: "destructive" });
       return;
     }
-    if (sameAddress === "no" && !data.rentalAddress) {
-      toast({ title: "Please enter the rental address", variant: "destructive" });
+    if (sameAddress === "no" && (!data.rentalStreet || !data.rentalCity || !data.rentalPostal)) {
+      toast({ title: "Please complete the rental property address", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     await new Promise((r) => setTimeout(r, 1200));
 
+    const propertyAddress = buildAddress(
+      data.propertyUnit,
+      data.propertyStreet,
+      data.propertyCity,
+      propertyProvince,
+      data.propertyPostal
+    );
+
     const finalRentalAddress =
       sameAddress === "yes"
-        ? data.propertyAddress
-        : data.rentalUnit
-        ? `Unit ${data.rentalUnit}, ${data.rentalAddress}`
-        : data.rentalAddress!;
+        ? propertyAddress
+        : buildAddress(
+            data.rentalUnit,
+            data.rentalStreet!,
+            data.rentalCity!,
+            rentalProvince,
+            data.rentalPostal!
+          );
 
     addQuote({
       type: "Rent Guarantee",
       clientName: data.fullName,
       email: data.email,
       phone: data.phone,
-      postalCode: "",
+      postalCode: data.propertyPostal.toUpperCase(),
       referenceId: data.referenceId || undefined,
       details: {
         fullName: data.fullName,
         email: data.email,
         phone: data.phone,
         contactType,
-        propertyAddress: data.propertyAddress,
+        propertyAddress,
         rentalAddress: finalRentalAddress,
         monthlyRentalCost: data.monthlyRentalCost,
       },
@@ -120,7 +165,7 @@ export default function RentGuaranteePage() {
     const info: SubmittedInfo = {
       fullName: data.fullName,
       contactType,
-      propertyAddress: data.propertyAddress,
+      propertyAddress,
       rentalAddress: finalRentalAddress,
       monthlyRentalCost: data.monthlyRentalCost,
     };
@@ -145,6 +190,8 @@ export default function RentGuaranteePage() {
     setEditing(false);
     setContactType("");
     setSameAddress("yes");
+    setPropertyProvince("ON");
+    setRentalProvince("ON");
   };
 
   const handleEdit = () => {
@@ -292,17 +339,75 @@ export default function RentGuaranteePage() {
                       </div>
 
                       {/* Property / Contact Address */}
-                      <div className="space-y-2">
-                        <Label htmlFor="propertyAddress">Your Address *</Label>
-                        <Input
-                          id="propertyAddress"
-                          placeholder="123 Maple Street, Toronto, ON M5A 1A1"
-                          data-testid="input-property-address"
-                          {...register("propertyAddress", { required: "Address is required" })}
-                        />
-                        {errors.propertyAddress && (
-                          <p className="text-xs text-red-600">{errors.propertyAddress.message}</p>
-                        )}
+                      <div className="space-y-3">
+                        <Label className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          Your Address *
+                        </Label>
+                        <div className="grid grid-cols-4 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="propertyUnit" className="text-xs text-muted-foreground">Unit # (optional)</Label>
+                            <Input
+                              id="propertyUnit"
+                              placeholder="4B"
+                              data-testid="input-property-unit"
+                              {...register("propertyUnit")}
+                            />
+                          </div>
+                          <div className="col-span-3 space-y-1.5">
+                            <Label htmlFor="propertyStreet" className="text-xs text-muted-foreground">Street Address *</Label>
+                            <Input
+                              id="propertyStreet"
+                              placeholder="123 Maple Street"
+                              data-testid="input-property-street"
+                              {...register("propertyStreet", { required: "Street address is required" })}
+                            />
+                            {errors.propertyStreet && (
+                              <p className="text-xs text-red-600">{errors.propertyStreet.message}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="propertyCity" className="text-xs text-muted-foreground">City *</Label>
+                            <Input
+                              id="propertyCity"
+                              placeholder="Toronto"
+                              data-testid="input-property-city"
+                              {...register("propertyCity", { required: "City is required" })}
+                            />
+                            {errors.propertyCity && (
+                              <p className="text-xs text-red-600">{errors.propertyCity.message}</p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-muted-foreground">Province *</Label>
+                            <Select value={propertyProvince} onValueChange={setPropertyProvince}>
+                              <SelectTrigger data-testid="select-property-province">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PROVINCES.map((p) => (
+                                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="propertyPostal" className="text-xs text-muted-foreground">Postal Code *</Label>
+                            <Input
+                              id="propertyPostal"
+                              placeholder="M5A 1A1"
+                              maxLength={7}
+                              className="uppercase"
+                              data-testid="input-property-postal"
+                              {...register("propertyPostal", { required: "Postal code is required" })}
+                            />
+                            {errors.propertyPostal && (
+                              <p className="text-xs text-red-600">{errors.propertyPostal.message}</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Same rental address? */}
@@ -353,31 +458,78 @@ export default function RentGuaranteePage() {
                               <p className="text-sm font-medium text-blue-800 flex items-center gap-2">
                                 <MapPin className="h-4 w-4" /> Rental Property Address
                               </p>
-                              <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-2">
-                                  <Label htmlFor="rentalUnit">Unit # (optional)</Label>
+                              <div className="grid grid-cols-4 gap-3">
+                                <div className="space-y-1.5">
+                                  <Label htmlFor="rentalUnit" className="text-xs text-muted-foreground">Unit # (optional)</Label>
                                   <Input
                                     id="rentalUnit"
-                                    placeholder="e.g. 4B"
+                                    placeholder="4B"
                                     data-testid="input-rental-unit"
                                     {...register("rentalUnit")}
                                   />
                                 </div>
-                                <div className="col-span-2 space-y-2">
-                                  <Label htmlFor="rentalAddress">Rental Address *</Label>
+                                <div className="col-span-3 space-y-1.5">
+                                  <Label htmlFor="rentalStreet" className="text-xs text-muted-foreground">Street Address *</Label>
                                   <Input
-                                    id="rentalAddress"
-                                    placeholder="456 Oak Ave, Toronto, ON M6K 2P3"
-                                    data-testid="input-rental-address"
-                                    {...register("rentalAddress", {
+                                    id="rentalStreet"
+                                    placeholder="456 Oak Ave"
+                                    data-testid="input-rental-street"
+                                    {...register("rentalStreet", {
                                       validate: (v) =>
                                         sameAddress === "no" && !v
-                                          ? "Rental address is required"
+                                          ? "Street address is required"
                                           : true,
                                     })}
                                   />
-                                  {errors.rentalAddress && (
-                                    <p className="text-xs text-red-600">{errors.rentalAddress.message}</p>
+                                  {errors.rentalStreet && (
+                                    <p className="text-xs text-red-600">{errors.rentalStreet.message}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1.5">
+                                  <Label htmlFor="rentalCity" className="text-xs text-muted-foreground">City *</Label>
+                                  <Input
+                                    id="rentalCity"
+                                    placeholder="Toronto"
+                                    data-testid="input-rental-city"
+                                    {...register("rentalCity", {
+                                      validate: (v) =>
+                                        sameAddress === "no" && !v ? "City is required" : true,
+                                    })}
+                                  />
+                                  {errors.rentalCity && (
+                                    <p className="text-xs text-red-600">{errors.rentalCity.message}</p>
+                                  )}
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs text-muted-foreground">Province *</Label>
+                                  <Select value={rentalProvince} onValueChange={setRentalProvince}>
+                                    <SelectTrigger data-testid="select-rental-province">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {PROVINCES.map((p) => (
+                                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label htmlFor="rentalPostal" className="text-xs text-muted-foreground">Postal Code *</Label>
+                                  <Input
+                                    id="rentalPostal"
+                                    placeholder="M6K 2P3"
+                                    maxLength={7}
+                                    className="uppercase"
+                                    data-testid="input-rental-postal"
+                                    {...register("rentalPostal", {
+                                      validate: (v) =>
+                                        sameAddress === "no" && !v ? "Postal code is required" : true,
+                                    })}
+                                  />
+                                  {errors.rentalPostal && (
+                                    <p className="text-xs text-red-600">{errors.rentalPostal.message}</p>
                                   )}
                                 </div>
                               </div>
