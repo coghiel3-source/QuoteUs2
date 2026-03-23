@@ -115,6 +115,8 @@ const DEFAULT_LEAD_COSTS: Record<string, number> = {
   "Life": 12,
   "Travel": 3,
   "Pet": 5,
+  "Mortgage": 10,
+  "Rent Guarantee": 8,
   "General": 8,
 };
 
@@ -2658,6 +2660,58 @@ export async function registerRoutes(
         return res.json({ redirectUrl: null });
       }
       res.json({ redirectUrl: redirect.redirectUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ===== ADMIN: RG LEAD MANAGEMENT =====
+
+  // Get all RG leads with location + rep info (admin/manager)
+  app.get("/api/admin/rg-leads", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      if (!actorId) return res.status(401).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId as string);
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const leads = await storage.getAllRgLeads();
+      const locations = await storage.getAllLocations();
+      const allUsers = await storage.getAllUsers();
+      const enriched = leads.map(lead => {
+        const loc = locations.find(l => l.id === lead.locationId);
+        const rep = allUsers.find(u => u.id === lead.repId);
+        return {
+          ...lead,
+          location: loc ? { propertyAddress: loc.propertyAddress, unit: loc.unit, applicationNumber: loc.applicationNumber } : null,
+          repName: rep ? rep.name : "Unassigned",
+          repEmail: rep ? rep.email : null,
+        };
+      });
+      res.json(enriched);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Assign / reassign an RG lead to a different rep (admin/manager with assignLeads permission)
+  app.patch("/api/admin/rg-leads/:id/assign", async (req, res) => {
+    try {
+      const { actorId, repId } = req.body;
+      if (!actorId) return res.status(401).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (actor.role === "manager") {
+        const canAssign = await checkPermission(actorId, "assignLeads");
+        if (!canAssign) return res.status(403).json({ error: "You don't have permission to assign leads" });
+      }
+      const lead = await storage.getRgLead(req.params.id);
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+      if (repId) {
+        const rep = await storage.getUser(repId);
+        if (!rep || rep.role !== "rep") return res.status(400).json({ error: "Target user is not a rep" });
+      }
+      const updated = await storage.updateRgLead(req.params.id, { repId: repId || null } as any);
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
