@@ -189,6 +189,10 @@ export default function AdminCRMPage() {
   } | null>(null);
   const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
   const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
+  const [rgRates, setRgRates] = useState<{ annualRate: number; monthlyRate: number }>({ annualRate: 4.5, monthlyRate: 5 });
+  const [editingRgRates, setEditingRgRates] = useState(false);
+  const [editedRgAnnual, setEditedRgAnnual] = useState("");
+  const [editedRgMonthly, setEditedRgMonthly] = useState("");
   
   // User Filter State
   const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
@@ -458,6 +462,11 @@ export default function AdminCRMPage() {
     fetch("/api/credits/lead-costs")
       .then(r => r.json())
       .then(data => setLeadCosts(data.costs || {}))
+      .catch(console.error);
+
+    fetch("/api/credits/rg-rates")
+      .then(r => r.json())
+      .then(data => setRgRates({ annualRate: data.annualRate ?? 4.5, monthlyRate: data.monthlyRate ?? 5 }))
       .catch(console.error);
     
     // Load SMTP settings
@@ -4263,6 +4272,115 @@ export default function AdminCRMPage() {
                   These are the default costs per lead type. Set a custom lead cost on individual brokers above to override.
                 </p>
               </div>
+
+              {/* Rent Guarantee Rates */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold">Rent Guarantee Rates</h3>
+                    <p className="text-sm text-muted-foreground">Global default premium rates used in RG pricing calculations.</p>
+                  </div>
+                  {hasPermission('editLeadCosts') && !editingRgRates ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingRgRates(true);
+                        setEditedRgAnnual(String(rgRates.annualRate));
+                        setEditedRgMonthly(String(rgRates.monthlyRate));
+                      }}
+                      data-testid="button-edit-rg-rates"
+                    >
+                      Edit Rates
+                    </Button>
+                  ) : hasPermission('editLeadCosts') && editingRgRates ? (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setEditingRgRates(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          const annual = parseFloat(editedRgAnnual);
+                          const monthly = parseFloat(editedRgMonthly);
+                          if (isNaN(annual) || annual < 0 || isNaN(monthly) || monthly < 0) {
+                            toast({ title: "Error", description: "Rates must be valid non-negative numbers.", variant: "destructive" });
+                            return;
+                          }
+                          try {
+                            const res = await fetch("/api/admin/rg-rates", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ annualRate: annual, monthlyRate: monthly, actorId: user?.id }),
+                            });
+                            if (res.ok) {
+                              setRgRates({ annualRate: annual, monthlyRate: monthly });
+                              setEditingRgRates(false);
+                              toast({ title: "RG Rates Updated", description: "Default Rent Guarantee rates have been saved." });
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "Error", description: err.error, variant: "destructive" });
+                            }
+                          } catch {
+                            toast({ title: "Error", description: "Failed to update RG rates.", variant: "destructive" });
+                          }
+                        }}
+                        data-testid="button-save-rg-rates"
+                      >
+                        Save Changes
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-xs text-blue-600 uppercase tracking-wide font-medium mb-2">Annual Rate (% of annual rent)</p>
+                    {editingRgRates ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="30"
+                          step="0.1"
+                          value={editedRgAnnual}
+                          onChange={e => setEditedRgAnnual(e.target.value)}
+                          className="w-28 h-9 text-center font-bold text-lg"
+                          data-testid="input-rg-annual-rate"
+                        />
+                        <span className="text-lg text-gray-500 font-medium">%</span>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-blue-700">{rgRates.annualRate}%</p>
+                    )}
+                    <p className="text-xs text-blue-500 mt-1">Applied to annual rent (pay-in-full plan)</p>
+                  </div>
+                  <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+                    <p className="text-xs text-violet-600 uppercase tracking-wide font-medium mb-2">Monthly Rate (% of monthly rent)</p>
+                    {editingRgRates ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="30"
+                          step="0.1"
+                          value={editedRgMonthly}
+                          onChange={e => setEditedRgMonthly(e.target.value)}
+                          className="w-28 h-9 text-center font-bold text-lg"
+                          data-testid="input-rg-monthly-rate"
+                        />
+                        <span className="text-lg text-gray-500 font-medium">%</span>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-violet-700">{rgRates.monthlyRate}%</p>
+                    )}
+                    <p className="text-xs text-violet-500 mt-1">Applied per month (monthly plan)</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  These rates are used as the starting base for all new RG locations. Individual locations can override with their own rates.
+                </p>
+              </div>
+
             </CardContent>
           </Card>
         )}

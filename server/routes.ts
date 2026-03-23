@@ -1130,6 +1130,37 @@ export async function registerRoutes(
     res.json({ costs });
   });
 
+  // Get global RG rates
+  app.get("/api/credits/rg-rates", async (req, res) => {
+    const stored = await storage.getSetting("rg_rates");
+    if (stored) {
+      try { return res.json(JSON.parse(stored)); } catch {}
+    }
+    res.json({ annualRate: 4.5, monthlyRate: 5 });
+  });
+
+  // Admin: Update global RG rates
+  app.post("/api/admin/rg-rates", async (req, res) => {
+    try {
+      const { annualRate, monthlyRate, actorId } = req.body;
+      if (!actorId) return res.status(401).json({ error: "Actor ID required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor) return res.status(403).json({ error: "User not found" });
+      if (actor.role !== "admin" && actor.role !== "manager") {
+        return res.status(403).json({ error: "Only admin/manager can update RG rates" });
+      }
+      const annual = parseFloat(annualRate);
+      const monthly = parseFloat(monthlyRate);
+      if (isNaN(annual) || annual < 0 || isNaN(monthly) || monthly < 0) {
+        return res.status(400).json({ error: "Rates must be non-negative numbers" });
+      }
+      await storage.setSetting("rg_rates", JSON.stringify({ annualRate: annual, monthlyRate: monthly }), actorId);
+      res.json({ success: true, annualRate: annual, monthlyRate: monthly });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin: Update default lead costs
   app.post("/api/admin/lead-costs", async (req, res) => {
     try {

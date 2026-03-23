@@ -273,6 +273,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [documents, setDocuments] = useState<RepDocument[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  // Global RG default rates from admin
+  const [globalRgRates, setGlobalRgRates] = useState<{ annualRate: number; monthlyRate: number }>({ annualRate: 4.5, monthlyRate: 5 });
+
   // Location detail
   const [locationDetailTab, setLocationDetailTab] = useState<"info" | "pricing" | "docs">("info");
   const [locationDocRequests, setLocationDocRequests] = useState<DocumentRequest[]>([]);
@@ -342,14 +345,18 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     if (!user) return;
     setLoading(true);
     try {
-      const [locs, leadsData, remindersData] = await Promise.all([
+      const [locs, leadsData, remindersData, rgRatesData] = await Promise.all([
         apiRequest<RgLocation[]>(`/rep/locations?actorId=${user.id}`),
         apiRequest<RgLead[]>(`/rep/leads?actorId=${user.id}`),
         isRep ? apiRequest<RepReminder[]>(`/rep/reminders?actorId=${user.id}`) : Promise.resolve([]),
+        fetch("/api/credits/rg-rates").then(r => r.json()).catch(() => null),
       ]);
       setLocations(locs || []);
       setLeads(leadsData || []);
       setReminders(remindersData || []);
+      if (rgRatesData && typeof rgRatesData.annualRate === "number") {
+        setGlobalRgRates({ annualRate: rgRatesData.annualRate, monthlyRate: rgRatesData.monthlyRate });
+      }
     } catch {
       toast({ title: "Failed to load data", variant: "destructive" });
     } finally {
@@ -1148,8 +1155,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     <PricingTab
                       monthlyRent={Number(selectedLocation.monthlyRent)}
                       markupPercent={0}
-                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || 4.5}
-                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || 5}
+                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
+                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || globalRgRates.monthlyRate}
                       onSaveRates={rgPerm("canEditPricing") ? handleSaveLocationRates : undefined}
                       paymentLink={selectedLocation.paymentLink}
                       onSavePaymentLink={rgPerm("canEditPricing") ? handleSaveLocationPaymentLink : undefined}
@@ -1482,8 +1489,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   <PricingTab
                     monthlyRent={Number(selectedLead.monthlyRent)}
                     markupPercent={selectedLead.markupPercent}
-                    baseAnnualRate={Number(loc?.annualRatePercent) || 4.5}
-                    baseMonthlyRate={Number(loc?.monthlyRatePercent) || 5}
+                    baseAnnualRate={Number(loc?.annualRatePercent) || globalRgRates.annualRate}
+                    baseMonthlyRate={Number(loc?.monthlyRatePercent) || globalRgRates.monthlyRate}
                     onSaveMarkup={rgPerm("canEditPricing") ? handleSaveMarkup : undefined}
                   />
                 );
