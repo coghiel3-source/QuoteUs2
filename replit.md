@@ -56,7 +56,7 @@ This system allows admins/managers to create referral partner accounts. Each par
 The system allows admins/managers to require brokers to upload a binder (confirmation of insurance) for specific leads. Brokers can upload PDF, Word, or image files, which are then visible in the lead detail view. The activity log tracks all binder-related actions.
 
 ### Rep Role & Rent Guarantee Lead System
-A dedicated "rep" user role supports a Rent Guarantee (RG) lead workflow. Reps manage their own RG leads via a Location → Tenant hierarchy. Admins and managers can view all RG leads via `/rep`. The system includes:
+A dedicated "rep" user role supports a Rent Guarantee (RG) lead workflow. Reps manage their own RG leads via a Location → Tenant hierarchy. Admins and managers can access the full RG portal embedded directly inside the AdminCRM under the "RG Leads" tab (via `<RepDashboard embedded={true} />`). The system includes:
 - `rgLocations` table (property + landlord details: address, unit, landlord info, monthly rent, move-in date)
 - `rgLeads` table (tenant applications: tenant info, employment, co-applicant, status tracking; linked to rgLocations via `locationId`)
 - `repReminders` table (reminders linked to reps and optionally to leads, with due dates)

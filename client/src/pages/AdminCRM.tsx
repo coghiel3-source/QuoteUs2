@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { useAuth } from "@/lib/AuthContext";
+import RepDashboard from "@/pages/RepDashboard";
 import { DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -166,12 +167,6 @@ export default function AdminCRMPage() {
   const [leadCosts, setLeadCosts] = useState<Record<string, number>>({});
   const [assigningLead, setAssigningLead] = useState<string | null>(null);
 
-  // RG Leads (admin view) state
-  const [rgAdminLeads, setRgAdminLeads] = useState<any[]>([]);
-  const [rgAdminLoading, setRgAdminLoading] = useState(false);
-  const [rgLeadSearch, setRgLeadSearch] = useState("");
-  const [rgLeadStatusFilter, setRgLeadStatusFilter] = useState("all");
-  const [assigningRgLead, setAssigningRgLead] = useState<string | null>(null);
 
   // Credits tab state
   const [isAddFundsOpen, setIsAddFundsOpen] = useState(false);
@@ -459,23 +454,11 @@ export default function AdminCRMPage() {
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
-  const loadRgAdminLeads = async () => {
-    if (!user) return;
-    setRgAdminLoading(true);
-    try {
-      const res = await fetch(`/api/admin/rg-leads?actorId=${user.id}`);
-      if (res.ok) setRgAdminLeads(await res.json());
-    } catch { /* ignore */ } finally {
-      setRgAdminLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetch("/api/credits/lead-costs")
       .then(r => r.json())
       .then(data => setLeadCosts(data.costs || {}))
       .catch(console.error);
-    loadRgAdminLeads();
     
     // Load SMTP settings
     fetch("/api/admin/smtp/settings")
@@ -751,28 +734,6 @@ export default function AdminCRMPage() {
       });
     } finally {
       setAssigningLead(null);
-    }
-  };
-
-  const handleAssignRgLead = async (leadId: string, repId: string) => {
-    setAssigningRgLead(leadId);
-    try {
-      const res = await fetch(`/api/admin/rg-leads/${leadId}/assign`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actorId: user?.id, repId: repId === "unassigned" ? null : repId }),
-      });
-      if (res.ok) {
-        await loadRgAdminLeads();
-        toast({ title: repId === "unassigned" ? "Lead Unassigned" : "Lead Assigned", description: repId === "unassigned" ? "RG lead is now unassigned." : "RG lead has been reassigned." });
-      } else {
-        const err = await res.json();
-        toast({ title: "Assignment Failed", description: err.error || "Could not assign lead", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Assignment Failed", description: "An error occurred", variant: "destructive" });
-    } finally {
-      setAssigningRgLead(null);
     }
   };
 
@@ -1598,11 +1559,6 @@ export default function AdminCRMPage() {
                         <Megaphone size={18} className="mr-3" /> Advertisements
                       </Button>
                     )}
-                    <a href="/rep" target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
-                      <Button variant="ghost" className="justify-start mb-1 w-full text-blue-700 hover:text-blue-800 hover:bg-blue-50">
-                        <Home size={18} className="mr-3" /> Rent Guarantee Portal
-                      </Button>
-                    </a>
                     <div className="border-t my-2" />
                     {(user?.role === 'admin' || hasPermission('viewSettings')) && (
                       <Button 
@@ -1714,11 +1670,6 @@ export default function AdminCRMPage() {
                     <Megaphone size={16} className="mr-2" /> Ads
                   </Button>
                 )}
-                <a href="/rep" target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" size="sm" className="text-blue-200 hover:text-white hover:bg-white/10" data-testid="nav-rg-portal">
-                    <Home size={16} className="mr-2" /> RG Portal
-                  </Button>
-                </a>
               </nav>
             </div>
 
@@ -3097,141 +3048,10 @@ export default function AdminCRMPage() {
           </Card>
         )}
 
-        {/* RG LEADS TAB */}
-        {activeTab === 'rg-leads' && hasPermission('viewLeads') && (() => {
-          const allReps = users.filter(u => u.role === 'rep' && u.status === 'active');
-          const rgStatusColors: Record<string, string> = {
-            "New": "bg-blue-100 text-blue-800",
-            "Contacted": "bg-yellow-100 text-yellow-800",
-            "Documents Pending": "bg-orange-100 text-orange-800",
-            "Documents Received": "bg-purple-100 text-purple-800",
-            "Submitted": "bg-indigo-100 text-indigo-800",
-            "Approved": "bg-green-100 text-green-800",
-            "Declined": "bg-red-100 text-red-800",
-          };
-          const filteredRgLeads = rgAdminLeads.filter(lead => {
-            const matchSearch = !rgLeadSearch ||
-              lead.tenantName?.toLowerCase().includes(rgLeadSearch.toLowerCase()) ||
-              lead.tenantEmail?.toLowerCase().includes(rgLeadSearch.toLowerCase()) ||
-              lead.propertyAddress?.toLowerCase().includes(rgLeadSearch.toLowerCase()) ||
-              lead.location?.propertyAddress?.toLowerCase().includes(rgLeadSearch.toLowerCase());
-            const matchStatus = rgLeadStatusFilter === "all" || lead.status === rgLeadStatusFilter;
-            return matchSearch && matchStatus;
-          });
-          const rgLeadCost = leadCosts["Rent Guarantee"] ?? 8;
-          return (
-            <Card className="shadow-lg border-none">
-              <CardHeader className="bg-white border-b pb-4">
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-                  <div>
-                    <CardTitle>Rent Guarantee Leads</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-0.5">Lead cost: <strong>${rgLeadCost}</strong> per lead</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={loadRgAdminLeads} data-testid="button-refresh-rg-leads">
-                    <RefreshCw size={14} className="mr-1" /> Refresh
-                  </Button>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 mt-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Search tenant name, email, or property..."
-                      value={rgLeadSearch}
-                      onChange={e => setRgLeadSearch(e.target.value)}
-                      className="pl-9"
-                      data-testid="input-rg-lead-search"
-                    />
-                  </div>
-                  <Select value={rgLeadStatusFilter} onValueChange={setRgLeadStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48" data-testid="select-rg-status-filter">
-                      <SelectValue placeholder="All Statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      {["New","Contacted","Documents Pending","Documents Received","Submitted","Approved","Declined"].map(s => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {rgAdminLoading ? (
-                  <div className="text-center py-16 text-muted-foreground">Loading RG leads...</div>
-                ) : filteredRgLeads.length === 0 ? (
-                  <div className="text-center py-16 text-muted-foreground">No RG leads found.</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Tenant</TableHead>
-                          <TableHead>Property</TableHead>
-                          <TableHead>Monthly Rent</TableHead>
-                          <TableHead>Assigned Rep</TableHead>
-                          <TableHead>Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredRgLeads.map(lead => (
-                          <TableRow key={lead.id} data-testid={`row-rg-lead-${lead.id}`}>
-                            <TableCell>
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${rgStatusColors[lead.status] || "bg-gray-100 text-gray-700"}`}>
-                                {lead.status}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium text-sm">{lead.tenantName}</div>
-                              {lead.tenantEmail && <div className="text-xs text-muted-foreground">{lead.tenantEmail}</div>}
-                              {lead.tenantPhone && <div className="text-xs text-muted-foreground">{lead.tenantPhone}</div>}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm">{lead.location?.propertyAddress || lead.propertyAddress || "—"}</div>
-                              {(lead.location?.unit || lead.unit) && <div className="text-xs text-muted-foreground">Unit {lead.location?.unit || lead.unit}</div>}
-                              {lead.location?.applicationNumber && <div className="text-xs text-blue-600 font-mono">#{lead.location.applicationNumber}</div>}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm font-medium">${Number(lead.monthlyRent || 0).toLocaleString()}/mo</div>
-                            </TableCell>
-                            <TableCell>
-                              {hasPermission('assignLeads') ? (
-                                <Select
-                                  value={lead.repId || "unassigned"}
-                                  onValueChange={val => handleAssignRgLead(lead.id, val)}
-                                  disabled={assigningRgLead === lead.id}
-                                >
-                                  <SelectTrigger className="w-40 h-8 text-xs" data-testid={`select-rg-rep-${lead.id}`}>
-                                    <SelectValue>
-                                      {assigningRgLead === lead.id ? "Assigning..." : (lead.repName || "Unassigned")}
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                                    {allReps.map(rep => (
-                                      <SelectItem key={rep.id} value={rep.id}>{rep.name}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <span className="text-sm">{lead.repName || "Unassigned"}</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-xs text-muted-foreground">
-                                {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })()}
+        {/* RG LEADS TAB — full embedded portal */}
+        {activeTab === 'rg-leads' && hasPermission('viewLeads') && (
+          <RepDashboard embedded={true} />
+        )}
 
         {/* PARTNERS TAB */}
         {activeTab === 'partners' && (user?.role === 'admin' || user?.role === 'manager') && (

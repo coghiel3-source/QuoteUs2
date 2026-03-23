@@ -218,7 +218,11 @@ function PricingTab({
   );
 }
 
-export default function RepDashboard() {
+interface RepDashboardProps {
+  embedded?: boolean;
+}
+
+export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -305,7 +309,7 @@ export default function RepDashboard() {
 
   useEffect(() => {
     if (!user || !["rep", "admin", "manager"].includes(user.role)) {
-      navigate("/");
+      if (!embedded) navigate("/");
     } else {
       loadAll();
     }
@@ -726,17 +730,22 @@ export default function RepDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className={embedded ? "" : "min-h-screen bg-gray-50"}>
+      <div className={embedded ? "" : "max-w-7xl mx-auto px-4 py-8"}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 rounded-lg p-2"><Home className="h-6 w-6 text-white" /></div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Rent Guarantee Portal</h1>
-              <p className="text-sm text-gray-500">{isAdminOrManager ? "All Rep Leads" : `Welcome, ${user.name}`}</p>
+          {!embedded && (
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 rounded-lg p-2"><Home className="h-6 w-6 text-white" /></div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Rent Guarantee Portal</h1>
+                <p className="text-sm text-gray-500">{isAdminOrManager ? "All Rep Leads" : `Welcome, ${user.name}`}</p>
+              </div>
             </div>
-          </div>
+          )}
+          {embedded && (
+            <p className="text-sm text-gray-500">{isAdminOrManager ? "Showing all rep leads" : `Welcome, ${user.name}`}</p>
+          )}
           <div className="flex gap-2">
             {overdueReminders > 0 && isRep && rgPerm("canManageReminders") && (
               <button onClick={() => setActiveTab("reminders")} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-lg hover:bg-red-100 transition-colors" data-testid="badge-overdue-reminders">
@@ -754,7 +763,7 @@ export default function RepDashboard() {
             { id: "overview", icon: <BarChart3 className="h-3.5 w-3.5" />, label: "Overview" },
             { id: "locations", icon: <MapPin className="h-3.5 w-3.5" />, label: `Locations (${locations.length})` },
             { id: "leads", icon: null, label: `All Leads (${leads.length})` },
-            ...(isRep && rgPerm("canManageReminders") ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
+            ...((isRep && rgPerm("canManageReminders")) || isAdminOrManager ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
           ] as { id: ActiveTab; icon: React.ReactNode; label: string }[]).map(tab => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); }} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`} data-testid={`tab-${tab.id}`}>
               {tab.icon}{tab.label}
@@ -943,7 +952,7 @@ export default function RepDashboard() {
                       </Select>
                     </div>
                     <div className="flex gap-1.5 flex-wrap">
-                      {isRep && rgPerm("canManageReminders") && (
+                      {(isAdminOrManager || (isRep && rgPerm("canManageReminders"))) && (
                         <Button size="sm" variant="outline" onClick={() => openNewReminder(`Follow up · ${selectedLocation.propertyAddress}`)} data-testid="button-remind-location">
                           <Bell className="h-3.5 w-3.5 mr-1" /> Remind
                         </Button>
@@ -1184,7 +1193,7 @@ export default function RepDashboard() {
         )}
 
         {/* ===== REMINDERS TAB ===== */}
-        {activeTab === "reminders" && isRep && (
+        {activeTab === "reminders" && (isRep || isAdminOrManager) && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex gap-1 bg-white border rounded-lg p-1">
