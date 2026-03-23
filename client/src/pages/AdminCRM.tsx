@@ -139,6 +139,8 @@ export default function AdminCRMPage() {
       managePartnerRedirects: false,
       manageSmtp: false,
       manageNotificationEmail: false,
+      viewRgLeads: false,
+      manageRgLeads: false,
     }
   });
   
@@ -161,6 +163,8 @@ export default function AdminCRMPage() {
     managePartnerRedirects: false,
     manageSmtp: false,
     manageNotificationEmail: false,
+    viewRgLeads: false,
+    manageRgLeads: false,
   });
 
   // Lead costs from API
@@ -455,6 +459,8 @@ export default function AdminCRMPage() {
     managePartnerRedirects: false,
     manageSmtp: false,
     manageNotificationEmail: false,
+    viewRgLeads: false,
+    manageRgLeads: false,
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
@@ -790,7 +796,8 @@ export default function AdminCRMPage() {
           viewCredits: false, adjustBalances: false, viewSettings: false,
           viewLeadCosts: false, editLeadCosts: false, approveAds: false,
           manageAds: false, manageSocialMedia: false, manageCustomCss: false,
-          managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false
+          managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false,
+          viewRgLeads: false, manageRgLeads: false,
         }
       });
       toast({
@@ -825,6 +832,8 @@ export default function AdminCRMPage() {
       managePartnerRedirects: false,
       manageSmtp: false,
       manageNotificationEmail: false,
+      viewRgLeads: false,
+      manageRgLeads: false,
     };
     setEditingManagerId(manager.id);
     setEditingPermissions(perms);
@@ -1508,7 +1517,7 @@ export default function AdminCRMPage() {
                       <FileText size={18} className="mr-3" /> Leads
                     </Button>
                     )}
-                    {hasPermission('viewLeads') && (
+                    {hasPermission('viewRgLeads') && (
                     <Button
                       variant={activeTab === 'rg-leads' ? 'secondary' : 'ghost'}
                       className="justify-start mb-1"
@@ -1610,7 +1619,7 @@ export default function AdminCRMPage() {
                   <FileText size={16} className="mr-2" /> Leads
                 </Button>
                 )}
-                {hasPermission('viewLeads') && (
+                {hasPermission('viewRgLeads') && (
                 <Button
                   variant={activeTab === 'rg-leads' ? 'secondary' : 'ghost'}
                   size="sm"
@@ -2229,6 +2238,26 @@ export default function AdminCRMPage() {
                     data-testid="checkbox-edit-perm-manage-notification-email"
                   />
                   <span className="text-sm">Manage Notification Email</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.viewRgLeads}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, viewRgLeads: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-view-rg-leads"
+                  />
+                  <span className="text-sm">View RG Leads</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.manageRgLeads}
+                    onChange={(e) => setEditingPermissions({...editingPermissions, manageRgLeads: e.target.checked})}
+                    className="h-4 w-4 rounded border-gray-300"
+                    data-testid="checkbox-edit-perm-manage-rg-leads"
+                  />
+                  <span className="text-sm">Manage RG Leads</span>
                 </label>
               </div>
             </div>
@@ -3058,7 +3087,7 @@ export default function AdminCRMPage() {
         )}
 
         {/* RG LEADS TAB — full embedded portal */}
-        {activeTab === 'rg-leads' && hasPermission('viewLeads') && (
+        {activeTab === 'rg-leads' && hasPermission('viewRgLeads') && (
           <RepDashboard embedded={true} />
         )}
 
@@ -3480,6 +3509,30 @@ export default function AdminCRMPage() {
                                   className="h-4 w-4 rounded border-gray-300"
                                 />
                                 <span className="text-sm">Edit Lead Costs</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.viewRgLeads}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, viewRgLeads: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">View RG Leads</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={newUser.permissions.manageRgLeads}
+                                  onChange={(e) => setNewUser({
+                                    ...newUser, 
+                                    permissions: {...newUser.permissions, manageRgLeads: e.target.checked}
+                                  })}
+                                  className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <span className="text-sm">Manage RG Leads</span>
                               </label>
                             </div>
                             
@@ -4562,6 +4615,30 @@ export default function AdminCRMPage() {
                     checked={managerPermissions.manageNotificationEmail}
                     onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageNotificationEmail: checked }))}
                     data-testid="toggle-manager-manage-notification-email"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">View RG Leads</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to access the Rent Guarantee Leads portal</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.viewRgLeads}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, viewRgLeads: checked }))}
+                    data-testid="toggle-manager-view-rg-leads"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">Manage RG Leads</h4>
+                    <p className="text-sm text-muted-foreground">Allow managers to assign and manage Rent Guarantee leads</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.manageRgLeads}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageRgLeads: checked }))}
+                    data-testid="toggle-manager-manage-rg-leads"
                   />
                 </div>
               </div>

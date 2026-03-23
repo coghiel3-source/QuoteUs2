@@ -10,6 +10,8 @@ export interface ManagerPermissions {
   viewSettings?: boolean;
   viewLeadCosts?: boolean;
   editLeadCosts?: boolean;
+  viewRgLeads?: boolean;
+  manageRgLeads?: boolean;
 }
 
 export interface RgPermissions {
