@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,29 @@ function StatCard({ label, value, sub, color }: { label: string; value: number |
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</p>
       <p className="text-3xl font-bold">{value}</p>
       {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+function BigStatCard({
+  label, value, sub, icon, iconBg, valueColor, onClick, action,
+}: {
+  label: string; value: number | string; sub?: string;
+  icon: React.ReactNode; iconBg: string; valueColor: string;
+  onClick?: () => void; action?: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-2 ${onClick ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between">
+        <p className="text-sm font-medium text-gray-500">{label}</p>
+        <div className={`${iconBg} rounded-full p-2`}>{icon}</div>
+      </div>
+      <p className={`text-4xl font-bold ${valueColor}`}>{value}</p>
+      {sub && <p className="text-xs text-gray-400">{sub}</p>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
@@ -691,6 +714,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   function copyLink(link: string) { navigator.clipboard.writeText(link); toast({ title: "Link copied to clipboard" }); }
 
   // Stats
+  const statsNew = leads.filter(l => l.status === "New").length;
   const statsInProgress = leads.filter(l => (IN_PROGRESS_STATUSES as string[]).includes(l.status)).length;
   const statsApproved = leads.filter(l => l.status === "Approved").length;
   const statsDeclined = leads.filter(l => l.status === "Declined").length;
@@ -701,7 +725,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   const filteredLeads = leads.filter(l => {
     const matchesSearch = !search || l.tenantName.toLowerCase().includes(search.toLowerCase()) || l.propertyAddress.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || l.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || l.status === statusFilter ||
+      ((IN_PROGRESS_STATUSES as string[]).includes(statusFilter) && (IN_PROGRESS_STATUSES as string[]).includes(l.status));
     return matchesSearch && matchesStatus;
   });
 
@@ -774,13 +799,43 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         {/* ===== OVERVIEW TAB ===== */}
         {activeTab === "overview" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <StatCard label="Locations" value={locations.length} color="bg-white" />
-              <StatCard label="Total Leads" value={leads.length} color="bg-white" />
-              <StatCard label="In Progress" value={statsInProgress} color="bg-yellow-50 border-yellow-100" />
-              <StatCard label="Approved" value={statsApproved} color="bg-green-50 border-green-100" />
-              <StatCard label="Declined" value={statsDeclined} color="bg-red-50 border-red-100" />
-              <StatCard label="Win Rate" value={`${winRate}%`} sub={`${totalClosed} closed`} color="bg-indigo-50 border-indigo-100" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <BigStatCard
+                label="Total RG Leads"
+                value={leads.length}
+                sub={`across ${locations.length} ${locations.length === 1 ? "location" : "locations"}`}
+                icon={<Home className="h-4 w-4 text-violet-600" />}
+                iconBg="bg-violet-100"
+                valueColor="text-violet-700"
+                onClick={() => { setActiveTab("leads"); setStatusFilter("all"); }}
+              />
+              <BigStatCard
+                label="New Assigned Leads"
+                value={statsNew}
+                sub="awaiting action"
+                icon={<UserPlus className="h-4 w-4 text-blue-600" />}
+                iconBg="bg-blue-100"
+                valueColor="text-blue-700"
+                onClick={() => { setActiveTab("leads"); setStatusFilter("New"); }}
+              />
+              <BigStatCard
+                label="In Progress"
+                value={statsInProgress}
+                sub="active applications"
+                icon={<Clock className="h-4 w-4 text-orange-600" />}
+                iconBg="bg-orange-100"
+                valueColor="text-orange-700"
+                onClick={() => { setActiveTab("leads"); setStatusFilter("Contacted"); }}
+              />
+              <BigStatCard
+                label="Approved"
+                value={statsApproved}
+                sub={winRate > 0 ? `${winRate}% win rate` : `${totalClosed} closed`}
+                icon={<CheckCircle2 className="h-4 w-4 text-green-600" />}
+                iconBg="bg-green-100"
+                valueColor="text-green-700"
+                onClick={() => { setActiveTab("leads"); setStatusFilter("Approved"); }}
+              />
             </div>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-white border rounded-xl p-5">
@@ -1153,40 +1208,86 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         {/* ===== ALL LEADS TAB ===== */}
         {activeTab === "leads" && (
           <div>
+            {/* Quick stat filter pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              {[
+                { label: "All Leads", count: leads.length, value: "all", color: "bg-gray-50 border-gray-200 hover:border-gray-400", activeColor: "bg-gray-900 text-white border-gray-900", textColor: "text-gray-700" },
+                { label: "New", count: statsNew, value: "New", color: "bg-blue-50 border-blue-200 hover:border-blue-400", activeColor: "bg-blue-600 text-white border-blue-600", textColor: "text-blue-700" },
+                { label: "In Progress", count: statsInProgress, value: "__inprogress__", color: "bg-orange-50 border-orange-200 hover:border-orange-400", activeColor: "bg-orange-500 text-white border-orange-500", textColor: "text-orange-700" },
+                { label: "Approved", count: statsApproved, value: "Approved", color: "bg-green-50 border-green-200 hover:border-green-400", activeColor: "bg-green-600 text-white border-green-600", textColor: "text-green-700" },
+              ].map(pill => {
+                const isActive = pill.value === "__inprogress__"
+                  ? (IN_PROGRESS_STATUSES as string[]).includes(statusFilter)
+                  : statusFilter === pill.value;
+                return (
+                  <button
+                    key={pill.value}
+                    onClick={() => {
+                      if (pill.value === "__inprogress__") {
+                        setStatusFilter("Contacted");
+                      } else {
+                        setStatusFilter(pill.value);
+                      }
+                    }}
+                    className={`rounded-xl border p-3 text-left transition-all ${isActive ? pill.activeColor : pill.color}`}
+                    data-testid={`pill-filter-${pill.value}`}
+                  >
+                    <p className={`text-2xl font-bold ${isActive ? "" : pill.textColor}`}>{pill.count}</p>
+                    <p className={`text-xs font-medium mt-0.5 ${isActive ? "opacity-80" : "text-gray-500"}`}>{pill.label}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search + status filter bar */}
             <div className="flex gap-3 mb-4">
-              <div className="relative flex-1 max-w-xs">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" data-testid="input-search-leads" />
+                <Input placeholder="Search by tenant name or property..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" data-testid="input-search-leads" />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48" data-testid="select-status-filter"><SelectValue placeholder="All statuses" /></SelectTrigger>
+                <SelectTrigger className="w-44" data-testid="select-status-filter"><SelectValue placeholder="All statuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   {Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+
             {loading ? <div className="text-center py-12 text-gray-500">Loading...</div> : filteredLeads.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-xl border"><Home className="h-12 w-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">No leads found</p></div>
+              <div className="text-center py-16 bg-white rounded-xl border"><Home className="h-12 w-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">No leads found</p><p className="text-sm text-gray-400 mt-1">{statusFilter !== "all" ? "Try changing the status filter" : "Add tenants from the Locations tab"}</p></div>
             ) : (
               <div className="space-y-2">
-                {filteredLeads.map(lead => (
-                  <div key={lead.id} className="bg-white border rounded-xl p-4 flex items-center justify-between hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all" onClick={() => openLead(lead)} data-testid={`lead-row-${lead.id}`}>
-                    <div className="flex items-center gap-4">
-                      <div className="bg-blue-50 rounded-lg p-2.5"><Home className="h-5 w-5 text-blue-600" /></div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{lead.tenantName}</p>
-                        <p className="text-sm text-gray-500">{lead.propertyAddress}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Landlord: {lead.landlordName} · Rent: ${Number(lead.monthlyRent).toLocaleString()}/mo</p>
+                <p className="text-xs text-gray-400 mb-2">{filteredLeads.length} lead{filteredLeads.length !== 1 ? "s" : ""} shown</p>
+                {filteredLeads.map(lead => {
+                  const loc = locations.find(l => l.id === lead.locationId);
+                  return (
+                    <div key={lead.id} className="bg-white border rounded-xl p-4 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all" onClick={() => openLead(lead)} data-testid={`lead-row-${lead.id}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4 flex-1 min-w-0">
+                          <div className="bg-blue-50 rounded-lg p-2.5 flex-shrink-0 mt-0.5"><Home className="h-5 w-5 text-blue-600" /></div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-gray-900">{lead.tenantName}</p>
+                              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_COLORS[lead.status as Status]}`}>{lead.status}</span>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-0.5">{lead.propertyAddress || loc?.propertyAddress || "—"}{loc?.unit ? ` · Unit ${loc.unit}` : ""}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                              {lead.landlordName && <p className="text-xs text-gray-400">Landlord: {lead.landlordName}</p>}
+                              <p className="text-xs text-gray-400">Rent: ${Number(lead.monthlyRent || 0).toLocaleString()}/mo</p>
+                              {lead.moveInDate && <p className="text-xs text-gray-400">Move-in: {new Date(lead.moveInDate).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>}
+                              {lead.tenantPhone && <p className="text-xs text-gray-400">{lead.tenantPhone}</p>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <span className="text-xs text-gray-400">{new Date(lead.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}</span>
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[lead.status as Status]}`}>{lead.status}</span>
-                      <span className="text-xs text-gray-400">{new Date(lead.createdAt).toLocaleDateString()}</span>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
