@@ -246,7 +246,7 @@ interface RepDashboardProps {
 }
 
 export default function RepDashboard({ embedded = false }: RepDashboardProps) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -302,6 +302,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [deleteLocationConfirm, setDeleteLocationConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Account balance / fund account
+  const [showFundAccount, setShowFundAccount] = useState(false);
+  const [creditPackages, setCreditPackages] = useState<{ amount: number; label: string }[]>([]);
+  const [repTransactions, setRepTransactions] = useState<{ id: string; type: string; amount: string; balanceAfter: string; description: string; createdAt: string }[]>([]);
+  const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
+  const [fundSuccessMessage, setFundSuccessMessage] = useState<string | null>(null);
+
   // Reminders
   const [showReminderForm, setShowReminderForm] = useState(false);
   const [editingReminder, setEditingReminder] = useState<RepReminder | null>(null);
@@ -338,6 +345,28 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       if (!embedded) navigate("/");
     } else {
       loadAll();
+      // Load credit packages for reps
+      if (user.role === "rep") {
+        fetch("/api/credits/packages").then(r => r.json()).then(data => {
+          setCreditPackages(data.packages || []);
+        }).catch(() => {});
+        fetch(`/api/users/${user.id}/transactions`).then(r => r.json()).then(txns => {
+          setRepTransactions(Array.isArray(txns) ? txns : []);
+        }).catch(() => {});
+      }
+      // Handle Stripe success redirect
+      if (!embedded) {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("success") === "true") {
+          const amount = params.get("amount");
+          setFundSuccessMessage(`Successfully added $${amount} to your account!`);
+          refreshUser?.();
+          window.history.replaceState({}, "", "/rep");
+        }
+        if (params.get("canceled") === "true") {
+          window.history.replaceState({}, "", "/rep");
+        }
+      }
     }
   }, [user]);
 
@@ -720,6 +749,28 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   function copyLink(link: string) { navigator.clipboard.writeText(link); toast({ title: "Link copied to clipboard" }); }
 
+  async function handleRepPurchase(amount: number) {
+    if (!user) return;
+    setPurchaseLoading(amount);
+    try {
+      const res = await fetch("/api/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, amount, returnPath: "/rep" }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({ title: data.error || "Failed to start checkout", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Failed to initiate purchase", variant: "destructive" });
+    } finally {
+      setPurchaseLoading(null);
+    }
+  }
+
   // Stats
   const statsNew = leads.filter(l => l.status === "New").length;
   const statsInProgress = leads.filter(l => (IN_PROGRESS_STATUSES as string[]).includes(l.status)).length;
@@ -789,6 +840,15 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
           </div>
         </div>
 
+        {/* Fund success banner */}
+        {fundSuccessMessage && !embedded && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3" data-testid="banner-fund-success">
+            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+            <p className="text-green-800 text-sm font-medium flex-1">{fundSuccessMessage}</p>
+            <button onClick={() => setFundSuccessMessage(null)} className="text-green-600 hover:text-green-800"><X className="h-4 w-4" /></button>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-1 mb-6 bg-white border rounded-lg p-1 w-fit">
           {([
@@ -806,6 +866,23 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         {/* ===== OVERVIEW TAB ===== */}
         {activeTab === "overview" && (
           <div className="space-y-6">
+            {/* Account Balance Card — reps only */}
+            {isRep && (
+              <div className="bg-white border rounded-xl p-5 flex items-center justify-between" data-testid="card-rep-balance">
+                <div className="flex items-center gap-4">
+                  <div className="bg-green-100 rounded-xl p-3"><DollarSign className="h-6 w-6 text-green-600" /></div>
+                  <div>
+                    <p className="text-sm text-gray-500 font-medium">Account Balance</p>
+                    <p className="text-3xl font-bold text-green-700" data-testid="text-rep-balance">${parseFloat(user.balance || "0").toFixed(2)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Available funds</p>
+                  </div>
+                </div>
+                <Button onClick={() => setShowFundAccount(true)} className="bg-green-600 hover:bg-green-700 text-white" data-testid="button-fund-account">
+                  <CreditCard className="h-4 w-4 mr-2" /> Fund Account
+                </Button>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <BigStatCard
                 label="Total RG Leads"
@@ -1747,6 +1824,89 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       </Dialog>
       <Dialog open={!!deleteReminderConfirm} onOpenChange={() => setDeleteReminderConfirm(null)}>
         <DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Delete Reminder?</DialogTitle></DialogHeader><p className="text-sm text-gray-500 py-2">This reminder will be permanently deleted.</p><DialogFooter><Button variant="outline" onClick={() => setDeleteReminderConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={handleDeleteReminder} data-testid="button-confirm-delete-reminder">Delete</Button></DialogFooter></DialogContent>
+      </Dialog>
+
+      {/* Fund Account Dialog */}
+      <Dialog open={showFundAccount} onOpenChange={setShowFundAccount}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-green-600" /> Fund Account
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-1">
+            {/* Current Balance */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-700 font-medium">Current Balance</p>
+                <p className="text-3xl font-bold text-green-700">${parseFloat(user.balance || "0").toFixed(2)}</p>
+              </div>
+              <DollarSign className="h-10 w-10 text-green-400" />
+            </div>
+
+            {/* Purchase packages */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-3">Select an amount to add</p>
+              {creditPackages.length === 0 ? (
+                <p className="text-sm text-gray-400">Loading packages…</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  {creditPackages.map(pkg => (
+                    <button
+                      key={pkg.amount}
+                      onClick={() => handleRepPurchase(pkg.amount)}
+                      disabled={purchaseLoading !== null}
+                      data-testid={`button-rep-purchase-${pkg.amount}`}
+                      className="flex flex-col items-center justify-center h-20 rounded-xl border-2 border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all font-semibold text-gray-800 disabled:opacity-50"
+                    >
+                      {purchaseLoading === pkg.amount ? (
+                        <span className="text-xs text-green-600 animate-pulse">Processing…</span>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mb-1 text-green-600" />
+                          <span className="text-lg">{pkg.label}</span>
+                        </>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Transaction History */}
+            {repTransactions.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Recent Transactions</p>
+                <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+                  {repTransactions.slice(0, 10).map(txn => {
+                    const amt = parseFloat(txn.amount);
+                    const isPos = amt >= 0;
+                    return (
+                      <div key={txn.id} className="flex items-center justify-between py-2 border-b last:border-0 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center ${isPos ? "bg-green-100" : "bg-red-100"}`}>
+                            {isPos ? <Plus className="h-3 w-3 text-green-600" /> : <DollarSign className="h-3 w-3 text-red-600" />}
+                          </span>
+                          <div>
+                            <p className="font-medium text-gray-900 leading-tight">{txn.description}</p>
+                            <p className="text-xs text-gray-400">{new Date(txn.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-semibold ${isPos ? "text-green-600" : "text-red-600"}`}>{isPos ? "+" : ""}{amt.toFixed(2)}</p>
+                          <p className="text-xs text-gray-400">Bal: ${parseFloat(txn.balanceAfter).toFixed(2)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFundAccount(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

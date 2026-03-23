@@ -1516,7 +1516,7 @@ export async function registerRoutes(
   // Only brokers can purchase credits
   app.post("/api/credits/checkout", async (req, res) => {
     try {
-      const { userId, amount } = req.body;
+      const { userId, amount, returnPath } = req.body;
       
       if (!userId || !amount) {
         return res.status(400).json({ error: "User ID and amount are required" });
@@ -1532,9 +1532,9 @@ export async function registerRoutes(
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Only brokers can purchase credits
-      if (user.role !== "broker") {
-        return res.status(403).json({ error: "Only brokers can purchase credits" });
+      // Only brokers and reps can purchase credits
+      if (user.role !== "broker" && user.role !== "rep") {
+        return res.status(403).json({ error: "Only brokers and reps can purchase credits" });
       }
       
       const stripe = await getUncachableStripeClient();
@@ -1571,8 +1571,8 @@ export async function registerRoutes(
           quantity: 1,
         }],
         mode: 'payment',
-        success_url: `${baseUrl}/broker/credits?success=true&amount=${amount}`,
-        cancel_url: `${baseUrl}/broker/credits?canceled=true`,
+        success_url: `${baseUrl}${returnPath || '/broker/credits'}?success=true&amount=${amount}`,
+        cancel_url: `${baseUrl}${returnPath || '/broker/credits'}?canceled=true`,
         metadata: {
           userId: user.id,
           creditAmount: amount.toString(),
