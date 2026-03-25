@@ -302,6 +302,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [deleteLocationConfirm, setDeleteLocationConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Broker assignment (admin/manager only)
+  const [brokers, setBrokers] = useState<{ id: string; name: string; email: string; balance: string }[]>([]);
+  const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
+  const [assigningBroker, setAssigningBroker] = useState(false);
+
   // Account balance / fund account
   const [showFundAccount, setShowFundAccount] = useState(false);
   const [creditPackages, setCreditPackages] = useState<{ amount: number; label: string }[]>([]);
@@ -345,6 +350,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       if (!embedded) navigate("/");
     } else {
       loadAll();
+      // Load active brokers for admin/manager assignment
+      if (user.role === "admin" || user.role === "manager") {
+        fetch("/api/users").then(r => r.json()).then((data: any[]) => {
+          const active = data.filter((u: any) => u.role === "broker" && u.status === "active");
+          setBrokers(active.map((u: any) => ({ id: u.id, name: u.name, email: u.email, balance: u.balance ?? "0" })));
+        }).catch(() => {});
+      }
       // Load credit packages for reps
       if (user.role === "rep") {
         fetch("/api/credits/packages").then(r => r.json()).then(data => {
@@ -458,6 +470,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setSelectedLead(lead);
     setDetailTab("info");
     setCreatedLink(null);
+    setSelectedBrokerId((lead as any).brokerId || "");
     if (!user) return;
     try {
       const [reqs, docs] = await Promise.all([
@@ -467,6 +480,32 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setDocRequests(reqs || []);
       setDocuments(docs || []);
     } catch {}
+  }
+
+  async function handleAssignBroker(brokerId: string | null) {
+    if (!user || !selectedLead) return;
+    setAssigningBroker(true);
+    try {
+      const res = await fetch(`/api/admin/rg-leads/${selectedLead.id}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId: user.id, brokerId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ title: err.error || "Failed to assign broker", variant: "destructive" });
+        return;
+      }
+      const updated: RgLead = await res.json();
+      setSelectedLead(updated);
+      setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+      setSelectedBrokerId((updated as any).brokerId || "");
+      toast({ title: brokerId ? "Broker assigned successfully" : "Broker unassigned" });
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to assign broker", variant: "destructive" });
+    } finally {
+      setAssigningBroker(false);
+    }
   }
 
   // ===== LOCATION CRUD =====
@@ -552,16 +591,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       });
       if (!res.ok) {
         const err = await res.json();
-        if (err.error === "Insufficient balance") {
-          toast({
-            title: "Insufficient Balance",
-            description: `You need $${err.required?.toFixed(2) ?? "funds"} to add a tenant. Please fund your account first.`,
-            variant: "destructive",
-          });
-          setShowTenantForm(false);
-          setShowFundAccount(true);
-          return;
-        }
         throw new Error(err.error || "Failed to add tenant");
       }
       const created: RgLead = await res.json();
@@ -1551,6 +1580,45 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     </CardContent>
                   </Card>
                   {selectedLead.notes && <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Notes</CardTitle></CardHeader><CardContent className="text-sm text-gray-700">{selectedLead.notes}</CardContent></Card>}
+
+                  {/* Broker Assignment — admin/manager only */}
+                  {isAdminOrManager && (
+                    <Card>
+                      <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Broker Assignment</CardTitle></CardHeader>
+                      <CardContent className="space-y-3">
+                        {(selectedLead as any).brokerId ? (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{brokers.find(b => b.id === (selectedLead as any).brokerId)?.name || "Assigned Broker"}</p>
+                              <p className="text-xs text-gray-500">{brokers.find(b => b.id === (selectedLead as any).brokerId)?.email}</p>
+                            </div>
+                            <button onClick={() => handleAssignBroker(null)} disabled={assigningBroker} className="text-xs text-red-500 hover:text-red-700 font-medium" data-testid="button-unassign-broker">
+                              {assigningBroker ? "..." : "Unassign"}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400">No broker assigned</p>
+                        )}
+                        <div className="flex gap-2">
+                          <Select value={selectedBrokerId} onValueChange={setSelectedBrokerId}>
+                            <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-assign-broker">
+                              <SelectValue placeholder="Select a broker..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {brokers.length === 0 && <SelectItem value="none" disabled>No active brokers</SelectItem>}
+                              {brokers.map(b => (
+                                <SelectItem key={b.id} value={b.id}>{b.name} — ${Number(b.balance).toFixed(2)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" className="h-8 text-xs px-3" onClick={() => handleAssignBroker(selectedBrokerId || null)} disabled={!selectedBrokerId || assigningBroker} data-testid="button-assign-broker">
+                            {assigningBroker ? "Assigning..." : "Assign"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {docRequests.length > 0 && (
                     <Card>
                       <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Document Requests Sent</CardTitle></CardHeader>

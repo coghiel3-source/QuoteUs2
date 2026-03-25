@@ -117,7 +117,6 @@ const DEFAULT_LEAD_COSTS: Record<string, number> = {
   "Pet": 5,
   "Mortgage": 10,
   "Rent Guarantee": 8,
-  "Rep": 8,
 };
 
 // Get lead costs from database or use defaults
@@ -1979,7 +1978,7 @@ export async function registerRoutes(
       }
       
       // Get lead cost - use broker's override if set, otherwise default
-      const defaultCost = currentLeadCosts[quote.type] || currentLeadCosts["Rep"];
+      const defaultCost = currentLeadCosts[quote.type] ?? 0;
       const leadCost = broker.leadCostOverride !== null && broker.leadCostOverride !== undefined
         ? parseFloat(broker.leadCostOverride)
         : defaultCost;
@@ -2154,7 +2153,7 @@ export async function registerRoutes(
 
       // Get lead cost
       const currentLeadCosts = await getLeadCosts();
-      const defaultCost = currentLeadCosts[quote.type] || currentLeadCosts["Rep"];
+      const defaultCost = currentLeadCosts[quote.type] ?? 0;
       const leadCost = broker.leadCostOverride !== null && broker.leadCostOverride !== undefined
         ? parseFloat(broker.leadCostOverride)
         : defaultCost;
@@ -2724,10 +2723,10 @@ export async function registerRoutes(
     }
   });
 
-  // Assign / reassign an RG lead to a different rep (admin/manager with assignLeads permission)
+  // Assign / reassign an RG lead to a rep or broker (admin/manager with assignLeads permission)
   app.patch("/api/admin/rg-leads/:id/assign", async (req, res) => {
     try {
-      const { actorId, repId } = req.body;
+      const { actorId, repId, brokerId } = req.body;
       if (!actorId) return res.status(401).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
       if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
@@ -2738,34 +2737,44 @@ export async function registerRoutes(
       const lead = await storage.getRgLead(req.params.id);
       if (!lead) return res.status(404).json({ error: "Lead not found" });
 
-      let repUser = null;
+      // Validate rep if provided
       if (repId) {
-        repUser = await storage.getUser(repId);
+        const repUser = await storage.getUser(repId);
         if (!repUser || repUser.role !== "rep") return res.status(400).json({ error: "Target user is not a rep" });
       }
 
-      // Deduct "Rep" lead cost when assigning (or reassigning) to a different rep
-      if (repUser && repId !== lead.repId) {
-        const leadCosts = await getLeadCosts();
-        const repCost = leadCosts["Rep"] ?? 0;
-        if (repCost > 0) {
-          const debitResult = await storage.debitBalance(
-            repUser.id,
-            repCost.toFixed(2),
-            `RG lead assigned: ${lead.tenantName} at ${lead.propertyAddress}`,
-            { actorId, actorName: actor.name }
-          );
-          if (!debitResult) {
-            return res.status(400).json({
-              error: "Insufficient balance",
-              required: repCost,
-              currentBalance: repUser.balance,
-            });
+      // Validate broker and deduct "Rent Guarantee" cost if provided and changed
+      if (brokerId !== undefined) {
+        if (brokerId !== null) {
+          const brokerUser = await storage.getUser(brokerId);
+          if (!brokerUser || brokerUser.role !== "broker") return res.status(400).json({ error: "Target user is not a broker" });
+          if (brokerId !== (lead as any).brokerId) {
+            const leadCosts = await getLeadCosts();
+            const rgCost = leadCosts["Rent Guarantee"] ?? 0;
+            if (rgCost > 0) {
+              const debitResult = await storage.debitBalance(
+                brokerId,
+                rgCost.toFixed(2),
+                `RG lead assigned: ${lead.tenantName} at ${lead.propertyAddress}`,
+                { actorId, actorName: actor.name }
+              );
+              if (!debitResult) {
+                return res.status(400).json({
+                  error: "Insufficient balance",
+                  required: rgCost,
+                  currentBalance: brokerUser.balance,
+                });
+              }
+            }
           }
         }
       }
 
-      const updated = await storage.updateRgLead(req.params.id, { repId: repId || null } as any);
+      const updateData: any = {};
+      if (repId !== undefined) updateData.repId = repId || lead.repId;
+      if (brokerId !== undefined) updateData.brokerId = brokerId || null;
+
+      const updated = await storage.updateRgLead(req.params.id, updateData);
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2818,27 +2827,6 @@ export async function registerRoutes(
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
-
-      // Deduct "Rep" lead cost from rep's balance when a rep creates a new lead
-      if (actor.role === "rep") {
-        const leadCosts = await getLeadCosts();
-        const repCost = leadCosts["Rep"] ?? 0;
-        if (repCost > 0) {
-          const debitResult = await storage.debitBalance(
-            actor.id,
-            repCost.toFixed(2),
-            `New RG lead: ${data.tenantName || "Tenant"} at ${data.propertyAddress || ""}`,
-            { actorId: actor.id, actorName: actor.name }
-          );
-          if (!debitResult) {
-            return res.status(400).json({
-              error: "Insufficient balance",
-              required: repCost,
-              currentBalance: actor.balance,
-            });
-          }
-        }
-      }
 
       const lead = await storage.createRgLead({ ...data, repId: actor.id });
       res.json(lead);
@@ -3083,27 +3071,6 @@ export async function registerRoutes(
       if (!tenantName || !tenantEmail || !tenantPhone || !employmentStatus) return res.status(400).json({ error: "Tenant name, email, phone, and employment status are required" });
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
-
-      // Deduct "Rep" lead cost from rep's balance when they add a new tenant
-      if (actor.role === "rep") {
-        const leadCosts = await getLeadCosts();
-        const repCost = leadCosts["Rep"] ?? 0;
-        if (repCost > 0) {
-          const debitResult = await storage.debitBalance(
-            actor.id,
-            repCost.toFixed(2),
-            `New tenant added: ${tenantName} at ${location.propertyAddress}${location.unit ? ` Unit ${location.unit}` : ""}`,
-            { actorId: actor.id, actorName: actor.name }
-          );
-          if (!debitResult) {
-            return res.status(400).json({
-              error: "Insufficient balance",
-              required: repCost,
-              currentBalance: actor.balance,
-            });
-          }
-        }
-      }
 
       const lead = await storage.createRgLead({
         repId: actorId,

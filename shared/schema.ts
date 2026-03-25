@@ -224,6 +224,7 @@ export const rgLeads = pgTable("rg_leads", {
   householdIncome: decimal("household_income", { precision: 10, scale: 2 }),
   employerName: text("employer_name"),
   paymentMethod: text("payment_method"),
+  brokerId: varchar("broker_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
