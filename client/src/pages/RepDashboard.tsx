@@ -325,11 +325,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   // Location form
   const [showLocationForm, setShowLocationForm] = useState(false);
   const [editingLocation, setEditingLocation] = useState<RgLocation | null>(null);
-  const [locationForm, setLocationForm] = useState({ propertyAddress: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "" });
+  const [locationForm, setLocationForm] = useState({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "" });
   const [savingLocation, setSavingLocation] = useState(false);
 
   // Tenant form
   const [showTenantForm, setShowTenantForm] = useState(false);
+  const [tenantFormAutoOpened, setTenantFormAutoOpened] = useState(false);
   const [tenantTargetLocation, setTenantTargetLocation] = useState<RgLocation | null>(null);
   const [tenantForm, setTenantForm] = useState({ tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", coApplicantName: "", coApplicantEmail: "", notes: "", householdIncome: "", employerName: "", paymentMethod: "", status: "New" });
   const [savingTenant, setSavingTenant] = useState(false);
@@ -510,26 +511,44 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   // ===== LOCATION CRUD =====
   function openNewLocation() {
-    setLocationForm({ propertyAddress: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "" });
+    setLocationForm({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "" });
     setEditingLocation(null);
     setShowLocationForm(true);
   }
 
   function openEditLocation(loc: RgLocation, e?: React.MouseEvent) {
     e?.stopPropagation();
-    setLocationForm({ propertyAddress: loc.propertyAddress, unit: loc.unit || "", landlordName: loc.landlordName, landlordEmail: loc.landlordEmail || "", landlordPhone: loc.landlordPhone || "", monthlyRent: loc.monthlyRent, moveInDate: loc.moveInDate || "", notes: loc.notes || "" });
+    // On edit, put full existing address into street field
+    setLocationForm({ street: loc.propertyAddress, city: "", province: "ON", postalCode: "", unit: loc.unit || "", landlordName: loc.landlordName, landlordEmail: loc.landlordEmail || "", landlordPhone: loc.landlordPhone || "", monthlyRent: loc.monthlyRent, moveInDate: loc.moveInDate || "", notes: loc.notes || "" });
     setEditingLocation(loc);
     setShowLocationForm(true);
   }
 
+  function buildPropertyAddress(form: typeof locationForm): string {
+    const parts = [form.street.trim()];
+    const cityProv = [form.city.trim(), form.province.trim()].filter(Boolean).join(", ");
+    if (cityProv) parts.push(cityProv);
+    if (form.postalCode.trim()) parts.push(form.postalCode.trim().toUpperCase());
+    return parts.join(" ");
+  }
+
   async function handleSaveLocation() {
-    if (!user || !locationForm.propertyAddress || !locationForm.landlordName || !locationForm.monthlyRent) {
-      toast({ title: "Please fill in address, landlord name, and monthly rent", variant: "destructive" });
+    if (!user || !locationForm.street || !locationForm.landlordName || !locationForm.monthlyRent) {
+      toast({ title: "Please fill in the street address, landlord name, and monthly rent", variant: "destructive" });
+      return;
+    }
+    if (!locationForm.city) {
+      toast({ title: "Please fill in the city", variant: "destructive" });
+      return;
+    }
+    if (!locationForm.postalCode) {
+      toast({ title: "Please fill in the postal code", variant: "destructive" });
       return;
     }
     setSavingLocation(true);
+    const propertyAddress = buildPropertyAddress(locationForm);
     try {
-      const payload = { actorId: user.id, ...locationForm, unit: locationForm.unit || null, landlordEmail: locationForm.landlordEmail || null, landlordPhone: locationForm.landlordPhone || null, moveInDate: locationForm.moveInDate || null, notes: locationForm.notes || null };
+      const payload = { actorId: user.id, propertyAddress, unit: locationForm.unit || null, landlordName: locationForm.landlordName, landlordEmail: locationForm.landlordEmail || null, landlordPhone: locationForm.landlordPhone || null, monthlyRent: locationForm.monthlyRent, moveInDate: locationForm.moveInDate || null, notes: locationForm.notes || null };
       if (editingLocation) {
         const updated = await apiRequest<RgLocation>(`/rep/locations/${editingLocation.id}`, { method: "PATCH", body: JSON.stringify(payload) });
         setLocations(prev => prev.map(l => l.id === editingLocation.id ? updated : l));
@@ -541,7 +560,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         toast({ title: "Location created" });
         setShowLocationForm(false);
         openLocation(created);
-        openAddTenant(created);
+        openAddTenant(created, undefined, true);
         return;
       }
       setShowLocationForm(false);
@@ -569,9 +588,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   }
 
   // ===== TENANT CRUD =====
-  function openAddTenant(loc: RgLocation, e?: React.MouseEvent) {
+  function openAddTenant(loc: RgLocation, e?: React.MouseEvent, autoOpened = false) {
     e?.stopPropagation();
     setTenantTargetLocation(loc);
+    setTenantFormAutoOpened(autoOpened);
     setTenantForm({ tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", coApplicantName: "", coApplicantEmail: "", notes: "", householdIncome: "", employerName: "", paymentMethod: "", status: "New" });
     setShowTenantForm(true);
   }
@@ -1747,7 +1767,20 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5"><Label>Unit # (optional)</Label><Input placeholder="e.g. 4B" value={locationForm.unit} onChange={e => setLocationForm(p => ({ ...p, unit: e.target.value }))} data-testid="input-location-unit" /></div>
-                  <div className="col-span-2 space-y-1.5"><Label>Property Address *</Label><Input placeholder="456 Oak Ave, Toronto, ON M6K 2P3" value={locationForm.propertyAddress} onChange={e => setLocationForm(p => ({ ...p, propertyAddress: e.target.value }))} data-testid="input-location-address" /></div>
+                  <div className="col-span-2 space-y-1.5"><Label>Street Address *</Label><Input placeholder="456 Oak Ave" value={locationForm.street} onChange={e => setLocationForm(p => ({ ...p, street: e.target.value }))} data-testid="input-location-street" /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1.5"><Label>City *</Label><Input placeholder="Toronto" value={locationForm.city} onChange={e => setLocationForm(p => ({ ...p, city: e.target.value }))} data-testid="input-location-city" /></div>
+                  <div className="space-y-1.5">
+                    <Label>Province</Label>
+                    <Select value={locationForm.province} onValueChange={v => setLocationForm(p => ({ ...p, province: v }))}>
+                      <SelectTrigger data-testid="select-location-province"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["AB","BC","MB","NB","NL","NS","NT","NU","ON","PE","QC","SK","YT"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5"><Label>Postal Code *</Label><Input placeholder="M6K 2P3" value={locationForm.postalCode} onChange={e => setLocationForm(p => ({ ...p, postalCode: e.target.value }))} data-testid="input-location-postal" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5"><Label>Monthly Rent ($) *</Label><Input type="number" min="0" step="0.01" placeholder="2500" value={locationForm.monthlyRent} onChange={e => setLocationForm(p => ({ ...p, monthlyRent: e.target.value }))} data-testid="input-location-rent" /></div>
@@ -1820,7 +1853,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             </div>
             <div className="space-y-1.5"><Label>Notes</Label><Textarea rows={2} value={tenantForm.notes} onChange={e => setTenantForm(p => ({ ...p, notes: e.target.value }))} data-testid="input-tenant-notes" /></div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {isAdminOrManager && tenantFormAutoOpened && (
+              <Button variant="ghost" className="text-gray-500 sm:mr-auto" onClick={() => setShowTenantForm(false)} data-testid="button-add-tenant-later">
+                Add Tenants Later
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setShowTenantForm(false)}>Cancel</Button>
             <Button onClick={handleSaveTenant} disabled={savingTenant} data-testid="button-save-tenant">{savingTenant ? "Adding..." : "Add Tenant"}</Button>
           </DialogFooter>
