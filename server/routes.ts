@@ -1714,13 +1714,13 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Only admin/manager can update broker lead costs" });
       }
       
-      // Verify target is a broker
+      // Verify target is a broker or rep
       const broker = await storage.getUser(brokerId);
       if (!broker) {
-        return res.status(404).json({ error: "Broker not found" });
+        return res.status(404).json({ error: "User not found" });
       }
-      if (broker.role !== "broker") {
-        return res.status(400).json({ error: "Can only set lead costs for brokers" });
+      if (!["broker", "rep"].includes(broker.role)) {
+        return res.status(400).json({ error: "Can only set lead costs for brokers or reps" });
       }
       
       // Validate lead cost (null to clear, or a number >= 0)

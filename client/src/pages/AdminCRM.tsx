@@ -219,16 +219,6 @@ export default function AdminCRMPage() {
   // Mobile Menu State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Add RG Lead for Rep (Credits tab)
-  const [addRgLeadRepId, setAddRgLeadRepId] = useState<string | null>(null);
-  const [addRgLeadOpen, setAddRgLeadOpen] = useState(false);
-  const [addRgLeadSubmitting, setAddRgLeadSubmitting] = useState(false);
-  const [rgLeadForm, setRgLeadForm] = useState({
-    street: "", city: "", province: "ON", postalCode: "", unit: "",
-    landlordName: "", landlordEmail: "", landlordPhone: "",
-    monthlyRent: "", moveInDate: "",
-    tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", notes: "",
-  });
 
   // SMTP Settings State
   const [smtpHost, setSmtpHost] = useState("");
@@ -822,40 +812,6 @@ export default function AdminCRMPage() {
         description: "Failed to create user",
         variant: "destructive",
       });
-    }
-  };
-
-  // Add RG Lead on behalf of a rep (from Credits tab)
-  const handleAddRgLeadForRep = async () => {
-    if (!addRgLeadRepId) return;
-    const { street, city, province, postalCode, unit, landlordName, landlordEmail, landlordPhone, monthlyRent, moveInDate, tenantName, tenantEmail, tenantPhone, employmentStatus, notes } = rgLeadForm;
-    if (!street || !city || !province || !postalCode) { toast({ title: "Error", description: "Full property address is required", variant: "destructive" }); return; }
-    if (!landlordName || !monthlyRent) { toast({ title: "Error", description: "Landlord name and monthly rent are required", variant: "destructive" }); return; }
-    if (!tenantName || !tenantEmail || !tenantPhone || !employmentStatus) { toast({ title: "Error", description: "Tenant name, email, phone, and employment status are required", variant: "destructive" }); return; }
-    setAddRgLeadSubmitting(true);
-    try {
-      const propertyAddress = [street, unit ? `Unit ${unit}` : null, city, province, postalCode].filter(Boolean).join(", ");
-      const locRes = await fetch("/api/rep/locations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actorId: user?.id, repId: addRgLeadRepId, propertyAddress, unit: unit || null, landlordName, landlordEmail: landlordEmail || null, landlordPhone: landlordPhone || null, monthlyRent, moveInDate: moveInDate || null }),
-      });
-      if (!locRes.ok) { const e = await locRes.json(); throw new Error(e.error || "Failed to create location"); }
-      const location = await locRes.json();
-      const tenRes = await fetch(`/api/rep/locations/${location.id}/tenants`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actorId: user?.id, tenantName, tenantEmail, tenantPhone, employmentStatus, notes: notes || null }),
-      });
-      if (!tenRes.ok) { const e = await tenRes.json(); throw new Error(e.error || "Failed to create tenant lead"); }
-      toast({ title: "RG Lead Created", description: `Lead added for ${tenantName} and assigned to the selected rep.` });
-      setAddRgLeadOpen(false);
-      setAddRgLeadRepId(null);
-      setRgLeadForm({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", notes: "" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to create RG lead", variant: "destructive" });
-    } finally {
-      setAddRgLeadSubmitting(false);
     }
   };
 
@@ -4293,6 +4249,8 @@ export default function AdminCRMPage() {
                           <TableHead>Rep</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Balance</TableHead>
+                          <TableHead className="text-right">Lead Cost</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -4300,26 +4258,193 @@ export default function AdminCRMPage() {
                         {reps.map((rep) => (
                           <TableRow key={rep.id} data-testid={`row-rep-${rep.id}`}>
                             <TableCell className="font-medium">{rep.name}</TableCell>
-                            <TableCell className="text-muted-foreground">{rep.email}</TableCell>
+                            <TableCell>{rep.email}</TableCell>
                             <TableCell>
-                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${rep.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                              <Badge variant={rep.status === 'active' ? 'default' : 'secondary'}>
                                 {rep.status}
-                              </span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              ${parseFloat(rep.balance || "0").toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right">
+                              {editingLeadCost === rep.id ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="Default"
+                                    value={newLeadCost}
+                                    onChange={(e) => setNewLeadCost(e.target.value)}
+                                    className="w-24 h-8 text-right"
+                                    data-testid={`input-lead-cost-${rep.id}`}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8"
+                                    onClick={async () => {
+                                      try {
+                                        const res = await fetch("/api/admin/broker-lead-cost", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({
+                                            brokerId: rep.id,
+                                            leadCost: newLeadCost || null,
+                                            actorId: user?.id,
+                                          }),
+                                        });
+                                        if (res.ok) {
+                                          toast({ title: "Lead Cost Updated", description: newLeadCost ? `Set to $${parseFloat(newLeadCost).toFixed(2)} per lead.` : "Reset to default pricing." });
+                                          setEditingLeadCost(null);
+                                          setNewLeadCost("");
+                                          window.location.reload();
+                                        } else {
+                                          const err = await res.json();
+                                          toast({ title: "Error", description: err.error, variant: "destructive" });
+                                        }
+                                      } catch (err) {
+                                        toast({ title: "Error", description: "Failed to update lead cost", variant: "destructive" });
+                                      }
+                                    }}
+                                  >
+                                    <Check size={14} />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8"
+                                    onClick={() => { setEditingLeadCost(null); setNewLeadCost(""); }}
+                                  >
+                                    <X size={14} />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-end gap-2">
+                                  <span className="font-mono">
+                                    {rep.leadCostOverride ? `$${parseFloat(rep.leadCostOverride).toFixed(2)}` : "Default"}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2"
+                                    onClick={() => {
+                                      setEditingLeadCost(rep.id);
+                                      setNewLeadCost(rep.leadCostOverride || "");
+                                    }}
+                                    data-testid={`button-edit-lead-cost-${rep.id}`}
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {hasPermission('adjustBalances') ? (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1"
+                                    onClick={() => {
+                                      setSelectedBrokerForFunds(rep.id);
+                                      setFundAmount("");
+                                      setFundReason("");
+                                    }}
+                                    data-testid={`button-add-funds-rep-${rep.id}`}
+                                  >
+                                    <DollarSign size={14} /> Add Funds
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Add Funds to {rep.name}</DialogTitle>
+                                    <DialogDescription>
+                                      Current balance: ${parseFloat(rep.balance || "0").toFixed(2)}
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                      <Label>Amount to Add ($)</Label>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="50.00"
+                                        value={fundAmount}
+                                        onChange={(e) => setFundAmount(e.target.value)}
+                                        data-testid="input-fund-amount-rep"
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Reason</Label>
+                                      <Input
+                                        placeholder="Manual credit adjustment"
+                                        value={fundReason}
+                                        onChange={(e) => setFundReason(e.target.value)}
+                                        data-testid="input-fund-reason-rep"
+                                      />
+                                    </div>
+                                  </div>
+                                  <DialogFooter>
+                                    <Button
+                                      onClick={async () => {
+                                        if (!fundAmount || !fundReason) {
+                                          toast({ title: "Error", description: "Please enter amount and reason", variant: "destructive" });
+                                          return;
+                                        }
+                                        try {
+                                          const res = await fetch("/api/admin/credits/adjust", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({
+                                              userId: rep.id,
+                                              amount: fundAmount,
+                                              reason: fundReason,
+                                              actorId: user?.id,
+                                              actorName: user?.name,
+                                            }),
+                                          });
+                                          if (res.ok) {
+                                            const data = await res.json();
+                                            toast({
+                                              title: "Funds Added",
+                                              description: `$${parseFloat(fundAmount).toFixed(2)} added to ${rep.name}. New balance: $${parseFloat(data.newBalance).toFixed(2)}`
+                                            });
+                                            setFundAmount("");
+                                            setFundReason("");
+                                            window.location.reload();
+                                          } else {
+                                            const err = await res.json();
+                                            toast({ title: "Error", description: err.error, variant: "destructive" });
+                                          }
+                                        } catch (err) {
+                                          toast({ title: "Error", description: "Failed to add funds", variant: "destructive" });
+                                        }
+                                      }}
+                                      data-testid="button-confirm-add-funds-rep"
+                                    >
+                                      Add ${fundAmount || "0.00"}
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">--</span>
+                              )}
+                              {hasPermission('manageBrokers') && (
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="gap-1"
-                                onClick={() => {
-                                  setAddRgLeadRepId(rep.id);
-                                  setRgLeadForm({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", tenantName: "", tenantEmail: "", tenantPhone: "", employmentStatus: "", notes: "" });
-                                  setAddRgLeadOpen(true);
-                                }}
-                                data-testid={`button-add-rg-lead-${rep.id}`}
+                                variant="ghost"
+                                className="gap-1 ml-2"
+                                onClick={() => openEditUser(rep)}
+                                data-testid={`button-edit-user-rep-${rep.id}`}
                               >
-                                <Plus size={14} /> Add RG Lead
+                                <Pencil size={14} /> Edit
                               </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -4328,103 +4453,6 @@ export default function AdminCRMPage() {
                   </div>
                 </div>
               )}
-
-              {/* Add RG Lead Dialog */}
-              <Dialog open={addRgLeadOpen} onOpenChange={(open) => { if (!open) { setAddRgLeadOpen(false); setAddRgLeadRepId(null); } }}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Add RG Lead for {reps.find(r => r.id === addRgLeadRepId)?.name || "Rep"}</DialogTitle>
-                    <DialogDescription>Create a new Rent Guarantee location and tenant lead assigned to this rep.</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="font-semibold text-sm text-muted-foreground uppercase tracking-wide pt-1">Property Details</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm font-medium">Street Address *</label>
-                        <Input value={rgLeadForm.street} onChange={e => setRgLeadForm(f => ({ ...f, street: e.target.value }))} placeholder="123 Main St" data-testid="input-rg-street" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Unit / Suite</label>
-                        <Input value={rgLeadForm.unit} onChange={e => setRgLeadForm(f => ({ ...f, unit: e.target.value }))} placeholder="Apt 4B" data-testid="input-rg-unit" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">City *</label>
-                        <Input value={rgLeadForm.city} onChange={e => setRgLeadForm(f => ({ ...f, city: e.target.value }))} placeholder="Toronto" data-testid="input-rg-city" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Province *</label>
-                        <select className="w-full border rounded-md px-3 py-2 text-sm" value={rgLeadForm.province} onChange={e => setRgLeadForm(f => ({ ...f, province: e.target.value }))} data-testid="select-rg-province">
-                          {["AB","BC","MB","NB","NL","NS","NT","NU","ON","PE","QC","SK","YT"].map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Postal Code *</label>
-                        <Input value={rgLeadForm.postalCode} onChange={e => setRgLeadForm(f => ({ ...f, postalCode: e.target.value }))} placeholder="M5V 1A1" data-testid="input-rg-postal" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Monthly Rent *</label>
-                        <Input type="number" min="0" step="0.01" value={rgLeadForm.monthlyRent} onChange={e => setRgLeadForm(f => ({ ...f, monthlyRent: e.target.value }))} placeholder="1800" data-testid="input-rg-monthly-rent" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Move-In Date</label>
-                        <Input type="date" value={rgLeadForm.moveInDate} onChange={e => setRgLeadForm(f => ({ ...f, moveInDate: e.target.value }))} data-testid="input-rg-move-in-date" />
-                      </div>
-                    </div>
-                    <div className="font-semibold text-sm text-muted-foreground uppercase tracking-wide pt-2">Landlord Details</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm font-medium">Landlord Name *</label>
-                        <Input value={rgLeadForm.landlordName} onChange={e => setRgLeadForm(f => ({ ...f, landlordName: e.target.value }))} placeholder="Jane Smith" data-testid="input-rg-landlord-name" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Landlord Email</label>
-                        <Input type="email" value={rgLeadForm.landlordEmail} onChange={e => setRgLeadForm(f => ({ ...f, landlordEmail: e.target.value }))} placeholder="landlord@email.com" data-testid="input-rg-landlord-email" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Landlord Phone</label>
-                        <Input value={rgLeadForm.landlordPhone} onChange={e => setRgLeadForm(f => ({ ...f, landlordPhone: e.target.value }))} placeholder="416-555-0000" data-testid="input-rg-landlord-phone" />
-                      </div>
-                    </div>
-                    <div className="font-semibold text-sm text-muted-foreground uppercase tracking-wide pt-2">Tenant Details</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-sm font-medium">Tenant Name *</label>
-                        <Input value={rgLeadForm.tenantName} onChange={e => setRgLeadForm(f => ({ ...f, tenantName: e.target.value }))} placeholder="John Doe" data-testid="input-rg-tenant-name" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Tenant Email *</label>
-                        <Input type="email" value={rgLeadForm.tenantEmail} onChange={e => setRgLeadForm(f => ({ ...f, tenantEmail: e.target.value }))} placeholder="tenant@email.com" data-testid="input-rg-tenant-email" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Tenant Phone *</label>
-                        <Input value={rgLeadForm.tenantPhone} onChange={e => setRgLeadForm(f => ({ ...f, tenantPhone: e.target.value }))} placeholder="416-555-1234" data-testid="input-rg-tenant-phone" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Employment Status *</label>
-                        <select className="w-full border rounded-md px-3 py-2 text-sm" value={rgLeadForm.employmentStatus} onChange={e => setRgLeadForm(f => ({ ...f, employmentStatus: e.target.value }))} data-testid="select-rg-employment-status">
-                          <option value="">Select status...</option>
-                          <option value="Employed">Employed</option>
-                          <option value="Self-Employed">Self-Employed</option>
-                          <option value="Student">Student</option>
-                          <option value="Unemployed">Unemployed</option>
-                          <option value="Retired">Retired</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="text-sm font-medium">Notes</label>
-                        <Input value={rgLeadForm.notes} onChange={e => setRgLeadForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any additional notes..." data-testid="input-rg-notes" />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter className="mt-4">
-                    <Button variant="outline" onClick={() => { setAddRgLeadOpen(false); setAddRgLeadRepId(null); }}>Cancel</Button>
-                    <Button onClick={handleAddRgLeadForRep} disabled={addRgLeadSubmitting} data-testid="button-submit-rg-lead">
-                      {addRgLeadSubmitting ? "Creating..." : "Create RG Lead"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
 
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-3">
