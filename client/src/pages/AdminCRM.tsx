@@ -5,7 +5,7 @@ import RepDashboard from "@/pages/RepDashboard";
 import { DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -696,6 +696,32 @@ export default function AdminCRMPage() {
         title: "Lead Unassigned",
         description: "Lead is now unassigned.",
       });
+      return;
+    }
+
+    // Check if target is a rep — no credit deduction
+    const targetUser = users.find(u => u.id === brokerId);
+    if (targetUser?.role === "rep") {
+      setAssigningLead(quoteId);
+      try {
+        const response = await fetch("/api/leads/assign-rep", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quoteId, repId: brokerId, actorId: user?.id, actorName: user?.name }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          toast({ title: "Assignment Failed", description: data.error || "Could not assign lead", variant: "destructive" });
+          return;
+        }
+        assignQuoteLocal(quoteId, brokerId);
+        toast({ title: "Lead Forwarded to Rep", description: `Lead forwarded to ${brokerName} (no charge).` });
+        refreshQuotes();
+      } catch {
+        toast({ title: "Assignment Failed", description: "An error occurred", variant: "destructive" });
+      } finally {
+        setAssigningLead(null);
+      }
       return;
     }
 
@@ -2581,25 +2607,42 @@ export default function AdminCRMPage() {
                               <Select 
                                 value=""
                                 onValueChange={(val) => {
-                                  const broker = users.find(u => u.id === val);
-                                  handleAssignWithCredits(quote.id, val, broker?.name || "");
+                                  const u = users.find(u => u.id === val);
+                                  handleAssignWithCredits(quote.id, val, u?.name || "");
                                 }}
                               >
                                 <SelectTrigger className="w-[100px] h-7 text-xs">
                                   <SelectValue placeholder="Assign" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {brokers.map(broker => (
-                                    <SelectItem key={broker.id} value={broker.id}>
-                                      <span className="flex items-center gap-1">
-                                        {broker.name}
-                                        {(broker as any).referenceId && <span className="text-[10px] font-mono text-blue-600">[{(broker as any).referenceId}]</span>}
-                                        <span className="text-xs text-muted-foreground">
-                                          (${parseFloat(broker.balance || "0").toFixed(0)})
+                                  <SelectGroup>
+                                    <SelectLabel className="text-xs text-muted-foreground">Brokers</SelectLabel>
+                                    {brokers.map(broker => (
+                                      <SelectItem key={broker.id} value={broker.id}>
+                                        <span className="flex items-center gap-1">
+                                          {broker.name}
+                                          {(broker as any).referenceId && <span className="text-[10px] font-mono text-blue-600">[{(broker as any).referenceId}]</span>}
+                                          <span className="text-xs text-muted-foreground">(${parseFloat(broker.balance || "0").toFixed(0)})</span>
                                         </span>
-                                      </span>
-                                    </SelectItem>
-                                  ))}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                  {reps.length > 0 && (
+                                    <>
+                                      <SelectSeparator />
+                                      <SelectGroup>
+                                        <SelectLabel className="text-xs text-muted-foreground">RG Reps</SelectLabel>
+                                        {reps.map(rep => (
+                                          <SelectItem key={rep.id} value={rep.id}>
+                                            <span className="flex items-center gap-1">
+                                              {rep.name}
+                                              <span className="text-[10px] text-emerald-600 font-medium">Rep</span>
+                                            </span>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectGroup>
+                                    </>
+                                  )}
                                 </SelectContent>
                               </Select>
                             )}
@@ -2932,8 +2975,8 @@ export default function AdminCRMPage() {
                              <Select 
                               value={quote.assignedTo || "unassigned"} 
                               onValueChange={(val) => {
-                                const broker = users.find(u => u.id === val);
-                                handleAssignWithCredits(quote.id, val, broker?.name || "");
+                                const u = users.find(u => u.id === val);
+                                handleAssignWithCredits(quote.id, val, u?.name || "");
                               }}
                               disabled={assigningLead === quote.id}
                             >
@@ -2942,16 +2985,33 @@ export default function AdminCRMPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="unassigned">Unassigned</SelectItem>
-                                {brokers.map(broker => (
-                                  <SelectItem key={broker.id} value={broker.id}>
-                                    <span className="flex items-center gap-2">
-                                      {broker.name}
-                                      <span className="text-xs text-muted-foreground">
-                                        (${parseFloat(broker.balance || "0").toFixed(0)})
+                                <SelectGroup>
+                                  <SelectLabel className="text-xs text-muted-foreground">Brokers</SelectLabel>
+                                  {brokers.map(broker => (
+                                    <SelectItem key={broker.id} value={broker.id}>
+                                      <span className="flex items-center gap-2">
+                                        {broker.name}
+                                        <span className="text-xs text-muted-foreground">(${parseFloat(broker.balance || "0").toFixed(0)})</span>
                                       </span>
-                                    </span>
-                                  </SelectItem>
-                                ))}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                                {reps.length > 0 && (
+                                  <>
+                                    <SelectSeparator />
+                                    <SelectGroup>
+                                      <SelectLabel className="text-xs text-muted-foreground">RG Reps</SelectLabel>
+                                      {reps.map(rep => (
+                                        <SelectItem key={rep.id} value={rep.id}>
+                                          <span className="flex items-center gap-2">
+                                            {rep.name}
+                                            <span className="text-[10px] text-emerald-600 font-medium">Rep</span>
+                                          </span>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           </TableCell>

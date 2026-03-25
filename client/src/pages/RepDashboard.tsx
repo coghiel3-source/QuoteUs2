@@ -34,6 +34,16 @@ const STATUS_COLORS: Record<Status, string> = {
   "Declined": "bg-red-100 text-red-800",
 };
 
+const STATUS_DISPLAY_LABELS: Record<Status, string> = {
+  "New": "New",
+  "Contacted": "Contacted",
+  "Documents Pending": "Waiting on Documents",
+  "Documents Received": "Docs Received",
+  "Submitted": "Quoted",
+  "Approved": "Bound / Issued",
+  "Declined": "Declined",
+};
+
 const IN_PROGRESS_STATUSES: Status[] = ["Contacted", "Documents Pending", "Documents Received", "Submitted"];
 const EMPLOYMENT_STATUSES = ["Employed Full-Time", "Employed Part-Time", "Self-Employed", "Student", "Retired", "Unemployed", "Other"];
 const PAYMENT_METHODS = ["e-Transfer", "Cheque", "Cash", "Direct Deposit", "Pre-Authorized Debit", "Other"];
@@ -260,7 +270,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [locationTenants, setLocationTenants] = useState<Record<string, RgLead[]>>({});
 
   // UI state
-  const [activeTab, setActiveTab] = useState<ActiveTab>("locations");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   const [locationView, setLocationView] = useState<LocationView>("list");
   const [selectedLocation, setSelectedLocation] = useState<RgLocation | null>(null);
   const [selectedLead, setSelectedLead] = useState<RgLead | null>(null);
@@ -305,6 +315,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   // Broker / Rep assignment (admin/manager only)
   const [brokers, setBrokers] = useState<{ id: string; name: string; email: string; balance: string; preferredInsuranceTypes: string[] }[]>([]);
   const [reps, setReps] = useState<{ id: string; name: string; email: string }[]>([]);
+  const [referredQuotes, setReferredQuotes] = useState<any[]>([]);
   const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
   const [selectedRepId, setSelectedRepId] = useState<string>("");
   const [assigningBroker, setAssigningBroker] = useState(false);
@@ -361,6 +372,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
           setBrokers(activeBrokers.map((u: any) => ({ id: u.id, name: u.name, email: u.email, balance: u.balance ?? "0", preferredInsuranceTypes: u.preferredInsuranceTypes ?? [] })));
           const activeReps = data.filter((u: any) => u.role === "rep" && (u.status === "active" || u.status === "paused"));
           setReps(activeReps.map((u: any) => ({ id: u.id, name: u.name, email: u.email })));
+        }).catch(() => {});
+        // Load quotes assigned to reps from the lead manager
+        fetch(`/api/rep/referred-quotes?actorId=${user.id}`).then(r => r.json()).then(data => {
+          setReferredQuotes(Array.isArray(data) ? data : []);
         }).catch(() => {});
       }
       // Load credit packages for reps
@@ -1432,7 +1447,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 <SelectTrigger className="w-44" data-testid="select-status-filter"><SelectValue placeholder="All statuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  {Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {Object.keys(STATUS_COLORS).map(s => <SelectItem key={s} value={s}>{STATUS_DISPLAY_LABELS[s as Status] ?? s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1444,6 +1459,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 <p className="text-xs text-gray-400 mb-2">{filteredLeads.length} lead{filteredLeads.length !== 1 ? "s" : ""} shown</p>
                 {filteredLeads.map(lead => {
                   const loc = locations.find(l => l.id === lead.locationId);
+                  const assignedBroker = lead.brokerId ? brokers.find(b => b.id === lead.brokerId) : null;
+                  const assignedRep = lead.repId ? reps.find(r => r.id === lead.repId) : null;
+                  const displayStatus = STATUS_DISPLAY_LABELS[lead.status as Status] ?? lead.status;
                   return (
                     <div key={lead.id} className="bg-white border rounded-xl p-4 hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all" onClick={() => openLead(lead)} data-testid={`lead-row-${lead.id}`}>
                       <div className="flex items-start justify-between gap-4">
@@ -1452,7 +1470,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-semibold text-gray-900">{lead.tenantName}</p>
-                              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_COLORS[lead.status as Status]}`}>{lead.status}</span>
+                              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_COLORS[lead.status as Status]}`}>{displayStatus}</span>
                             </div>
                             <p className="text-sm text-gray-500 mt-0.5">{lead.propertyAddress || loc?.propertyAddress || "—"}{loc?.unit ? ` · Unit ${loc.unit}` : ""}</p>
                             <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
@@ -1461,6 +1479,20 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                               {lead.moveInDate && <p className="text-xs text-gray-400">Move-in: {new Date(lead.moveInDate).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>}
                               {lead.tenantPhone && <p className="text-xs text-gray-400">{lead.tenantPhone}</p>}
                             </div>
+                            {(assignedBroker || (isAdminOrManager && assignedRep)) && (
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                {assignedBroker && (
+                                  <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
+                                    Broker: {assignedBroker.name}
+                                  </span>
+                                )}
+                                {isAdminOrManager && assignedRep && !isRep && (
+                                  <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                                    Rep: {assignedRep.name}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -1473,7 +1505,52 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 })}
               </div>
             )}
-          </div>
+          {/* Referred from Lead Manager (admin/manager only) */}
+          {isAdminOrManager && referredQuotes.length > 0 && (
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-px flex-1 bg-gray-200" />
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2">Leads Forwarded from Lead Manager</p>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+              <div className="space-y-2">
+                {referredQuotes.map(q => {
+                  const assignedRepName = reps.find(r => r.id === q.assignedTo)?.name;
+                  return (
+                    <div key={q.id} className="bg-amber-50 border border-amber-200 rounded-xl p-4" data-testid={`referred-quote-${q.id}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div className="bg-amber-100 rounded-lg p-2 flex-shrink-0">
+                            <Home className="h-4 w-4 text-amber-700" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-gray-900 text-sm">{q.clientName}</p>
+                              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">{q.type}</span>
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                q.status === "New" ? "bg-blue-100 text-blue-800" :
+                                q.status === "Quoted" ? "bg-indigo-100 text-indigo-800" :
+                                q.status === "Bound" ? "bg-green-100 text-green-800" :
+                                "bg-gray-100 text-gray-700"
+                              }`}>{q.status}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{q.quoteNumber} · {q.email} · {q.phone}</p>
+                            {assignedRepName && (
+                              <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium mt-1 inline-block">
+                                Rep: {assignedRepName}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-400 flex-shrink-0">{new Date(q.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
         )}
 
         {/* ===== REMINDERS TAB ===== */}

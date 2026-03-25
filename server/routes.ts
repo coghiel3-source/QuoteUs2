@@ -2039,6 +2039,59 @@ export async function registerRoutes(
     }
   });
 
+  // Assign a lead to a rep (no credit deduction)
+  app.post("/api/leads/assign-rep", async (req, res) => {
+    try {
+      const { quoteId, repId, actorId, actorName } = req.body;
+      if (!quoteId || !repId) return res.status(400).json({ error: "Quote ID and rep ID are required" });
+      if (!actorId) return res.status(401).json({ error: "Actor ID required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Only admin/manager can assign leads" });
+      }
+      if (actor.role === "manager") {
+        const hasPerm = await checkPermission(actorId, "assignLeads");
+        if (!hasPerm) return res.status(403).json({ error: "No permission to assign leads" });
+      }
+      const quote = await storage.getQuote(quoteId);
+      if (!quote) return res.status(404).json({ error: "Quote not found" });
+      const rep = await storage.getUser(repId);
+      if (!rep || rep.role !== "rep") return res.status(400).json({ error: "Target user is not a rep" });
+      if (quote.assignedTo === repId) {
+        return res.json({ success: true, message: "Already assigned to this rep", alreadyAssigned: true });
+      }
+      await storage.updateQuote(quoteId, { assignedTo: repId, assignedAt: new Date() } as any);
+      await storage.createActivity({
+        quoteId,
+        type: "assignment",
+        content: `Lead forwarded to Rep: ${rep.name} (no charge)`,
+        author: actorName || "System",
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all quotes assigned to reps (for RG Leads section reflection)
+  app.get("/api/rep/referred-quotes", async (req, res) => {
+    try {
+      const { actorId } = req.query as any;
+      if (!actorId) return res.status(401).json({ error: "Actor ID required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const allQuotes = await storage.getQuotes();
+      const allUsers = await storage.getUsers();
+      const repIds = new Set(allUsers.filter(u => u.role === "rep").map(u => u.id));
+      const referred = allQuotes.filter(q => q.assignedTo && repIds.has(q.assignedTo));
+      res.json(referred);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ========== LEAD EXPIRY TIMER ROUTES ==========
 
   // Get lead expiry timer setting (hours)
