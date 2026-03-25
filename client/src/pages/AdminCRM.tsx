@@ -1267,7 +1267,7 @@ export default function AdminCRMPage() {
   };
 
   // Redirect CRUD functions
-  const QUOTE_TYPES = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "Rent Guarantee", "General"];
+  const QUOTE_TYPES = ["Auto", "Home", "Tenant", "Business", "Life", "Travel", "Pet", "Mortgage", "Rent Guarantee", "Rep"];
   
   const fetchRedirects = async () => {
     setLoadingRedirects(true);
@@ -2729,7 +2729,7 @@ export default function AdminCRMPage() {
                               <SelectItem value="Pet">Pet</SelectItem>
                               <SelectItem value="Mortgage">Mortgage</SelectItem>
                               <SelectItem value="Rent Guarantee">Rent Guarantee</SelectItem>
-                              <SelectItem value="General">General</SelectItem>
+                              <SelectItem value="Rep">Rep</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -4322,7 +4322,7 @@ export default function AdminCRMPage() {
                   ))}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  These are the default costs per lead type. Set a custom lead cost on individual brokers above to override.
+                  These are the default costs per lead type. <strong>Rep</strong> is the cost deducted from a rep's account when they add a new tenant. Set a custom lead cost on individual brokers above to override.
                 </p>
               </div>
 

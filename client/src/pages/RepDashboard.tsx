@@ -545,12 +545,30 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     }
     setSavingTenant(true);
     try {
-      const created = await apiRequest<RgLead>(`/rep/locations/${tenantTargetLocation.id}/tenants`, {
+      const res = await fetch(`/api/rep/locations/${tenantTargetLocation.id}/tenants`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actorId: user.id, ...tenantForm, coApplicantName: tenantForm.coApplicantName || null, coApplicantEmail: tenantForm.coApplicantEmail || null, notes: tenantForm.notes || null, householdIncome: tenantForm.householdIncome || null, employerName: tenantForm.employerName || null, paymentMethod: tenantForm.paymentMethod || null }),
       });
+      if (!res.ok) {
+        const err = await res.json();
+        if (err.error === "Insufficient balance") {
+          toast({
+            title: "Insufficient Balance",
+            description: `You need $${err.required?.toFixed(2) ?? "funds"} to add a tenant. Please fund your account first.`,
+            variant: "destructive",
+          });
+          setShowTenantForm(false);
+          setShowFundAccount(true);
+          return;
+        }
+        throw new Error(err.error || "Failed to add tenant");
+      }
+      const created: RgLead = await res.json();
       setLeads(prev => [created, ...prev]);
       setLocationTenants(prev => ({ ...prev, [tenantTargetLocation.id]: [created, ...(prev[tenantTargetLocation.id] || [])] }));
+      // Refresh balance after deduction
+      refreshUser?.();
       setShowTenantForm(false);
       toast({ title: "Tenant added successfully" });
       openLead(created);
