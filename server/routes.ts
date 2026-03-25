@@ -3015,13 +3015,20 @@ export async function registerRoutes(
   // Create a location
   app.post("/api/rep/locations", async (req, res) => {
     try {
-      const { actorId, propertyAddress, unit, landlordName, landlordEmail, landlordPhone, monthlyRent, moveInDate, notes } = req.body;
+      const { actorId, repId: repIdOverride, propertyAddress, unit, landlordName, landlordEmail, landlordPhone, monthlyRent, moveInDate, notes } = req.body;
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
       if (!propertyAddress || !landlordName || !monthlyRent) return res.status(400).json({ error: "propertyAddress, landlordName, and monthlyRent are required" });
+      // Admin/manager can specify a repId override to create on behalf of a rep
+      let ownerRepId = actorId;
+      if (repIdOverride && ["admin", "manager"].includes(actor.role)) {
+        const repUser = await storage.getUser(repIdOverride);
+        if (!repUser || repUser.role !== "rep") return res.status(400).json({ error: "Target user is not a rep" });
+        ownerRepId = repIdOverride;
+      }
       const location = await storage.createLocation({
-        repId: actor.role === "rep" ? actorId : actorId,
+        repId: ownerRepId,
         propertyAddress, unit: unit || null, landlordName,
         landlordEmail: landlordEmail || null, landlordPhone: landlordPhone || null,
         monthlyRent, moveInDate: moveInDate || null, notes: notes || null,
@@ -3073,7 +3080,7 @@ export async function registerRoutes(
       if (!location) return res.status(404).json({ error: "Location not found" });
 
       const lead = await storage.createRgLead({
-        repId: actorId,
+        repId: location.repId,
         locationId: location.id,
         tenantName, tenantEmail, tenantPhone, employmentStatus,
         coApplicantName: coApplicantName || null,
