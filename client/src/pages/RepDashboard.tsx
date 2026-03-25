@@ -302,10 +302,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [deleteLocationConfirm, setDeleteLocationConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Broker assignment (admin/manager only)
-  const [brokers, setBrokers] = useState<{ id: string; name: string; email: string; balance: string }[]>([]);
+  // Broker / Rep assignment (admin/manager only)
+  const [brokers, setBrokers] = useState<{ id: string; name: string; email: string; balance: string; preferredInsuranceTypes: string[] }[]>([]);
+  const [reps, setReps] = useState<{ id: string; name: string; email: string }[]>([]);
   const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
+  const [selectedRepId, setSelectedRepId] = useState<string>("");
   const [assigningBroker, setAssigningBroker] = useState(false);
+  const [assigningRep, setAssigningRep] = useState(false);
 
   // Account balance / fund account
   const [showFundAccount, setShowFundAccount] = useState(false);
@@ -351,11 +354,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       if (!embedded) navigate("/");
     } else {
       loadAll();
-      // Load active brokers for admin/manager assignment
+      // Load active brokers and reps for admin/manager assignment
       if (user.role === "admin" || user.role === "manager") {
         fetch("/api/users").then(r => r.json()).then((data: any[]) => {
-          const active = data.filter((u: any) => u.role === "broker" && u.status === "active");
-          setBrokers(active.map((u: any) => ({ id: u.id, name: u.name, email: u.email, balance: u.balance ?? "0" })));
+          const activeBrokers = data.filter((u: any) => u.role === "broker" && u.status === "active");
+          setBrokers(activeBrokers.map((u: any) => ({ id: u.id, name: u.name, email: u.email, balance: u.balance ?? "0", preferredInsuranceTypes: u.preferredInsuranceTypes ?? [] })));
+          const activeReps = data.filter((u: any) => u.role === "rep" && (u.status === "active" || u.status === "paused"));
+          setReps(activeReps.map((u: any) => ({ id: u.id, name: u.name, email: u.email })));
         }).catch(() => {});
       }
       // Load credit packages for reps
@@ -472,6 +477,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setDetailTab("info");
     setCreatedLink(null);
     setSelectedBrokerId((lead as any).brokerId || "");
+    setSelectedRepId((lead as any).repId || "");
     if (!user) return;
     try {
       const [reqs, docs] = await Promise.all([
@@ -506,6 +512,32 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       toast({ title: err.message || "Failed to assign broker", variant: "destructive" });
     } finally {
       setAssigningBroker(false);
+    }
+  }
+
+  async function handleAssignRep(repId: string | null) {
+    if (!user || !selectedLead) return;
+    setAssigningRep(true);
+    try {
+      const res = await fetch(`/api/admin/rg-leads/${selectedLead.id}/assign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId: user.id, repId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ title: err.error || "Failed to assign rep", variant: "destructive" });
+        return;
+      }
+      const updated: RgLead = await res.json();
+      setSelectedLead(updated);
+      setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+      setSelectedRepId((updated as any).repId || "");
+      toast({ title: repId ? "Rep assigned successfully" : "Rep unassigned" });
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to assign rep", variant: "destructive" });
+    } finally {
+      setAssigningRep(false);
     }
   }
 
@@ -1601,43 +1633,86 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   </Card>
                   {selectedLead.notes && <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Notes</CardTitle></CardHeader><CardContent className="text-sm text-gray-700">{selectedLead.notes}</CardContent></Card>}
 
-                  {/* Broker Assignment — admin/manager only */}
-                  {isAdminOrManager && (
-                    <Card>
-                      <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Broker Assignment</CardTitle></CardHeader>
-                      <CardContent className="space-y-3">
-                        {(selectedLead as any).brokerId ? (
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{brokers.find(b => b.id === (selectedLead as any).brokerId)?.name || "Assigned Broker"}</p>
-                              <p className="text-xs text-gray-500">{brokers.find(b => b.id === (selectedLead as any).brokerId)?.email}</p>
+                  {/* Assignment — admin/manager only */}
+                  {isAdminOrManager && (() => {
+                    const rgBrokers = brokers.filter(b => Array.isArray(b.preferredInsuranceTypes) && b.preferredInsuranceTypes.includes("Rent Guarantee"));
+                    const currentRep = reps.find(r => r.id === (selectedLead as any).repId);
+                    const currentBroker = rgBrokers.find(b => b.id === (selectedLead as any).brokerId);
+                    return (
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Assignment</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* Rep Assignment */}
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Rep</p>
+                            {currentRep ? (
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{currentRep.name}</p>
+                                  <p className="text-xs text-gray-500">{currentRep.email}</p>
+                                </div>
+                                <button onClick={() => handleAssignRep(null)} disabled={assigningRep} className="text-xs text-red-500 hover:text-red-700 font-medium" data-testid="button-unassign-rep">
+                                  {assigningRep ? "..." : "Unassign"}
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400 mb-2">No rep assigned</p>
+                            )}
+                            <div className="flex gap-2">
+                              <Select value={selectedRepId} onValueChange={setSelectedRepId}>
+                                <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-assign-rep">
+                                  <SelectValue placeholder="Select a rep..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {reps.length === 0 && <SelectItem value="none" disabled>No active reps</SelectItem>}
+                                  {reps.map(r => (
+                                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button size="sm" className="h-8 text-xs px-3" onClick={() => handleAssignRep(selectedRepId || null)} disabled={!selectedRepId || assigningRep} data-testid="button-assign-rep">
+                                {assigningRep ? "Assigning..." : "Assign"}
+                              </Button>
                             </div>
-                            <button onClick={() => handleAssignBroker(null)} disabled={assigningBroker} className="text-xs text-red-500 hover:text-red-700 font-medium" data-testid="button-unassign-broker">
-                              {assigningBroker ? "..." : "Unassign"}
-                            </button>
                           </div>
-                        ) : (
-                          <p className="text-xs text-gray-400">No broker assigned</p>
-                        )}
-                        <div className="flex gap-2">
-                          <Select value={selectedBrokerId} onValueChange={setSelectedBrokerId}>
-                            <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-assign-broker">
-                              <SelectValue placeholder="Select a broker..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {brokers.length === 0 && <SelectItem value="none" disabled>No active brokers</SelectItem>}
-                              {brokers.map(b => (
-                                <SelectItem key={b.id} value={b.id}>{b.name} — ${Number(b.balance).toFixed(2)}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button size="sm" className="h-8 text-xs px-3" onClick={() => handleAssignBroker(selectedBrokerId || null)} disabled={!selectedBrokerId || assigningBroker} data-testid="button-assign-broker">
-                            {assigningBroker ? "Assigning..." : "Assign"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                          {/* Broker Assignment — only brokers with Rent Guarantee permission */}
+                          {rgBrokers.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Broker (Rent Guarantee)</p>
+                              {currentBroker ? (
+                                <div className="flex items-center justify-between mb-2">
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">{currentBroker.name}</p>
+                                    <p className="text-xs text-gray-500">{currentBroker.email}</p>
+                                  </div>
+                                  <button onClick={() => handleAssignBroker(null)} disabled={assigningBroker} className="text-xs text-red-500 hover:text-red-700 font-medium" data-testid="button-unassign-broker">
+                                    {assigningBroker ? "..." : "Unassign"}
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-400 mb-2">No broker assigned</p>
+                              )}
+                              <div className="flex gap-2">
+                                <Select value={selectedBrokerId} onValueChange={setSelectedBrokerId}>
+                                  <SelectTrigger className="h-8 text-xs flex-1" data-testid="select-assign-broker">
+                                    <SelectValue placeholder="Select a broker..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {rgBrokers.map(b => (
+                                      <SelectItem key={b.id} value={b.id}>{b.name} — ${Number(b.balance).toFixed(2)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button size="sm" className="h-8 text-xs px-3" onClick={() => handleAssignBroker(selectedBrokerId || null)} disabled={!selectedBrokerId || assigningBroker} data-testid="button-assign-broker">
+                                  {assigningBroker ? "Assigning..." : "Assign"}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
 
                   {docRequests.length > 0 && (
                     <Card>
