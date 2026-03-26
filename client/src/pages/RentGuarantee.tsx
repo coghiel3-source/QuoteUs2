@@ -110,14 +110,6 @@ const FAQ_ITEMS = [
     q: "Does my tenant need to know about this?",
     a: "No — Rent Guarantee is a landlord-facing protection policy. Your tenant does not need to be aware of or consent to it.",
   },
-  {
-    q: "What documents will I need at claim time?",
-    a: "You'll need your executed lease, tenant credit/screening report, proof of ownership, proof of income for the tenant, rent payment history, and renters/property coverage documents.",
-  },
-  {
-    q: "Is Rent Guarantee the same as tenant screening?",
-    a: "No. Tenant screening checks your tenant's background before move-in. Rent Guarantee is a protection program that covers your income if a screened tenant defaults, ensuring you're protected even in unexpected situations.",
-  },
 ];
 
 export default function RentGuaranteePage() {
@@ -263,123 +255,6 @@ export default function RentGuaranteePage() {
         <motion.div initial="hidden" animate="visible" variants={fadeUp} className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3" data-testid="availability-notice">
           <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800"><strong>Note:</strong> This product is not available in Quebec.</p>
-        </motion.div>
-      </div>
-
-      {/* ── How it Works ─────────────────────────────────── */}
-      <div className="container mx-auto max-w-5xl px-4 mt-10">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer}>
-          <motion.div variants={fadeUp} className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">How Rent Guarantee Works</h2>
-            <p className="text-muted-foreground mt-2 text-sm max-w-xl mx-auto">Simple three-step process — from application to protected income</p>
-          </motion.div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { step: "01", icon: <FileText className="h-6 w-6 text-primary" />, title: "Submit Your Request", desc: "Fill out the short form below with your property and contact information. It takes under 3 minutes." },
-              { step: "02", icon: <Users className="h-6 w-6 text-primary" />, title: "Tenant Screening", desc: "A specialist reviews your tenant's qualifications — income, credit, and rental history — on your behalf." },
-              { step: "03", icon: <Shield className="h-6 w-6 text-primary" />, title: "Your Property is Protected", desc: "Coverage activates. If rent goes unpaid, you file a claim and get reimbursed — it's that simple." },
-            ].map((item, i) => (
-              <motion.div key={i} variants={fadeUp} className="relative bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <div className="text-5xl font-black text-gray-100 absolute top-4 right-5 leading-none select-none">{item.step}</div>
-                <div className="bg-primary/10 p-2.5 rounded-xl w-fit mb-4">{item.icon}</div>
-                <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ── Coverage + Qualifications (side-by-side) ─────── */}
-      <div className="container mx-auto max-w-5xl px-4 mt-10">
-        <div className="grid md:grid-cols-2 gap-6">
-
-          {/* What's Covered */}
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-            <Card className="h-full border-0 shadow-sm bg-white">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-lg"><Shield className="h-5 w-5 text-green-600" /></div>
-                  <CardTitle className="text-lg">What's Covered</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3" data-testid="covers-list">
-                  <CheckItem>Up to <strong>12 months</strong> of unpaid rent covered</CheckItem>
-                  <CheckItem>Maximum <strong>$60,000</strong> in rental income protection</CheckItem>
-                  <CheckItem>Up to <strong>$1,500</strong> in legal & eviction cost coverage</CheckItem>
-                  <CheckItem>Up to <strong>$10,000</strong> in property damage reimbursement</CheckItem>
-                  <CheckItem>1 month of <strong>abandoned tenancy</strong> coverage</CheckItem>
-                </ul>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Tenant Qualifications */}
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-            <Card className="h-full border-0 shadow-sm bg-white">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-100 p-2 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div>
-                  <CardTitle className="text-lg">Tenant Qualifications</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-3" data-testid="qualifications-list">
-                  <CheckItem>Rent-to-income ratio <strong>under 45%</strong></CheckItem>
-                  <CheckItem>No bankruptcy, judgements, or evictions in <strong>last 3 years</strong></CheckItem>
-                  <CheckItem>At least <strong>one member employed</strong> in the household</CheckItem>
-                  <CheckItem>Government-issued <strong>photo ID</strong> required</CheckItem>
-                  <CheckItem><strong>Proof of income</strong> / employment letter</CheckItem>
-                </ul>
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mt-2">
-                  <p className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1.5">
-                    <Star className="h-3.5 w-3.5" /> Existing Tenants (1+ Years)
-                  </p>
-                  <ul className="space-y-2">
-                    <CheckItem sub>Proof of on-time payments for those months</CheckItem>
-                    <CheckItem sub>No rent arrears greater than 5 days in current tenancy</CheckItem>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* ── Documents Required ───────────────────────────── */}
-      <div className="container mx-auto max-w-5xl px-4 mt-6">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
-          <Card className="border-0 shadow-sm bg-white">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="bg-slate-100 p-2 rounded-lg"><FileText className="h-5 w-5 text-slate-600" /></div>
-                <div>
-                  <CardTitle className="text-lg">Documents Required at Claim Time</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">These are not needed for approval — only when filing a claim</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2.5" data-testid="documents-list">
-                {[
-                  "Executed lease agreement",
-                  "Tenant screening / credit report",
-                  "Proof of income",
-                  "Rent payment history",
-                  "Proof of property ownership",
-                  "Proof of renters coverage",
-                  "Proof of property coverage",
-                  "Move-in inspection with photos (damage claims only)",
-                ].map((doc) => (
-                  <div key={doc} className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                    <span className="text-sm text-gray-700">{doc}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </motion.div>
       </div>
 
@@ -639,6 +514,123 @@ export default function RentGuaranteePage() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* ── How it Works ─────────────────────────────────── */}
+      <div className="container mx-auto max-w-5xl px-4 mt-10">
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer}>
+          <motion.div variants={fadeUp} className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900">How Rent Guarantee Works</h2>
+            <p className="text-muted-foreground mt-2 text-sm max-w-xl mx-auto">Simple three-step process — from application to protected income</p>
+          </motion.div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { step: "01", icon: <FileText className="h-6 w-6 text-primary" />, title: "Submit Your Request", desc: "Fill out the short form below with your property and contact information. It takes under 3 minutes." },
+              { step: "02", icon: <Users className="h-6 w-6 text-primary" />, title: "Tenant Screening", desc: "A specialist reviews your tenant's qualifications — income, credit, and rental history — on your behalf." },
+              { step: "03", icon: <Shield className="h-6 w-6 text-primary" />, title: "Your Property is Protected", desc: "Coverage activates. If rent goes unpaid, you file a claim and get reimbursed — it's that simple." },
+            ].map((item, i) => (
+              <motion.div key={i} variants={fadeUp} className="relative bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="text-5xl font-black text-gray-100 absolute top-4 right-5 leading-none select-none">{item.step}</div>
+                <div className="bg-primary/10 p-2.5 rounded-xl w-fit mb-4">{item.icon}</div>
+                <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ── Coverage + Qualifications (side-by-side) ─────── */}
+      <div className="container mx-auto max-w-5xl px-4 mt-10">
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* What's Covered */}
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+            <Card className="h-full border-0 shadow-sm bg-white">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-100 p-2 rounded-lg"><Shield className="h-5 w-5 text-green-600" /></div>
+                  <CardTitle className="text-lg">What's Covered</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3" data-testid="covers-list">
+                  <CheckItem>Up to <strong>12 months</strong> of unpaid rent covered</CheckItem>
+                  <CheckItem>Maximum <strong>$60,000</strong> in rental income protection</CheckItem>
+                  <CheckItem>Up to <strong>$1,500</strong> in legal & eviction cost coverage</CheckItem>
+                  <CheckItem>Up to <strong>$10,000</strong> in property damage reimbursement</CheckItem>
+                  <CheckItem>1 month of <strong>abandoned tenancy</strong> coverage</CheckItem>
+                </ul>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Tenant Qualifications */}
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+            <Card className="h-full border-0 shadow-sm bg-white">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-lg"><Users className="h-5 w-5 text-blue-600" /></div>
+                  <CardTitle className="text-lg">Tenant Qualifications</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-3" data-testid="qualifications-list">
+                  <CheckItem>Rent-to-income ratio <strong>under 45%</strong></CheckItem>
+                  <CheckItem>No bankruptcy, judgements, or evictions in <strong>last 3 years</strong></CheckItem>
+                  <CheckItem>At least <strong>one member employed</strong> in the household</CheckItem>
+                  <CheckItem>Government-issued <strong>photo ID</strong> required</CheckItem>
+                  <CheckItem><strong>Proof of income</strong> / employment letter</CheckItem>
+                </ul>
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mt-2">
+                  <p className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1.5">
+                    <Star className="h-3.5 w-3.5" /> Existing Tenants (1+ Years)
+                  </p>
+                  <ul className="space-y-2">
+                    <CheckItem sub>Proof of on-time payments for those months</CheckItem>
+                    <CheckItem sub>No rent arrears greater than 5 days in current tenancy</CheckItem>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* ── Documents Required ───────────────────────────── */}
+      <div className="container mx-auto max-w-5xl px-4 mt-6">
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <Card className="border-0 shadow-sm bg-white">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-slate-100 p-2 rounded-lg"><FileText className="h-5 w-5 text-slate-600" /></div>
+                <div>
+                  <CardTitle className="text-lg">Documents Required at Claim Time</CardTitle>
+                  <CardDescription className="text-xs mt-0.5">These are not needed for approval — only when filing a claim</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2.5" data-testid="documents-list">
+                {[
+                  "Executed lease agreement",
+                  "Tenant screening / credit report",
+                  "Proof of income",
+                  "Rent payment history",
+                  "Proof of property ownership",
+                  "Proof of renters coverage",
+                  "Proof of property coverage",
+                  "Move-in inspection with photos (damage claims only)",
+                ].map((doc) => (
+                  <div key={doc} className="flex items-start gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                    <span className="text-sm text-gray-700">{doc}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* ── FAQ ──────────────────────────────────────────── */}
