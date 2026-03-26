@@ -108,15 +108,15 @@ const FAQ_ITEMS = [
   },
   {
     q: "Does my tenant need to know about this?",
-    a: "No — Rent Guarantee is landlord-facing insurance. Your tenant does not need to be aware of or consent to the policy.",
+    a: "No — Rent Guarantee is a landlord-facing protection policy. Your tenant does not need to be aware of or consent to it.",
   },
   {
     q: "What documents will I need at claim time?",
-    a: "You'll need your executed lease, tenant credit/screening report, proof of ownership, proof of income for the tenant, rent payment history, and renters/property insurance documents.",
+    a: "You'll need your executed lease, tenant credit/screening report, proof of ownership, proof of income for the tenant, rent payment history, and renters/property coverage documents.",
   },
   {
     q: "Is Rent Guarantee the same as tenant screening?",
-    a: "No. Tenant screening checks your tenant's background before move-in. Rent Guarantee is insurance that protects your income if a screened tenant defaults, ensuring you're covered even in unexpected situations.",
+    a: "No. Tenant screening checks your tenant's background before move-in. Rent Guarantee is a protection program that covers your income if a screened tenant defaults, ensuring you're protected even in unexpected situations.",
   },
 ];
 
@@ -134,10 +134,10 @@ export default function RentGuaranteePage() {
 
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Rent Guarantee Insurance for Landlords | QuoteUs.ca";
+    document.title = "Rent Guarantee for Landlords | QuoteUs.ca";
     const desc = document.querySelector('meta[name="description"]');
     const prevDesc = desc?.getAttribute("content") || "";
-    if (desc) desc.setAttribute("content", "Protect your rental income with Rent Guarantee insurance. Covers up to 12 months of unpaid rent (max $60,000), eviction costs, and property damage. Available across Canada. Get a free quote today.");
+    if (desc) desc.setAttribute("content", "Protect your rental income with Rent Guarantee. Covers up to 12 months of unpaid rent (max $60,000), eviction costs, and property damage. Available across Canada. Get a free quote today.");
     return () => {
       document.title = prevTitle;
       if (desc) desc.setAttribute("content", prevDesc);
@@ -224,7 +224,7 @@ export default function RentGuaranteePage() {
                 <span className="text-accent">Sleep Easy.</span>
               </motion.h1>
               <motion.p variants={fadeUp} className="text-base md:text-lg text-white/80 max-w-xl mb-8 leading-relaxed">
-                Rent Guarantee insurance protects Canadian landlords from lost rental income, legal costs, and property damage — even when tenants can't pay.
+                Rent Guarantee protects Canadian landlords from lost rental income, legal costs, and property damage — even when tenants can't pay.
               </motion.p>
               <motion.div variants={fadeUp} className="flex flex-wrap gap-3">
                 <a href="#landlord-form">
@@ -368,8 +368,8 @@ export default function RentGuaranteePage() {
                   "Proof of income",
                   "Rent payment history",
                   "Proof of property ownership",
-                  "Proof of renters insurance",
-                  "Proof of property insurance",
+                  "Proof of renters coverage",
+                  "Proof of property coverage",
                   "Move-in inspection with photos (damage claims only)",
                 ].map((doc) => (
                   <div key={doc} className="flex items-start gap-2.5">
