@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check, CheckCircle, X, Save, RefreshCw, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, Video, ExternalLink, Eye, MousePointer, Calendar, Loader2, Upload, Copy, Link, Check, CheckCircle, X, Save, RefreshCw, ChevronUp, LayoutGrid, AlertCircle, Pause, Play } from "lucide-react";
 
 interface Advertisement {
   id: string;
@@ -54,6 +54,7 @@ const PAGE_OPTIONS = [
   { value: "Travel", label: "Travel Insurance" },
   { value: "Pet", label: "Pet Insurance" },
   { value: "Mortgage", label: "Mortgage" },
+  { value: "Rent Guarantee", label: "Rent Guarantee" },
 ];
 
 const DEFAULT_FORM = {
@@ -496,6 +497,36 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
     return ((clicks / impressions) * 100).toFixed(2) + "%";
   };
 
+  /* Build page coverage map from current ads — must be before early returns */
+  const pageCoverage = useMemo(() => {
+    const PAGE_VALUES = PAGE_OPTIONS.filter(p => p.value !== "all").map(p => p.value);
+    return PAGE_VALUES.map(pageVal => {
+      const matching = ads.filter(ad =>
+        ad.status === "active" &&
+        (ad.targetPages.includes("all") || ad.targetPages.length === 0 || ad.targetPages.includes(pageVal))
+      );
+      return { page: pageVal, count: matching.length, names: matching.map(a => a.name) };
+    });
+  }, [ads]);
+
+  const handleQuickStatus = async (e: React.MouseEvent, ad: Advertisement) => {
+    e.stopPropagation();
+    const newStatus = ad.status === "active" ? "paused" : "active";
+    try {
+      const res = await fetch(`/api/admin/advertisements/${ad.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        toast({ title: newStatus === "active" ? "Ad Activated" : "Ad Paused", description: ad.name });
+        fetchAds();
+      }
+    } catch {
+      toast({ title: "Error", description: "Could not update status", variant: "destructive" });
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -511,6 +542,43 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
           <Plus className="mr-2 h-4 w-4" /> New Advertisement
         </Button>
       </div>
+
+      {/* Page Coverage Grid */}
+      <Card className="border-0 shadow-sm bg-slate-50">
+        <CardHeader className="pb-3 pt-4 px-5">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4 text-primary" />
+            Page Ad Coverage
+            <span className="text-xs text-muted-foreground font-normal ml-1">— Active ads per page</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-5 pb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2" data-testid="page-coverage-grid">
+            {pageCoverage.map(({ page: pv, count, names }) => (
+              <div
+                key={pv}
+                className={`rounded-xl border px-3 py-2.5 text-center transition-colors ${
+                  count > 0
+                    ? "bg-green-50 border-green-200"
+                    : "bg-white border-gray-200"
+                }`}
+                title={count > 0 ? `Active: ${names.join(", ")}` : "No active ads on this page"}
+                data-testid={`coverage-${pv}`}
+              >
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  {count > 0
+                    ? <Check className="h-3.5 w-3.5 text-green-600" />
+                    : <AlertCircle className="h-3.5 w-3.5 text-gray-300" />}
+                  <span className={`text-xs font-semibold ${count > 0 ? "text-green-700" : "text-gray-400"}`}>
+                    {count > 0 ? `${count} ad${count > 1 ? "s" : ""}` : "None"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-tight truncate">{pv}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0">
@@ -594,6 +662,17 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                           data-testid={`button-copy-preview-${ad.id}`}
                         >
                           {copiedId === ad.id ? <Check className="h-4 w-4 text-green-500" /> : <Link className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => handleQuickStatus(e, ad)}
+                          title={ad.status === "active" ? "Pause ad" : "Activate ad"}
+                          data-testid={`button-toggle-status-${ad.id}`}
+                        >
+                          {ad.status === "active"
+                            ? <Pause className="h-4 w-4 text-amber-500" />
+                            : <Play className="h-4 w-4 text-green-500" />}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => openEditForm(ad)} data-testid={`button-edit-ad-${ad.id}`}>
                           <Pencil className="h-4 w-4" />
@@ -948,23 +1027,48 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
               <Label htmlFor="openInPopup" className="cursor-pointer">Open link in popup window</Label>
             </div>
 
-            <div className="space-y-2">
-              <Label>Target Pages</Label>
-              <div className="flex flex-wrap gap-2">
-                {PAGE_OPTIONS.map(page => (
-                  <Button
-                    key={page.value}
-                    type="button"
-                    variant={formData.targetPages.includes(page.value) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => togglePage(page.value)}
-                    data-testid={`button-target-page-${page.value}`}
-                  >
-                    {page.label}
-                  </Button>
-                ))}
+            <div className="border rounded-lg p-4 bg-primary/5">
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-sm font-semibold">
+                  Target Pages *
+                </Label>
+                {formData.targetPages.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {formData.targetPages.includes("all")
+                      ? "All pages selected"
+                      : `${formData.targetPages.length} page${formData.targetPages.length > 1 ? "s" : ""} selected`}
+                  </Badge>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">Select pages where this ad should appear. Leave empty for all pages.</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                Choose which insurance pages this ad will appear on. Select "All Pages" to show everywhere, or pick individual pages for targeted placement.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PAGE_OPTIONS.map(page => {
+                  const selected = formData.targetPages.includes(page.value);
+                  const isAll = page.value === "all";
+                  return (
+                    <Button
+                      key={page.value}
+                      type="button"
+                      variant={selected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => togglePage(page.value)}
+                      className={isAll ? "border-2" : ""}
+                      data-testid={`button-target-page-${page.value}`}
+                    >
+                      {selected && <Check className="mr-1 h-3 w-3" />}
+                      {page.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              {formData.targetPages.length === 0 && (
+                <p className="text-xs text-amber-600 font-medium mt-2 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  No pages selected — ad will not appear on any page until you select at least one.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-4">
