@@ -364,17 +364,24 @@ export class DatabaseStorage implements IStorage {
       and(
         eq(advertisements.status, "active"),
         or(
-          isNull(advertisements.startDate),
-          lte(advertisements.startDate, now)
-        ),
-        or(
-          isNull(advertisements.endDate),
-          sql`${advertisements.endDate} + interval '1 day' > ${now}`
-        ),
-        or(
           isNull(advertisements.approvalStatus),
           eq(advertisements.approvalStatus, "approved"),
           eq(advertisements.approvalStatus, "pending")
+        ),
+        or(
+          // Force display: bypass all date restrictions
+          eq(advertisements.forceDisplay, true),
+          // Normal display: respect date windows
+          and(
+            or(
+              isNull(advertisements.startDate),
+              lte(advertisements.startDate, now)
+            ),
+            or(
+              isNull(advertisements.endDate),
+              sql`${advertisements.endDate} + interval '1 day' > ${now}`
+            )
+          )
         )
       )
     ).orderBy(desc(advertisements.priority));

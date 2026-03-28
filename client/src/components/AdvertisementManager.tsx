@@ -41,6 +41,7 @@ interface Advertisement {
   topBgColor: string | null;
   centerBgColor: string | null;
   bottomBgColor: string | null;
+  forceDisplay: boolean;
   createdAt: string;
 }
 
@@ -68,6 +69,7 @@ const DEFAULT_FORM = {
   startDate: "",
   endDate: "",
   priority: 1,
+  forceDisplay: false,
   adText: "",
   textColor: "#ffffff",
   backgroundColor: "#1e3a5f",
@@ -97,6 +99,7 @@ function adToFormData(ad: Advertisement): FormData {
     startDate: ad.startDate ? ad.startDate.split("T")[0] : "",
     endDate: ad.endDate ? ad.endDate.split("T")[0] : "",
     priority: ad.priority,
+    forceDisplay: ad.forceDisplay ?? false,
     adText: ad.adText || "",
     textColor: ad.textColor || "#ffffff",
     backgroundColor: ad.backgroundColor || "#1e3a5f",
@@ -141,6 +144,8 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
   const [activeTextPositions, setActiveTextPositions] = useState<Set<string>>(new Set());
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const pendingAction = useRef<(() => void) | null>(null);
+  const [previewCacheBust, setPreviewCacheBust] = useState<number>(0);
+  const [showReloadHint, setShowReloadHint] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({ ...DEFAULT_FORM });
   const [savedFormData, setSavedFormData] = useState<FormData>({ ...DEFAULT_FORM });
@@ -239,6 +244,8 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
       setSavedFormData(fresh);
       setEditingAd(null);
       setActiveTextPositions(new Set());
+      setShowReloadHint(false);
+      setPreviewCacheBust(0);
       setIsFormOpen(true);
       setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     });
@@ -255,6 +262,8 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
       if (ad.centerText) positions.add("center");
       if (ad.bottomText) positions.add("bottom");
       setActiveTextPositions(positions);
+      setShowReloadHint(false);
+      setPreviewCacheBust(0);
       setIsFormOpen(true);
       setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     });
@@ -267,6 +276,8 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
       setFormData({ ...DEFAULT_FORM });
       setSavedFormData({ ...DEFAULT_FORM });
       setActiveTextPositions(new Set());
+      setShowReloadHint(false);
+      setPreviewCacheBust(0);
     });
   };
 
@@ -447,6 +458,8 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
         const data = await res.json();
         const isVideo = file.type.startsWith("video/");
         setFormData(prev => ({ ...prev, mediaUrl: data.url, mediaType: isVideo ? "video" : "image" }));
+        setPreviewCacheBust(Date.now());
+        setShowReloadHint(true);
         toast({ title: "Success", description: "File uploaded successfully" });
       } else {
         toast({ title: "Error", description: "Failed to upload file", variant: "destructive" });
@@ -543,39 +556,91 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
         </Button>
       </div>
 
-      {/* Page Coverage Grid */}
-      <Card className="border-0 shadow-sm bg-slate-50">
+      {/* Live Ads on Website Panel */}
+      <Card className="border border-primary/20 shadow-sm">
         <CardHeader className="pb-3 pt-4 px-5">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <LayoutGrid className="h-4 w-4 text-primary" />
-            Page Ad Coverage
-            <span className="text-xs text-muted-foreground font-normal ml-1">— Active ads per page</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4 text-primary" />
+              Ads Displayed on Website
+              <span className="text-xs text-muted-foreground font-normal ml-1">— Currently live per page</span>
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={fetchAds} className="h-7 text-xs gap-1 text-muted-foreground">
+              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="px-5 pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2" data-testid="page-coverage-grid">
-            {pageCoverage.map(({ page: pv, count, names }) => (
-              <div
-                key={pv}
-                className={`rounded-xl border px-3 py-2.5 text-center transition-colors ${
-                  count > 0
-                    ? "bg-green-50 border-green-200"
-                    : "bg-white border-gray-200"
-                }`}
-                title={count > 0 ? `Active: ${names.join(", ")}` : "No active ads on this page"}
-                data-testid={`coverage-${pv}`}
-              >
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  {count > 0
-                    ? <Check className="h-3.5 w-3.5 text-green-600" />
-                    : <AlertCircle className="h-3.5 w-3.5 text-gray-300" />}
-                  <span className={`text-xs font-semibold ${count > 0 ? "text-green-700" : "text-gray-400"}`}>
-                    {count > 0 ? `${count} ad${count > 1 ? "s" : ""}` : "None"}
-                  </span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3" data-testid="page-coverage-grid">
+            {pageCoverage.map(({ page: pv, count, names }) => {
+              const liveAds = ads.filter(ad =>
+                ad.status === "active" &&
+                (ad.targetPages.includes("all") || ad.targetPages.length === 0 || ad.targetPages.includes(pv))
+              );
+              return (
+                <div
+                  key={pv}
+                  className={`rounded-xl border overflow-hidden transition-all ${
+                    count > 0
+                      ? "border-green-200 shadow-sm"
+                      : "border-gray-200 bg-white"
+                  }`}
+                  data-testid={`coverage-${pv}`}
+                >
+                  {/* Ad thumbnails stack */}
+                  {liveAds.length > 0 ? (
+                    <div className="relative bg-gray-100" style={{ height: "80px" }}>
+                      {liveAds.slice(0, 3).map((ad, i) => (
+                        <div
+                          key={ad.id}
+                          className="absolute inset-0"
+                          style={{ zIndex: i, opacity: i === liveAds.length - 1 || liveAds.length === 1 ? 1 : 0.35, transform: `translateY(${i * 3}px) scale(${1 - i * 0.04})` }}
+                        >
+                          {ad.mediaType === "image" ? (
+                            <img
+                              src={ad.mediaUrl}
+                              alt={ad.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <video src={ad.mediaUrl} className="w-full h-full object-cover" muted />
+                          )}
+                        </div>
+                      ))}
+                      {liveAds.length > 1 && (
+                        <div className="absolute top-1.5 right-1.5 bg-black/60 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center z-10">
+                          {liveAds.length}
+                        </div>
+                      )}
+                      {liveAds.some(a => a.forceDisplay) && (
+                        <div className="absolute bottom-1 left-1 bg-purple-600 text-white text-[8px] font-bold px-1 rounded z-10">
+                          PINNED
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center bg-gray-50" style={{ height: "80px" }}>
+                      <AlertCircle className="h-5 w-5 text-gray-200" />
+                    </div>
+                  )}
+                  <div className={`px-2 py-1.5 ${count > 0 ? "bg-green-50" : "bg-white"}`}>
+                    <div className="flex items-center gap-1 mb-0.5">
+                      {count > 0
+                        ? <Check className="h-3 w-3 text-green-600 shrink-0" />
+                        : <AlertCircle className="h-3 w-3 text-gray-300 shrink-0" />}
+                      <span className={`text-[10px] font-semibold ${count > 0 ? "text-green-700" : "text-gray-400"}`}>
+                        {count > 0 ? `${count} active` : "None"}
+                      </span>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground leading-tight truncate">{pv}</p>
+                    {names.length > 0 && (
+                      <p className="text-[8px] text-green-700 truncate mt-0.5" title={names.join(", ")}>{names[0]}{names.length > 1 ? ` +${names.length - 1}` : ""}</p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground leading-tight truncate">{pv}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -623,7 +688,10 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         {getStatusBadge(ad.status)}
-                        {ad.endDate && new Date(ad.endDate) < new Date() && ad.status === "active" && (
+                        {ad.forceDisplay && (
+                          <Badge className="bg-purple-100 text-purple-800 text-[10px] whitespace-nowrap border border-purple-200">📌 Always On</Badge>
+                        )}
+                        {!ad.forceDisplay && ad.endDate && new Date(ad.endDate) < new Date() && ad.status === "active" && (
                           <>
                             <Badge className="bg-red-100 text-red-800 text-[10px] whitespace-nowrap">End date passed</Badge>
                             <button
@@ -806,7 +874,7 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
               <div className="flex gap-2">
                 <Input 
                   value={formData.mediaUrl} 
-                  onChange={(e) => setFormData(prev => ({ ...prev, mediaUrl: e.target.value }))}
+                  onChange={(e) => { setFormData(prev => ({ ...prev, mediaUrl: e.target.value })); setShowReloadHint(false); }}
                   placeholder="Enter URL or upload a file"
                   data-testid="input-ad-media-url"
                   className="flex-1"
@@ -825,11 +893,29 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
                   data-testid="button-upload-file"
+                  title="Upload image or video file"
                 >
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 </Button>
+                {showReloadHint && formData.mediaUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setPreviewCacheBust(Date.now()); setShowReloadHint(false); }}
+                    data-testid="button-reload-preview"
+                    title="Reload preview to see uploaded file"
+                    className="border-green-400 text-green-700 hover:bg-green-50"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" /> Reload
+                  </Button>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">Enter a URL or upload an image/video file. Recommended size: 728x90 for banners.</p>
+              {showReloadHint && (
+                <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                  <Check className="h-3 w-3" /> File uploaded — click "Reload" to refresh the preview below.
+                </p>
+              )}
             </div>
 
             <div className="border rounded-lg p-4 bg-blue-50">
@@ -927,7 +1013,21 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
             </div>
 
             <div className="border rounded-lg p-4 bg-slate-100">
-              <Label className="mb-3 block text-sm font-semibold">Website Preview - How ad appears on quote pages</Label>
+              <div className="flex items-center justify-between mb-3">
+                <Label className="text-sm font-semibold">Website Preview — How ad appears on quote pages</Label>
+                {formData.mediaUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setPreviewCacheBust(Date.now())}
+                    data-testid="button-refresh-website-preview"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Reload Ad
+                  </Button>
+                )}
+              </div>
               <div className="bg-white rounded-lg shadow-sm border p-4 max-w-md mx-auto">
                 <div className="space-y-3">
                   <div className="h-3 bg-slate-200 rounded w-3/4"></div>
@@ -942,9 +1042,15 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                   >
                     {formData.mediaUrl ? (
                       formData.mediaType === "image" ? (
-                        <img src={formData.mediaUrl} alt={formData.name || "Ad Preview"} className="w-full h-auto object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                        <img
+                          key={previewCacheBust}
+                          src={previewCacheBust > 0 ? `${formData.mediaUrl}?t=${previewCacheBust}` : formData.mediaUrl}
+                          alt={formData.name || "Ad Preview"}
+                          className="w-full h-auto object-contain"
+                          onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
                       ) : (
-                        <video src={formData.mediaUrl} className="w-full h-auto" muted />
+                        <video key={previewCacheBust} src={formData.mediaUrl} className="w-full h-auto" muted />
                       )
                     ) : (
                       <div className="h-20"></div>
@@ -1071,6 +1177,39 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
               )}
             </div>
 
+            {/* Advanced Display Settings */}
+            <div className="border rounded-lg p-4 bg-purple-50 border-purple-200">
+              <Label className="mb-1 block text-sm font-semibold text-purple-800">Advanced Settings</Label>
+              <p className="text-xs text-purple-600 mb-4">Control display behaviour beyond the standard scheduling rules.</p>
+
+              <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-purple-200">
+                <div className="flex items-center h-6 mt-0.5">
+                  <Checkbox
+                    id="forceDisplay"
+                    checked={formData.forceDisplay}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, forceDisplay: checked as boolean }))}
+                    data-testid="checkbox-force-display"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="forceDisplay" className="cursor-pointer font-semibold text-sm text-purple-900 flex items-center gap-2">
+                    Always Display
+                    {formData.forceDisplay && (
+                      <Badge className="bg-purple-600 text-white text-[10px] h-4 px-1.5">PINNED</Badge>
+                    )}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    When enabled, this ad will display on the website regardless of start/end date restrictions. The ad will always appear as long as it is set to <strong>Active</strong>.
+                  </p>
+                  {formData.forceDisplay && (
+                    <p className="text-xs text-purple-700 font-medium mt-1.5 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> This ad is pinned — it bypasses all scheduling dates and will always appear while active.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -1092,7 +1231,13 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                   value={formData.startDate} 
                   onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                   data-testid="input-ad-start-date"
+                  disabled={formData.forceDisplay}
+                  title={formData.forceDisplay ? "Disabled — Always Display overrides date restrictions" : ""}
+                  className={formData.forceDisplay ? "opacity-40 cursor-not-allowed" : ""}
                 />
+                {formData.forceDisplay && (
+                  <p className="text-[10px] text-purple-600">Ignored — Always Display enabled</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>End Date</Label>
@@ -1101,10 +1246,15 @@ const AdvertisementManager = forwardRef<AdvertisementManagerHandle, Advertisemen
                   value={formData.endDate} 
                   onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
                   data-testid="input-ad-end-date"
-                  className={formData.endDate && new Date(formData.endDate) < new Date() ? "border-red-400" : ""}
+                  disabled={formData.forceDisplay}
+                  title={formData.forceDisplay ? "Disabled — Always Display overrides date restrictions" : ""}
+                  className={formData.forceDisplay ? "opacity-40 cursor-not-allowed" : formData.endDate && new Date(formData.endDate) < new Date() ? "border-red-400" : ""}
                 />
-                {formData.endDate && new Date(formData.endDate) < new Date() && (
+                {!formData.forceDisplay && formData.endDate && new Date(formData.endDate) < new Date() && (
                   <p className="text-xs text-red-600 font-medium">End date has passed — this ad will not show on pages. Update the end date or clear it to run indefinitely.</p>
+                )}
+                {formData.forceDisplay && (
+                  <p className="text-[10px] text-purple-600">Ignored — Always Display enabled</p>
                 )}
               </div>
             </div>

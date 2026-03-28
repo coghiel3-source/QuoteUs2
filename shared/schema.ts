@@ -135,6 +135,7 @@ export const advertisements = pgTable("advertisements", {
   topBgColor: text("top_bg_color").default("#1e3a5f"),
   centerBgColor: text("center_bg_color").default("#1e3a5f"),
   bottomBgColor: text("bottom_bg_color").default("#1e3a5f"),
+  forceDisplay: boolean("force_display").notNull().default(false),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
