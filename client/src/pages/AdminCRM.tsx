@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import AdvertisementManager, { AdvertisementManagerHandle } from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
@@ -986,6 +986,18 @@ export default function AdminCRMPage() {
     if (updated) setSelectedQuote(updated);
   };
 
+  const handleUpdatePriority = async (priority: string) => {
+    if (!selectedQuote) return;
+    await fetch(`/api/quotes/${selectedQuote.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priority }),
+    });
+    await refreshQuotes();
+    const updated = quotes.find(q => q.id === selectedQuote.id);
+    if (updated) setSelectedQuote({ ...updated, priority } as any);
+  };
+
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedQuote || !emailSubject.trim() || !emailTo.trim() || !emailBody.trim()) return;
@@ -1743,6 +1755,34 @@ export default function AdminCRMPage() {
             {selectedQuote && (
               <>
                 <SheetHeader className="mb-6">
+                  {(() => {
+                    const currentIndex = sortedQuotes.findIndex(q => q.id === selectedQuote.id);
+                    return (
+                      <div className="flex items-center justify-between mb-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-muted-foreground"
+                          disabled={currentIndex <= 0}
+                          onClick={() => setSelectedQuote(sortedQuotes[currentIndex - 1])}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          {currentIndex + 1} of {sortedQuotes.length}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-muted-foreground"
+                          disabled={currentIndex >= sortedQuotes.length - 1}
+                          onClick={() => setSelectedQuote(sortedQuotes[currentIndex + 1])}
+                        >
+                          Next <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    );
+                  })()}
                   <div className="flex justify-between items-start">
                     <div>
                       <SheetTitle className="text-2xl font-bold flex items-center gap-2">
@@ -1991,6 +2031,21 @@ export default function AdminCRMPage() {
                      <Button variant="outline" size="sm" onClick={() => { setEmailTo(selectedQuote.email || ''); setIsEmailOpen(true); }} data-testid="button-email-from-lead">
                        <Mail size={14} className="mr-1" /> Email
                      </Button>
+                   </div>
+                   <div className="flex items-center gap-1">
+                     <span className="text-xs text-muted-foreground mr-1">Priority:</span>
+                     {(['High', 'Medium', 'Low'] as const).map((p) => (
+                       <Button
+                         key={p}
+                         size="sm"
+                         variant={(selectedQuote.priority || 'Medium') === p ? 'default' : 'outline'}
+                         className={`h-7 text-xs px-2 ${(selectedQuote.priority || 'Medium') === p ? getPriorityBadge(p) + ' border' : ''}`}
+                         onClick={() => handleUpdatePriority(p)}
+                         data-testid={`button-priority-${p.toLowerCase()}`}
+                       >
+                         {p}
+                       </Button>
+                     ))}
                    </div>
                    <Button variant="outline" onClick={() => setSelectedQuote(null)}>Close</Button>
                 </SheetFooter>
