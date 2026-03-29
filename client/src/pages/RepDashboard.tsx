@@ -48,7 +48,7 @@ const IN_PROGRESS_STATUSES: Status[] = ["Contacted", "Documents Pending", "Docum
 const EMPLOYMENT_STATUSES = ["Employed Full-Time", "Employed Part-Time", "Self-Employed", "Student", "Retired", "Unemployed", "Other"];
 const PAYMENT_METHODS = ["e-Transfer", "Cheque", "Cash", "Direct Deposit", "Pre-Authorized Debit", "Other"];
 const TENANT_DOC_TYPES = ["Pay Stubs (Last 3 Months)", "T4 / Notice of Assessment", "Bank Statements (3 Months)", "Credit Check Authorization", "Government ID", "Employment Letter", "Other"];
-const LANDLORD_DOC_TYPES = ["Lease Agreement", "Property Deed / Ownership Proof", "Property Insurance", "Government ID", "Other"];
+const LANDLORD_DOC_TYPES = ["Lease Agreement", "Property Deed / Ownership Proof", "Property Insurance", "Government ID", "Photo/Video (Time-Stamped, Pre-Move-In — No Damage)", "Other"];
 const REMINDER_PRESETS = [
   "Follow up on lease agreement", "Chase tenant documents", "Follow up with landlord",
   "Submit application", "Check approval status", "Review credit report", "Confirm move-in date",
@@ -1258,6 +1258,65 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           {selectedLocation.notes && <p className="mt-2 pt-2 border-t text-gray-600"><span className="text-gray-500">Notes:</span> {selectedLocation.notes}</p>}
                         </CardContent>
                       </Card>
+
+                      {/* Status Overview Board */}
+                      {currentLocationTenants.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Status Overview</CardTitle></CardHeader>
+                          <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="border-b bg-gray-50">
+                                    <th className="text-left px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide">Tenant</th>
+                                    <th className="text-left px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide">Rent</th>
+                                    <th className="text-left px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide">Documents</th>
+                                    <th className="text-left px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide">Signature</th>
+                                    <th className="text-left px-4 py-2 font-semibold text-gray-500 uppercase tracking-wide">Payment</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {currentLocationTenants.map(tenant => {
+                                    const tenantDocReqs = locationDocRequests.filter(r => r.recipientType === "tenant" && r.recipientName === tenant.tenantName);
+                                    const hasActiveDocReq = tenantDocReqs.some(r => !r.expiresAt || new Date(r.expiresAt) >= new Date());
+                                    const docsReceived = ["Documents Received", "Submitted", "Approved"].includes(tenant.status);
+                                    const signed = ["Submitted", "Approved"].includes(tenant.status);
+                                    let docStatus = "Not Sent";
+                                    let docColor = "bg-gray-100 text-gray-500";
+                                    if (docsReceived) { docStatus = "Received"; docColor = "bg-green-100 text-green-700"; }
+                                    else if (hasActiveDocReq) { docStatus = "Requested"; docColor = "bg-yellow-100 text-yellow-700"; }
+                                    else if (tenantDocReqs.length > 0) { docStatus = "Expired"; docColor = "bg-red-100 text-red-600"; }
+                                    return (
+                                      <tr key={tenant.id} className="border-b last:border-b-0 hover:bg-gray-50/70 cursor-pointer transition-colors" onClick={() => openLead(tenant)} data-testid={`status-row-${tenant.id}`}>
+                                        <td className="px-4 py-3">
+                                          <p className="font-semibold text-gray-900 mb-0.5">{tenant.tenantName}</p>
+                                          <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[tenant.status as Status]}`}>{STATUS_DISPLAY_LABELS[tenant.status as Status] || tenant.status}</span>
+                                        </td>
+                                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">${Number(tenant.monthlyRent).toLocaleString()}/mo</td>
+                                        <td className="px-4 py-3">
+                                          <span className={`px-2 py-0.5 rounded-full font-medium ${docColor}`}>{docStatus}</span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          {signed
+                                            ? <span className="px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Signed</span>
+                                            : <span className="px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">Pending</span>
+                                          }
+                                        </td>
+                                        <td className="px-4 py-3">
+                                          {tenant.paymentMethod
+                                            ? <span className="text-gray-700">{tenant.paymentMethod}</span>
+                                            : <span className="text-gray-400 italic">Not Set</span>
+                                          }
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       {/* Doc requests summary in info tab */}
                       {locationDocRequests.length > 0 && (
