@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign, Landmark } from "lucide-react";
+import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign, Landmark, KeyRound } from "lucide-react";
 import heroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1765553789903.jpg";
 
 export default function HomePage() {
@@ -14,6 +14,7 @@ export default function HomePage() {
     { icon: Briefcase, label: "Business", href: "/business", desc: "Liability & property coverage" },
     { icon: Dog, label: "Pet", href: "/pet", desc: "Health plans for cats & dogs" },
     { icon: Landmark, label: "Mortgage", href: "/mortgage", desc: "Find the best mortgage rates" },
+    { icon: KeyRound, label: "Rent Guarantee", href: "/rent-guarantee", desc: "Landlord protection on rent" },
   ];
 
   return (
@@ -64,7 +65,7 @@ export default function HomePage() {
 
       {/* Quick Access Grid */}
       <section className="container mx-auto max-w-7xl px-4 -mt-12 relative z-30">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-4">
           {products.map((p) => (
             <Link key={p.label} href={p.href} className="group">
                 <Card className="h-full border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-white">
