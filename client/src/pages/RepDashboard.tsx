@@ -1110,8 +1110,18 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     {rgPerm("canAddLocations") && <Button onClick={openNewLocation} size="sm"><Plus className="h-4 w-4 mr-1" /> New Location</Button>}
                   </div>
                 ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {filteredLocations.map(loc => {
+                  <div className="bg-white border rounded-xl overflow-hidden">
+                    {/* Table header */}
+                    <div className="grid grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-0 border-b bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <div>Address</div>
+                      <div>Tenants / Rent</div>
+                      <div>Documents</div>
+                      <div>Signature</div>
+                      <div>Payment</div>
+                      <div></div>
+                    </div>
+
+                    {filteredLocations.map((loc, idx) => {
                       const tenants = locationTenants[loc.id] || [];
                       const status = getLocationStatus(tenants);
                       const allDeclined = tenants.length > 0 && tenants.every(t => t.status === "Declined");
@@ -1124,87 +1134,73 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       else if (docsPending) { docLabel = "Pending"; docCls = "bg-orange-100 text-orange-700"; }
                       else if (tenants.length === 0) { docLabel = "—"; }
                       return (
-                            <div key={loc.id} className={`bg-white border rounded-xl overflow-hidden hover:border-blue-300 hover:shadow-sm cursor-pointer transition-all ${allDeclined ? "border-red-200" : ""}`} onClick={() => openLocation(loc)} data-testid={`location-card-${loc.id}`}>
-                              {/* Card header */}
-                              <div className={`px-4 py-3 flex items-center justify-between ${allDeclined ? "bg-red-50" : "bg-blue-50"}`}>
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Building2 className={`h-4 w-4 flex-shrink-0 ${allDeclined ? "text-red-500" : "text-blue-600"}`} />
-                                  <span className={`text-sm font-semibold truncate ${allDeclined ? "text-red-700" : "text-blue-800"}`}>{loc.propertyAddress}</span>
-                                </div>
-                                <div className="flex gap-1 flex-shrink-0 ml-2" onClick={e => e.stopPropagation()}>
-                                  {allDeclined && rgPerm("canAddTenants") && (
-                                    <button onClick={e => { e.stopPropagation(); openAddTenant(loc); }} className="flex items-center gap-1 text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium" data-testid={`button-add-tenant-declined-${loc.id}`}><UserPlus className="h-3 w-3" /> New</button>
-                                  )}
-                                  {tenants.length > 0 && (
-                                    <button onClick={e => { e.stopPropagation(); const a = tenants.find(t => t.status !== "Declined") || tenants[0]; openLead(a); }} className="p-1.5 rounded-lg hover:bg-white/60 text-blue-600" title="View tenant" data-testid={`button-view-lead-${loc.id}`}><Eye className="h-3.5 w-3.5" /></button>
-                                  )}
-                                  {rgPerm("canEditLocations") && <button onClick={e => openEditLocation(loc, e)} className="p-1.5 rounded-lg hover:bg-white/60 text-gray-500" data-testid={`button-edit-location-${loc.id}`}><Pencil className="h-3.5 w-3.5" /></button>}
-                                </div>
-                              </div>
-
-                              {/* Five labeled rows */}
-                              <div className="divide-y divide-gray-50 text-xs">
-                                {/* Address */}
-                                <div className="flex px-4 py-2.5 gap-3">
-                                  <span className="w-28 flex-shrink-0 font-medium text-gray-400 uppercase tracking-wide pt-0.5">Address</span>
-                                  <div className="text-gray-800">
-                                    <p className="font-medium">{loc.propertyAddress}</p>
-                                    {loc.unit && <p className="text-gray-500">Unit {loc.unit}</p>}
-                                    {loc.moveInDate && <p className="text-gray-400 mt-0.5">Move-in: {loc.moveInDate}</p>}
-                                  </div>
-                                </div>
-
-                                {/* Tenants / Rent */}
-                                <div className="flex px-4 py-2.5 gap-3">
-                                  <span className="w-28 flex-shrink-0 font-medium text-gray-400 uppercase tracking-wide pt-0.5">Tenants / Rent</span>
-                                  <div className="flex flex-col gap-1">
-                                    {tenants.length === 0
-                                      ? <span className="text-gray-400 italic">No tenants yet</span>
-                                      : tenants.map(t => (
-                                        <div key={t.id} className="flex items-center gap-2 flex-wrap">
-                                          <span className="font-medium text-gray-800">{t.tenantName}</span>
-                                          <span className="text-gray-500">${Number(t.monthlyRent).toLocaleString()}/mo</span>
-                                          <span className={`px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status as Status]}`}>{STATUS_DISPLAY_LABELS[t.status as Status] || t.status}</span>
-                                        </div>
-                                      ))
-                                    }
-                                  </div>
-                                </div>
-
-                                {/* Documents */}
-                                <div className="flex px-4 py-2.5 gap-3 items-center">
-                                  <span className="w-28 flex-shrink-0 font-medium text-gray-400 uppercase tracking-wide">Documents</span>
-                                  <span className={`px-2.5 py-0.5 rounded-full font-medium ${docCls}`}>{docLabel}</span>
-                                </div>
-
-                                {/* Signature */}
-                                <div className="flex px-4 py-2.5 gap-3 items-center">
-                                  <span className="w-28 flex-shrink-0 font-medium text-gray-400 uppercase tracking-wide">Signature</span>
-                                  {tenants.length === 0
-                                    ? <span className="text-gray-400">—</span>
-                                    : signed
-                                      ? <span className="px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Signed</span>
-                                      : <span className="px-2.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">Pending</span>
-                                  }
-                                </div>
-
-                                {/* Payment */}
-                                <div className="flex px-4 py-2.5 gap-3 items-center">
-                                  <span className="w-28 flex-shrink-0 font-medium text-gray-400 uppercase tracking-wide">Payment</span>
-                                  {tenants.length === 0
-                                    ? <span className="text-gray-400">—</span>
-                                    : active?.paymentMethod
-                                      ? <span className="font-medium text-gray-800">{active.paymentMethod}</span>
-                                      : <span className="text-gray-400 italic">Not Set</span>
-                                  }
-                                </div>
-                              </div>
-
-                              {/* Footer arrow */}
-                              <div className="px-4 py-2 border-t bg-gray-50/50 flex justify-end">
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
-                              </div>
+                        <div
+                          key={loc.id}
+                          className={`grid grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] gap-0 px-4 py-3 cursor-pointer hover:bg-blue-50/40 transition-colors text-sm ${idx !== 0 ? "border-t" : ""} ${allDeclined ? "bg-red-50/30 hover:bg-red-50" : ""}`}
+                          onClick={() => openLocation(loc)}
+                          data-testid={`location-card-${loc.id}`}
+                        >
+                          {/* Address */}
+                          <div className="flex items-start gap-2 pr-3">
+                            <Building2 className={`h-4 w-4 mt-0.5 flex-shrink-0 ${allDeclined ? "text-red-400" : "text-blue-500"}`} />
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900 truncate">{loc.propertyAddress}</p>
+                              {loc.unit && <p className="text-xs text-gray-500">Unit {loc.unit}</p>}
+                              {loc.moveInDate && <p className="text-xs text-gray-400">Move-in: {loc.moveInDate}</p>}
                             </div>
+                          </div>
+
+                          {/* Tenants / Rent */}
+                          <div className="flex flex-col gap-1 justify-center pr-3">
+                            {tenants.length === 0
+                              ? <span className="text-xs text-gray-400 italic">No tenants yet</span>
+                              : tenants.map(t => (
+                                <div key={t.id} className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-medium text-gray-800 text-xs">{t.tenantName}</span>
+                                  <span className="text-gray-400 text-xs">${Number(t.monthlyRent).toLocaleString()}/mo</span>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status as Status]}`}>{STATUS_DISPLAY_LABELS[t.status as Status] || t.status}</span>
+                                </div>
+                              ))
+                            }
+                          </div>
+
+                          {/* Documents */}
+                          <div className="flex items-center">
+                            <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${docCls}`}>{docLabel}</span>
+                          </div>
+
+                          {/* Signature */}
+                          <div className="flex items-center">
+                            {tenants.length === 0
+                              ? <span className="text-xs text-gray-400">—</span>
+                              : signed
+                                ? <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700">Signed</span>
+                                : <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">Pending</span>
+                            }
+                          </div>
+
+                          {/* Payment */}
+                          <div className="flex items-center">
+                            {tenants.length === 0
+                              ? <span className="text-xs text-gray-400">—</span>
+                              : active?.paymentMethod
+                                ? <span className="text-xs font-medium text-gray-800">{active.paymentMethod}</span>
+                                : <span className="text-xs text-gray-400 italic">Not Set</span>
+                            }
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 pl-2" onClick={e => e.stopPropagation()}>
+                            {allDeclined && rgPerm("canAddTenants") && (
+                              <button onClick={e => { e.stopPropagation(); openAddTenant(loc); }} className="flex items-center gap-1 text-xs px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium whitespace-nowrap" data-testid={`button-add-tenant-declined-${loc.id}`}><UserPlus className="h-3 w-3" /> New</button>
+                            )}
+                            {tenants.length > 0 && (
+                              <button onClick={e => { e.stopPropagation(); const a = tenants.find(t => t.status !== "Declined") || tenants[0]; openLead(a); }} className="p-1.5 rounded-lg hover:bg-blue-100 text-blue-500" title="View tenant" data-testid={`button-view-lead-${loc.id}`}><Eye className="h-3.5 w-3.5" /></button>
+                            )}
+                            {rgPerm("canEditLocations") && <button onClick={e => openEditLocation(loc, e)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" data-testid={`button-edit-location-${loc.id}`}><Pencil className="h-3.5 w-3.5" /></button>}
+                            <ChevronRight className="h-4 w-4 text-gray-300 ml-1" />
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
