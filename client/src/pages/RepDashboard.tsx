@@ -1717,24 +1717,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       </div>
 
       {/* ===== LEAD DETAIL PANEL ===== */}
-      {selectedLead && (
-        <div className="fixed inset-0 top-16 z-40 flex">
-          <div className="flex-1 bg-black/40" onClick={() => setSelectedLead(null)} />
-          <div className="w-full max-w-md bg-white shadow-2xl overflow-y-auto flex flex-col">
+      <Dialog open={!!selectedLead} onOpenChange={(o) => { if (!o) setSelectedLead(null); }}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden [&>button.absolute]:text-white [&>button.absolute]:top-3 [&>button.absolute]:right-3">
+          {selectedLead && (
+          <div className="flex flex-col overflow-y-auto max-h-[88vh]">
             {/* Header */}
-            <div className="p-4 border-b flex items-start justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-              <div className="flex-1 min-w-0 pr-3">
+            <div className="p-4 border-b flex items-start bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+              <div className="flex-1 min-w-0 pr-12">
                 <h2 className="text-base font-bold truncate">{selectedLead.tenantName}</h2>
                 <p className="text-blue-100 text-xs mt-0.5 truncate">{selectedLead.propertyAddress}</p>
                 <p className="text-blue-200 text-xs">${Number(selectedLead.monthlyRent).toLocaleString()}/month</p>
               </div>
-              <button
-                onClick={() => setSelectedLead(null)}
-                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex-shrink-0 transition-colors"
-                data-testid="button-close-lead"
-              >
-                <X className="h-3.5 w-3.5" /> Close
-              </button>
             </div>
 
             {/* Status + actions bar */}
@@ -1961,8 +1954,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               )}
             </div>
           </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ===== EDIT LEAD DIALOG ===== */}
       <Dialog open={showEditLead} onOpenChange={setShowEditLead}>
