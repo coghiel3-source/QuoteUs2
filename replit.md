@@ -52,6 +52,16 @@ An in-app update system enables admins/managers to upload ZIP files for applicat
 ### Referral Partner System
 This system allows admins/managers to create referral partner accounts. Each partner is assigned an auto-generated, province-based Reference ID (e.g., ON0000001). This ID can be used by clients on quote forms to tag leads to specific partners, facilitating lead tracking and partner management.
 
+### DocuSign-like Agreement / Signature System
+A digital agreement signing system allows reps to send customizable agreements to landlords for e-signature. The system includes:
+- `signatureTemplates` table (singleton agreement template with title, content, placeholder support, and updatedBy tracking)
+- `signatureRequests` table (per-location requests with unique token, landlord email, status pending/signed, captured signature image, signer name, and timestamp)
+- Admin/manager template editor in CRM Settings tab (title + full body with placeholders: `{{landlord_name}}`, `{{property_address}}`, `{{date}}`, `{{landlord_email}}`)
+- Rep Dashboard: "Send Agreement" button on every location's detail view; displays live status (pending/signed) with signature date and signer name
+- Public signing page at `/sign/:token` — no login required, canvas-based signature pad, placeholders replaced with real location data, submit records signature to database
+- Email notification sent to landlord via configured SMTP; if SMTP not configured, a shareable link is shown to the rep
+- API routes: `GET/PUT /api/admin/signature-template`, `POST /api/rep/locations/:id/send-signature`, `GET /api/rep/locations/:id/signature-status`, `GET/POST /api/sign/:token`
+
 ### Binder / Confirmation of Insurance
 The system allows admins/managers to require brokers to upload a binder (confirmation of insurance) for specific leads. Brokers can upload PDF, Word, or image files, which are then visible in the lead detail view. The activity log tracks all binder-related actions.
 

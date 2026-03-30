@@ -16,7 +16,7 @@ import {
   X, RefreshCw, Check, Clock, ExternalLink, Copy, BarChart3, Bell,
   BellRing, TrendingUp, AlarmClock, Pencil, MapPin, User, AlertTriangle,
   Building2, DollarSign, Calendar, Phone, Mail, UserPlus, ArrowRight,
-  Calculator, CreditCard, Percent, BadgePercent, CheckCircle2,
+  Calculator, CreditCard, Percent, BadgePercent, CheckCircle2, FileSignature,
 } from "lucide-react";
 
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined";
@@ -292,6 +292,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [locationDocs, setLocationDocs] = useState<RepDocument[]>([]);
   const [updatingLocationStatus, setUpdatingLocationStatus] = useState(false);
 
+  // Signature / agreement
+  const [locationSignature, setLocationSignature] = useState<any>(null);
+  const [showSendAgreement, setShowSendAgreement] = useState(false);
+  const [agreementEmail, setAgreementEmail] = useState("");
+  const [sendingAgreement, setSendingAgreement] = useState(false);
+
   // Edit lead dialog
   const [showEditLead, setShowEditLead] = useState(false);
   const [editLeadForm, setEditLeadForm] = useState({
@@ -443,16 +449,48 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setLocationDetailTab("info");
     setLocationDocRequests([]);
     setLocationDocs([]);
+    setLocationSignature(null);
+    setShowSendAgreement(false);
+    setAgreementEmail(loc.landlordEmail || "");
     await loadTenantsForLocation(loc.id);
     if (user) {
       try {
-        const [reqs, docs] = await Promise.all([
+        const [reqs, docs, sig] = await Promise.all([
           apiRequest<DocumentRequest[]>(`/rep/locations/${loc.id}/doc-requests?actorId=${user.id}`),
           apiRequest<RepDocument[]>(`/rep/locations/${loc.id}/documents?actorId=${user.id}`),
+          apiRequest<any>(`/rep/locations/${loc.id}/signature-status?actorId=${user.id}`),
         ]);
         setLocationDocRequests(reqs || []);
         setLocationDocs(docs || []);
+        setLocationSignature(sig || null);
       } catch {}
+    }
+  }
+
+  async function handleSendAgreement() {
+    if (!selectedLocation || !user) return;
+    if (!agreementEmail.trim()) { toast({ title: "Landlord email is required", variant: "destructive" }); return; }
+    setSendingAgreement(true);
+    try {
+      const result = await apiRequest<any>(`/rep/locations/${selectedLocation.id}/send-signature`, {
+        method: "POST",
+        body: JSON.stringify({ landlordEmail: agreementEmail.trim() }),
+      });
+      setLocationSignature(result.request);
+      setShowSendAgreement(false);
+      if (result.emailSent) {
+        toast({ title: "Agreement sent!", description: `Signature request emailed to ${agreementEmail}` });
+      } else {
+        toast({
+          title: "Agreement link created",
+          description: `SMTP not configured — share this link manually: ${result.signingUrl}`,
+          duration: 10000,
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Failed to send agreement", description: err.message, variant: "destructive" });
+    } finally {
+      setSendingAgreement(false);
     }
   }
 
@@ -1274,6 +1312,16 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           <Send className="h-3.5 w-3.5 mr-1" /> Request Docs
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setShowSendAgreement(true); setAgreementEmail(selectedLocation.landlordEmail || ""); }}
+                        className={locationSignature?.status === "signed" ? "border-green-300 text-green-700 hover:bg-green-50" : ""}
+                        data-testid="button-send-agreement"
+                      >
+                        <FileSignature className="h-3.5 w-3.5 mr-1" />
+                        {locationSignature?.status === "signed" ? "Signed ✓" : locationSignature ? "Resend Agreement" : "Send Agreement"}
+                      </Button>
                     </div>
                   </div>
 
@@ -1305,6 +1353,38 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           {selectedLocation.landlordEmail && <p><span className="text-gray-500">Landlord Email:</span> {selectedLocation.landlordEmail}</p>}
                           {selectedLocation.landlordPhone && <p><span className="text-gray-500">Landlord Phone:</span> {selectedLocation.landlordPhone}</p>}
                           {selectedLocation.notes && <p className="mt-2 pt-2 border-t text-gray-600"><span className="text-gray-500">Notes:</span> {selectedLocation.notes}</p>}
+                        </CardContent>
+                      </Card>
+
+                      {/* Agreement / Signature Status Card */}
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm text-gray-600 flex items-center gap-1.5">
+                            <FileSignature className="h-4 w-4" /> Agreement Status
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm">
+                          {locationSignature ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${locationSignature.status === "signed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                                  {locationSignature.status === "signed" ? "✓ Signed" : "Awaiting Signature"}
+                                </span>
+                                <span className="text-gray-400 text-xs">Sent to {locationSignature.landlordEmail}</span>
+                              </div>
+                              {locationSignature.status === "signed" && (
+                                <div className="text-xs text-gray-500 space-y-0.5">
+                                  <p>Signed by: <strong>{locationSignature.signerName}</strong></p>
+                                  {locationSignature.signedAt && <p>Date: {new Date(locationSignature.signedAt).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}</p>}
+                                </div>
+                              )}
+                              {locationSignature.sentAt && (
+                                <p className="text-xs text-gray-400">Sent: {new Date(locationSignature.sentAt).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" })}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-gray-400 italic text-xs">No agreement has been sent yet. Use "Send Agreement" to request a signature from the landlord.</p>
+                          )}
                         </CardContent>
                       </Card>
 
@@ -2153,6 +2233,44 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       </Dialog>
 
       {/* ===== DOC REQUEST DIALOG ===== */}
+      {/* ── Send Agreement Dialog ── */}
+      <Dialog open={showSendAgreement} onOpenChange={setShowSendAgreement}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><FileSignature className="h-5 w-5 text-blue-600" /> Send Agreement</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {selectedLocation && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-800">
+                Sending agreement for <strong>{selectedLocation.propertyAddress}{selectedLocation.unit ? `, Unit ${selectedLocation.unit}` : ""}</strong>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="agr-email">Landlord Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="agr-email"
+                type="email"
+                placeholder="landlord@email.com"
+                value={agreementEmail}
+                onChange={e => setAgreementEmail(e.target.value)}
+                data-testid="input-agreement-email"
+              />
+            </div>
+            {locationSignature && (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                A previous agreement was sent on {new Date(locationSignature.sentAt).toLocaleDateString("en-CA")}. Sending again will create a new signature request.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSendAgreement(false)}>Cancel</Button>
+            <Button onClick={handleSendAgreement} disabled={sendingAgreement || !agreementEmail.trim()} className="bg-blue-700 hover:bg-blue-800" data-testid="button-confirm-send-agreement">
+              {sendingAgreement ? "Sending…" : "Send Agreement"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showDocRequest} onOpenChange={setShowDocRequest}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Request Documents</DialogTitle></DialogHeader>

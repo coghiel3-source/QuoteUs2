@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -103,6 +103,16 @@ export interface IStorage {
   updateLocation(id: string, data: Partial<InsertRgLocation>): Promise<RgLocation | undefined>;
   deleteLocation(id: string): Promise<boolean>;
   getLeadsForLocation(locationId: string): Promise<RgLead[]>;
+
+  // Signature Template operations
+  getSignatureTemplate(): Promise<any>;
+  upsertSignatureTemplate(data: { title: string; content: string; updatedBy: string }): Promise<any>;
+
+  // Signature Request operations
+  createSignatureRequest(data: any): Promise<any>;
+  getSignatureRequestByToken(token: string): Promise<any>;
+  getSignatureRequestByLocation(locationId: string): Promise<any>;
+  updateSignatureRequest(id: string, data: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -648,6 +658,60 @@ export class DatabaseStorage implements IStorage {
 
   async getLeadsForLocation(locationId: string): Promise<RgLead[]> {
     return db.select().from(rgLeads).where(eq(rgLeads.locationId, locationId)).orderBy(desc(rgLeads.createdAt));
+  }
+
+  // Signature Template operations
+  async getSignatureTemplate(): Promise<any> {
+    const [row] = await db.select().from(signatureTemplates).orderBy(signatureTemplates.id).limit(1);
+    return row || null;
+  }
+
+  async upsertSignatureTemplate(data: { title: string; content: string; updatedBy: string }): Promise<any> {
+    const existing = await this.getSignatureTemplate();
+    if (existing) {
+      const [updated] = await db
+        .update(signatureTemplates)
+        .set({ title: data.title, content: data.content, updatedBy: data.updatedBy, updatedAt: new Date() })
+        .where(eq(signatureTemplates.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(signatureTemplates)
+        .values({ title: data.title, content: data.content, updatedBy: data.updatedBy })
+        .returning();
+      return created;
+    }
+  }
+
+  // Signature Request operations
+  async createSignatureRequest(data: any): Promise<any> {
+    const [created] = await db.insert(signatureRequests).values(data).returning();
+    return created;
+  }
+
+  async getSignatureRequestByToken(token: string): Promise<any> {
+    const [row] = await db.select().from(signatureRequests).where(eq(signatureRequests.token, token));
+    return row || null;
+  }
+
+  async getSignatureRequestByLocation(locationId: string): Promise<any> {
+    const [row] = await db
+      .select()
+      .from(signatureRequests)
+      .where(eq(signatureRequests.locationId, locationId))
+      .orderBy(desc(signatureRequests.sentAt))
+      .limit(1);
+    return row || null;
+  }
+
+  async updateSignatureRequest(id: string, data: any): Promise<any> {
+    const [updated] = await db
+      .update(signatureRequests)
+      .set(data)
+      .where(eq(signatureRequests.id, id))
+      .returning();
+    return updated || null;
   }
 }
 

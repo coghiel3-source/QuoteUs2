@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, decimal, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -267,6 +267,30 @@ export const repReminders = pgTable("rep_reminders", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ── Signature System ──────────────────────────────────────────────
+export const signatureTemplates = pgTable("signature_templates", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull().default("Rent Secure Agreement"),
+  content: text("content").notNull().default(""),
+  updatedBy: varchar("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const signatureRequests = pgTable("signature_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => rgLocations.id, { onDelete: "cascade" }),
+  landlordName: text("landlord_name"),
+  landlordEmail: text("landlord_email"),
+  propertyAddress: text("property_address"),
+  token: text("token").unique().notNull(),
+  status: varchar("status").notNull().default("pending"),
+  signatureData: text("signature_data"),
+  signerName: text("signer_name"),
+  signedAt: timestamp("signed_at"),
+  sentAt: timestamp("sent_at").defaultNow(),
+  createdBy: varchar("created_by"),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -390,3 +414,6 @@ export type InsertRepDocument = z.infer<typeof insertRepDocumentSchema>;
 
 export type RepReminder = typeof repReminders.$inferSelect;
 export type InsertRepReminder = z.infer<typeof insertRepReminderSchema>;
+
+export type SignatureTemplate = typeof signatureTemplates.$inferSelect;
+export type SignatureRequest = typeof signatureRequests.$inferSelect;

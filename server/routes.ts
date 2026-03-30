@@ -3270,5 +3270,142 @@ export async function registerRoutes(
     }
   });
 
+  // ── Signature Template (admin/manager only) ──────────────────────
+  app.get("/api/admin/signature-template", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const template = await storage.getSignatureTemplate();
+      res.json(template || { title: "Rent Secure Agreement", content: "" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/admin/signature-template", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { title, content } = req.body;
+      if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
+      }
+      const template = await storage.upsertSignatureTemplate({ title, content, updatedBy: user.id });
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── Send Signature Request (rep/admin/manager) ────────────────────
+  app.post("/api/rep/locations/:id/send-signature", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+
+      const { landlordEmail } = req.body;
+      if (!landlordEmail) return res.status(400).json({ error: "Landlord email is required" });
+
+      // Generate unique token
+      const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+      const request = await storage.createSignatureRequest({
+        locationId: location.id,
+        landlordName: location.landlordName || "",
+        landlordEmail,
+        propertyAddress: `${location.address}${location.unit ? ", Unit " + location.unit : ""}`,
+        token,
+        status: "pending",
+        createdBy: user.id,
+      });
+
+      // Build signing URL
+      const proto = req.headers["x-forwarded-proto"] || req.protocol;
+      const host = req.headers["x-forwarded-host"] || req.get("host");
+      const signingUrl = `${proto}://${host}/sign/${token}`;
+
+      // Send email
+      const template = await storage.getSignatureTemplate();
+      const emailSent = await sendEmail({
+        to: landlordEmail,
+        subject: template?.title || "Agreement for Signature",
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#1a56db;">Agreement Ready for Your Signature</h2>
+            <p>Dear ${location.landlordName || "Landlord"},</p>
+            <p>Please review and sign the agreement for the following property:</p>
+            <p><strong>${location.address}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
+            <div style="margin:24px 0;">
+              <a href="${signingUrl}" style="background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
+                Sign Agreement
+              </a>
+            </div>
+            <p style="color:#666;font-size:13px;">If you did not expect this email, please ignore it.</p>
+          </div>`,
+        text: `Please sign the agreement at: ${signingUrl}`,
+      });
+
+      res.json({ request, signingUrl, emailSent });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/rep/locations/:id/signature-status", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const request = await storage.getSignatureRequestByLocation(req.params.id);
+      res.json(request || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── Public Signing Page ───────────────────────────────────────────
+  app.get("/api/sign/:token", async (req, res) => {
+    try {
+      const request = await storage.getSignatureRequestByToken(req.params.token);
+      if (!request) return res.status(404).json({ error: "Signing request not found" });
+      const template = await storage.getSignatureTemplate();
+      res.json({ request, template });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/sign/:token", async (req, res) => {
+    try {
+      const request = await storage.getSignatureRequestByToken(req.params.token);
+      if (!request) return res.status(404).json({ error: "Signing request not found" });
+      if (request.status === "signed") {
+        return res.status(400).json({ error: "This agreement has already been signed" });
+      }
+      const { signatureData, signerName } = req.body;
+      if (!signatureData || !signerName) {
+        return res.status(400).json({ error: "Signature and name are required" });
+      }
+      const updated = await storage.updateSignatureRequest(request.id, {
+        status: "signed",
+        signatureData,
+        signerName,
+        signedAt: new Date(),
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

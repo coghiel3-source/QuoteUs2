@@ -240,6 +240,11 @@ export default function AdminCRMPage() {
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
   const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
   
+  // Signature Template State
+  const [sigTemplateTitle, setSigTemplateTitle] = useState("Rent Secure Agreement");
+  const [sigTemplateContent, setSigTemplateContent] = useState("");
+  const [savingSigTemplate, setSavingSigTemplate] = useState(false);
+
   // Social Media State
   const [socialMedia, setSocialMedia] = useState({
     facebook: "",
@@ -499,6 +504,17 @@ export default function AdminCRMPage() {
       .then(data => {
         if (data.value) {
           setNotificationEmail(data.value);
+        }
+      })
+      .catch(console.error);
+    
+    // Load signature template
+    fetch("/api/admin/signature-template")
+      .then(r => r.json())
+      .then(data => {
+        if (data) {
+          setSigTemplateTitle(data.title || "Rent Secure Agreement");
+          setSigTemplateContent(data.content || "");
         }
       })
       .catch(console.error);
@@ -4988,6 +5004,72 @@ export default function AdminCRMPage() {
           </Card>
         )}
         
+        {/* SETTINGS TAB - Signature Template (admin/manager) */}
+        {activeTab === 'settings' && (user?.role === 'admin' || (user?.role === 'manager' && managerPermissions.viewSettings)) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                Agreement / Signature Template
+              </CardTitle>
+              <CardDescription>
+                Configure the agreement template sent to landlords for digital signature. Use placeholders like <code className="bg-gray-100 px-1 rounded text-xs">{"{{landlord_name}}"}</code>, <code className="bg-gray-100 px-1 rounded text-xs">{"{{property_address}}"}</code>, <code className="bg-gray-100 px-1 rounded text-xs">{"{{date}}"}</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Agreement Title</label>
+                <input
+                  type="text"
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={sigTemplateTitle}
+                  onChange={e => setSigTemplateTitle(e.target.value)}
+                  placeholder="Agreement Title"
+                  disabled={user?.role === 'manager'}
+                  data-testid="input-sig-template-title"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Agreement Body</label>
+                <textarea
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[240px] font-mono"
+                  value={sigTemplateContent}
+                  onChange={e => setSigTemplateContent(e.target.value)}
+                  placeholder={"Enter the agreement text here.\n\nAvailable placeholders:\n{{landlord_name}}, {{landlord_email}}, {{property_address}}, {{date}}"}
+                  disabled={user?.role === 'manager'}
+                  data-testid="textarea-sig-template-content"
+                />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {user?.role === 'admin' && (
+                  <Button
+                    onClick={async () => {
+                      if (!sigTemplateTitle.trim() || !sigTemplateContent.trim()) return;
+                      setSavingSigTemplate(true);
+                      try {
+                        const res = await fetch("/api/admin/signature-template", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ title: sigTemplateTitle, content: sigTemplateContent }),
+                        });
+                        if (res.ok) { alert("Agreement template saved!"); }
+                        else { const d = await res.json(); alert(d.error || "Failed to save"); }
+                      } finally { setSavingSigTemplate(false); }
+                    }}
+                    disabled={savingSigTemplate || !sigTemplateTitle.trim() || !sigTemplateContent.trim()}
+                    data-testid="button-save-sig-template"
+                  >
+                    {savingSigTemplate ? "Saving…" : "Save Template"}
+                  </Button>
+                )}
+                <div className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded px-3 py-1.5">
+                  Reps send agreements from the Location detail → "Send Agreement" button
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* SETTINGS TAB - Manager view (if permitted - read-only) */}
         {activeTab === 'settings' && user?.role === 'manager' && managerPermissions.viewSettings && (
           <Card>

@@ -28,6 +28,7 @@ import AdPreviewPage from "@/pages/AdPreview";
 import RentGuaranteePage from "@/pages/RentGuarantee";
 import RepDashboardPage from "@/pages/RepDashboard";
 import DocUploadPage from "@/pages/DocUpload";
+import SignAgreementPage from "@/pages/SignAgreement";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -45,6 +46,7 @@ function Router() {
     <Switch>
       {/* Public standalone pages (no nav/footer) */}
       <Route path="/doc-upload/:token" component={DocUploadPage} />
+      <Route path="/sign/:token" component={SignAgreementPage} />
       {/* Main app with layout */}
       <Route>
         <Layout>
