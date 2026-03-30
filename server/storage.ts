@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, rgPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
 
@@ -103,6 +103,13 @@ export interface IStorage {
   updateLocation(id: string, data: Partial<InsertRgLocation>): Promise<RgLocation | undefined>;
   deleteLocation(id: string): Promise<boolean>;
   getLeadsForLocation(locationId: string): Promise<RgLead[]>;
+
+  // RG Payment operations
+  createRgPayment(data: any): Promise<RgPayment>;
+  getPaymentsForLocation(locationId: string): Promise<RgPayment[]>;
+  getRgPaymentByTrackingCode(code: string): Promise<RgPayment | null>;
+  getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null>;
+  updateRgPayment(id: string, data: any): Promise<RgPayment | null>;
 
   // Signature Template operations
   getSignatureTemplate(): Promise<any>;
@@ -658,6 +665,31 @@ export class DatabaseStorage implements IStorage {
 
   async getLeadsForLocation(locationId: string): Promise<RgLead[]> {
     return db.select().from(rgLeads).where(eq(rgLeads.locationId, locationId)).orderBy(desc(rgLeads.createdAt));
+  }
+
+  // RG Payment operations
+  async createRgPayment(data: any): Promise<RgPayment> {
+    const [created] = await db.insert(rgPayments).values(data).returning();
+    return created;
+  }
+
+  async getPaymentsForLocation(locationId: string): Promise<RgPayment[]> {
+    return db.select().from(rgPayments).where(eq(rgPayments.locationId, locationId)).orderBy(desc(rgPayments.createdAt));
+  }
+
+  async getRgPaymentByTrackingCode(code: string): Promise<RgPayment | null> {
+    const [row] = await db.select().from(rgPayments).where(eq(rgPayments.trackingCode, code));
+    return row || null;
+  }
+
+  async getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null> {
+    const [row] = await db.select().from(rgPayments).where(eq(rgPayments.stripeSessionId, sessionId));
+    return row || null;
+  }
+
+  async updateRgPayment(id: string, data: any): Promise<RgPayment | null> {
+    const [updated] = await db.update(rgPayments).set(data).where(eq(rgPayments.id, id)).returning();
+    return updated || null;
   }
 
   // Signature Template operations

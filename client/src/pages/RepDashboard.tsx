@@ -91,9 +91,17 @@ function BigStatCard({
   );
 }
 
+type RgPaymentRecord = {
+  id: string; locationId: string; trackingCode: string; planType: string;
+  amountCents: number; status: string; paidAt?: string | null;
+  periodLabel?: string | null; description?: string | null;
+  landlordEmail?: string | null; landlordName?: string | null; createdAt: string;
+};
+
 function PricingTab({
   monthlyRent, markupPercent, baseAnnualRate = 4.5, baseMonthlyRate = 5,
   onSaveMarkup, onSaveRates, paymentLink, onSavePaymentLink,
+  locationId, landlordEmail, landlordName, payments, onPaymentCreated,
 }: {
   monthlyRent: number;
   markupPercent?: number | string | null;
@@ -103,7 +111,13 @@ function PricingTab({
   onSaveRates?: (annual: number, monthly: number) => void;
   paymentLink?: string | null;
   onSavePaymentLink?: (link: string) => void;
+  locationId?: string;
+  landlordEmail?: string | null;
+  landlordName?: string | null;
+  payments?: RgPaymentRecord[];
+  onPaymentCreated?: () => void;
 }) {
+  const { toast } = useToast();
   const rent = monthlyRent || 0;
   const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
   const [editAnnual, setEditAnnual] = useState<string>(String(baseAnnualRate));
@@ -112,6 +126,19 @@ function PricingTab({
   const [markupSaved, setMarkupSaved] = useState(false);
   const [ratesSaved, setRatesSaved] = useState(false);
   const [linkSaved, setLinkSaved] = useState(false);
+
+  // Payment dialog state
+  const [payDialog, setPayDialog] = useState<{ open: boolean; planType: "annual" | "monthly" | null }>({ open: false, planType: null });
+  const [payEmail, setPayEmail] = useState(landlordEmail || "");
+  const [payName, setPayName] = useState(landlordName || "");
+  const [payPeriod, setPayPeriod] = useState("");
+  const [payLoading, setPayLoading] = useState(false);
+
+  // Receipt dialog state
+  const [rcptDialog, setRcptDialog] = useState(false);
+  const [rcptEmail, setRcptEmail] = useState(landlordEmail || "");
+  const [rcptYear, setRcptYear] = useState(String(new Date().getFullYear()));
+  const [rcptLoading, setRcptLoading] = useState(false);
 
   const markupNum = Math.max(0, parseFloat(markup) || 0);
   const annualRateNum = parseFloat(editAnnual) || 4.5;
@@ -123,6 +150,59 @@ function PricingTab({
   const annualPremiumMonthly = annualPremium / 12;
   const monthlyPremium = (finalMonthlyRate / 100) * rent;
   const monthlyPremiumAnnual = monthlyPremium * 12;
+
+  const selectedAmount = payDialog.planType === "annual" ? annualPremium : monthlyPremium;
+  const selectedAmountCents = Math.round(selectedAmount * 100);
+
+  async function handleCollectPayment() {
+    if (!locationId || !payEmail) return;
+    setPayLoading(true);
+    try {
+      const res = await fetch(`/api/rep/locations/${locationId}/create-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planType: payDialog.planType,
+          amountCents: selectedAmountCents,
+          landlordEmail: payEmail,
+          landlordName: payName,
+          periodLabel: payPeriod,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (data.url) window.location.href = data.url;
+      setPayDialog({ open: false, planType: null });
+      onPaymentCreated?.();
+    } catch (err: any) {
+      toast({ title: "Payment error", description: err.message, variant: "destructive" });
+    } finally {
+      setPayLoading(false);
+    }
+  }
+
+  async function handleSendReceipt() {
+    if (!locationId || !rcptEmail) return;
+    setRcptLoading(true);
+    try {
+      const res = await fetch(`/api/rep/locations/${locationId}/send-receipt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientEmail: rcptEmail, year: Number(rcptYear), type: "annual" }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      toast({ title: "Receipt sent!", description: `${data.paymentCount} payment(s) included — $${((data.totalCents || 0) / 100).toFixed(2)} total` });
+      setRcptDialog(false);
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRcptLoading(false);
+    }
+  }
+
+  const paidPayments = (payments || []).filter(p => p.status === "paid");
+  const pendingPayments = (payments || []).filter(p => p.status === "pending");
 
   return (
     <div className="space-y-5">
@@ -182,6 +262,7 @@ function PricingTab({
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 gap-4">
+        {/* Annual */}
         <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
           <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /><span className="font-semibold text-sm">Annual Plan — Pay in Full</span></div>
@@ -193,14 +274,21 @@ function PricingTab({
               <p className="text-gray-400 text-sm mb-1">one-time payment</p>
             </div>
             <p className="text-xs text-gray-400 mb-3">Equivalent to ${fmt(annualPremiumMonthly)}/month</p>
-            <div className="space-y-1.5 text-sm">
+            <div className="space-y-1.5 text-sm mb-4">
               <div className="flex justify-between text-gray-500"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
               <div className="flex justify-between text-gray-500"><span>Base rate ({annualRateNum}%)</span><span>${fmt((annualRateNum / 100) * annualRent)}</span></div>
               {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * annualRent)}</span></div>}
               <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
             </div>
+            {locationId && (
+              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); }} data-testid="button-collect-annual">
+                <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Collect Annual Payment — ${fmt(annualPremium)}
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Monthly */}
         <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
           <div className="bg-green-600 text-white px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2"><CreditCard className="h-4 w-4" /><span className="font-semibold text-sm">Monthly Plan</span></div>
@@ -212,12 +300,17 @@ function PricingTab({
               <p className="text-gray-400 text-sm mb-1">/month</p>
             </div>
             <p className="text-xs text-gray-400 mb-3">Total annual cost: ${fmt(monthlyPremiumAnnual)}</p>
-            <div className="space-y-1.5 text-sm">
+            <div className="space-y-1.5 text-sm mb-4">
               <div className="flex justify-between text-gray-500"><span>Monthly rent</span><span>${fmt(rent)}</span></div>
               <div className="flex justify-between text-gray-500"><span>Base rate ({monthlyRateNum}%)</span><span>${fmt((monthlyRateNum / 100) * rent)}/mo</span></div>
               {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * rent)}/mo</span></div>}
               <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
             </div>
+            {locationId && (
+              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); }} data-testid="button-collect-monthly">
+                <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Collect Monthly Payment — ${fmt(monthlyPremium)}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -234,10 +327,10 @@ function PricingTab({
         </div>
       )}
 
-      {/* Payment link */}
+      {/* Payment link (legacy/manual) */}
       {onSavePaymentLink !== undefined && (
         <div className="bg-gray-50 border rounded-xl p-4">
-          <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3"><ExternalLink className="h-4 w-4" /> Payment Page Link</p>
+          <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3"><ExternalLink className="h-4 w-4" /> Manual Payment Page Link</p>
           <div className="flex gap-2">
             <Input value={editLink} onChange={e => { setEditLink(e.target.value); setLinkSaved(false); }} placeholder="https://..." className="flex-1" data-testid="input-payment-link" />
             <Button onClick={() => { onSavePaymentLink(editLink); setLinkSaved(true); setTimeout(() => setLinkSaved(false), 2000); }} size="sm" variant={linkSaved ? "outline" : "default"} className={linkSaved ? "border-green-500 text-green-600" : ""} data-testid="button-save-payment-link">
@@ -247,6 +340,120 @@ function PricingTab({
           {paymentLink && <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open payment page</a>}
         </div>
       )}
+
+      {/* Payment History */}
+      {locationId && payments !== undefined && (
+        <div className="border rounded-xl overflow-hidden">
+          <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b">
+            <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-green-600" />
+              Payment History
+              {paidPayments.length > 0 && <span className="ml-1 bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">{paidPayments.length} paid</span>}
+            </p>
+            {paidPayments.length > 0 && (
+              <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => { setRcptDialog(true); setRcptEmail(landlordEmail || ""); }} data-testid="button-send-receipt">
+                <Send className="h-3 w-3 mr-1" /> Send Receipt
+              </Button>
+            )}
+          </div>
+
+          {payments.length === 0 ? (
+            <div className="py-8 text-center">
+              <CreditCard className="h-8 w-8 text-gray-200 mx-auto mb-2" />
+              <p className="text-sm text-gray-400">No payments recorded yet</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {payments.map(p => (
+                <div key={p.id} className="px-4 py-3 flex items-start justify-between gap-3" data-testid={`payment-row-${p.id}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{p.trackingCode}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${p.planType === "annual" ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>{p.planType}</span>
+                      {p.periodLabel && <span className="text-xs text-gray-500">{p.periodLabel}</span>}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {p.paidAt ? `Paid ${new Date(p.paidAt).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" })}` : `Created ${new Date(p.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}`}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-gray-900">${fmt(p.amountCents / 100)}</p>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status === "paid" ? "bg-green-100 text-green-700" : p.status === "failed" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
+                      {p.status === "paid" ? "Paid" : p.status === "failed" ? "Failed" : "Pending"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {pendingPayments.length > 0 && (
+            <div className="bg-yellow-50 border-t px-4 py-2 text-xs text-yellow-700 flex items-center gap-1.5">
+              <Clock className="h-3 w-3" /> {pendingPayments.length} payment(s) awaiting completion
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payment collection dialog */}
+      <Dialog open={payDialog.open} onOpenChange={open => setPayDialog(p => ({ ...p, open }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Collect {payDialog.planType === "annual" ? "Annual" : "Monthly"} Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between items-center">
+              <span className="text-sm text-gray-600">Amount</span>
+              <span className="text-xl font-bold text-gray-900">${fmt(selectedAmount)} CAD</span>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600 mb-1 block">Landlord Name</Label>
+              <Input value={payName} onChange={e => setPayName(e.target.value)} placeholder="Full name" data-testid="input-pay-landlord-name" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600 mb-1 block">Landlord Email *</Label>
+              <Input type="email" value={payEmail} onChange={e => setPayEmail(e.target.value)} placeholder="landlord@email.com" required data-testid="input-pay-email" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600 mb-1 block">Period Label</Label>
+              <Input value={payPeriod} onChange={e => setPayPeriod(e.target.value)} placeholder={payDialog.planType === "annual" ? "2026 Full Year" : "June 2026"} data-testid="input-pay-period" />
+            </div>
+            <p className="text-xs text-gray-400">The landlord will be redirected to a secure Stripe checkout to complete payment.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayDialog({ open: false, planType: null })}>Cancel</Button>
+            <Button disabled={!payEmail || payLoading} onClick={handleCollectPayment} className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="button-confirm-payment">
+              {payLoading ? "Redirecting…" : "Open Stripe Checkout →"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send receipt dialog */}
+      <Dialog open={rcptDialog} onOpenChange={setRcptDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Send Annual Receipt</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-xs text-gray-600 mb-1 block">Recipient Email *</Label>
+              <Input type="email" value={rcptEmail} onChange={e => setRcptEmail(e.target.value)} placeholder="landlord@email.com" data-testid="input-receipt-email" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600 mb-1 block">Year</Label>
+              <Input value={rcptYear} onChange={e => setRcptYear(e.target.value)} placeholder="2026" data-testid="input-receipt-year" />
+            </div>
+            <p className="text-xs text-gray-400">All paid payments for this location in the selected year will be included.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRcptDialog(false)}>Cancel</Button>
+            <Button disabled={!rcptEmail || rcptLoading} onClick={handleSendReceipt} data-testid="button-confirm-receipt">
+              {rcptLoading ? "Sending…" : "Send Receipt"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -291,6 +498,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [locationDocRequests, setLocationDocRequests] = useState<DocumentRequest[]>([]);
   const [locationDocs, setLocationDocs] = useState<RepDocument[]>([]);
   const [updatingLocationStatus, setUpdatingLocationStatus] = useState(false);
+
+  // RG Payments for selected location
+  const [locationPayments, setLocationPayments] = useState<RgPaymentRecord[]>([]);
 
   // Signature / agreement
   const [locationSignature, setLocationSignature] = useState<any>(null);
@@ -432,6 +642,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     }
   }
 
+  async function loadLocationPayments(locationId: string) {
+    try {
+      const res = await fetch(`/api/rep/locations/${locationId}/payments`);
+      if (res.ok) { const data = await res.json(); setLocationPayments(data || []); }
+    } catch { setLocationPayments([]); }
+  }
+
   async function loadTenantsForLocation(locationId: string) {
     if (!user) return [];
     try {
@@ -452,7 +669,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setLocationSignature(null);
     setShowSendAgreement(false);
     setAgreementEmail(loc.landlordEmail || "");
+    setLocationPayments([]);
     await loadTenantsForLocation(loc.id);
+    loadLocationPayments(loc.id);
     if (user) {
       try {
         const [reqs, docs, sig] = await Promise.all([
@@ -1539,6 +1758,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       onSaveRates={rgPerm("canEditPricing") ? handleSaveLocationRates : undefined}
                       paymentLink={selectedLocation.paymentLink}
                       onSavePaymentLink={rgPerm("canEditPricing") ? handleSaveLocationPaymentLink : undefined}
+                      locationId={selectedLocation.id}
+                      landlordEmail={selectedLocation.landlordEmail}
+                      landlordName={selectedLocation.landlordName}
+                      payments={locationPayments}
+                      onPaymentCreated={() => loadLocationPayments(selectedLocation.id)}
                     />
                   )}
 

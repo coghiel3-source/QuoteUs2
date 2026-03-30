@@ -29,6 +29,7 @@ import RentGuaranteePage from "@/pages/RentGuarantee";
 import RepDashboardPage from "@/pages/RepDashboard";
 import DocUploadPage from "@/pages/DocUpload";
 import SignAgreementPage from "@/pages/SignAgreement";
+import RgPaymentSuccessPage from "@/pages/RgPaymentSuccess";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -47,6 +48,7 @@ function Router() {
       {/* Public standalone pages (no nav/footer) */}
       <Route path="/doc-upload/:token" component={DocUploadPage} />
       <Route path="/sign/:token" component={SignAgreementPage} />
+      <Route path="/rg-payment/success" component={RgPaymentSuccessPage} />
       {/* Main app with layout */}
       <Route>
         <Layout>

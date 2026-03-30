@@ -267,6 +267,26 @@ export const repReminders = pgTable("rep_reminders", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ── RG Payment Tracking ───────────────────────────────────────────
+export const rgPayments = pgTable("rg_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => rgLocations.id, { onDelete: "cascade" }),
+  trackingCode: varchar("tracking_code", { length: 20 }).unique().notNull(),
+  planType: varchar("plan_type", { length: 20 }).notNull(), // "annual" | "monthly"
+  amountCents: integer("amount_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("cad"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // "pending" | "paid" | "failed"
+  stripeSessionId: varchar("stripe_session_id"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  landlordEmail: text("landlord_email"),
+  landlordName: text("landlord_name"),
+  description: text("description"),
+  paidAt: timestamp("paid_at"),
+  periodLabel: varchar("period_label"), // e.g. "January 2026" or "2026 Full Year"
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ── Signature System ──────────────────────────────────────────────
 export const signatureTemplates = pgTable("signature_templates", {
   id: serial("id").primaryKey(),
@@ -417,3 +437,5 @@ export type InsertRepReminder = z.infer<typeof insertRepReminderSchema>;
 
 export type SignatureTemplate = typeof signatureTemplates.$inferSelect;
 export type SignatureRequest = typeof signatureRequests.$inferSelect;
+
+export type RgPayment = typeof rgPayments.$inferSelect;

@@ -3270,6 +3270,210 @@ export async function registerRoutes(
     }
   });
 
+  // ── RG Payment System ────────────────────────────────────────────
+
+  function generateTrackingCode(planType: string): string {
+    const prefix = planType === "annual" ? "RGA" : "RGM";
+    const year = new Date().getFullYear();
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return `${prefix}-${year}-${code}`;
+  }
+
+  // Create Stripe checkout for a landlord payment
+  app.post("/api/rep/locations/:id/create-payment", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+
+      const { planType, amountCents, landlordEmail, landlordName, periodLabel, description } = req.body;
+      if (!planType || !amountCents || !landlordEmail) {
+        return res.status(400).json({ error: "planType, amountCents, and landlordEmail are required" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
+        ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+        : "http://localhost:5000";
+
+      // Generate unique tracking code
+      let trackingCode = generateTrackingCode(planType);
+      for (let i = 0; i < 5; i++) {
+        const existing = await storage.getRgPaymentByTrackingCode(trackingCode);
+        if (!existing) break;
+        trackingCode = generateTrackingCode(planType);
+      }
+
+      // Create pending payment record
+      const payment = await storage.createRgPayment({
+        locationId: location.id,
+        trackingCode,
+        planType,
+        amountCents,
+        landlordEmail,
+        landlordName: landlordName || location.landlordName || "",
+        description: description || `${planType === "annual" ? "Annual" : "Monthly"} RG Premium – ${location.address}`,
+        periodLabel: periodLabel || "",
+        createdBy: user.id,
+        status: "pending",
+      });
+
+      // Create Stripe checkout session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        customer_email: landlordEmail,
+        line_items: [{
+          price_data: {
+            currency: "cad",
+            product_data: {
+              name: payment.description || "Rent Guarantee Premium",
+              description: `Tracking: ${trackingCode}`,
+            },
+            unit_amount: amountCents,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${baseUrl}/rg-payment/success?session_id={CHECKOUT_SESSION_ID}&code=${trackingCode}`,
+        cancel_url: `${baseUrl}/rep?tab=locations`,
+        metadata: {
+          type: "rg_payment",
+          paymentId: payment.id,
+          trackingCode,
+          locationId: location.id,
+        },
+      });
+
+      // Save session ID
+      await storage.updateRgPayment(payment.id, { stripeSessionId: session.id });
+
+      res.json({ url: session.url, sessionId: session.id, trackingCode, paymentId: payment.id });
+    } catch (error: any) {
+      console.error("[RG Payment] Checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Confirm payment after Stripe redirect
+  app.post("/api/rg/payment/confirm", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId) return res.status(400).json({ error: "sessionId required" });
+
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status !== "paid") {
+        return res.status(400).json({ error: "Payment not completed" });
+      }
+
+      const payment = await storage.getRgPaymentBySessionId(sessionId);
+      if (!payment) return res.status(404).json({ error: "Payment record not found" });
+
+      if (payment.status === "paid") return res.json(payment); // already confirmed
+
+      const updated = await storage.updateRgPayment(payment.id, {
+        status: "paid",
+        stripePaymentIntentId: session.payment_intent as string,
+        paidAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[RG Payment] Confirm error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get payment history for a location
+  app.get("/api/rep/locations/:id/payments", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const payments = await storage.getPaymentsForLocation(req.params.id);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send year-end or monthly receipt email
+  app.post("/api/rep/locations/:id/send-receipt", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+
+      const { recipientEmail, year, type } = req.body; // type: "annual" | "monthly_summary"
+      const payments = await storage.getPaymentsForLocation(req.params.id);
+      const filterYear = year || new Date().getFullYear();
+      const paid = payments.filter(p =>
+        p.status === "paid" &&
+        p.paidAt &&
+        new Date(p.paidAt).getFullYear() === Number(filterYear)
+      );
+
+      if (paid.length === 0) {
+        return res.status(400).json({ error: "No paid payments found for this period" });
+      }
+
+      const totalCents = paid.reduce((sum, p) => sum + p.amountCents, 0);
+      const rows = paid.map(p =>
+        `<tr><td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${p.trackingCode}</td><td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${p.planType === "annual" ? "Annual" : "Monthly"}</td><td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${p.periodLabel || ""}</td><td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right;">$${(p.amountCents / 100).toFixed(2)}</td><td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;">${p.paidAt ? new Date(p.paidAt).toLocaleDateString("en-CA") : ""}</td></tr>`
+      ).join("");
+
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#fff;">
+          <div style="background:#1a56db;color:white;padding:24px 32px;border-radius:8px 8px 0 0;">
+            <h1 style="margin:0;font-size:22px;">Payment ${type === "annual" ? "Annual Summary" : "Receipt"}</h1>
+            <p style="margin:6px 0 0;opacity:.85;">${filterYear} — ${location.address}${location.unit ? `, Unit ${location.unit}` : ""}</p>
+          </div>
+          <div style="padding:24px 32px;">
+            <p style="color:#555;">Dear ${location.landlordName || "Valued Client"},</p>
+            <p style="color:#555;">Please find below your payment summary for the property at <strong>${location.address}</strong>.</p>
+            <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+              <thead>
+                <tr style="background:#f8f9fa;">
+                  <th style="padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;color:#888;">Tracking Code</th>
+                  <th style="padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;color:#888;">Plan</th>
+                  <th style="padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;color:#888;">Period</th>
+                  <th style="padding:10px 12px;text-align:right;font-size:12px;text-transform:uppercase;color:#888;">Amount</th>
+                  <th style="padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;color:#888;">Date</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <div style="background:#f0f4ff;border-radius:8px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:600;color:#333;">Total Paid in ${filterYear}</span>
+              <span style="font-size:22px;font-weight:700;color:#1a56db;">$${(totalCents / 100).toFixed(2)} CAD</span>
+            </div>
+            <p style="color:#999;font-size:12px;margin-top:24px;">This is an official payment confirmation. Please retain for your records.</p>
+          </div>
+        </div>`;
+
+      const sent = await sendEmail({
+        to: recipientEmail || location.landlordEmail || "",
+        subject: `Payment ${type === "annual" ? "Annual Summary" : "Receipt"} – ${filterYear} – ${location.address}`,
+        html,
+        text: `Payment summary for ${filterYear}: ${paid.length} payment(s), total $${(totalCents / 100).toFixed(2)} CAD`,
+      });
+
+      res.json({ sent, paymentCount: paid.length, totalCents });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ── Signature Template (admin/manager only) ──────────────────────
   app.get("/api/admin/signature-template", async (req, res) => {
     try {

@@ -62,6 +62,15 @@ A digital agreement signing system allows reps to send customizable agreements t
 - Email notification sent to landlord via configured SMTP; if SMTP not configured, a shareable link is shown to the rep
 - API routes: `GET/PUT /api/admin/signature-template`, `POST /api/rep/locations/:id/send-signature`, `GET /api/rep/locations/:id/signature-status`, `GET/POST /api/sign/:token`
 
+### RG Payment System (Stripe-Connected)
+Reps can collect Rent Guarantee insurance premiums directly from landlords via Stripe Checkout. The system supports two plan types: Annual (4.5% of annual rent, one-time) and Monthly (5% of monthly rent, per month). Key features:
+- `rgPayments` table tracks every payment: tracking code, plan type, amount, status (pending/paid/failed), Stripe session/payment intent IDs, landlord info, period label, paid timestamp
+- Unique tracking codes generated per payment: `RGA-YYYY-XXXXXX` (annual) or `RGM-YYYY-XXXXXX` (monthly)
+- API routes: `POST /api/rep/locations/:id/create-payment` (Stripe checkout session creation), `POST /api/rg/payment/confirm` (confirm after redirect), `GET /api/rep/locations/:id/payments` (payment history), `POST /api/rep/locations/:id/send-receipt` (email year-end receipt)
+- Public success page at `/rg-payment/success?session_id=&code=` — confirms payment and displays tracking code
+- PricingTab in RepDashboard has "Collect Annual Payment" and "Collect Monthly Payment" buttons, payment history section, and "Send Receipt" button
+- Receipt email includes all paid payments for a location in a given year with a formatted HTML summary
+
 ### Binder / Confirmation of Insurance
 The system allows admins/managers to require brokers to upload a binder (confirmation of insurance) for specific leads. Brokers can upload PDF, Word, or image files, which are then visible in the lead detail view. The activity log tracks all binder-related actions.
 
