@@ -1146,11 +1146,40 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           <div className="flex items-center justify-between mt-3 pt-3 border-t">
                             <div className="flex gap-1.5 flex-wrap">
                               {tenants.length === 0 ? <span className="text-xs text-gray-400 italic">No tenants yet</span> : tenants.map(t => (
-                                <span key={t.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status as Status]}`}>{t.tenantName.split(" ")[0]}: {t.status}</span>
+                                <span key={t.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[t.status as Status]}`}>{t.tenantName.split(" ")[0]}: {STATUS_DISPLAY_LABELS[t.status as Status] || t.status}</span>
                               ))}
                             </div>
                             <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
                           </div>
+                          {tenants.length > 0 && (() => {
+                            const active = tenants.find(t => t.status !== "Declined") || tenants[0];
+                            const docsReceived = ["Documents Received", "Submitted", "Approved"].includes(active.status);
+                            const docsPending = active.status === "Documents Pending";
+                            const signed = ["Submitted", "Approved"].includes(active.status);
+                            let docLabel = "Not Sent"; let docCls = "bg-gray-100 text-gray-500";
+                            if (docsReceived) { docLabel = "Received"; docCls = "bg-green-100 text-green-700"; }
+                            else if (docsPending) { docLabel = "Pending"; docCls = "bg-orange-100 text-orange-700"; }
+                            return (
+                              <div className="mt-2 pt-2 border-t flex items-center gap-3 flex-wrap text-xs">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-400 font-medium">Docs:</span>
+                                  <span className={`px-2 py-0.5 rounded-full font-medium ${docCls}`}>{docLabel}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-400 font-medium">Signature:</span>
+                                  {signed
+                                    ? <span className="px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Signed</span>
+                                    : <span className="px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">Pending</span>}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-400 font-medium">Payment:</span>
+                                  {active.paymentMethod
+                                    ? <span className="text-gray-700 font-medium">{active.paymentMethod}</span>
+                                    : <span className="text-gray-400 italic">Not Set</span>}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })}
