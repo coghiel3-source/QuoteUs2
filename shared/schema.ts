@@ -42,6 +42,12 @@ export const users = pgTable("users", {
   preferredInsuranceTypes: text("preferred_insurance_types").array(),
   preferredDemographics: text("preferred_demographics"),
   referenceId: varchar("reference_id", { length: 6 }).unique(),
+  // Rep commission settings (set by admin/manager)
+  commissionType: varchar("commission_type", { length: 20 }), // "percentage" | "fixed"
+  commissionRate: decimal("commission_rate", { precision: 10, scale: 4 }), // percent or $ per payment
+  payoutSchedule: varchar("payout_schedule", { length: 20 }), // "monthly" | "quarterly" | "annually"
+  renewalCommissionRate: decimal("renewal_commission_rate", { precision: 10, scale: 4 }),
+  commissionNotes: text("commission_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -267,6 +273,23 @@ export const repReminders = pgTable("rep_reminders", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ── Rep Commission Payouts ────────────────────────────────────────
+export const repPayouts = pgTable("rep_payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  repId: varchar("rep_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  periodLabel: varchar("period_label", { length: 50 }).notNull(), // e.g. "January 2026", "Q1 2026", "2026"
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  totalPaymentsCents: integer("total_payments_cents").notNull().default(0),
+  commissionCents: integer("commission_cents").notNull().default(0),
+  isRenewal: boolean("is_renewal").default(false),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // "pending" | "paid"
+  paidAt: timestamp("paid_at"),
+  notes: text("notes"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ── RG Payment Tracking ───────────────────────────────────────────
 export const rgPayments = pgTable("rg_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -439,3 +462,4 @@ export type SignatureTemplate = typeof signatureTemplates.$inferSelect;
 export type SignatureRequest = typeof signatureRequests.$inferSelect;
 
 export type RgPayment = typeof rgPayments.$inferSelect;
+export type RepPayout = typeof repPayouts.$inferSelect;

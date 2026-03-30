@@ -1,7 +1,7 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, rgPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, rgPayments, repPayouts, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, lte, gte, isNull } from "drizzle-orm";
+import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -110,6 +110,14 @@ export interface IStorage {
   getRgPaymentByTrackingCode(code: string): Promise<RgPayment | null>;
   getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null>;
   updateRgPayment(id: string, data: any): Promise<RgPayment | null>;
+
+  // Rep commission payout operations
+  createRepPayout(data: any): Promise<RepPayout>;
+  getPayoutsForRep(repId: string): Promise<RepPayout[]>;
+  getAllRepPayouts(): Promise<RepPayout[]>;
+  updateRepPayout(id: string, data: any): Promise<RepPayout | null>;
+  getRepEarningsSummary(repId: string): Promise<{ totalSubmittedCents: number; totalCollectedCents: number; totalPayments: number; totalPaid: number }>;
+  updateUserCommission(repId: string, data: any): Promise<User | null>;
 
   // Signature Template operations
   getSignatureTemplate(): Promise<any>;
@@ -665,6 +673,45 @@ export class DatabaseStorage implements IStorage {
 
   async getLeadsForLocation(locationId: string): Promise<RgLead[]> {
     return db.select().from(rgLeads).where(eq(rgLeads.locationId, locationId)).orderBy(desc(rgLeads.createdAt));
+  }
+
+  // Rep commission payout operations
+  async createRepPayout(data: any): Promise<RepPayout> {
+    const [created] = await db.insert(repPayouts).values(data).returning();
+    return created;
+  }
+
+  async getPayoutsForRep(repId: string): Promise<RepPayout[]> {
+    return db.select().from(repPayouts).where(eq(repPayouts.repId, repId)).orderBy(desc(repPayouts.createdAt));
+  }
+
+  async getAllRepPayouts(): Promise<RepPayout[]> {
+    return db.select().from(repPayouts).orderBy(desc(repPayouts.createdAt));
+  }
+
+  async updateRepPayout(id: string, data: any): Promise<RepPayout | null> {
+    const [updated] = await db.update(repPayouts).set(data).where(eq(repPayouts.id, id)).returning();
+    return updated || null;
+  }
+
+  async getRepEarningsSummary(repId: string): Promise<{ totalSubmittedCents: number; totalCollectedCents: number; totalPayments: number; totalPaid: number }> {
+    const locs = await db.select({ id: rgLocations.id }).from(rgLocations).where(eq(rgLocations.repId, repId));
+    const locationIds = locs.map(l => l.id);
+    if (locationIds.length === 0) return { totalSubmittedCents: 0, totalCollectedCents: 0, totalPayments: 0, totalPaid: 0 };
+    const payments = await db.select().from(rgPayments).where(inArray(rgPayments.locationId, locationIds));
+    const totalSubmittedCents = payments.reduce((s, p) => s + p.amountCents, 0);
+    const paid = payments.filter(p => p.status === "paid");
+    return {
+      totalSubmittedCents,
+      totalCollectedCents: paid.reduce((s, p) => s + p.amountCents, 0),
+      totalPayments: payments.length,
+      totalPaid: paid.length,
+    };
+  }
+
+  async updateUserCommission(repId: string, data: any): Promise<User | null> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, repId)).returning();
+    return updated || null;
   }
 
   // RG Payment operations

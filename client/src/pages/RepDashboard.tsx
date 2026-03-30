@@ -502,6 +502,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   // RG Payments for selected location
   const [locationPayments, setLocationPayments] = useState<RgPaymentRecord[]>([]);
 
+  // Earnings & payouts
+  type EarningsSummary = {
+    totalSubmittedCents: number; totalCollectedCents: number;
+    totalPayments: number; totalPaid: number; commissionEarned: number;
+    commissionType: string | null; commissionRate: string | null;
+    payoutSchedule: string | null; renewalCommissionRate: string | null;
+    commissionNotes: string | null;
+  };
+  const [earnings, setEarnings] = useState<EarningsSummary | null>(null);
+  const [payouts, setPayouts] = useState<any[]>([]);
+
   // Signature / agreement
   const [locationSignature, setLocationSignature] = useState<any>(null);
   const [showSendAgreement, setShowSendAgreement] = useState(false);
@@ -623,11 +634,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     if (!user) return;
     setLoading(true);
     try {
-      const [locs, leadsData, remindersData, rgRatesData] = await Promise.all([
+      const [locs, leadsData, remindersData, rgRatesData, earningsData, payoutsData] = await Promise.all([
         apiRequest<RgLocation[]>(`/rep/locations?actorId=${user.id}`),
         apiRequest<RgLead[]>(`/rep/leads?actorId=${user.id}`),
         isRep ? apiRequest<RepReminder[]>(`/rep/reminders?actorId=${user.id}`) : Promise.resolve([]),
         fetch("/api/credits/rg-rates").then(r => r.json()).catch(() => null),
+        fetch("/api/rep/earnings").then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/rep/payouts").then(r => r.ok ? r.json() : []).catch(() => []),
       ]);
       setLocations(locs || []);
       setLeads(leadsData || []);
@@ -635,6 +648,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       if (rgRatesData && typeof rgRatesData.annualRate === "number") {
         setGlobalRgRates({ annualRate: rgRatesData.annualRate, monthlyRate: rgRatesData.monthlyRate });
       }
+      if (earningsData) setEarnings(earningsData);
+      setPayouts(payoutsData || []);
     } catch {
       toast({ title: "Failed to load data", variant: "destructive" });
     } finally {
@@ -1251,6 +1266,95 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 <Button onClick={() => setShowFundAccount(true)} className="bg-green-600 hover:bg-green-700 text-white" data-testid="button-fund-account">
                   <CreditCard className="h-4 w-4 mr-2" /> Fund Account
                 </Button>
+              </div>
+            )}
+
+            {/* Earnings & Commission Summary */}
+            {earnings && (earnings.totalPayments > 0 || earnings.commissionRate) && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5" data-testid="card-rep-earnings">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" /> Payment Earnings Overview
+                  </h3>
+                  {earnings.payoutSchedule && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium capitalize">
+                      {earnings.payoutSchedule} payouts
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Submitted</p>
+                    <p className="text-2xl font-bold text-gray-900">${fmt(earnings.totalSubmittedCents / 100)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{earnings.totalPayments} payment{earnings.totalPayments !== 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Collected</p>
+                    <p className="text-2xl font-bold text-green-700">${fmt(earnings.totalCollectedCents / 100)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{earnings.totalPaid} confirmed</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Commission Earned</p>
+                    <p className="text-2xl font-bold text-indigo-700">${fmt(earnings.commissionEarned / 100)}</p>
+                    {earnings.commissionRate && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {earnings.commissionType === "percentage"
+                          ? `${parseFloat(earnings.commissionRate).toFixed(2)}% of collected`
+                          : `$${parseFloat(earnings.commissionRate).toFixed(2)} per payment`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {earnings.commissionNotes && (
+                  <div className="bg-white/70 rounded-lg px-3 py-2 text-xs text-gray-600 flex items-start gap-2">
+                    <span className="font-semibold text-gray-500 shrink-0">Terms:</span>
+                    <span>{earnings.commissionNotes}</span>
+                  </div>
+                )}
+                {earnings.renewalCommissionRate && (
+                  <div className="mt-2 text-xs text-indigo-600 font-medium">
+                    Renewal rate: {parseFloat(earnings.renewalCommissionRate).toFixed(2)}%
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Payout History (shown when there are payouts) */}
+            {payouts.length > 0 && (
+              <div className="bg-white border rounded-xl overflow-hidden" data-testid="card-rep-payouts">
+                <div className="bg-gray-50 px-5 py-3 border-b flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-green-600" /> Commission Payouts
+                  </h3>
+                  <span className="text-xs text-gray-400">{payouts.length} payout{payouts.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="divide-y max-h-60 overflow-y-auto">
+                  {payouts.map(p => (
+                    <div key={p.id} className="px-5 py-3 flex items-center justify-between gap-3" data-testid={`payout-row-${p.id}`}>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{p.periodLabel}</p>
+                        <p className="text-xs text-gray-400">
+                          {p.isRenewal && <span className="text-amber-600 font-medium mr-1">Renewal · </span>}
+                          {p.totalPaymentsCents > 0 ? `$${fmt(p.totalPaymentsCents / 100)} collected · ` : ""}
+                          {p.paidAt ? `Paid ${new Date(p.paidAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}` : `Created ${new Date(p.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}`}
+                        </p>
+                        {p.notes && <p className="text-xs text-gray-400 italic mt-0.5">{p.notes}</p>}
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-gray-900">${fmt(p.commissionCents / 100)}</p>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.status === "paid" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                          {p.status === "paid" ? "Paid" : "Pending"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-gray-50 px-5 py-2.5 border-t flex justify-between text-sm">
+                  <span className="text-gray-500 font-medium">Total paid out</span>
+                  <span className="font-bold text-green-700">
+                    ${fmt(payouts.filter(p => p.status === "paid").reduce((s: number, p: any) => s + p.commissionCents, 0) / 100)}
+                  </span>
+                </div>
               </div>
             )}
 

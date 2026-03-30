@@ -3270,6 +3270,163 @@ export async function registerRoutes(
     }
   });
 
+  // ── Rep Earnings & Commission System ─────────────────────────────
+
+  // Rep gets their own earnings summary
+  app.get("/api/rep/earnings", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const repId = user.role === "rep" ? user.id : (req.query.repId as string) || user.id;
+      const [summary, repUser] = await Promise.all([
+        storage.getRepEarningsSummary(repId),
+        storage.getUser(repId),
+      ]);
+      // Calculate commission
+      let commissionEarned = 0;
+      if (repUser && repUser.commissionType && repUser.commissionRate) {
+        const rate = parseFloat(repUser.commissionRate as string);
+        if (repUser.commissionType === "percentage") {
+          commissionEarned = Math.round((summary.totalCollectedCents * rate) / 100);
+        } else {
+          commissionEarned = Math.round(summary.totalPaid * rate * 100); // fixed per payment
+        }
+      }
+      res.json({
+        ...summary,
+        commissionEarned,
+        commissionType: repUser?.commissionType || null,
+        commissionRate: repUser?.commissionRate || null,
+        payoutSchedule: repUser?.payoutSchedule || null,
+        renewalCommissionRate: repUser?.renewalCommissionRate || null,
+        commissionNotes: repUser?.commissionNotes || null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Rep views their own payout history
+  app.get("/api/rep/payouts", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const repId = user.role === "rep" ? user.id : (req.query.repId as string) || user.id;
+      const payouts = await storage.getPayoutsForRep(repId);
+      res.json(payouts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin/manager: get or update commission settings for a rep
+  app.get("/api/admin/reps/:id/commission", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const rep = await storage.getUser(req.params.id);
+      if (!rep || rep.role !== "rep") return res.status(404).json({ error: "Rep not found" });
+      res.json({
+        commissionType: rep.commissionType || null,
+        commissionRate: rep.commissionRate || null,
+        payoutSchedule: rep.payoutSchedule || null,
+        renewalCommissionRate: rep.renewalCommissionRate || null,
+        commissionNotes: rep.commissionNotes || null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/admin/reps/:id/commission", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const { commissionType, commissionRate, payoutSchedule, renewalCommissionRate, commissionNotes } = req.body;
+      const updated = await storage.updateUserCommission(req.params.id, {
+        commissionType: commissionType || null,
+        commissionRate: commissionRate || null,
+        payoutSchedule: payoutSchedule || null,
+        renewalCommissionRate: renewalCommissionRate || null,
+        commissionNotes: commissionNotes || null,
+      });
+      if (!updated) return res.status(404).json({ error: "Rep not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin/manager: get payout history for a rep
+  app.get("/api/admin/reps/:id/payouts", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const payouts = await storage.getPayoutsForRep(req.params.id);
+      res.json(payouts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin/manager: create a payout for a rep
+  app.post("/api/admin/reps/:id/payouts", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const { periodLabel, periodStart, periodEnd, totalPaymentsCents, commissionCents, isRenewal, notes } = req.body;
+      if (!periodLabel || commissionCents === undefined) {
+        return res.status(400).json({ error: "periodLabel and commissionCents are required" });
+      }
+      const payout = await storage.createRepPayout({
+        repId: req.params.id,
+        periodLabel,
+        periodStart: periodStart ? new Date(periodStart) : null,
+        periodEnd: periodEnd ? new Date(periodEnd) : null,
+        totalPaymentsCents: totalPaymentsCents || 0,
+        commissionCents,
+        isRenewal: isRenewal || false,
+        notes: notes || null,
+        createdBy: user.id,
+        status: "pending",
+      });
+      res.json(payout);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin/manager: update payout (mark as paid, etc.)
+  app.put("/api/admin/payouts/:id", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const { status, notes } = req.body;
+      const updateData: any = { notes: notes ?? undefined };
+      if (status) {
+        updateData.status = status;
+        if (status === "paid") updateData.paidAt = new Date();
+      }
+      const updated = await storage.updateRepPayout(req.params.id, updateData);
+      if (!updated) return res.status(404).json({ error: "Payout not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin/manager: get all rep payouts
+  app.get("/api/admin/payouts", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const payouts = await storage.getAllRepPayouts();
+      res.json(payouts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ── RG Payment System ────────────────────────────────────────────
 
   function generateTrackingCode(planType: string): string {

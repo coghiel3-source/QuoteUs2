@@ -298,6 +298,25 @@ export default function AdminCRMPage() {
   const [rgPerms, setRgPerms] = useState<Record<string, boolean>>({});
   const [savingRgPerms, setSavingRgPerms] = useState(false);
 
+  // Rep Commission State
+  const [isCommissionOpen, setIsCommissionOpen] = useState(false);
+  const [commissionRep, setCommissionRep] = useState<any>(null);
+  const [commType, setCommType] = useState<"percentage" | "fixed">("percentage");
+  const [commRate, setCommRate] = useState("");
+  const [commSchedule, setCommSchedule] = useState("monthly");
+  const [renewalRate, setRenewalRate] = useState("");
+  const [commNotes, setCommNotes] = useState("");
+  const [savingComm, setSavingComm] = useState(false);
+  const [repPayouts, setRepPayouts] = useState<any[]>([]);
+  const [repEarnings, setRepEarnings] = useState<any>(null);
+  const [showCreatePayout, setShowCreatePayout] = useState(false);
+  const [payoutPeriod, setPayoutPeriod] = useState("");
+  const [payoutCommCents, setPayoutCommCents] = useState("");
+  const [payoutTotalCents, setPayoutTotalCents] = useState("");
+  const [payoutIsRenewal, setPayoutIsRenewal] = useState(false);
+  const [payoutNotes, setPayoutNotes] = useState("");
+  const [creatingPayout, setCreatingPayout] = useState(false);
+
   const RG_PERMISSION_LABELS: Record<string, string> = {
     canAddLocations: "Create new locations",
     canEditLocations: "Edit & delete locations",
@@ -335,6 +354,95 @@ export default function AdminCRMPage() {
       toast({ title: "Error", description: "Failed to save RG permissions", variant: "destructive" });
     } finally {
       setSavingRgPerms(false);
+    }
+  };
+
+  const openRepCommission = async (rep: any) => {
+    setCommissionRep(rep);
+    setCommType(rep.commissionType || "percentage");
+    setCommRate(rep.commissionRate ? String(parseFloat(rep.commissionRate)) : "");
+    setCommSchedule(rep.payoutSchedule || "monthly");
+    setRenewalRate(rep.renewalCommissionRate ? String(parseFloat(rep.renewalCommissionRate)) : "");
+    setCommNotes(rep.commissionNotes || "");
+    setShowCreatePayout(false);
+    setRepPayouts([]);
+    setRepEarnings(null);
+    setIsCommissionOpen(true);
+    const [payoutsRes, earningsRes] = await Promise.all([
+      fetch(`/api/admin/reps/${rep.id}/payouts`).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`/api/rep/earnings?repId=${rep.id}`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    setRepPayouts(payoutsRes || []);
+    setRepEarnings(earningsRes);
+  };
+
+  const saveRepCommission = async () => {
+    if (!commissionRep || !user) return;
+    setSavingComm(true);
+    try {
+      const res = await fetch(`/api/admin/reps/${commissionRep.id}/commission`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commissionType: commType,
+          commissionRate: commRate || null,
+          payoutSchedule: commSchedule,
+          renewalCommissionRate: renewalRate || null,
+          commissionNotes: commNotes || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      const updated = await res.json();
+      await updateUser(updated.id, updated);
+      toast({ title: "Commission Saved", description: `${commissionRep.name}'s commission terms have been updated.` });
+    } catch {
+      toast({ title: "Error", description: "Failed to save commission", variant: "destructive" });
+    } finally {
+      setSavingComm(false);
+    }
+  };
+
+  const handleCreatePayout = async () => {
+    if (!commissionRep || !payoutPeriod || !payoutCommCents) return;
+    setCreatingPayout(true);
+    try {
+      const res = await fetch(`/api/admin/reps/${commissionRep.id}/payouts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          periodLabel: payoutPeriod,
+          commissionCents: Math.round(parseFloat(payoutCommCents) * 100),
+          totalPaymentsCents: payoutTotalCents ? Math.round(parseFloat(payoutTotalCents) * 100) : 0,
+          isRenewal: payoutIsRenewal,
+          notes: payoutNotes || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create payout");
+      const payout = await res.json();
+      setRepPayouts(prev => [payout, ...prev]);
+      setPayoutPeriod(""); setPayoutCommCents(""); setPayoutTotalCents(""); setPayoutIsRenewal(false); setPayoutNotes("");
+      setShowCreatePayout(false);
+      toast({ title: "Payout Created", description: `$${parseFloat(payoutCommCents).toFixed(2)} commission for ${payoutPeriod}` });
+    } catch {
+      toast({ title: "Error", description: "Failed to create payout", variant: "destructive" });
+    } finally {
+      setCreatingPayout(false);
+    }
+  };
+
+  const markPayoutPaid = async (payoutId: string) => {
+    try {
+      const res = await fetch(`/api/admin/payouts/${payoutId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "paid" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const updated = await res.json();
+      setRepPayouts(prev => prev.map(p => p.id === payoutId ? updated : p));
+      toast({ title: "Payout marked as paid" });
+    } catch {
+      toast({ title: "Error", description: "Failed to mark as paid", variant: "destructive" });
     }
   };
 
@@ -4060,6 +4168,12 @@ export default function AdminCRMPage() {
                                   </DropdownMenuItem>
                                 )}
                                 {staff.role === 'rep' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openRepCommission(staff); }} data-testid={`button-rep-commission-${staff.id}`}>
+                                    <DollarSign className="mr-2 h-4 w-4" />
+                                    Commission & Payouts
+                                  </DropdownMenuItem>
+                                )}
+                                {staff.role === 'rep' && (
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openRepPermissions(staff); }}>
                                     <ShieldCheck className="mr-2 h-4 w-4" />
                                     RG Permissions
@@ -6450,6 +6564,204 @@ export default function AdminCRMPage() {
       </Dialog>
 
       {/* Rep RG Permissions Sheet */}
+      {/* ===== COMMISSION SHEET ===== */}
+      <Sheet open={isCommissionOpen} onOpenChange={setIsCommissionOpen}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" data-testid="rep-commission-sheet">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                {commissionRep?.name?.charAt(0)}
+              </div>
+              <div>
+                <div>{commissionRep?.name}</div>
+                <div className="text-sm font-normal text-muted-foreground">Commission & Payouts</div>
+              </div>
+            </SheetTitle>
+            <SheetDescription>Configure commission terms and manage payout records for this rep</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            {/* Earnings Summary */}
+            {repEarnings && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                <p className="text-xs uppercase tracking-wide text-indigo-600 font-semibold mb-3">Earnings Summary</p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-xs text-gray-500">Submitted</p>
+                    <p className="font-bold text-gray-900">${((repEarnings.totalSubmittedCents || 0) / 100).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Collected</p>
+                    <p className="font-bold text-green-700">${((repEarnings.totalCollectedCents || 0) / 100).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Commission</p>
+                    <p className="font-bold text-indigo-700">${((repEarnings.commissionEarned || 0) / 100).toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Commission Settings */}
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Settings className="h-4 w-4" /> Commission Settings
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1 block">Commission Type</Label>
+                  <Select value={commType} onValueChange={(v) => setCommType(v as "percentage" | "fixed")}>
+                    <SelectTrigger data-testid="select-comm-type" className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Percentage of collected</SelectItem>
+                      <SelectItem value="fixed">Fixed per payment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1 block">
+                    {commType === "percentage" ? "Rate (%)" : "Rate ($ per payment)"}
+                  </Label>
+                  <Input
+                    type="number" step="0.01" min="0"
+                    placeholder={commType === "percentage" ? "e.g. 5" : "e.g. 50"}
+                    value={commRate}
+                    onChange={e => setCommRate(e.target.value)}
+                    data-testid="input-comm-rate"
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1 block">Payout Schedule</Label>
+                  <Select value={commSchedule} onValueChange={setCommSchedule}>
+                    <SelectTrigger data-testid="select-comm-schedule" className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="annually">Annually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1 block">Renewal Rate (%)</Label>
+                  <Input
+                    type="number" step="0.01" min="0"
+                    placeholder="e.g. 2.5"
+                    value={renewalRate}
+                    onChange={e => setRenewalRate(e.target.value)}
+                    data-testid="input-renewal-rate"
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500 mb-1 block">Commission Notes</Label>
+                <Textarea
+                  placeholder="Terms, conditions, special arrangements..."
+                  value={commNotes}
+                  onChange={e => setCommNotes(e.target.value)}
+                  rows={2}
+                  data-testid="textarea-comm-notes"
+                  className="text-sm"
+                />
+              </div>
+              <Button onClick={saveRepCommission} disabled={savingComm} className="w-full" data-testid="button-save-commission">
+                {savingComm ? "Saving..." : "Save Commission Settings"}
+              </Button>
+            </div>
+
+            <Separator />
+
+            {/* Payout Management */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" /> Payouts
+                </p>
+                <Button size="sm" variant="outline" onClick={() => setShowCreatePayout(v => !v)} data-testid="button-toggle-create-payout">
+                  <Plus className="h-3.5 w-3.5 mr-1" /> New Payout
+                </Button>
+              </div>
+
+              {showCreatePayout && (
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3 border">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Create Payout Record</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <Label className="text-xs text-gray-500 mb-1 block">Period Label</Label>
+                      <Input placeholder="e.g. March 2026" value={payoutPeriod} onChange={e => setPayoutPeriod(e.target.value)} className="h-9" data-testid="input-payout-period" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500 mb-1 block">Commission Amount ($)</Label>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00" value={payoutCommCents} onChange={e => setPayoutCommCents(e.target.value)} className="h-9" data-testid="input-payout-commission" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500 mb-1 block">Total Payments ($)</Label>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00" value={payoutTotalCents} onChange={e => setPayoutTotalCents(e.target.value)} className="h-9" data-testid="input-payout-total" />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs text-gray-500 mb-1 block">Notes (optional)</Label>
+                      <Input placeholder="Optional notes" value={payoutNotes} onChange={e => setPayoutNotes(e.target.value)} className="h-9" data-testid="input-payout-notes" />
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <Switch checked={payoutIsRenewal} onCheckedChange={setPayoutIsRenewal} id="payout-renewal" data-testid="switch-payout-renewal" />
+                      <Label htmlFor="payout-renewal" className="text-sm text-gray-700 cursor-pointer">Renewal commission</Label>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowCreatePayout(false)}>Cancel</Button>
+                    <Button size="sm" className="flex-1" onClick={handleCreatePayout} disabled={creatingPayout || !payoutPeriod || !payoutCommCents} data-testid="button-create-payout">
+                      {creatingPayout ? "Creating..." : "Create Payout"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {repPayouts.length === 0 && !showCreatePayout && (
+                <p className="text-sm text-gray-400 text-center py-4">No payout records yet</p>
+              )}
+
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {repPayouts.map(p => (
+                  <div key={p.id} className="bg-white border rounded-lg px-3 py-2.5 flex items-center justify-between gap-2" data-testid={`admin-payout-row-${p.id}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-gray-900 truncate">{p.periodLabel}</p>
+                        {p.isRenewal && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 rounded font-medium shrink-0">Renewal</span>}
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {p.totalPaymentsCents > 0 ? `$${(p.totalPaymentsCents / 100).toFixed(2)} collected · ` : ""}
+                        {p.paidAt ? `Paid ${new Date(p.paidAt).toLocaleDateString("en-CA")}` : `Created ${new Date(p.createdAt).toLocaleDateString("en-CA")}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <p className="font-bold text-gray-900">${(p.commissionCents / 100).toFixed(2)}</p>
+                      {p.status === "paid" ? (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Paid</span>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => markPayoutPaid(p.id)} data-testid={`button-mark-paid-${p.id}`}>
+                          Mark Paid
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {repPayouts.length > 0 && (
+                <div className="flex justify-between text-sm font-medium border-t pt-2">
+                  <span className="text-gray-500">Total paid out</span>
+                  <span className="text-green-700">${(repPayouts.filter(p => p.status === "paid").reduce((s: number, p: any) => s + p.commissionCents, 0) / 100).toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <Sheet open={isRepPermissionsOpen} onOpenChange={setIsRepPermissionsOpen}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto" data-testid="rep-permissions-sheet">
           <SheetHeader>
