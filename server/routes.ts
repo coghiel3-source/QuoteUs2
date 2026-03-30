@@ -3401,6 +3401,19 @@ export async function registerRoutes(
         signerName,
         signedAt: new Date(),
       });
+
+      // Auto-approve the active tenant lead for this location
+      try {
+        const locationLeads = await storage.getLeadsForLocation(request.locationId);
+        const activeLead = locationLeads.find(l => l.status !== "Declined");
+        if (activeLead && activeLead.status !== "Approved") {
+          await storage.updateRgLead(activeLead.id, { status: "Approved" });
+        }
+      } catch (e) {
+        // Non-fatal: signature was already recorded
+        console.error("[sign] Failed to auto-approve lead:", e);
+      }
+
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
