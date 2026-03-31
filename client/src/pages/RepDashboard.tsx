@@ -22,7 +22,7 @@ import {
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined";
 type ActiveTab = "overview" | "locations" | "leads" | "reminders";
 type LocationView = "list" | "detail";
-type LeadDetailTab = "info" | "pricing" | "docs";
+type LeadDetailTab = "info" | "docs";
 
 const STATUS_COLORS: Record<Status, string> = {
   "New": "bg-blue-100 text-blue-800",
@@ -2181,11 +2181,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             {/* Detail tabs */}
             <div className="flex gap-1 px-5 pt-4">
               <button onClick={() => setDetailTab("info")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "info" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-info">Info</button>
-              {rgPerm("canViewPricing") && (
-                <button onClick={() => setDetailTab("pricing")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "pricing" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-pricing">
-                  <Calculator className="h-3.5 w-3.5" /> Pricing
-                </button>
-              )}
               <button onClick={() => setDetailTab("docs")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${detailTab === "docs" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-docs">Documents ({documents.length})</button>
             </div>
 
@@ -2325,20 +2320,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   )}
                 </div>
               )}
-
-              {/* PRICING TAB */}
-              {detailTab === "pricing" && (() => {
-                const loc = locations.find(l => l.id === selectedLead.locationId);
-                return (
-                  <PricingTab
-                    monthlyRent={Number(selectedLead.monthlyRent)}
-                    markupPercent={selectedLead.markupPercent}
-                    baseAnnualRate={Number(loc?.annualRatePercent) || globalRgRates.annualRate}
-                    baseMonthlyRate={Number(loc?.monthlyRatePercent) || globalRgRates.monthlyRate}
-                    onSaveMarkup={rgPerm("canEditPricing") ? handleSaveMarkup : undefined}
-                  />
-                );
-              })()}
 
               {/* DOCS TAB */}
               {detailTab === "docs" && (
