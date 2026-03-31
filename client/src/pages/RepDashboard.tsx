@@ -1282,7 +1282,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             { id: "overview", icon: <BarChart3 className="h-3.5 w-3.5" />, label: "Overview" },
             { id: "locations", icon: <MapPin className="h-3.5 w-3.5" />, label: `Locations (${locations.length})` },
             { id: "leads", icon: null, label: `All Leads (${leads.length})` },
-            { id: "commission", icon: <DollarSign className="h-3.5 w-3.5" />, label: "Commission" },
+            ...((isAdminOrManager || user?.permissions?.viewCommission === true) ? [{ id: "commission", icon: <DollarSign className="h-3.5 w-3.5" />, label: "Commission" }] : []),
             ...((isRep && rgPerm("canManageReminders")) || isAdminOrManager ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
           ] as { id: ActiveTab; icon: React.ReactNode; label: string }[]).map(tab => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); }} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`} data-testid={`tab-${tab.id}`}>
@@ -1312,7 +1312,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             )}
 
             {/* Earnings & Commission Summary */}
-            {earnings && (earnings.totalPayments > 0 || earnings.commissionRate) && (
+            {(isAdminOrManager || user?.permissions?.viewCommission === true) && earnings && (earnings.totalPayments > 0 || earnings.commissionRate) && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5" data-testid="card-rep-earnings">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-blue-900 flex items-center gap-2">
@@ -2166,7 +2166,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         )}
 
         {/* ===== COMMISSION TAB ===== */}
-        {activeTab === "commission" && (() => {
+        {activeTab === "commission" && !(isAdminOrManager || user?.permissions?.viewCommission === true) && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <BadgePercent className="h-12 w-12 text-gray-200 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-600 mb-1">Commission Access Not Enabled</h3>
+            <p className="text-sm text-gray-400 max-w-xs">Your admin hasn't granted you access to view your commission details yet. Contact your administrator to request access.</p>
+          </div>
+        )}
+        {activeTab === "commission" && (isAdminOrManager || user?.permissions?.viewCommission === true) && (() => {
           const fmtMoney = (cents: number) => `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
           const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
 

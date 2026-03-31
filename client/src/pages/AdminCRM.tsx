@@ -304,6 +304,7 @@ export default function AdminCRMPage() {
   const [isRepPermissionsOpen, setIsRepPermissionsOpen] = useState(false);
   const [permissionsRep, setPermissionsRep] = useState<any>(null);
   const [rgPerms, setRgPerms] = useState<Record<string, boolean>>({});
+  const [repViewCommission, setRepViewCommission] = useState(false);
   const [savingRgPerms, setSavingRgPerms] = useState(false);
 
   // Rep Commission State
@@ -341,6 +342,7 @@ export default function AdminCRMPage() {
     const defaults: Record<string, boolean> = {};
     Object.keys(RG_PERMISSION_LABELS).forEach(k => { defaults[k] = saved[k] !== false; });
     setRgPerms(defaults);
+    setRepViewCommission(rep.permissions?.viewCommission === true);
     setIsRepPermissionsOpen(true);
   };
 
@@ -351,15 +353,15 @@ export default function AdminCRMPage() {
       const res = await fetch(`/api/admin/users/${permissionsRep.id}/rg-permissions`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actorId: user.id, rgPermissions: rgPerms }),
+        body: JSON.stringify({ actorId: user.id, rgPermissions: rgPerms, viewCommission: repViewCommission }),
       });
       if (!res.ok) throw new Error("Failed to save");
       const updated = await res.json();
       await updateUser(updated.id, updated);
-      toast({ title: "RG Permissions Saved", description: `${permissionsRep.name}'s RG access has been updated.` });
+      toast({ title: "Rep Permissions Saved", description: `${permissionsRep.name}'s access has been updated.` });
       setIsRepPermissionsOpen(false);
     } catch {
-      toast({ title: "Error", description: "Failed to save RG permissions", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to save rep permissions", variant: "destructive" });
     } finally {
       setSavingRgPerms(false);
     }
@@ -6922,29 +6924,55 @@ export default function AdminCRMPage() {
                 <div className="text-sm font-normal text-muted-foreground">{permissionsRep?.email}</div>
               </div>
             </SheetTitle>
-            <SheetDescription>Control which Rent Guarantee features this rep can access</SheetDescription>
+            <SheetDescription>Control which features this rep can access</SheetDescription>
           </SheetHeader>
 
-          <div className="mt-6 space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-              <ShieldCheck className="h-4 w-4 inline mr-2" />
-              All toggles default to <strong>On</strong>. Disable individual features to restrict access.
-            </div>
+          <div className="mt-6 space-y-5">
 
-            <div className="space-y-3">
-              {Object.entries(RG_PERMISSION_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between py-2.5 px-3 rounded-lg border bg-white hover:bg-gray-50 transition-colors">
+            {/* Commission Access */}
+            {(user?.role === 'admin' || hasPermission('approveRepCommission')) && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mb-2 flex items-center gap-1.5">
+                  <BadgePercent className="h-3.5 w-3.5" /> Commission Access
+                </p>
+                <div className="flex items-center justify-between py-3 px-3 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 transition-colors">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{label}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 capitalize">{key}</p>
+                    <p className="text-sm font-medium text-indigo-900">View Commission Tab</p>
+                    <p className="text-xs text-indigo-500 mt-0.5">Allow this rep to see their commission rate, earnings, and payout history</p>
                   </div>
                   <Switch
-                    checked={rgPerms[key] !== false}
-                    onCheckedChange={(v) => setRgPerms(prev => ({ ...prev, [key]: v }))}
-                    data-testid={`switch-rg-perm-${key}`}
+                    checked={repViewCommission}
+                    onCheckedChange={setRepViewCommission}
+                    data-testid="switch-rep-view-commission"
                   />
                 </div>
-              ))}
+              </div>
+            )}
+
+            {/* RG Feature Access */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600 mb-2 flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5" /> Rent Guarantee Features
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 mb-3">
+                All toggles default to <strong>On</strong>. Disable individual features to restrict access.
+              </div>
+
+              <div className="space-y-2">
+                {Object.entries(RG_PERMISSION_LABELS).map(([key, label]) => (
+                  <div key={key} className="flex items-center justify-between py-2.5 px-3 rounded-lg border bg-white hover:bg-gray-50 transition-colors">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 capitalize">{key}</p>
+                    </div>
+                    <Switch
+                      checked={rgPerms[key] !== false}
+                      onCheckedChange={(v) => setRgPerms(prev => ({ ...prev, [key]: v }))}
+                      data-testid={`switch-rg-perm-${key}`}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex gap-2 pt-2">
