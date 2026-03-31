@@ -3393,6 +3393,10 @@ export async function registerRoutes(
     try {
       const user = (req.session as any)?.user;
       if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      if (user.role === "manager") {
+        const perms = user.permissions || {};
+        if (!perms.approveRepCommission) return res.status(403).json({ error: "You do not have permission to approve rep commission" });
+      }
       const { commissionType, commissionRate, payoutSchedule, renewalCommissionRate, commissionNotes } = req.body;
       const updated = await storage.updateUserCommission(req.params.id, {
         commissionType: commissionType || null,

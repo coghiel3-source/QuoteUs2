@@ -2233,14 +2233,69 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 </div>
               </div>
 
-              {/* Schedule badge */}
-              {earnings?.payoutSchedule && (
-                <div className="flex items-center gap-2 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2 w-fit">
-                  <DollarSign className="h-4 w-4" />
-                  <span>Payout schedule: <strong className="capitalize">{earnings.payoutSchedule}</strong></span>
-                  {earnings.renewalCommissionRate && (
-                    <span className="ml-3 text-indigo-500">Renewal rate: {parseFloat(earnings.renewalCommissionRate).toFixed(2)}%</span>
+              {/* Admin-Approved Commission Terms */}
+              {earnings?.commissionRate ? (
+                <div className="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-300 rounded-xl p-5" data-testid="card-approved-commission">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-indigo-900 text-base flex items-center gap-2">
+                        <BadgePercent className="h-5 w-5 text-indigo-600" />
+                        Admin-Approved Commission Terms
+                      </h3>
+                      <p className="text-xs text-indigo-500 mt-0.5">Set and approved by your admin</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold border border-green-200">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Approved
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white/70 rounded-lg p-3 border border-indigo-100">
+                      <p className="text-xs text-indigo-500 uppercase tracking-wide mb-1">Commission Rate</p>
+                      <p className="text-2xl font-bold text-indigo-800" data-testid="text-approved-rate">
+                        {earnings.commissionType === "percentage"
+                          ? `${parseFloat(earnings.commissionRate).toFixed(2)}%`
+                          : `$${parseFloat(earnings.commissionRate).toFixed(2)}`}
+                      </p>
+                      <p className="text-xs text-indigo-400 mt-0.5">
+                        {earnings.commissionType === "percentage" ? "of collected premium" : "fixed per payment"}
+                      </p>
+                    </div>
+                    {earnings.renewalCommissionRate && (
+                      <div className="bg-white/70 rounded-lg p-3 border border-indigo-100">
+                        <p className="text-xs text-indigo-500 uppercase tracking-wide mb-1">Renewal Rate</p>
+                        <p className="text-2xl font-bold text-indigo-800" data-testid="text-renewal-rate">
+                          {parseFloat(earnings.renewalCommissionRate).toFixed(2)}%
+                        </p>
+                        <p className="text-xs text-indigo-400 mt-0.5">monthly plan renewals</p>
+                      </div>
+                    )}
+                    {earnings.payoutSchedule && (
+                      <div className="bg-white/70 rounded-lg p-3 border border-indigo-100">
+                        <p className="text-xs text-indigo-500 uppercase tracking-wide mb-1">Payout Schedule</p>
+                        <p className="text-lg font-bold text-indigo-800 capitalize" data-testid="text-payout-schedule">{earnings.payoutSchedule}</p>
+                        <p className="text-xs text-indigo-400 mt-0.5">payment frequency</p>
+                      </div>
+                    )}
+                    <div className="bg-white/70 rounded-lg p-3 border border-indigo-100">
+                      <p className="text-xs text-indigo-500 uppercase tracking-wide mb-1">Type</p>
+                      <p className="text-lg font-bold text-indigo-800 capitalize" data-testid="text-commission-type">
+                        {earnings.commissionType === "percentage" ? "Percentage" : "Fixed"}
+                      </p>
+                      <p className="text-xs text-indigo-400 mt-0.5">commission structure</p>
+                    </div>
+                  </div>
+                  {earnings.commissionNotes && (
+                    <div className="mt-3 pt-3 border-t border-indigo-200">
+                      <p className="text-xs text-indigo-600 font-medium mb-1">Terms &amp; Notes</p>
+                      <p className="text-sm text-indigo-700">{earnings.commissionNotes}</p>
+                    </div>
                   )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-5 text-center" data-testid="card-no-commission">
+                  <BadgePercent className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-500">No Commission Rate Set</p>
+                  <p className="text-xs text-gray-400 mt-1">Your admin hasn't configured a commission rate for your account yet.</p>
                 </div>
               )}
 

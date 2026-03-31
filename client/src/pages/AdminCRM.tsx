@@ -141,6 +141,7 @@ export default function AdminCRMPage() {
       manageNotificationEmail: false,
       viewRgLeads: false,
       manageRgLeads: false,
+      approveRepCommission: false,
     }
   });
   
@@ -165,6 +166,7 @@ export default function AdminCRMPage() {
     manageNotificationEmail: false,
     viewRgLeads: false,
     manageRgLeads: false,
+    approveRepCommission: false,
   });
 
   // Lead costs from API
@@ -581,6 +583,7 @@ export default function AdminCRMPage() {
     manageNotificationEmail: false,
     viewRgLeads: false,
     manageRgLeads: false,
+    approveRepCommission: false,
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
@@ -965,7 +968,7 @@ export default function AdminCRMPage() {
           viewLeadCosts: false, editLeadCosts: false, approveAds: false,
           manageAds: false, manageSocialMedia: false, manageCustomCss: false,
           managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false,
-          viewRgLeads: false, manageRgLeads: false,
+          viewRgLeads: false, manageRgLeads: false, approveRepCommission: false,
         }
       });
       toast({
@@ -4184,7 +4187,7 @@ export default function AdminCRMPage() {
                                     View Profile
                                   </DropdownMenuItem>
                                 )}
-                                {staff.role === 'rep' && (
+                                {staff.role === 'rep' && (user?.role === 'admin' || hasPermission('approveRepCommission')) && (
                                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openRepCommission(staff); }} data-testid={`button-rep-commission-${staff.id}`}>
                                     <DollarSign className="mr-2 h-4 w-4" />
                                     Commission & Payouts
@@ -5236,6 +5239,18 @@ export default function AdminCRMPage() {
                     checked={managerPermissions.manageRgLeads}
                     onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, manageRgLeads: checked }))}
                     data-testid="toggle-manager-manage-rg-leads"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg border-indigo-200 bg-indigo-50">
+                  <div>
+                    <h4 className="font-medium text-indigo-800">Approve Rep Commission</h4>
+                    <p className="text-sm text-indigo-600">Allow managers to set and approve commission percentages for reps</p>
+                  </div>
+                  <Switch
+                    checked={managerPermissions.approveRepCommission}
+                    onCheckedChange={(checked) => setManagerPermissions(prev => ({ ...prev, approveRepCommission: checked }))}
+                    data-testid="toggle-manager-approve-rep-commission"
                   />
                 </div>
               </div>
