@@ -3340,6 +3340,21 @@ export async function registerRoutes(
     }
   });
 
+  // Rep: get all payments across all locations (for Commission tab)
+  app.get("/api/rep/all-payments", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const repId = user.role === "rep" ? user.id : (req.query.repId as string) || user.id;
+      const payments = await storage.getAllPaymentsForRep(repId);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Rep views their own payout history
   app.get("/api/rep/payouts", async (req, res) => {
     try {

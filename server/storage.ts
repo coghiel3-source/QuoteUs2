@@ -106,6 +106,7 @@ export interface IStorage {
 
   // RG Payment operations
   createRgPayment(data: any): Promise<RgPayment>;
+  getAllPaymentsForRep(repId: string): Promise<(RgPayment & { applicationNumber: string | null; propertyAddress: string })[]>;
   getPaymentsForLocation(locationId: string): Promise<RgPayment[]>;
   getRgPaymentByTrackingCode(code: string): Promise<RgPayment | null>;
   getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null>;
@@ -722,6 +723,19 @@ export class DatabaseStorage implements IStorage {
   async createRgPayment(data: any): Promise<RgPayment> {
     const [created] = await db.insert(rgPayments).values(data).returning();
     return created;
+  }
+
+  async getAllPaymentsForRep(repId: string): Promise<(RgPayment & { applicationNumber: string | null; propertyAddress: string })[]> {
+    const locs = await db.select().from(rgLocations).where(eq(rgLocations.repId, repId));
+    if (locs.length === 0) return [];
+    const locationIds = locs.map(l => l.id);
+    const locMap = new Map(locs.map(l => [l.id, l]));
+    const payments = await db.select().from(rgPayments).where(inArray(rgPayments.locationId, locationIds)).orderBy(desc(rgPayments.createdAt));
+    return payments.map(p => ({
+      ...p,
+      applicationNumber: locMap.get(p.locationId)?.applicationNumber ?? null,
+      propertyAddress: locMap.get(p.locationId)?.propertyAddress ?? "",
+    }));
   }
 
   async getPaymentsForLocation(locationId: string): Promise<RgPayment[]> {

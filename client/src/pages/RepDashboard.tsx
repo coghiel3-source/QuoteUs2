@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined";
-type ActiveTab = "overview" | "locations" | "leads" | "reminders";
+type ActiveTab = "overview" | "locations" | "leads" | "reminders" | "commission";
 type LocationView = "list" | "detail";
 type LeadDetailTab = "info" | "docs";
 
@@ -549,6 +549,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   };
   const [earnings, setEarnings] = useState<EarningsSummary | null>(null);
   const [payouts, setPayouts] = useState<any[]>([]);
+  type CommissionPayment = RgPaymentRecord & { applicationNumber: string | null; propertyAddress: string };
+  const [allPayments, setAllPayments] = useState<CommissionPayment[]>([]);
 
   // Signature / agreement
   const [locationSignature, setLocationSignature] = useState<any>(null);
@@ -671,13 +673,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     if (!user) return;
     setLoading(true);
     try {
-      const [locs, leadsData, remindersData, rgRatesData, earningsData, payoutsData] = await Promise.all([
+      const [locs, leadsData, remindersData, rgRatesData, earningsData, payoutsData, allPaymentsData] = await Promise.all([
         apiRequest<RgLocation[]>(`/rep/locations?actorId=${user.id}`),
         apiRequest<RgLead[]>(`/rep/leads?actorId=${user.id}`),
         isRep ? apiRequest<RepReminder[]>(`/rep/reminders?actorId=${user.id}`) : Promise.resolve([]),
         fetch("/api/credits/rg-rates").then(r => r.json()).catch(() => null),
         fetch(`/api/rep/earnings?actorId=${user.id}`).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(`/api/rep/payouts?actorId=${user.id}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`/api/rep/all-payments?actorId=${user.id}`).then(r => r.ok ? r.json() : []).catch(() => []),
       ]);
       setLocations(locs || []);
       setLeads(leadsData || []);
@@ -687,6 +690,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       }
       if (earningsData) setEarnings(earningsData);
       setPayouts(payoutsData || []);
+      setAllPayments(allPaymentsData || []);
     } catch {
       toast({ title: "Failed to load data", variant: "destructive" });
     } finally {
@@ -1278,6 +1282,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             { id: "overview", icon: <BarChart3 className="h-3.5 w-3.5" />, label: "Overview" },
             { id: "locations", icon: <MapPin className="h-3.5 w-3.5" />, label: `Locations (${locations.length})` },
             { id: "leads", icon: null, label: `All Leads (${leads.length})` },
+            { id: "commission", icon: <DollarSign className="h-3.5 w-3.5" />, label: "Commission" },
             ...((isRep && rgPerm("canManageReminders")) || isAdminOrManager ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
           ] as { id: ActiveTab; icon: React.ReactNode; label: string }[]).map(tab => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); }} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`} data-testid={`tab-${tab.id}`}>
@@ -2159,6 +2164,255 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             )}
           </div>
         )}
+
+        {/* ===== COMMISSION TAB ===== */}
+        {activeTab === "commission" && (() => {
+          const fmtMoney = (cents: number) => `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
+
+          // Commission calculation per payment
+          const calcCommission = (amountCents: number, planType: string): number => {
+            if (!earnings?.commissionType || !earnings?.commissionRate) return 0;
+            const rate = parseFloat(earnings.commissionRate);
+            if (earnings.commissionType === "percentage") {
+              const useRate = planType?.toLowerCase().includes("monthly") && earnings.renewalCommissionRate
+                ? parseFloat(earnings.renewalCommissionRate) : rate;
+              return Math.round((amountCents * useRate) / 100);
+            }
+            return Math.round(rate * 100);
+          };
+
+          const paidPayments = allPayments.filter(p => p.status === "paid");
+          const pendingPayments = allPayments.filter(p => p.status === "pending");
+
+          // Monthly breakdown: group paid payments by month
+          const monthlyGroups: Record<string, { label: string; collected: number; commission: number; count: number }> = {};
+          for (const p of paidPayments) {
+            const d = new Date(p.paidAt || p.createdAt);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            const label = d.toLocaleDateString("en-CA", { year: "numeric", month: "long" });
+            if (!monthlyGroups[key]) monthlyGroups[key] = { label, collected: 0, commission: 0, count: 0 };
+            monthlyGroups[key].collected += p.amountCents;
+            monthlyGroups[key].commission += calcCommission(p.amountCents, p.planType);
+            monthlyGroups[key].count++;
+          }
+          const monthlyRows = Object.entries(monthlyGroups).sort((a, b) => b[0].localeCompare(a[0]));
+
+          const totalCommission = paidPayments.reduce((s, p) => s + calcCommission(p.amountCents, p.planType), 0);
+          const totalCollected = paidPayments.reduce((s, p) => s + p.amountCents, 0);
+          const totalSubmitted = allPayments.reduce((s, p) => s + p.amountCents, 0);
+          const monthlyPlanPayments = paidPayments.filter(p => p.planType?.toLowerCase().includes("monthly"));
+
+          return (
+            <div className="space-y-6" data-testid="tab-commission-content">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white border rounded-xl p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Submitted</p>
+                  <p className="text-xl font-bold text-gray-900" data-testid="text-commission-submitted">{fmtMoney(totalSubmitted)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{allPayments.length} file{allPayments.length !== 1 ? "s" : ""}</p>
+                </div>
+                <div className="bg-white border rounded-xl p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Collected</p>
+                  <p className="text-xl font-bold text-green-700" data-testid="text-commission-collected">{fmtMoney(totalCollected)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{paidPayments.length} confirmed</p>
+                </div>
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl p-4">
+                  <p className="text-xs text-indigo-600 uppercase tracking-wide mb-1">Commission Earned</p>
+                  <p className="text-xl font-bold text-indigo-700" data-testid="text-commission-earned">{fmtMoney(totalCommission)}</p>
+                  {earnings?.commissionRate && (
+                    <p className="text-xs text-indigo-400 mt-0.5">
+                      {earnings.commissionType === "percentage" ? `${parseFloat(earnings.commissionRate).toFixed(2)}% rate` : `$${parseFloat(earnings.commissionRate).toFixed(2)}/payment`}
+                    </p>
+                  )}
+                </div>
+                <div className="bg-white border rounded-xl p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Monthly Renewals</p>
+                  <p className="text-xl font-bold text-blue-700" data-testid="text-commission-renewals">{monthlyPlanPayments.length}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">monthly plan payment{monthlyPlanPayments.length !== 1 ? "s" : ""}</p>
+                </div>
+              </div>
+
+              {/* Schedule badge */}
+              {earnings?.payoutSchedule && (
+                <div className="flex items-center gap-2 text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2 w-fit">
+                  <DollarSign className="h-4 w-4" />
+                  <span>Payout schedule: <strong className="capitalize">{earnings.payoutSchedule}</strong></span>
+                  {earnings.renewalCommissionRate && (
+                    <span className="ml-3 text-indigo-500">Renewal rate: {parseFloat(earnings.renewalCommissionRate).toFixed(2)}%</span>
+                  )}
+                </div>
+              )}
+
+              {/* Files Table */}
+              <div className="bg-white border rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between">
+                  <h3 className="font-semibold text-sm text-gray-700">All Files Submitted</h3>
+                  <span className="text-xs text-gray-400">{allPayments.length} record{allPayments.length !== 1 ? "s" : ""}</span>
+                </div>
+                {allPayments.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">
+                    <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No payments submitted yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Policy / Acct #</th>
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Property</th>
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Plan</th>
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Period</th>
+                          <th className="text-right px-4 py-2 font-medium text-gray-500 text-xs">Premium</th>
+                          <th className="text-center px-4 py-2 font-medium text-gray-500 text-xs">Status</th>
+                          <th className="text-right px-4 py-2 font-medium text-gray-500 text-xs">Commission</th>
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {allPayments.map((p, i) => {
+                          const comm = p.status === "paid" ? calcCommission(p.amountCents, p.planType) : 0;
+                          const isMonthly = p.planType?.toLowerCase().includes("monthly");
+                          return (
+                            <tr key={p.id} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"} data-testid={`row-commission-${p.id}`}>
+                              <td className="px-4 py-2.5 font-mono text-xs font-semibold text-violet-700">
+                                {p.applicationNumber || <span className="text-gray-300">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5 text-gray-700 max-w-[180px] truncate" title={p.propertyAddress}>
+                                {p.propertyAddress}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${isMonthly ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
+                                  {isMonthly ? "Monthly" : "Annual"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-gray-500 text-xs">{p.periodLabel || "—"}</td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{fmtMoney(p.amountCents)}</td>
+                              <td className="px-4 py-2.5 text-center">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  p.status === "paid" ? "bg-green-50 text-green-700" :
+                                  p.status === "failed" ? "bg-red-50 text-red-700" :
+                                  "bg-yellow-50 text-yellow-700"
+                                }`}>{p.status}</span>
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-indigo-700">
+                                {p.status === "paid" ? fmtMoney(comm) : <span className="text-gray-300">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5 text-xs text-gray-400">{fmtDate(p.paidAt || p.createdAt)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="border-t bg-gray-50">
+                        <tr>
+                          <td colSpan={4} className="px-4 py-2 text-xs text-gray-500 font-medium">Totals</td>
+                          <td className="px-4 py-2 text-right font-bold text-gray-900">{fmtMoney(totalSubmitted)}</td>
+                          <td></td>
+                          <td className="px-4 py-2 text-right font-bold text-indigo-700">{fmtMoney(totalCommission)}</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Monthly Breakdown */}
+              {monthlyRows.length > 0 && (
+                <div className="bg-white border rounded-xl overflow-hidden">
+                  <div className="px-5 py-3 border-b bg-gray-50">
+                    <h3 className="font-semibold text-sm text-gray-700">Monthly Payout Breakdown</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Collected premiums and commission per calendar month</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Month</th>
+                          <th className="text-right px-4 py-2 font-medium text-gray-500 text-xs">Payments</th>
+                          <th className="text-right px-4 py-2 font-medium text-gray-500 text-xs">Collected</th>
+                          <th className="text-right px-4 py-2 font-medium text-gray-500 text-xs">Commission</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {monthlyRows.map(([key, g], i) => (
+                          <tr key={key} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"} data-testid={`row-monthly-${key}`}>
+                            <td className="px-4 py-2.5 font-medium text-gray-700">{g.label}</td>
+                            <td className="px-4 py-2.5 text-right text-gray-500">{g.count}</td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-green-700">{fmtMoney(g.collected)}</td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-indigo-700">{fmtMoney(g.commission)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Monthly Renewal Payments */}
+              {monthlyPlanPayments.length > 0 && (
+                <div className="bg-white border rounded-xl overflow-hidden">
+                  <div className="px-5 py-3 border-b bg-blue-50">
+                    <h3 className="font-semibold text-sm text-blue-700">Monthly Renewal Payments</h3>
+                    <p className="text-xs text-blue-400 mt-0.5">Recurring monthly plan collections</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Policy / Acct #</th>
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Property</th>
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Period</th>
+                          <th className="text-right px-4 py-2 font-medium text-gray-500 text-xs">Premium</th>
+                          <th className="text-right px-4 py-2 font-medium text-gray-500 text-xs">Commission</th>
+                          <th className="text-left px-4 py-2 font-medium text-gray-500 text-xs">Paid</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {monthlyPlanPayments.map((p, i) => (
+                          <tr key={p.id} className={i % 2 === 0 ? "bg-white" : "bg-blue-50/30"} data-testid={`row-renewal-${p.id}`}>
+                            <td className="px-4 py-2.5 font-mono text-xs font-semibold text-violet-700">{p.applicationNumber || "—"}</td>
+                            <td className="px-4 py-2.5 text-gray-700 max-w-[180px] truncate" title={p.propertyAddress}>{p.propertyAddress}</td>
+                            <td className="px-4 py-2.5 text-gray-500 text-xs">{p.periodLabel || "—"}</td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-gray-900">{fmtMoney(p.amountCents)}</td>
+                            <td className="px-4 py-2.5 text-right font-semibold text-indigo-700">{fmtMoney(calcCommission(p.amountCents, p.planType))}</td>
+                            <td className="px-4 py-2.5 text-xs text-gray-400">{p.paidAt ? fmtDate(p.paidAt) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Payout History */}
+              {payouts.length > 0 && (
+                <div className="bg-white border rounded-xl overflow-hidden">
+                  <div className="px-5 py-3 border-b bg-gray-50">
+                    <h3 className="font-semibold text-sm text-gray-700">Payout History</h3>
+                  </div>
+                  <div className="divide-y">
+                    {payouts.map((payout: any) => (
+                      <div key={payout.id} className="flex items-center justify-between px-5 py-3" data-testid={`row-payout-${payout.id}`}>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{fmtMoney(payout.amountCents)}</p>
+                          <p className="text-xs text-gray-400">{payout.periodLabel || "—"} · {payout.notes || ""}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${payout.status === "paid" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"}`}>
+                            {payout.status}
+                          </span>
+                          {payout.paidAt && <p className="text-xs text-gray-400 mt-0.5">{fmtDate(payout.paidAt)}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ===== LEAD DETAIL PANEL ===== */}
