@@ -209,6 +209,17 @@ export const rgLocations = pgTable("rg_locations", {
   otherContactName: text("other_contact_name"),
   otherContactEmail: text("other_contact_email"),
   otherContactPhone: text("other_contact_phone"),
+  // Pre-Authorized Debit (PAD) form fields
+  padAccountHolder: text("pad_account_holder"),
+  padBankName: text("pad_bank_name"),
+  padTransitNumber: text("pad_transit_number"),
+  padInstitutionNumber: text("pad_institution_number"),
+  padAccountNumber: text("pad_account_number"),
+  padAccountType: text("pad_account_type"), // "chequing" | "savings"
+  padPaymentAmount: decimal("pad_payment_amount", { precision: 10, scale: 2 }),
+  padPaymentFrequency: text("pad_payment_frequency"), // "monthly" | "annual"
+  padAuthorizedDate: text("pad_authorized_date"),
+  padCompletedAt: timestamp("pad_completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
