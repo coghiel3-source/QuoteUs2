@@ -605,7 +605,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   // Location form
   const [showLocationForm, setShowLocationForm] = useState(false);
   const [editingLocation, setEditingLocation] = useState<RgLocation | null>(null);
-  const [locationForm, setLocationForm] = useState({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "" });
+  const [locationForm, setLocationForm] = useState({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "", otherContactName: "", otherContactEmail: "", otherContactPhone: "" });
   const [savingLocation, setSavingLocation] = useState(false);
 
   // Tenant form
@@ -871,7 +871,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   // ===== LOCATION CRUD =====
   function openNewLocation() {
-    setLocationForm({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "" });
+    setLocationForm({ street: "", city: "", province: "ON", postalCode: "", unit: "", landlordName: "", landlordEmail: "", landlordPhone: "", monthlyRent: "", moveInDate: "", notes: "", otherContactName: "", otherContactEmail: "", otherContactPhone: "" });
     setEditingLocation(null);
     setShowLocationForm(true);
   }
@@ -879,7 +879,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   function openEditLocation(loc: RgLocation, e?: React.MouseEvent) {
     e?.stopPropagation();
     // On edit, put full existing address into street field
-    setLocationForm({ street: loc.propertyAddress, city: "", province: "ON", postalCode: "", unit: loc.unit || "", landlordName: loc.landlordName, landlordEmail: loc.landlordEmail || "", landlordPhone: loc.landlordPhone || "", monthlyRent: loc.monthlyRent, moveInDate: loc.moveInDate || "", notes: loc.notes || "" });
+    setLocationForm({ street: loc.propertyAddress, city: "", province: "ON", postalCode: "", unit: loc.unit || "", landlordName: loc.landlordName, landlordEmail: loc.landlordEmail || "", landlordPhone: loc.landlordPhone || "", monthlyRent: loc.monthlyRent, moveInDate: loc.moveInDate || "", notes: loc.notes || "", otherContactName: (loc as any).otherContactName || "", otherContactEmail: (loc as any).otherContactEmail || "", otherContactPhone: (loc as any).otherContactPhone || "" });
     setEditingLocation(loc);
     setShowLocationForm(true);
   }
@@ -908,7 +908,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setSavingLocation(true);
     const propertyAddress = buildPropertyAddress(locationForm);
     try {
-      const payload = { actorId: user.id, propertyAddress, province: locationForm.province, unit: locationForm.unit || null, landlordName: locationForm.landlordName, landlordEmail: locationForm.landlordEmail || null, landlordPhone: locationForm.landlordPhone || null, monthlyRent: locationForm.monthlyRent, moveInDate: locationForm.moveInDate || null, notes: locationForm.notes || null };
+      const payload = { actorId: user.id, propertyAddress, province: locationForm.province, unit: locationForm.unit || null, landlordName: locationForm.landlordName, landlordEmail: locationForm.landlordEmail || null, landlordPhone: locationForm.landlordPhone || null, monthlyRent: locationForm.monthlyRent, moveInDate: locationForm.moveInDate || null, notes: locationForm.notes || null, otherContactName: locationForm.otherContactName || null, otherContactEmail: locationForm.otherContactEmail || null, otherContactPhone: locationForm.otherContactPhone || null };
       if (editingLocation) {
         const updated = await apiRequest<RgLocation>(`/rep/locations/${editingLocation.id}`, { method: "PATCH", body: JSON.stringify(payload) });
         setLocations(prev => prev.map(l => l.id === editingLocation.id ? updated : l));
@@ -1717,6 +1717,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           <p><span className="text-gray-500">Landlord:</span> {selectedLocation.landlordName}</p>
                           {selectedLocation.landlordEmail && <p><span className="text-gray-500">Landlord Email:</span> {selectedLocation.landlordEmail}</p>}
                           {selectedLocation.landlordPhone && <p><span className="text-gray-500">Landlord Phone:</span> {selectedLocation.landlordPhone}</p>}
+                          {((selectedLocation as any).otherContactName || (selectedLocation as any).otherContactEmail) && (
+                            <div className="mt-2 pt-2 border-t">
+                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Other Contact</p>
+                              {(selectedLocation as any).otherContactName && <p><span className="text-gray-500">Name:</span> {(selectedLocation as any).otherContactName}</p>}
+                              {(selectedLocation as any).otherContactEmail && <p><span className="text-gray-500">Email:</span> {(selectedLocation as any).otherContactEmail}</p>}
+                              {(selectedLocation as any).otherContactPhone && <p><span className="text-gray-500">Phone:</span> {(selectedLocation as any).otherContactPhone}</p>}
+                            </div>
+                          )}
                           {selectedLocation.notes && <p className="mt-2 pt-2 border-t text-gray-600"><span className="text-gray-500">Notes:</span> {selectedLocation.notes}</p>}
                         </CardContent>
                       </Card>
@@ -1823,9 +1831,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                               return (
                                 <div key={req.id} className="bg-gray-50 rounded-lg p-3 text-sm">
                                   <div className="flex items-center justify-between mb-1">
-                                    <span className="font-medium capitalize">{req.recipientType}: {req.recipientName}</span>
+                                    <span className="font-medium capitalize">{req.recipientType === "other" ? "Other Contact" : req.recipientType}: {req.recipientName}</span>
                                     {expired ? <span className="text-xs text-red-600 font-medium">Expired</span> : <span className="text-xs text-green-600 font-medium">Active</span>}
                                   </div>
+                                  {req.recipientEmail && (
+                                    <p className="text-xs text-gray-500 flex items-center gap-1 mb-1.5"><Mail className="h-3 w-3" /> {req.recipientEmail}</p>
+                                  )}
                                   <div className="flex gap-2 mt-1">
                                     <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
                                     <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
@@ -1925,9 +1936,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                               return (
                                 <div key={req.id} className="bg-white border rounded-lg p-3 text-sm">
                                   <div className="flex items-center justify-between mb-1">
-                                    <span className="font-medium capitalize">{req.recipientType}: {req.recipientName}</span>
+                                    <span className="font-medium capitalize">{req.recipientType === "other" ? "Other Contact" : req.recipientType}: {req.recipientName}</span>
                                     {expired ? <span className="text-xs text-red-600 font-medium">Expired</span> : <span className="text-xs text-green-600 font-medium">Active</span>}
                                   </div>
+                                  {req.recipientEmail && (
+                                    <p className="text-xs text-gray-500 flex items-center gap-1 mb-1.5"><Mail className="h-3 w-3" /> {req.recipientEmail}</p>
+                                  )}
                                   <div className="flex gap-2 mt-1">
                                     <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
                                     <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
@@ -2658,9 +2672,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           return (
                             <div key={req.id} className="bg-gray-50 rounded-lg p-3 text-sm">
                               <div className="flex items-center justify-between mb-1">
-                                <span className="font-medium capitalize">{req.recipientType}: {req.recipientName}</span>
+                                <span className="font-medium capitalize">{req.recipientType === "other" ? "Other Contact" : req.recipientType}: {req.recipientName}</span>
                                 {expired ? <span className="text-xs text-red-600 font-medium">Expired</span> : <span className="text-xs text-green-600 font-medium">Active</span>}
                               </div>
+                              {req.recipientEmail && (
+                                <p className="text-xs text-gray-500 flex items-center gap-1 mb-1.5"><Mail className="h-3 w-3" /> {req.recipientEmail}</p>
+                              )}
                               <div className="flex gap-2 mt-1">
                                 <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
                                 <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
@@ -2791,6 +2808,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5"><Label>Landlord Email</Label><Input type="email" value={locationForm.landlordEmail} onChange={e => setLocationForm(p => ({ ...p, landlordEmail: e.target.value }))} data-testid="input-location-landlord-email" /></div>
                   <div className="space-y-1.5"><Label>Landlord Phone</Label><Input value={locationForm.landlordPhone} onChange={e => setLocationForm(p => ({ ...p, landlordPhone: e.target.value }))} data-testid="input-location-landlord-phone" /></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Other Contact <span className="normal-case text-gray-400 font-normal">(Optional)</span></p>
+              <p className="text-xs text-gray-400 mb-3">An additional contact such as a property manager, agent, or emergency contact</p>
+              <div className="space-y-3">
+                <div className="space-y-1.5"><Label>Contact Name</Label><Input placeholder="Full name" value={locationForm.otherContactName} onChange={e => setLocationForm(p => ({ ...p, otherContactName: e.target.value }))} data-testid="input-location-other-name" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label>Contact Email</Label><Input type="email" placeholder="email@example.com" value={locationForm.otherContactEmail} onChange={e => setLocationForm(p => ({ ...p, otherContactEmail: e.target.value }))} data-testid="input-location-other-email" /></div>
+                  <div className="space-y-1.5"><Label>Contact Phone</Label><Input placeholder="416-xxx-xxxx" value={locationForm.otherContactPhone} onChange={e => setLocationForm(p => ({ ...p, otherContactPhone: e.target.value }))} data-testid="input-location-other-phone" /></div>
                 </div>
               </div>
             </div>
@@ -2949,13 +2977,64 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             </div>
           ) : (
             <div className="space-y-4 py-2">
-              <div className="space-y-2"><Label>Recipient Type</Label><Select value={docReqForm.recipientType} onValueChange={v => setDocReqForm(p => ({ ...p, recipientType: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="tenant">Tenant</SelectItem><SelectItem value="landlord">Landlord</SelectItem></SelectContent></Select></div>
+              {/* Recipient Type */}
+              <div className="space-y-2">
+                <Label>Send Request To</Label>
+                <Select
+                  value={docReqForm.recipientType}
+                  onValueChange={v => {
+                    const loc = selectedLocation as any;
+                    const lead = selectedLead;
+                    let name = "";
+                    let email = "";
+                    if (v === "tenant") {
+                      name = lead?.tenantName || "";
+                      email = lead?.tenantEmail || "";
+                    } else if (v === "landlord") {
+                      name = loc?.landlordName || lead?.landlordName || "";
+                      email = loc?.landlordEmail || lead?.landlordEmail || "";
+                    } else if (v === "other") {
+                      name = loc?.otherContactName || "";
+                      email = loc?.otherContactEmail || "";
+                    }
+                    setDocReqForm(p => ({ ...p, recipientType: v, recipientName: name || p.recipientName, recipientEmail: email || p.recipientEmail, requiredDocs: [] }));
+                  }}
+                >
+                  <SelectTrigger data-testid="select-doc-recipient-type"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tenant">Tenant</SelectItem>
+                    <SelectItem value="landlord">Landlord</SelectItem>
+                    {((selectedLocation as any)?.otherContactEmail || (selectedLocation as any)?.otherContactName) && (
+                      <SelectItem value="other">Other Contact{(selectedLocation as any)?.otherContactName ? ` — ${(selectedLocation as any).otherContactName}` : ""}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Recipient Name */}
               <div className="space-y-2"><Label>Recipient Name *</Label><Input value={docReqForm.recipientName} onChange={e => setDocReqForm(p => ({ ...p, recipientName: e.target.value }))} data-testid="input-doc-recipient-name" /></div>
-              <div className="space-y-2"><Label>Recipient Email *</Label><Input type="email" value={docReqForm.recipientEmail} onChange={e => setDocReqForm(p => ({ ...p, recipientEmail: e.target.value }))} data-testid="input-doc-recipient-email" /></div>
+
+              {/* Recipient Email with prominent banner */}
+              <div className="space-y-2">
+                <Label>Recipient Email *</Label>
+                <Input type="email" value={docReqForm.recipientEmail} onChange={e => setDocReqForm(p => ({ ...p, recipientEmail: e.target.value }))} data-testid="input-doc-recipient-email" />
+                {docReqForm.recipientEmail && (
+                  <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mt-1" data-testid="banner-doc-email-recipient">
+                    <Mail className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-blue-600 font-medium">Upload link will be sent to:</p>
+                      <p className="text-sm font-semibold text-blue-900 truncate">{docReqForm.recipientEmail}</p>
+                      {docReqForm.recipientName && <p className="text-xs text-blue-500">{docReqForm.recipientName}</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Documents Required */}
               <div className="space-y-2">
                 <Label>Documents Required</Label>
                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                  {(docReqForm.recipientType === "tenant" ? TENANT_DOC_TYPES : LANDLORD_DOC_TYPES).map(doc => (
+                  {(docReqForm.recipientType === "landlord" ? LANDLORD_DOC_TYPES : TENANT_DOC_TYPES).map(doc => (
                     <label key={doc} className="flex items-center gap-2 cursor-pointer text-sm">
                       <input type="checkbox" checked={docReqForm.requiredDocs.includes(doc)} onChange={e => setDocReqForm(p => ({ ...p, requiredDocs: e.target.checked ? [...p.requiredDocs, doc] : p.requiredDocs.filter(d => d !== doc) }))} className="h-4 w-4 rounded" data-testid={`checkbox-doc-${doc.toLowerCase().replace(/\s+/g, "-")}`} />
                       {doc}
@@ -2963,6 +3042,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   ))}
                 </div>
               </div>
+
               <div className="space-y-2"><Label>Expires In (days)</Label><Input type="number" min={1} max={30} value={docReqForm.expiresInDays} onChange={e => setDocReqForm(p => ({ ...p, expiresInDays: parseInt(e.target.value) || 7 }))} data-testid="input-doc-expires" /></div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowDocRequest(false)}>Cancel</Button>
