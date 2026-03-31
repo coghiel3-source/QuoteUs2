@@ -197,6 +197,12 @@ export default function AdminCRMPage() {
   const [editingRgRates, setEditingRgRates] = useState(false);
   const [editedRgAnnual, setEditedRgAnnual] = useState("");
   const [editedRgMonthly, setEditedRgMonthly] = useState("");
+
+  type ProvinceRate = { annualRate: string; monthlyRate: string };
+  const [provinceRates, setProvinceRates] = useState<Record<string, ProvinceRate>>({});
+  const [editingProvinceRates, setEditingProvinceRates] = useState(false);
+  const [editedProvinceRates, setEditedProvinceRates] = useState<Record<string, ProvinceRate>>({});
+  const [savingProvinceRates, setSavingProvinceRates] = useState(false);
   
   // User Filter State
   const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
@@ -587,6 +593,17 @@ export default function AdminCRMPage() {
     fetch("/api/credits/rg-rates")
       .then(r => r.json())
       .then(data => setRgRates({ annualRate: data.annualRate ?? 4.5, monthlyRate: data.monthlyRate ?? 5 }))
+      .catch(console.error);
+
+    fetch("/api/admin/rg-province-rates")
+      .then(r => r.json())
+      .then((data: Record<string, { annualRate: number; monthlyRate: number }>) => {
+        const mapped: Record<string, ProvinceRate> = {};
+        for (const [k, v] of Object.entries(data)) {
+          mapped[k] = { annualRate: String(v.annualRate ?? ""), monthlyRate: String(v.monthlyRate ?? "") };
+        }
+        setProvinceRates(mapped);
+      })
       .catch(console.error);
     
     // Load SMTP settings
@@ -4896,6 +4913,122 @@ export default function AdminCRMPage() {
                 <p className="text-sm text-muted-foreground mt-2">
                   These rates are used as the starting base for all new RG locations. Individual locations can override with their own rates.
                 </p>
+              </div>
+
+              {/* Province-Specific RG Rates */}
+              <div className="border rounded-lg p-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="font-semibold text-base">Province-Specific Rates</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Override default rates for specific provinces. Leave blank to use global defaults.</p>
+                  </div>
+                  {hasPermission('editLeadCosts') && !editingProvinceRates && (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      const draft: Record<string, ProvinceRate> = {};
+                      for (const p of PROVINCES) {
+                        draft[p.code] = provinceRates[p.code] || { annualRate: "", monthlyRate: "" };
+                      }
+                      setEditedProvinceRates(draft);
+                      setEditingProvinceRates(true);
+                    }} data-testid="btn-edit-province-rates">
+                      Edit Province Rates
+                    </Button>
+                  )}
+                  {hasPermission('editLeadCosts') && editingProvinceRates && (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setEditingProvinceRates(false)}>Cancel</Button>
+                      <Button size="sm" disabled={savingProvinceRates} onClick={async () => {
+                        setSavingProvinceRates(true);
+                        try {
+                          // Convert to numeric; skip empty entries
+                          const payload: Record<string, { annualRate: number; monthlyRate: number }> = {};
+                          for (const [code, val] of Object.entries(editedProvinceRates)) {
+                            const a = parseFloat(val.annualRate);
+                            const m = parseFloat(val.monthlyRate);
+                            if (!isNaN(a) || !isNaN(m)) {
+                              payload[code] = { annualRate: isNaN(a) ? 0 : a, monthlyRate: isNaN(m) ? 0 : m };
+                            }
+                          }
+                          const res = await fetch("/api/admin/rg-province-rates", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ actorId: user?.id, rates: payload }),
+                          });
+                          if (res.ok) {
+                            const mapped: Record<string, ProvinceRate> = {};
+                            for (const [k, v] of Object.entries(payload)) {
+                              mapped[k] = { annualRate: String(v.annualRate), monthlyRate: String(v.monthlyRate) };
+                            }
+                            setProvinceRates(mapped);
+                            setEditingProvinceRates(false);
+                            toast({ title: "Province Rates Saved", description: "Province-specific RG rates have been updated." });
+                          } else {
+                            const err = await res.json();
+                            toast({ title: "Error", description: err.error || "Failed to save rates", variant: "destructive" });
+                          }
+                        } finally { setSavingProvinceRates(false); }
+                      }} data-testid="btn-save-province-rates">
+                        {savingProvinceRates ? "Saving…" : "Save"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground w-8">Code</th>
+                        <th className="text-left px-3 py-2 font-medium text-muted-foreground">Province</th>
+                        <th className="text-center px-3 py-2 font-medium text-muted-foreground">Annual Rate (%)</th>
+                        <th className="text-center px-3 py-2 font-medium text-muted-foreground">Monthly Rate (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PROVINCES.map((p, i) => {
+                        const saved = provinceRates[p.code];
+                        const draft = editedProvinceRates[p.code];
+                        return (
+                          <tr key={p.code} className={i % 2 === 0 ? "bg-white" : "bg-muted/20"}>
+                            <td className="px-3 py-2 font-mono text-xs font-semibold text-violet-700">{p.code}</td>
+                            <td className="px-3 py-2 text-sm">{p.name}</td>
+                            <td className="px-3 py-2 text-center">
+                              {editingProvinceRates ? (
+                                <Input
+                                  type="number" min="0" max="30" step="0.1"
+                                  placeholder={String(rgRates.annualRate)}
+                                  value={draft?.annualRate ?? ""}
+                                  onChange={e => setEditedProvinceRates(prev => ({ ...prev, [p.code]: { ...prev[p.code], annualRate: e.target.value } }))}
+                                  className="w-24 h-7 text-center text-sm mx-auto"
+                                  data-testid={`input-province-annual-${p.code}`}
+                                />
+                              ) : (
+                                <span className={saved?.annualRate ? "font-semibold text-violet-700" : "text-muted-foreground"}>
+                                  {saved?.annualRate ? `${saved.annualRate}%` : `—`}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              {editingProvinceRates ? (
+                                <Input
+                                  type="number" min="0" max="30" step="0.1"
+                                  placeholder={String(rgRates.monthlyRate)}
+                                  value={draft?.monthlyRate ?? ""}
+                                  onChange={e => setEditedProvinceRates(prev => ({ ...prev, [p.code]: { ...prev[p.code], monthlyRate: e.target.value } }))}
+                                  className="w-24 h-7 text-center text-sm mx-auto"
+                                  data-testid={`input-province-monthly-${p.code}`}
+                                />
+                              ) : (
+                                <span className={saved?.monthlyRate ? "font-semibold text-violet-700" : "text-muted-foreground"}>
+                                  {saved?.monthlyRate ? `${saved.monthlyRate}%` : `—`}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
             </CardContent>

@@ -260,57 +260,94 @@ function PricingTab({
         </div>
       )}
 
-      {/* Plan cards */}
-      <div className="grid grid-cols-1 gap-4">
-        {/* Annual */}
-        <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
-          <div className="bg-blue-600 text-white px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2"><Calendar className="h-4 w-4" /><span className="font-semibold text-sm">Annual Plan — Pay in Full</span></div>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalAnnualRate.toFixed(2)}% of annual rent</span>
+      {/* Commission + Plan cards */}
+      <div className="grid grid-cols-2 gap-4 items-start">
+        {/* Commission Calculator — left */}
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-indigo-800 mb-3 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" /> Commission Estimate
+          </p>
+
+          {/* Annual commission */}
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Annual Deal (4.5%)</p>
+            <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-500">
+                <span>Annual premium</span><span>${fmt(annualPremium)}</span>
+              </div>
+              <div className="flex justify-between text-gray-400 text-xs">
+                <span>× 4.5% commission</span><span></span>
+              </div>
+              <div className="flex justify-between font-bold text-blue-700 border-t pt-1.5">
+                <span>Commission</span><span>${fmt(annualPremium * 0.045)}</span>
+              </div>
+            </div>
           </div>
-          <div className="p-4">
-            <div className="flex items-end gap-2 mb-1">
-              <p className="text-3xl font-bold text-gray-900">${fmt(annualPremium)}</p>
-              <p className="text-gray-400 text-sm mb-1">one-time payment</p>
+
+          {/* Monthly commission */}
+          <div>
+            <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Monthly Deal (5%)</p>
+            <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-500">
+                <span>Monthly premium</span><span>${fmt(monthlyPremium)}</span>
+              </div>
+              <div className="flex justify-between text-gray-400 text-xs">
+                <span>× 5% commission</span><span></span>
+              </div>
+              <div className="flex justify-between font-bold text-green-700 border-t pt-1.5">
+                <span>Commission/mo</span><span>${fmt(monthlyPremium * 0.05)}</span>
+              </div>
+              <div className="flex justify-between text-gray-400 text-xs">
+                <span>Annual total</span><span>${fmt(monthlyPremium * 0.05 * 12)}/yr</span>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 mb-3">Equivalent to ${fmt(annualPremiumMonthly)}/month</p>
-            <div className="space-y-1.5 text-sm mb-4">
-              <div className="flex justify-between text-gray-500"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
-              <div className="flex justify-between text-gray-500"><span>Base rate ({annualRateNum}%)</span><span>${fmt((annualRateNum / 100) * annualRent)}</span></div>
-              {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * annualRent)}</span></div>}
-              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
-            </div>
-            {locationId && (
-              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); }} data-testid="button-collect-annual">
-                <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Collect Annual Payment — ${fmt(annualPremium)}
-              </Button>
-            )}
           </div>
         </div>
 
-        {/* Monthly */}
-        <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
-          <div className="bg-green-600 text-white px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2"><CreditCard className="h-4 w-4" /><span className="font-semibold text-sm">Monthly Plan</span></div>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{finalMonthlyRate.toFixed(2)}% of monthly rent</span>
+        {/* Plan cards — compact, right */}
+        <div className="space-y-3">
+          {/* Annual */}
+          <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
+            <div className="bg-blue-600 text-white px-3 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /><span className="font-semibold text-xs">Annual Plan</span></div>
+              <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">{finalAnnualRate.toFixed(2)}%</span>
+            </div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-gray-900">${fmt(annualPremium)}</p>
+              <p className="text-xs text-gray-400 mb-1">one-time · ${fmt(annualPremiumMonthly)}/mo equiv.</p>
+              <div className="space-y-1 text-xs text-gray-500 mb-2.5">
+                <div className="flex justify-between"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
+                {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * annualRent)}</span></div>}
+                <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
+              </div>
+              {locationId && (
+                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); }} data-testid="button-collect-annual">
+                  <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(annualPremium)}
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="p-4">
-            <div className="flex items-end gap-2 mb-1">
-              <p className="text-3xl font-bold text-gray-900">${fmt(monthlyPremium)}</p>
-              <p className="text-gray-400 text-sm mb-1">/month</p>
+
+          {/* Monthly */}
+          <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
+            <div className="bg-green-600 text-white px-3 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /><span className="font-semibold text-xs">Monthly Plan</span></div>
+              <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">{finalMonthlyRate.toFixed(2)}%</span>
             </div>
-            <p className="text-xs text-gray-400 mb-3">Total annual cost: ${fmt(monthlyPremiumAnnual)}</p>
-            <div className="space-y-1.5 text-sm mb-4">
-              <div className="flex justify-between text-gray-500"><span>Monthly rent</span><span>${fmt(rent)}</span></div>
-              <div className="flex justify-between text-gray-500"><span>Base rate ({monthlyRateNum}%)</span><span>${fmt((monthlyRateNum / 100) * rent)}/mo</span></div>
-              {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * rent)}/mo</span></div>}
-              <div className="flex justify-between font-semibold text-gray-900 pt-1.5 border-t"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-gray-900">${fmt(monthlyPremium)}<span className="text-sm font-normal text-gray-400">/mo</span></p>
+              <p className="text-xs text-gray-400 mb-1">Annual total: ${fmt(monthlyPremiumAnnual)}</p>
+              <div className="space-y-1 text-xs text-gray-500 mb-2.5">
+                <div className="flex justify-between"><span>Monthly rent</span><span>${fmt(rent)}</span></div>
+                {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * rent)}/mo</span></div>}
+                <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
+              </div>
+              {locationId && (
+                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); }} data-testid="button-collect-monthly">
+                  <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(monthlyPremium)}/mo
+                </Button>
+              )}
             </div>
-            {locationId && (
-              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); }} data-testid="button-collect-monthly">
-                <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Collect Monthly Payment — ${fmt(monthlyPremium)}
-              </Button>
-            )}
           </div>
         </div>
       </div>
@@ -639,8 +676,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         apiRequest<RgLead[]>(`/rep/leads?actorId=${user.id}`),
         isRep ? apiRequest<RepReminder[]>(`/rep/reminders?actorId=${user.id}`) : Promise.resolve([]),
         fetch("/api/credits/rg-rates").then(r => r.json()).catch(() => null),
-        fetch("/api/rep/earnings").then(r => r.ok ? r.json() : null).catch(() => null),
-        fetch("/api/rep/payouts").then(r => r.ok ? r.json() : []).catch(() => []),
+        fetch(`/api/rep/earnings?actorId=${user.id}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/rep/payouts?actorId=${user.id}`).then(r => r.ok ? r.json() : []).catch(() => []),
       ]);
       setLocations(locs || []);
       setLeads(leadsData || []);

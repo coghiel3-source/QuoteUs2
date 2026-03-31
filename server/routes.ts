@@ -1138,6 +1138,28 @@ export async function registerRoutes(
     res.json({ annualRate: 4.5, monthlyRate: 5 });
   });
 
+  // Admin: Get province-specific RG rates
+  app.get("/api/admin/rg-province-rates", async (req, res) => {
+    try {
+      const stored = await storage.getSetting("rg_province_rates");
+      res.json(stored ? JSON.parse(stored) : {});
+    } catch { res.json({}); }
+  });
+
+  // Admin: Save province-specific RG rates
+  app.post("/api/admin/rg-province-rates", async (req, res) => {
+    try {
+      const { actorId, rates } = req.body;
+      if (!actorId) return res.status(400).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      await storage.setSetting("rg_province_rates", JSON.stringify(rates), actorId);
+      res.json({ success: true, rates });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Admin: Update global RG rates
   app.post("/api/admin/rg-rates", async (req, res) => {
     try {
@@ -3080,12 +3102,21 @@ export async function registerRoutes(
         if (!repUser || repUser.role !== "rep") return res.status(400).json({ error: "Target user is not a rep" });
         ownerRepId = repIdOverride;
       }
+      // Resolve rates: province-specific override → global default → hardcoded fallback
+      const globalRates = await storage.getSetting("rg_rates").then(v => v ? JSON.parse(v) : { annualRate: 4.5, monthlyRate: 5 }).catch(() => ({ annualRate: 4.5, monthlyRate: 5 }));
+      const provinceRatesAll = await storage.getSetting("rg_province_rates").then(v => v ? JSON.parse(v) : {}).catch(() => ({}));
+      const prov = (province || "ON").toUpperCase();
+      const provRates = provinceRatesAll[prov] || {};
+      const finalAnnual = provRates.annualRate ?? globalRates.annualRate ?? 4.5;
+      const finalMonthly = provRates.monthlyRate ?? globalRates.monthlyRate ?? 5;
       const location = await storage.createLocation({
         repId: ownerRepId,
         propertyAddress, unit: unit || null, landlordName,
         landlordEmail: landlordEmail || null, landlordPhone: landlordPhone || null,
         monthlyRent, moveInDate: moveInDate || null, notes: notes || null,
-      }, province || "ON");
+        annualRatePercent: String(finalAnnual),
+        monthlyRatePercent: String(finalMonthly),
+      }, prov);
       res.json(location);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -3275,8 +3306,11 @@ export async function registerRoutes(
   // Rep gets their own earnings summary
   app.get("/api/rep/earnings", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
-      if (!user || !["admin", "manager", "rep"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const actor = sessionUser || (actorId ? await storage.getUser(actorId) : null);
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const user = actor;
       const repId = user.role === "rep" ? user.id : (req.query.repId as string) || user.id;
       const [summary, repUser] = await Promise.all([
         storage.getRepEarningsSummary(repId),
@@ -3309,7 +3343,9 @@ export async function registerRoutes(
   // Rep views their own payout history
   app.get("/api/rep/payouts", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
       if (!user || !["admin", "manager", "rep"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
       const repId = user.role === "rep" ? user.id : (req.query.repId as string) || user.id;
       const payouts = await storage.getPayoutsForRep(repId);
