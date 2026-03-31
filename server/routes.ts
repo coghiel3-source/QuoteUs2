@@ -3841,5 +3841,132 @@ export async function registerRoutes(
     }
   });
 
+  // ── Send for Processing ──────────────────────────────────────────
+  // POST /api/rep/leads/:leadId/send-for-processing
+  app.post("/api/rep/leads/:leadId/send-for-processing", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const lead = await storage.getRgLead(req.params.leadId);
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+      // Get all uploaded documents for this lead
+      const docs = await storage.getDocumentsForLead(lead.id);
+
+      // Get location for additional contact info
+      const location = lead.locationId ? await storage.getLocation(lead.locationId) : null;
+
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+      // Build contact details rows
+      const tenantRows = `
+        <tr><td style="padding:6px 12px;color:#666;width:160px;">Tenant Name</td><td style="padding:6px 12px;font-weight:500;">${lead.tenantName}</td></tr>
+        <tr><td style="padding:6px 12px;color:#666;">Tenant Email</td><td style="padding:6px 12px;font-weight:500;">${lead.tenantEmail}</td></tr>
+        <tr><td style="padding:6px 12px;color:#666;">Tenant Phone</td><td style="padding:6px 12px;font-weight:500;">${lead.tenantPhone}</td></tr>
+        ${lead.employmentStatus ? `<tr><td style="padding:6px 12px;color:#666;">Employment</td><td style="padding:6px 12px;font-weight:500;">${lead.employmentStatus}${lead.employerName ? ` — ${lead.employerName}` : ""}</td></tr>` : ""}
+        ${lead.coApplicantName ? `<tr><td style="padding:6px 12px;color:#666;">Co-Applicant</td><td style="padding:6px 12px;font-weight:500;">${lead.coApplicantName}${lead.coApplicantEmail ? ` (${lead.coApplicantEmail})` : ""}</td></tr>` : ""}
+        ${lead.householdIncome ? `<tr><td style="padding:6px 12px;color:#666;">Household Income</td><td style="padding:6px 12px;font-weight:500;">$${Number(lead.householdIncome).toLocaleString()}/yr</td></tr>` : ""}
+      `;
+
+      const landlordRows = `
+        <tr><td style="padding:6px 12px;color:#666;width:160px;">Landlord Name</td><td style="padding:6px 12px;font-weight:500;">${lead.landlordName}</td></tr>
+        ${lead.landlordEmail ? `<tr><td style="padding:6px 12px;color:#666;">Landlord Email</td><td style="padding:6px 12px;font-weight:500;">${lead.landlordEmail}</td></tr>` : ""}
+        ${lead.landlordPhone ? `<tr><td style="padding:6px 12px;color:#666;">Landlord Phone</td><td style="padding:6px 12px;font-weight:500;">${lead.landlordPhone}</td></tr>` : ""}
+        ${(location as any)?.otherContactName ? `<tr><td style="padding:6px 12px;color:#666;">Other Contact</td><td style="padding:6px 12px;font-weight:500;">${(location as any).otherContactName}${(location as any).otherContactEmail ? ` — ${(location as any).otherContactEmail}` : ""}${(location as any).otherContactPhone ? ` — ${(location as any).otherContactPhone}` : ""}</td></tr>` : ""}
+      `;
+
+      const propertyRows = `
+        <tr><td style="padding:6px 12px;color:#666;width:160px;">Property Address</td><td style="padding:6px 12px;font-weight:500;">${lead.propertyAddress}</td></tr>
+        <tr><td style="padding:6px 12px;color:#666;">Monthly Rent</td><td style="padding:6px 12px;font-weight:500;">$${Number(lead.monthlyRent).toLocaleString()}/month</td></tr>
+        ${lead.moveInDate ? `<tr><td style="padding:6px 12px;color:#666;">Move-In Date</td><td style="padding:6px 12px;font-weight:500;">${lead.moveInDate}</td></tr>` : ""}
+        ${lead.notes ? `<tr><td style="padding:6px 12px;color:#666;">Notes</td><td style="padding:6px 12px;font-weight:500;">${lead.notes}</td></tr>` : ""}
+      `;
+
+      // Build document links
+      const docLinksHtml = docs.length > 0
+        ? docs.map(d => `<li style="padding:4px 0;"><a href="${baseUrl}${d.fileUrl}" style="color:#1a56db;">${d.fileName}</a> <span style="color:#999;font-size:12px;">(${d.docType})</span></li>`).join("")
+        : "<li style='color:#999;'>No documents uploaded</li>";
+
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;background:#fff;">
+          <div style="background:#1a56db;color:white;padding:24px 32px;border-radius:8px 8px 0 0;">
+            <h1 style="margin:0;font-size:22px;">Rent Guarantee — Processing Request</h1>
+            <p style="margin:6px 0 0;opacity:.85;">${lead.propertyAddress}</p>
+          </div>
+          <div style="padding:24px 32px;">
+            <p style="color:#555;">Please find below the complete application details and all collected documents for Rent Guarantee processing.</p>
+
+            <h3 style="color:#1a56db;border-bottom:2px solid #e8f0fe;padding-bottom:8px;">Tenant Information</h3>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">${tenantRows}</table>
+
+            <h3 style="color:#1a56db;border-bottom:2px solid #e8f0fe;padding-bottom:8px;">Landlord Information</h3>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">${landlordRows}</table>
+
+            <h3 style="color:#1a56db;border-bottom:2px solid #e8f0fe;padding-bottom:8px;">Property Details</h3>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">${propertyRows}</table>
+
+            <h3 style="color:#1a56db;border-bottom:2px solid #e8f0fe;padding-bottom:8px;">Collected Documents (${docs.length})</h3>
+            <ul style="margin:0;padding-left:20px;line-height:1.8;">${docLinksHtml}</ul>
+
+            <div style="background:#f0f4ff;border-radius:8px;padding:16px 20px;margin-top:24px;">
+              <p style="margin:0;color:#555;font-size:13px;">Submitted by: <strong>${user.name}</strong> (${user.email})</p>
+              <p style="margin:4px 0 0;color:#555;font-size:13px;">Submitted on: <strong>${new Date().toLocaleString("en-CA", { timeZone: "America/Toronto" })}</strong></p>
+            </div>
+          </div>
+        </div>`;
+
+      // Get the processing email from settings or fallback to admin email
+      const processingEmailSetting = await storage.getSetting("processing_email");
+      const adminEmail = "info@quoteus.ca";
+      const toEmail = processingEmailSetting?.value || adminEmail;
+
+      const sent = await sendEmail({
+        to: toEmail,
+        subject: `RG Processing Request — ${lead.tenantName} — ${lead.propertyAddress}`,
+        html,
+        text: `Rent Guarantee processing request for ${lead.tenantName} at ${lead.propertyAddress}. ${docs.length} document(s) attached.`,
+      });
+
+      // Mark the lead as sent for processing
+      const updated = await storage.updateRgLead(lead.id, {
+        processingStatus: "sent",
+        processingSentAt: new Date(),
+      } as any);
+
+      res.json({ sent, emailedTo: toEmail, documentCount: docs.length, lead: updated });
+    } catch (error: any) {
+      console.error("[Processing] Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/rep/leads/:leadId/file-number — record the official file number
+  app.patch("/api/rep/leads/:leadId/file-number", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const lead = await storage.getRgLead(req.params.leadId);
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+      const { fileNumber } = req.body;
+      if (!fileNumber?.trim()) return res.status(400).json({ error: "File number is required" });
+
+      const updated = await storage.updateRgLead(lead.id, {
+        processingFileNumber: fileNumber.trim(),
+        processingStatus: "file_received",
+      } as any);
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

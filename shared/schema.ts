@@ -235,6 +235,9 @@ export const rgLeads = pgTable("rg_leads", {
   employerName: text("employer_name"),
   paymentMethod: text("payment_method"),
   brokerId: varchar("broker_id").references(() => users.id),
+  processingStatus: text("processing_status").default("none"), // "none" | "sent" | "file_received"
+  processingFileNumber: text("processing_file_number"),
+  processingSentAt: timestamp("processing_sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -22,7 +22,7 @@ import {
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined";
 type ActiveTab = "overview" | "locations" | "leads" | "reminders" | "commission";
 type LocationView = "list" | "detail";
-type LeadDetailTab = "info" | "docs";
+type LeadDetailTab = "info" | "docs" | "processing";
 
 const STATUS_COLORS: Record<Status, string> = {
   "New": "bg-blue-100 text-blue-800",
@@ -47,8 +47,8 @@ const STATUS_DISPLAY_LABELS: Record<Status, string> = {
 const IN_PROGRESS_STATUSES: Status[] = ["Contacted", "Documents Pending", "Documents Received", "Submitted"];
 const EMPLOYMENT_STATUSES = ["Employed Full-Time", "Employed Part-Time", "Self-Employed", "Student", "Retired", "Unemployed", "Other"];
 const PAYMENT_METHODS = ["e-Transfer", "Cheque", "Cash", "Direct Deposit", "Pre-Authorized Debit", "Other"];
-const TENANT_DOC_TYPES = ["Pay Stubs (Last 3 Months)", "T4 / Notice of Assessment", "Bank Statements (3 Months)", "Credit Check Authorization", "Government ID", "Employment Letter", "Other"];
-const LANDLORD_DOC_TYPES = ["Lease Agreement", "Property Deed / Ownership Proof", "Property Insurance", "Government ID", "Photo/Video (Time-Stamped, Pre-Move-In — No Damage)", "Other"];
+const TENANT_DOC_TYPES = ["Pay Stubs (Last 3 Months)", "T4 / Notice of Assessment", "Bank Statements (3 Months)", "Credit Check Authorization", "Government ID", "Employment Letter", "Tenants' Insurance", "Other"];
+const LANDLORD_DOC_TYPES = ["Lease Agreement", "Property Deed / Ownership Proof", "Property Insurance", "Tenants' Insurance", "Government ID", "Photo/Video (Time-Stamped, Pre-Move-In — No Damage)", "Other"];
 const REMINDER_PRESETS = [
   "Follow up on lease agreement", "Chase tenant documents", "Follow up with landlord",
   "Submit application", "Check approval status", "Review credit report", "Confirm move-in date",
@@ -571,6 +571,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [showDocRequest, setShowDocRequest] = useState(false);
   const [docReqForm, setDocReqForm] = useState({ recipientType: "tenant", recipientName: "", recipientEmail: "", requiredDocs: [] as string[], expiresInDays: 7 });
   const [sendingDocReq, setSendingDocReq] = useState(false);
+  const [sendingForProcessing, setSendingForProcessing] = useState(false);
+  const [processingResult, setProcessingResult] = useState<{ sent: boolean; emailedTo: string; documentCount: number } | null>(null);
+  const [fileNumberInput, setFileNumberInput] = useState("");
+  const [savingFileNumber, setSavingFileNumber] = useState(false);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
 
   // Delete confirms
@@ -1121,6 +1125,41 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setDocuments(prev => prev.filter(d => d.id !== docId));
       toast({ title: "Document removed" });
     } catch { toast({ title: "Failed to remove document", variant: "destructive" }); }
+  }
+
+  async function handleSendForProcessing() {
+    if (!selectedLead || !user) return;
+    setSendingForProcessing(true);
+    try {
+      const result = await apiRequest<{ sent: boolean; emailedTo: string; documentCount: number; lead: RgLead }>(`/rep/leads/${selectedLead.id}/send-for-processing`, { method: "POST" });
+      setProcessingResult({ sent: result.sent, emailedTo: result.emailedTo, documentCount: result.documentCount });
+      setSelectedLead(result.lead);
+      setLeads(prev => prev.map(l => l.id === result.lead.id ? result.lead : l));
+      if (selectedLead.status === "Documents Received" || selectedLead.status === "Contacted") {
+        await handleStatusChange(selectedLead.id, "Submitted");
+      }
+      toast({ title: result.sent ? "Application sent for processing!" : "Application logged (SMTP not configured)" });
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to send for processing", variant: "destructive" });
+    } finally {
+      setSendingForProcessing(false);
+    }
+  }
+
+  async function handleSaveFileNumber() {
+    if (!selectedLead || !fileNumberInput.trim()) return;
+    setSavingFileNumber(true);
+    try {
+      const updated = await apiRequest<RgLead>(`/rep/leads/${selectedLead.id}/file-number`, { method: "PATCH", body: JSON.stringify({ fileNumber: fileNumberInput.trim() }) });
+      setSelectedLead(updated);
+      setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+      setFileNumberInput("");
+      toast({ title: "File number saved!" });
+    } catch (err: any) {
+      toast({ title: err.message || "Failed to save file number", variant: "destructive" });
+    } finally {
+      setSavingFileNumber(false);
+    }
   }
 
   // ===== REMINDERS =====
@@ -2549,6 +2588,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             <div className="flex gap-1 px-5 pt-4">
               <button onClick={() => setDetailTab("info")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "info" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-info">Info</button>
               <button onClick={() => setDetailTab("docs")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${detailTab === "docs" ? "bg-blue-50 text-blue-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-docs">Documents ({documents.length})</button>
+              <button onClick={() => setDetailTab("processing")} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${detailTab === "processing" ? "bg-indigo-50 text-indigo-700" : "text-gray-500 hover:bg-gray-100"}`} data-testid="tab-lead-processing">
+                {(selectedLead as any).processingStatus === "file_received" ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : (selectedLead as any).processingStatus === "sent" ? <Clock className="h-3.5 w-3.5 text-amber-500" /> : null}
+                Processing
+              </button>
             </div>
 
             <div className="flex-1 p-5">
@@ -2707,6 +2750,150 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* PROCESSING TAB */}
+              {detailTab === "processing" && (
+                <div className="space-y-5">
+
+                  {/* File Number — prominent display if received */}
+                  {(selectedLead as any).processingStatus === "file_received" && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
+                      <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                      <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Official File Number</p>
+                      <p className="text-3xl font-bold text-green-800 tracking-wider">{(selectedLead as any).processingFileNumber}</p>
+                      <p className="text-xs text-green-600 mt-2">Application successfully processed</p>
+                      {(selectedLead as any).processingSentAt && (
+                        <p className="text-xs text-green-500 mt-1">Submitted {new Date((selectedLead as any).processingSentAt).toLocaleDateString("en-CA")}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Waiting for file number */}
+                  {(selectedLead as any).processingStatus === "sent" && (selectedLead as any).processingStatus !== "file_received" && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <div className="flex items-start gap-3">
+                        <Clock className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-medium text-amber-800">Waiting for Official File Number</p>
+                          <p className="text-sm text-amber-600 mt-0.5">Application submitted for processing{(selectedLead as any).processingSentAt ? ` on ${new Date((selectedLead as any).processingSentAt).toLocaleDateString("en-CA")}` : ""}.</p>
+                          {processingResult && (
+                            <p className="text-xs text-amber-500 mt-1">{processingResult.sent ? `Sent to ${processingResult.emailedTo}` : "Logged (SMTP not configured)"} — {processingResult.documentCount} document(s)</p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Enter file number once received */}
+                      <div className="mt-4 pt-4 border-t border-amber-100">
+                        <p className="text-xs font-semibold text-amber-700 mb-2">Enter File Number When Received</p>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="e.g. RG-2026-00123"
+                            value={fileNumberInput}
+                            onChange={e => setFileNumberInput(e.target.value)}
+                            className="flex-1 bg-white"
+                            data-testid="input-file-number"
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveFileNumber(); }}
+                          />
+                          <Button onClick={handleSaveFileNumber} disabled={savingFileNumber || !fileNumberInput.trim()} className="bg-green-600 hover:bg-green-700" data-testid="button-save-file-number">
+                            {savingFileNumber ? "Saving..." : "Save"}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* File number input shown even if file_received (to correct it) */}
+                  {(selectedLead as any).processingStatus === "file_received" && (
+                    <div className="mt-1">
+                      <p className="text-xs text-gray-400 mb-2">Update file number if needed:</p>
+                      <div className="flex gap-2">
+                        <Input placeholder="New file number" value={fileNumberInput} onChange={e => setFileNumberInput(e.target.value)} className="flex-1" data-testid="input-file-number-update" />
+                        <Button variant="outline" size="sm" onClick={handleSaveFileNumber} disabled={savingFileNumber || !fileNumberInput.trim()} data-testid="button-update-file-number">Update</Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Collected Documents summary */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-gray-600 flex items-center justify-between">
+                        <span>Collected Documents ({documents.length})</span>
+                        {documents.length > 0 && (selectedLead as any).processingStatus === "none" && (
+                          <span className="text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Ready to send</span>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {documents.length === 0 ? (
+                        <div className="text-center py-6 text-gray-400">
+                          <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm">No documents collected yet.</p>
+                          <p className="text-xs mt-1">Use the Documents tab to request and receive files.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {documents.map(doc => (
+                            <div key={doc.id} className="flex items-center gap-2 text-sm py-1">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                              <span className="font-medium">{doc.fileName}</span>
+                              <span className="text-gray-400">— {doc.docType}</span>
+                              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-blue-500 hover:text-blue-700"><ExternalLink className="h-3.5 w-3.5" /></a>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Contact Summary */}
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Application Summary</CardTitle></CardHeader>
+                    <CardContent className="text-sm space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Tenant</p>
+                        <p className="font-medium">{selectedLead.tenantName}</p>
+                        <p className="text-gray-500">{selectedLead.tenantEmail} · {selectedLead.tenantPhone}</p>
+                        {selectedLead.employmentStatus && <p className="text-gray-500">{selectedLead.employmentStatus}{selectedLead.employerName ? ` — ${selectedLead.employerName}` : ""}</p>}
+                        {selectedLead.coApplicantName && <p className="text-gray-500">Co-applicant: {selectedLead.coApplicantName}</p>}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Landlord</p>
+                        <p className="font-medium">{selectedLead.landlordName}</p>
+                        {selectedLead.landlordEmail && <p className="text-gray-500">{selectedLead.landlordEmail}</p>}
+                        {selectedLead.landlordPhone && <p className="text-gray-500">{selectedLead.landlordPhone}</p>}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Property</p>
+                        <p className="font-medium">{selectedLead.propertyAddress}</p>
+                        <p className="text-gray-500">${Number(selectedLead.monthlyRent).toLocaleString()}/month{selectedLead.moveInDate ? ` · Move-in ${selectedLead.moveInDate}` : ""}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Send for Processing button */}
+                  {(selectedLead as any).processingStatus !== "file_received" && (
+                    <div className="pt-1">
+                      <Button
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 text-base font-semibold gap-2"
+                        onClick={handleSendForProcessing}
+                        disabled={sendingForProcessing}
+                        data-testid="button-send-for-processing"
+                      >
+                        {sendingForProcessing ? (
+                          <><RefreshCw className="h-4 w-4 animate-spin" /> Sending...</>
+                        ) : (selectedLead as any).processingStatus === "sent" ? (
+                          <><RefreshCw className="h-4 w-4" /> Resend for Processing</>
+                        ) : (
+                          <><Send className="h-4 w-4" /> Send for Processing</>
+                        )}
+                      </Button>
+                      {documents.length === 0 && (
+                        <p className="text-xs text-center text-amber-600 mt-2">No documents collected yet — consider adding documents before sending</p>
+                      )}
+                      <p className="text-xs text-center text-gray-400 mt-2">This will email all tenant &amp; landlord details plus all collected documents to the processing team</p>
                     </div>
                   )}
                 </div>
