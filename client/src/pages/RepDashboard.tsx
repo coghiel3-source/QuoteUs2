@@ -867,7 +867,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setSavingLocation(true);
     const propertyAddress = buildPropertyAddress(locationForm);
     try {
-      const payload = { actorId: user.id, propertyAddress, unit: locationForm.unit || null, landlordName: locationForm.landlordName, landlordEmail: locationForm.landlordEmail || null, landlordPhone: locationForm.landlordPhone || null, monthlyRent: locationForm.monthlyRent, moveInDate: locationForm.moveInDate || null, notes: locationForm.notes || null };
+      const payload = { actorId: user.id, propertyAddress, province: locationForm.province, unit: locationForm.unit || null, landlordName: locationForm.landlordName, landlordEmail: locationForm.landlordEmail || null, landlordPhone: locationForm.landlordPhone || null, monthlyRent: locationForm.monthlyRent, moveInDate: locationForm.moveInDate || null, notes: locationForm.notes || null };
       if (editingLocation) {
         const updated = await apiRequest<RgLocation>(`/rep/locations/${editingLocation.id}`, { method: "PATCH", body: JSON.stringify(payload) });
         setLocations(prev => prev.map(l => l.id === editingLocation.id ? updated : l));

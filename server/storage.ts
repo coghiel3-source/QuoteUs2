@@ -99,7 +99,7 @@ export interface IStorage {
   getLocationsForRep(repId: string): Promise<RgLocation[]>;
   getAllLocations(): Promise<RgLocation[]>;
   getLocation(id: string): Promise<RgLocation | undefined>;
-  createLocation(location: InsertRgLocation): Promise<RgLocation>;
+  createLocation(location: InsertRgLocation, province?: string): Promise<RgLocation>;
   updateLocation(id: string, data: Partial<InsertRgLocation>): Promise<RgLocation | undefined>;
   deleteLocation(id: string): Promise<boolean>;
   getLeadsForLocation(locationId: string): Promise<RgLead[]>;
@@ -649,14 +649,18 @@ export class DatabaseStorage implements IStorage {
     return loc || undefined;
   }
 
-  async createLocation(location: InsertRgLocation): Promise<RgLocation> {
-    let applicationNumber = "";
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const num = String(Math.floor(100000000 + Math.random() * 900000000));
-      const [existing] = await db.select({ id: rgLocations.id }).from(rgLocations).where(eq(rgLocations.applicationNumber, num));
-      if (!existing) { applicationNumber = num; break; }
+  async createLocation(location: InsertRgLocation, province?: string): Promise<RgLocation> {
+    const prefix = (province || "ON").toUpperCase().slice(0, 2);
+    const existing = await db.select({ appNum: rgLocations.applicationNumber }).from(rgLocations)
+      .where(sql`UPPER(LEFT(${rgLocations.applicationNumber}, 2)) = ${prefix}`);
+    let maxNum = 0;
+    for (const row of existing) {
+      if (row.appNum) {
+        const n = parseInt(row.appNum.substring(2), 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
     }
-    if (!applicationNumber) applicationNumber = String(Date.now()).slice(-9);
+    const applicationNumber = `${prefix}${String(maxNum + 1).padStart(7, "0")}`;
     const [created] = await db.insert(rgLocations).values({ ...location, applicationNumber }).returning();
     return created;
   }
