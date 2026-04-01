@@ -2608,6 +2608,28 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       <p><span className="text-gray-500">Employment:</span> {selectedLead.employmentStatus}</p>
                       {selectedLead.employerName && <p><span className="text-gray-500">Employer:</span> {selectedLead.employerName}</p>}
                       {selectedLead.householdIncome && <p><span className="text-gray-500">Household Income:</span> ${Number(selectedLead.householdIncome).toLocaleString()}/yr</p>}
+                      {selectedLead.householdIncome && selectedLead.monthlyRent && (() => {
+                        const monthlyIncome = Number(selectedLead.householdIncome) / 12;
+                        const pct = monthlyIncome > 0 ? (Number(selectedLead.monthlyRent) / monthlyIncome) * 100 : 0;
+                        const color = pct <= 30 ? { bar: 'bg-green-500', text: 'text-green-700', bg: 'bg-green-50 border-green-200', label: 'Affordable' }
+                          : pct <= 40 ? { bar: 'bg-yellow-400', text: 'text-yellow-700', bg: 'bg-yellow-50 border-yellow-200', label: 'Moderate' }
+                          : pct <= 50 ? { bar: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50 border-orange-200', label: 'High' }
+                          : { bar: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50 border-red-200', label: 'Very High' };
+                        return (
+                          <div className={`mt-2 rounded-md border p-3 ${color.bg}`} data-testid="rent-to-income-calc">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Rent-to-Income Ratio</span>
+                              <span className={`text-sm font-bold ${color.text}`}>{pct.toFixed(1)}% <span className="font-normal text-xs">({color.label})</span></span>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+                              <div className={`h-2 rounded-full ${color.bar} transition-all`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                            </div>
+                            <p className="text-[11px] text-gray-500 mt-1.5">
+                              ${Number(selectedLead.monthlyRent).toLocaleString()}/mo rent ÷ ${Math.round(monthlyIncome).toLocaleString()}/mo income
+                            </p>
+                          </div>
+                        );
+                      })()}
                       {selectedLead.paymentMethod && <p><span className="text-gray-500">Payment Method:</span> {selectedLead.paymentMethod}</p>}
                       {selectedLead.coApplicantName && <p><span className="text-gray-500">Co-Applicant:</span> {selectedLead.coApplicantName} ({selectedLead.coApplicantEmail})</p>}
                     </CardContent>
