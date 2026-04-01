@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type MouseEvent } from "react";
-import { X, RefreshCw, ImageOff } from "lucide-react";
+import { X, RefreshCw } from "lucide-react";
 
 interface Advertisement {
   id: string;
@@ -99,13 +99,20 @@ function AdTile({
     >
       <div className="relative">
         {mediaError ? (
-          /* Graceful fallback when media can't load */
+          /* Branded fallback — always shows an image when ad media fails */
           <div
-            className="flex flex-col items-center justify-center gap-2 text-muted-foreground"
-            style={{ height: "120px", backgroundColor: "#f3f4f6" }}
+            className="flex flex-col items-center justify-center gap-3"
+            style={{ height: "160px", background: "linear-gradient(135deg, #1e3a5f 0%, #2d5986 100%)" }}
           >
-            <ImageOff className="h-8 w-8 opacity-40" />
-            <span className="text-xs opacity-60">{ad.name}</span>
+            <img
+              src="/logo.png"
+              alt="QuoteUs.ca"
+              className="h-12 w-auto object-contain"
+              style={{ filter: "brightness(0) invert(1)", opacity: 0.9 }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+            <span className="text-white text-sm font-semibold opacity-80">QuoteUs.ca</span>
+            <span className="text-white text-xs opacity-60">Ontario's Insurance Experts</span>
           </div>
         ) : ad.mediaType === "image" ? (
           <img
