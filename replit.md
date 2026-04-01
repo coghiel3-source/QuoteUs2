@@ -62,6 +62,14 @@ A digital agreement signing system allows reps to send customizable agreements t
 - Email notification sent to landlord via configured SMTP; if SMTP not configured, a shareable link is shown to the rep
 - API routes: `GET/PUT /api/admin/signature-template`, `POST /api/rep/locations/:id/send-signature`, `GET /api/rep/locations/:id/signature-status`, `GET/POST /api/sign/:token`
 
+### Billing Central (Admin/Manager)
+A dedicated "Billing" tab in the AdminCRM is accessible to both admins and managers. It serves as the central hub for all financial activity across the platform, organized into three sub-sections:
+- **Rent Secure**: All Rent Guarantee Stripe premiums (from `rgPayments`) and customer portal payments (from `customerPayments`), with status filters and inline edit capability (status update, description/notes). Summary cards show totals collected and pending counts.
+- **Lead Transactions**: Full history of broker credit transactions (purchases, deductions, manual adjustments) from the `transactions` table, filterable by type.
+- **Ad Analytics**: Per-advertisement engagement stats (impressions, clicks, CTR) with summary totals. CTR is color-coded by performance tier.
+- Admin billing API routes: `GET/PATCH /api/admin/billing/rg-payments`, `GET/PATCH /api/admin/billing/customer-payments`
+- Partners tab moved to manager-only visibility (removed from admin nav)
+
 ### RG Payment System (Stripe-Connected)
 Reps can collect Rent Guarantee insurance premiums directly from landlords via Stripe Checkout. The system supports two plan types: Annual (4.5% of annual rent, one-time) and Monthly (5% of monthly rent, per month). Key features:
 - `rgPayments` table tracks every payment: tracking code, plan type, amount, status (pending/paid/failed), Stripe session/payment intent IDs, landlord info, period label, paid timestamp

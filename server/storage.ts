@@ -130,6 +130,10 @@ export interface IStorage {
   getSignatureRequestByLocation(locationId: string): Promise<any>;
   updateSignatureRequest(id: string, data: any): Promise<any>;
 
+  // Admin Billing
+  getAllRgPayments(): Promise<RgPayment[]>;
+  getAllCustomerPayments(): Promise<CustomerPayment[]>;
+
   // Customer Portal
   getCustomerAccountByEmail(email: string): Promise<CustomerAccount | undefined>;
   getCustomerAccountByNumber(accountNumber: string): Promise<CustomerAccount | undefined>;
@@ -821,6 +825,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(signatureRequests.id, id))
       .returning();
     return updated || null;
+  }
+
+  // Admin Billing operations
+  async getAllRgPayments(): Promise<RgPayment[]> {
+    return db.select().from(rgPayments).orderBy(desc(rgPayments.createdAt));
+  }
+
+  async getAllCustomerPayments(): Promise<CustomerPayment[]> {
+    return db.select().from(customerPayments).orderBy(desc(customerPayments.createdAt));
   }
 
   // Customer Portal operations

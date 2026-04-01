@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight, BadgePercent } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight, BadgePercent, CreditCard, Receipt, TrendingUp, Building2, ArrowUpDown, Banknote } from "lucide-react";
 import AdvertisementManager, { AdvertisementManagerHandle } from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
@@ -588,6 +588,45 @@ export default function AdminCRMPage() {
     approveRepCommission: false,
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
+
+  // Billing tab state
+  const [billingSubTab, setBillingSubTab] = useState<'rent-secure' | 'lead-transactions' | 'ad-analytics'>('rent-secure');
+  const [billingRgPayments, setBillingRgPayments] = useState<any[]>([]);
+  const [billingCustomerPayments, setBillingCustomerPayments] = useState<any[]>([]);
+  const [billingTransactions, setBillingTransactions] = useState<any[]>([]);
+  const [billingAds, setBillingAds] = useState<any[]>([]);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<{type: 'rg' | 'customer', data: any} | null>(null);
+  const [editPaymentStatus, setEditPaymentStatus] = useState('');
+  const [editPaymentDesc, setEditPaymentDesc] = useState('');
+  const [editPaymentNotes, setEditPaymentNotes] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [billingStatusFilter, setBillingStatusFilter] = useState('all');
+
+  const fetchBillingData = async () => {
+    setBillingLoading(true);
+    try {
+      const [rgRes, custRes, txRes, adsRes] = await Promise.all([
+        fetch('/api/admin/billing/rg-payments'),
+        fetch('/api/admin/billing/customer-payments'),
+        fetch('/api/admin/transactions'),
+        fetch('/api/admin/advertisements'),
+      ]);
+      if (rgRes.ok) setBillingRgPayments(await rgRes.json());
+      if (custRes.ok) setBillingCustomerPayments(await custRes.json());
+      if (txRes.ok) setBillingTransactions(await txRes.json());
+      if (adsRes.ok) setBillingAds(await adsRes.json());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'billing') fetchBillingData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   useEffect(() => {
     fetch("/api/credits/lead-costs")
@@ -1763,6 +1802,15 @@ export default function AdminCRMPage() {
                         <Megaphone size={18} className="mr-3" /> Advertisements
                       </Button>
                     )}
+                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                      <Button 
+                        variant={activeTab === 'billing' ? 'secondary' : 'ghost'} 
+                        className="justify-start mb-1"
+                        onClick={() => { switchTab('billing'); setMobileMenuOpen(false); }}
+                      >
+                        <CreditCard size={18} className="mr-3" /> Billing
+                      </Button>
+                    )}
                     <div className="border-t my-2" />
                     {(user?.role === 'admin' || hasPermission('viewSettings')) && (
                       <Button 
@@ -1872,6 +1920,17 @@ export default function AdminCRMPage() {
                     data-testid="nav-advertisements"
                   >
                     <Megaphone size={16} className="mr-2" /> Ads
+                  </Button>
+                )}
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                  <Button 
+                    variant={activeTab === 'billing' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => switchTab('billing')}
+                    className={activeTab === 'billing' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                    data-testid="nav-billing"
+                  >
+                    <CreditCard size={16} className="mr-2" /> Billing
                   </Button>
                 )}
               </nav>
@@ -5376,6 +5435,475 @@ export default function AdminCRMPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* BILLING TAB */}
+        {activeTab === 'billing' && (user?.role === 'admin' || user?.role === 'manager') && (() => {
+          const fmtCurrency = (n: number | string) =>
+            new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(Number(n));
+          const fmtDate = (d: string) =>
+            d ? new Date(d).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+          const statusBadge = (s: string) => {
+            const map: Record<string, string> = {
+              paid: 'bg-green-100 text-green-800',
+              pending: 'bg-yellow-100 text-yellow-800',
+              failed: 'bg-red-100 text-red-800',
+              voided: 'bg-gray-100 text-gray-600',
+              purchase: 'bg-blue-100 text-blue-800',
+              deduction: 'bg-orange-100 text-orange-800',
+              adjustment: 'bg-purple-100 text-purple-800',
+              credit: 'bg-green-100 text-green-800',
+              refund: 'bg-teal-100 text-teal-800',
+            };
+            return <Badge className={`text-xs ${map[s?.toLowerCase()] || 'bg-gray-100 text-gray-700'}`}>{s}</Badge>;
+          };
+
+          // Totals
+          const rgTotal = billingRgPayments.filter(p => p.status === 'paid').reduce((s, p) => s + (p.amountCents || 0) / 100, 0);
+          const custTotal = billingCustomerPayments.filter(p => p.status === 'paid').reduce((s, p) => s + parseFloat(p.amount || '0'), 0);
+          const txCreditTotal = billingTransactions.filter(t => t.type === 'purchase').reduce((s, t) => s + parseFloat(t.amount || '0'), 0);
+          const adImpressions = billingAds.reduce((s, a) => s + (a.impressions || 0), 0);
+          const adClicks = billingAds.reduce((s, a) => s + (a.clicks || 0), 0);
+
+          const openEdit = (type: 'rg' | 'customer', data: any) => {
+            setEditingPayment({ type, data });
+            setEditPaymentStatus(data.status || '');
+            setEditPaymentDesc(data.description || '');
+            setEditPaymentNotes('');
+          };
+
+          const saveEdit = async () => {
+            if (!editingPayment) return;
+            setSavingPayment(true);
+            try {
+              const url = editingPayment.type === 'rg'
+                ? `/api/admin/billing/rg-payments/${editingPayment.data.id}`
+                : `/api/admin/billing/customer-payments/${editingPayment.data.id}`;
+              const res = await fetch(url, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: editPaymentStatus, description: editPaymentDesc }),
+              });
+              if (res.ok) {
+                setEditingPayment(null);
+                fetchBillingData();
+              }
+            } finally {
+              setSavingPayment(false);
+            }
+          };
+
+          const filteredRg = billingStatusFilter === 'all' ? billingRgPayments : billingRgPayments.filter(p => p.status === billingStatusFilter);
+          const filteredCust = billingStatusFilter === 'all' ? billingCustomerPayments : billingCustomerPayments.filter(p => p.status === billingStatusFilter);
+          const filteredTx = billingStatusFilter === 'all' ? billingTransactions : billingTransactions.filter(t => t.type === billingStatusFilter);
+
+          return (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <Banknote className="w-6 h-6 text-blue-600" /> Billing Central
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">Review and manage all billing across Rent Secure, leads, and advertisements</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchBillingData} disabled={billingLoading} data-testid="btn-billing-refresh">
+                  <RefreshCw className={`w-4 h-4 mr-2 ${billingLoading ? 'animate-spin' : ''}`} /> Refresh
+                </Button>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">RG Premiums Collected</p>
+                    <p className="text-xl font-bold text-blue-700" data-testid="billing-rg-total">{fmtCurrency(rgTotal)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{billingRgPayments.filter(p => p.status === 'paid').length} paid · {billingRgPayments.filter(p => p.status === 'pending').length} pending</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-green-500">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Customer Payments</p>
+                    <p className="text-xl font-bold text-green-700" data-testid="billing-cust-total">{fmtCurrency(custTotal)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{billingCustomerPayments.filter(p => p.status === 'paid').length} paid · {billingCustomerPayments.filter(p => p.status === 'pending').length} pending</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Credits Purchased</p>
+                    <p className="text-xl font-bold text-purple-700" data-testid="billing-tx-total">{fmtCurrency(txCreditTotal)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{billingTransactions.filter(t => t.type === 'purchase').length} purchases · {billingTransactions.filter(t => t.type === 'deduction').length} deductions</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardContent className="pt-4 pb-4">
+                    <p className="text-xs text-muted-foreground">Ad Engagement</p>
+                    <p className="text-xl font-bold text-orange-700">{adImpressions.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{adImpressions} impressions · {adClicks} clicks</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Sub-tabs */}
+              <div className="flex gap-2 border-b pb-0">
+                {(['rent-secure', 'lead-transactions', 'ad-analytics'] as const).map(tab => {
+                  const labels: Record<string, string> = {
+                    'rent-secure': 'Rent Secure',
+                    'lead-transactions': 'Lead Transactions',
+                    'ad-analytics': 'Ad Analytics',
+                  };
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => { setBillingSubTab(tab); setBillingStatusFilter('all'); }}
+                      data-testid={`billing-subtab-${tab}`}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${billingSubTab === tab ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-gray-800'}`}
+                    >
+                      {labels[tab]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* ── Rent Secure Sub-tab ── */}
+              {billingSubTab === 'rent-secure' && (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-sm font-medium text-gray-700">Filter by status:</p>
+                    {['all', 'paid', 'pending', 'failed'].map(s => (
+                      <Button key={s} size="sm" variant={billingStatusFilter === s ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setBillingStatusFilter(s)} data-testid={`billing-filter-${s}`}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* RG Premiums */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-blue-600" /> Rent Guarantee Premiums
+                      </CardTitle>
+                      <CardDescription>Stripe-collected RG insurance premiums by landlord/location</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {billingLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading…</div>
+                      ) : filteredRg.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">No RG payments found.</div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 border-b">
+                              <tr>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Tracking Code</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Plan</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Landlord</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Period</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Amount</th>
+                                <th className="text-center px-4 py-2 font-medium text-xs text-gray-600">Status</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Date</th>
+                                <th className="px-4 py-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {filteredRg.map(p => (
+                                <tr key={p.id} className="hover:bg-gray-50" data-testid={`billing-rg-row-${p.id}`}>
+                                  <td className="px-4 py-2.5 font-mono text-xs font-semibold text-blue-700">{p.trackingCode}</td>
+                                  <td className="px-4 py-2.5 capitalize">{p.planType}</td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="font-medium">{p.landlordName || '—'}</div>
+                                    <div className="text-xs text-gray-500">{p.landlordEmail || ''}</div>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-600">{p.periodLabel || '—'}</td>
+                                  <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency((p.amountCents || 0) / 100)}</td>
+                                  <td className="px-4 py-2.5 text-center">{statusBadge(p.status)}</td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-500">{fmtDate(p.paidAt || p.createdAt)}</td>
+                                  <td className="px-4 py-2.5">
+                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openEdit('rg', p)} data-testid={`billing-edit-rg-${p.id}`}>
+                                      <Pencil className="w-3 h-3 mr-1" />Edit
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Customer Portal Payments */}
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-green-600" /> Customer Portal Payments
+                      </CardTitle>
+                      <CardDescription>Payments made through the Make Payment portal</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {billingLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading…</div>
+                      ) : filteredCust.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">No customer payments found.</div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 border-b">
+                              <tr>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Account #</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Contact</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Description</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Amount</th>
+                                <th className="text-center px-4 py-2 font-medium text-xs text-gray-600">Status</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Date</th>
+                                <th className="px-4 py-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {filteredCust.map(p => (
+                                <tr key={p.id} className="hover:bg-gray-50" data-testid={`billing-cust-row-${p.id}`}>
+                                  <td className="px-4 py-2.5 font-mono text-xs font-semibold text-green-700">{p.accountNumber}</td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="font-medium">{p.contactName}</div>
+                                    <div className="text-xs text-gray-500">{p.email || ''}</div>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[200px] truncate">{p.description || '—'}</td>
+                                  <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency(p.amount)}</td>
+                                  <td className="px-4 py-2.5 text-center">{statusBadge(p.status)}</td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-500">{fmtDate(p.paidAt || p.createdAt)}</td>
+                                  <td className="px-4 py-2.5">
+                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openEdit('customer', p)} data-testid={`billing-edit-cust-${p.id}`}>
+                                      <Pencil className="w-3 h-3 mr-1" />Edit
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* ── Lead Transactions Sub-tab ── */}
+              {billingSubTab === 'lead-transactions' && (
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-sm font-medium text-gray-700">Filter by type:</p>
+                    {['all', 'purchase', 'deduction', 'adjustment', 'credit', 'refund'].map(s => (
+                      <Button key={s} size="sm" variant={billingStatusFilter === s ? 'default' : 'outline'} className="h-7 text-xs capitalize" onClick={() => setBillingStatusFilter(s)} data-testid={`billing-tx-filter-${s}`}>
+                        {s}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-purple-600" /> Lead Credit Transactions
+                      </CardTitle>
+                      <CardDescription>All broker credit purchases, lead assignment deductions, and manual adjustments</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {billingLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading…</div>
+                      ) : filteredTx.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">No transactions found.</div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 border-b">
+                              <tr>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Type</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Description</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Actor</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Amount</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Balance After</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {filteredTx.map(t => (
+                                <tr key={t.id} className="hover:bg-gray-50" data-testid={`billing-tx-row-${t.id}`}>
+                                  <td className="px-4 py-2.5">{statusBadge(t.type)}</td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-700 max-w-[250px]">
+                                    <div>{t.description}</div>
+                                    {t.reason && <div className="text-gray-400 italic">{t.reason}</div>}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-600">{t.actorName || '—'}</td>
+                                  <td className={`px-4 py-2.5 text-right font-semibold ${parseFloat(t.amount) < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                                    {parseFloat(t.amount) >= 0 ? '+' : ''}{fmtCurrency(t.amount)}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-right text-xs text-gray-600">{fmtCurrency(t.balanceAfter)}</td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-500">{fmtDate(t.createdAt)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* ── Ad Analytics Sub-tab ── */}
+              {billingSubTab === 'ad-analytics' && (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card className="border-l-4 border-l-orange-400">
+                      <CardContent className="pt-4 pb-4">
+                        <p className="text-xs text-muted-foreground">Total Impressions</p>
+                        <p className="text-2xl font-bold text-orange-700">{adImpressions.toLocaleString()}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-l-4 border-l-blue-400">
+                      <CardContent className="pt-4 pb-4">
+                        <p className="text-xs text-muted-foreground">Total Clicks</p>
+                        <p className="text-2xl font-bold text-blue-700">{adClicks.toLocaleString()}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-l-4 border-l-green-400">
+                      <CardContent className="pt-4 pb-4">
+                        <p className="text-xs text-muted-foreground">Avg CTR</p>
+                        <p className="text-2xl font-bold text-green-700">
+                          {adImpressions > 0 ? ((adClicks / adImpressions) * 100).toFixed(2) : '0.00'}%
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-orange-600" /> Advertisement Performance
+                      </CardTitle>
+                      <CardDescription>Engagement analytics for all active and past advertisements</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {billingLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading…</div>
+                      ) : billingAds.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">No advertisements found.</div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 border-b">
+                              <tr>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Ad Name</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Target Page</th>
+                                <th className="text-center px-4 py-2 font-medium text-xs text-gray-600">Status</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Impressions</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Clicks</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">CTR</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Schedule</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {billingAds.map(a => {
+                                const ctr = a.impressions > 0 ? ((a.clicks / a.impressions) * 100).toFixed(2) : '0.00';
+                                return (
+                                  <tr key={a.id} className="hover:bg-gray-50" data-testid={`billing-ad-row-${a.id}`}>
+                                    <td className="px-4 py-2.5">
+                                      <div className="font-medium">{a.name || '(untitled)'}</div>
+                                      {a.linkUrl && <div className="text-xs text-blue-500 truncate max-w-[150px]">{a.linkUrl}</div>}
+                                    </td>
+                                    <td className="px-4 py-2.5 text-xs text-gray-600 capitalize">{a.targetPage || 'all'}</td>
+                                    <td className="px-4 py-2.5 text-center">
+                                      <Badge className={a.isActive ? 'bg-green-100 text-green-800 text-xs' : 'bg-gray-100 text-gray-600 text-xs'}>
+                                        {a.isActive ? 'Active' : 'Inactive'}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-semibold">{(a.impressions || 0).toLocaleString()}</td>
+                                    <td className="px-4 py-2.5 text-right font-semibold">{(a.clicks || 0).toLocaleString()}</td>
+                                    <td className="px-4 py-2.5 text-right">
+                                      <span className={`font-semibold ${parseFloat(ctr) > 2 ? 'text-green-700' : parseFloat(ctr) > 0.5 ? 'text-blue-700' : 'text-gray-600'}`}>{ctr}%</span>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-xs text-gray-500">
+                                      {a.startDate ? fmtDate(a.startDate) : 'Ongoing'}
+                                      {a.endDate ? ` → ${fmtDate(a.endDate)}` : ''}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Edit Payment Dialog */}
+              {editingPayment && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+                  <Card className="w-full max-w-md shadow-2xl">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Pencil className="w-4 h-4" />
+                        {editingPayment.type === 'rg' ? 'Edit RG Payment' : 'Edit Customer Payment'}
+                      </CardTitle>
+                      <CardDescription>
+                        {editingPayment.type === 'rg'
+                          ? `Tracking: ${editingPayment.data.trackingCode}`
+                          : `Account: ${editingPayment.data.accountNumber} · ${editingPayment.data.contactName}`}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Amount</span>
+                          <span className="font-semibold">
+                            {editingPayment.type === 'rg'
+                              ? fmtCurrency((editingPayment.data.amountCents || 0) / 100)
+                              : fmtCurrency(editingPayment.data.amount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Current Status</span>
+                          {statusBadge(editingPayment.data.status)}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Update Status</label>
+                        <select
+                          className="w-full border rounded-md px-3 py-2 text-sm"
+                          value={editPaymentStatus}
+                          onChange={e => setEditPaymentStatus(e.target.value)}
+                          data-testid="billing-edit-status"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                          <option value="failed">Failed</option>
+                          <option value="voided">Voided</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Description / Notes</label>
+                        <Textarea
+                          value={editPaymentDesc}
+                          onChange={e => setEditPaymentDesc(e.target.value)}
+                          placeholder="Add internal notes or update description…"
+                          className="text-sm resize-none"
+                          rows={3}
+                          data-testid="billing-edit-desc"
+                        />
+                      </div>
+                    </CardContent>
+                    <div className="flex gap-2 px-6 pb-6">
+                      <Button variant="outline" className="flex-1" onClick={() => setEditingPayment(null)} data-testid="billing-edit-cancel">Cancel</Button>
+                      <Button className="flex-1" onClick={saveEdit} disabled={savingPayment} data-testid="billing-edit-save">
+                        {savingPayment ? 'Saving…' : 'Save Changes'}
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* CONNECTIONS TAB - API Keys, Services & Redirects */}
         {activeTab === 'connections' && (user?.role === 'admin' || user?.role === 'manager') && (

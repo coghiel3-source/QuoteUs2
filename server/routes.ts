@@ -3968,6 +3968,73 @@ export async function registerRoutes(
     }
   });
 
+  // ============== ADMIN BILLING ==============
+
+  app.get("/api/admin/billing/rg-payments", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const payments = await storage.getAllRgPayments();
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/billing/rg-payments/:id", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const { status, description, periodLabel, landlordName, landlordEmail } = req.body;
+      const updated = await storage.updateRgPayment(req.params.id, {
+        ...(status !== undefined && { status }),
+        ...(description !== undefined && { description }),
+        ...(periodLabel !== undefined && { periodLabel }),
+        ...(landlordName !== undefined && { landlordName }),
+        ...(landlordEmail !== undefined && { landlordEmail }),
+        ...(status === "paid" ? { paidAt: new Date() } : {}),
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/billing/customer-payments", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const payments = await storage.getAllCustomerPayments();
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/billing/customer-payments/:id", async (req, res) => {
+    try {
+      const user = (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const { status, description } = req.body;
+      const updated = await storage.updateCustomerPayment(req.params.id, {
+        ...(status !== undefined && { status }),
+        ...(description !== undefined && { description }),
+        ...(status === "paid" ? { paidAt: new Date() } : {}),
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============== CUSTOMER PORTAL ==============
 
   function generateAccountNumber() {
