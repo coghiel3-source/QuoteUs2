@@ -1712,7 +1712,7 @@ export default function AdminCRMPage() {
                       <Home size={18} className="mr-3" /> RG Leads
                     </Button>
                     )}
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    {user?.role === 'manager' && (
                     <Button 
                       variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
@@ -1815,7 +1815,7 @@ export default function AdminCRMPage() {
                   <Home size={16} className="mr-2" /> RG Leads
                 </Button>
                 )}
-                {(user?.role === 'admin' || user?.role === 'manager') && (
+                {user?.role === 'manager' && (
                 <Button 
                   variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
                   size="sm" 
