@@ -107,6 +107,7 @@ export default function LoginPage() {
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="partner">Partner</SelectItem>
                     <SelectItem value="broker">Broker</SelectItem>
                     <SelectItem value="rep">Rep (Rent Guarantee)</SelectItem>
                   </SelectContent>

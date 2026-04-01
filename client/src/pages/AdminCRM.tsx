@@ -117,7 +117,7 @@ export default function AdminCRMPage() {
     name: "",
     email: "",
     phone: "",
-    role: "broker" as "broker" | "manager" | "admin" | "rep",
+    role: "broker" as "broker" | "manager" | "partner" | "admin" | "rep",
     status: "active" as "pending" | "active",
     password: "",
     brokerage: "",
@@ -749,7 +749,7 @@ export default function AdminCRMPage() {
 
   // Check for expired leads when user loads (separate effect with user dependency)
   useEffect(() => {
-    if (user?.id && (user?.role === 'admin' || user?.role === 'manager')) {
+    if (user?.id && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner')) {
       fetch("/api/leads/check-expiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -772,8 +772,8 @@ export default function AdminCRMPage() {
   // Uses per-manager permissions first, falls back to global settings
   const hasPermission = (permission: keyof typeof managerPermissions): boolean => {
     if (user?.role === 'admin') return true;
-    if (user?.role === 'manager') {
-      // Check per-manager permissions first
+    if (user?.role === 'manager' || user?.role === 'partner') {
+      // Check per-manager/partner permissions first
       if (user.permissions && typeof user.permissions === 'object') {
         const perms = user.permissions as Record<string, boolean>;
         if (permission in perms) {
@@ -983,7 +983,7 @@ export default function AdminCRMPage() {
             yearsOfService: newUser.yearsOfService ? parseInt(newUser.yearsOfService) : undefined,
             productTypes: newUser.productTypes
           }),
-          ...(newUser.role === 'manager' && {
+          ...((newUser.role === 'manager' || newUser.role === 'partner') && {
             permissions: newUser.permissions
           })
         }),
@@ -1463,7 +1463,7 @@ export default function AdminCRMPage() {
   };
 
   // Auth check - simulate protected route
-  if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+  if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'partner')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-secondary/30">
         <Card className="max-w-md w-full">
@@ -1659,6 +1659,7 @@ export default function AdminCRMPage() {
   const allStaff = users.filter(u => u.role !== 'customer');
   const allBrokers = users.filter(u => u.role === 'broker' && (u.status === 'active' || u.status === 'paused' || u.status === 'cancelled'));
   const reps = users.filter(u => u.role === 'rep' && (u.status === 'active' || u.status === 'paused'));
+  const partners = users.filter(u => u.role === 'partner');
   const pendingBrokers = users.filter(u => u.role === 'broker' && u.status === 'pending');
   
   // Filtered staff based on role filter and search query
@@ -1751,7 +1752,7 @@ export default function AdminCRMPage() {
                       <Home size={18} className="mr-3" /> RG Leads
                     </Button>
                     )}
-                    {user?.role === 'manager' && (
+                    {(user?.role === 'manager' || user?.role === 'partner') && (
                     <Button 
                       variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
@@ -1802,7 +1803,7 @@ export default function AdminCRMPage() {
                         <Megaphone size={18} className="mr-3" /> Advertisements
                       </Button>
                     )}
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
                       <Button 
                         variant={activeTab === 'billing' ? 'secondary' : 'ghost'} 
                         className="justify-start mb-1"
@@ -1863,7 +1864,7 @@ export default function AdminCRMPage() {
                   <Home size={16} className="mr-2" /> RG Leads
                 </Button>
                 )}
-                {user?.role === 'manager' && (
+                {(user?.role === 'manager' || user?.role === 'partner') && (
                 <Button 
                   variant={activeTab === 'partners' ? 'secondary' : 'ghost'} 
                   size="sm" 
@@ -1922,7 +1923,7 @@ export default function AdminCRMPage() {
                     <Megaphone size={16} className="mr-2" /> Ads
                   </Button>
                 )}
-                {(user?.role === 'admin' || user?.role === 'manager') && (
+                {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
                   <Button 
                     variant={activeTab === 'billing' ? 'secondary' : 'ghost'} 
                     size="sm" 
@@ -3413,7 +3414,7 @@ export default function AdminCRMPage() {
         )}
 
         {/* PARTNERS TAB */}
-        {activeTab === 'partners' && (user?.role === 'admin' || user?.role === 'manager') && (
+        {activeTab === 'partners' && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
           <Card className="shadow-lg border-none">
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -3706,6 +3707,7 @@ export default function AdminCRMPage() {
                               <SelectContent>
                                 <SelectItem value="broker">Broker</SelectItem>
                                 <SelectItem value="manager">Manager</SelectItem>
+                                <SelectItem value="partner">Partner</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
                                 <SelectItem value="rep">Rep (Rent Guarantee)</SelectItem>
                               </SelectContent>
@@ -3728,9 +3730,9 @@ export default function AdminCRMPage() {
                           </div>
                         </div>
                         
-                        {(newUser.role === 'manager' || newUser.role === 'admin') && (
+                        {(newUser.role === 'manager' || newUser.role === 'admin' || newUser.role === 'partner') && (
                           <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <Label className="text-blue-800 font-semibold">{newUser.role === 'admin' ? 'Admin' : 'Manager'} Permissions</Label>
+                            <Label className="text-blue-800 font-semibold">{newUser.role === 'admin' ? 'Admin' : newUser.role === 'partner' ? 'Partner' : 'Manager'} Permissions</Label>
                             <p className="text-xs text-blue-600 mb-2">Select which features this {newUser.role} can access:</p>
                             
                             <p className="text-xs font-semibold text-blue-700 mt-3">Leads & Users</p>
@@ -4164,7 +4166,7 @@ export default function AdminCRMPage() {
                               </div>
                            </TableCell>
                            <TableCell>
-                             <Badge variant="outline" className={`capitalize ${staff.role === 'admin' ? 'border-purple-500 text-purple-700 bg-purple-50' : staff.role === 'manager' ? 'border-blue-500 text-blue-700 bg-blue-50' : 'border-slate-300'}`}>
+                             <Badge variant="outline" className={`capitalize ${staff.role === 'admin' ? 'border-purple-500 text-purple-700 bg-purple-50' : staff.role === 'manager' ? 'border-blue-500 text-blue-700 bg-blue-50' : staff.role === 'partner' ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-slate-300'}`}>
                                {staff.role}
                              </Badge>
                            </TableCell>
@@ -4780,6 +4782,69 @@ export default function AdminCRMPage() {
                 </div>
               )}
 
+              {/* Partner Accounts Section */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold">Partner Accounts</h3>
+                    <p className="text-sm text-muted-foreground">Partners have configurable manager-level access to the CRM.</p>
+                  </div>
+                </div>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Partner</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {partners.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                            No partner accounts yet. Use "Add New User" and select the Partner role to create one.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        partners.map((partner) => (
+                          <TableRow key={partner.id} data-testid={`row-partner-${partner.id}`}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-semibold">
+                                  {partner.name.charAt(0)}
+                                </div>
+                                <span className="font-medium">{partner.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{partner.email}</TableCell>
+                            <TableCell>{partner.phone || '—'}</TableCell>
+                            <TableCell>
+                              <Badge className={getUserStatusBadge(partner.status)}>
+                                {partner.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="gap-1"
+                                onClick={() => openEditUser(partner)}
+                                data-testid={`button-edit-partner-${partner.id}`}
+                              >
+                                <Pencil size={14} /> Edit
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold">Default Lead Costs</h3>
@@ -5100,7 +5165,7 @@ export default function AdminCRMPage() {
         )}
 
         {/* ADVERTISEMENTS TAB */}
-        {activeTab === 'advertisements' && (user?.role === 'admin' || (user?.role === 'manager' && hasPermission('approveAds'))) && (
+        {activeTab === 'advertisements' && (user?.role === 'admin' || ((user?.role === 'manager' || user?.role === 'partner') && hasPermission('approveAds'))) && (
           <AdvertisementManager ref={adManagerRef} canApproveAds={user?.role === 'admin' || hasPermission('approveAds')} onHasUnsavedChanges={handleAdUnsavedChanges} />
         )}
 
@@ -5328,7 +5393,7 @@ export default function AdminCRMPage() {
         )}
         
         {/* SETTINGS TAB - Signature Template (admin/manager) */}
-        {activeTab === 'settings' && (user?.role === 'admin' || (user?.role === 'manager' && managerPermissions.viewSettings)) && (
+        {activeTab === 'settings' && (user?.role === 'admin' || ((user?.role === 'manager' || user?.role === 'partner') && managerPermissions.viewSettings)) && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -5393,8 +5458,8 @@ export default function AdminCRMPage() {
           </Card>
         )}
 
-        {/* SETTINGS TAB - Manager view (if permitted - read-only) */}
-        {activeTab === 'settings' && user?.role === 'manager' && managerPermissions.viewSettings && (
+        {/* SETTINGS TAB - Manager/Partner view (if permitted - read-only) */}
+        {activeTab === 'settings' && (user?.role === 'manager' || user?.role === 'partner') && managerPermissions.viewSettings && (
           <Card>
             <CardHeader>
               <CardTitle>Settings (Read-Only)</CardTitle>
@@ -5422,8 +5487,8 @@ export default function AdminCRMPage() {
           </Card>
         )}
         
-        {/* SETTINGS TAB - Manager view (no permission) */}
-        {activeTab === 'settings' && user?.role === 'manager' && !managerPermissions.viewSettings && (
+        {/* SETTINGS TAB - Manager/Partner view (no permission) */}
+        {activeTab === 'settings' && (user?.role === 'manager' || user?.role === 'partner') && !managerPermissions.viewSettings && (
           <Card>
             <CardHeader>
               <CardTitle>Settings</CardTitle>
@@ -5437,7 +5502,7 @@ export default function AdminCRMPage() {
         )}
 
         {/* BILLING TAB */}
-        {activeTab === 'billing' && (user?.role === 'admin' || user?.role === 'manager') && (() => {
+        {activeTab === 'billing' && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (() => {
           const fmtCurrency = (n: number | string) =>
             new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(Number(n));
           const fmtDate = (d: string) =>
@@ -5906,7 +5971,7 @@ export default function AdminCRMPage() {
         })()}
 
         {/* CONNECTIONS TAB - API Keys, Services & Redirects */}
-        {activeTab === 'connections' && (user?.role === 'admin' || user?.role === 'manager') && (
+        {activeTab === 'connections' && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
           <div className="space-y-6">
           <Card>
             <CardHeader>

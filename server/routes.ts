@@ -355,12 +355,12 @@ export async function registerRoutes(
       
       // Verify actor has permission to manage brokers
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can update users" });
       }
       
       // Check manager permissions
-      if (actor.role === "manager") {
+      if (actor.role === "manager" || actor.role === "partner") {
         const hasPermission = await checkPermission(actorId, "manageBrokers");
         if (!hasPermission) {
           return res.status(403).json({ error: "You don't have permission to manage brokers" });
@@ -386,7 +386,7 @@ export async function registerRoutes(
       const { actorId, rgPermissions, viewCommission } = req.body;
       if (!actorId) return res.status(401).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (!actor || !["admin", "manager", "partner"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
       const target = await storage.getUser(req.params.id);
       if (!target) return res.status(404).json({ error: "User not found" });
       if (target.role !== "rep") return res.status(400).json({ error: "Only rep users have RG permissions" });
@@ -702,7 +702,7 @@ export async function registerRoutes(
       const { actorId } = req.body;
       if (!actorId) return res.status(401).json({ error: "Unauthorized" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== 'admin' && actor.role !== 'manager')) {
+      if (!actor || (actor.role !== 'admin' && actor.role !== 'manager' && actor.role !== 'partner')) {
         return res.status(403).json({ error: "Only admin/manager can request binders" });
       }
       const quote = await storage.getQuote(req.params.id);
@@ -727,7 +727,7 @@ export async function registerRoutes(
       const { actorId } = req.body;
       if (!actorId) return res.status(401).json({ error: "Unauthorized" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== 'admin' && actor.role !== 'manager')) {
+      if (!actor || (actor.role !== 'admin' && actor.role !== 'manager' && actor.role !== 'partner')) {
         return res.status(403).json({ error: "Only admin/manager can remove binder requests" });
       }
 
@@ -955,7 +955,7 @@ export async function registerRoutes(
       if (!actorId) return res.status(401).json({ error: "Unauthorized" });
 
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin or manager can create referral partners" });
       }
 
@@ -996,7 +996,7 @@ export async function registerRoutes(
       if (!actorId) return res.status(401).json({ error: "Unauthorized" });
 
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin or manager can update referral partners" });
       }
 
@@ -1017,7 +1017,7 @@ export async function registerRoutes(
       if (!actorId) return res.status(401).json({ error: "Unauthorized" });
 
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin or manager can delete referral partners" });
       }
 
@@ -1154,7 +1154,7 @@ export async function registerRoutes(
       const { actorId, rates } = req.body;
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (!actor || !["admin", "manager", "partner"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
       await storage.setSetting("rg_province_rates", JSON.stringify(rates), actorId);
       res.json({ success: true, rates });
     } catch (error: any) {
@@ -1169,7 +1169,7 @@ export async function registerRoutes(
       if (!actorId) return res.status(401).json({ error: "Actor ID required" });
       const actor = await storage.getUser(actorId);
       if (!actor) return res.status(403).json({ error: "User not found" });
-      if (actor.role !== "admin" && actor.role !== "manager") {
+      if (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner") {
         return res.status(403).json({ error: "Only admin/manager can update RG rates" });
       }
       const annual = parseFloat(annualRate);
@@ -1203,7 +1203,7 @@ export async function registerRoutes(
       if (!actor) {
         return res.status(403).json({ error: "User not found" });
       }
-      if (actor.role === "manager") {
+      if (actor.role === "manager" || actor.role === "partner") {
         const hasEditPermission = await checkPermission(actorId, "editLeadCosts");
         if (!hasEditPermission) {
           return res.status(403).json({ error: "You don't have permission to edit lead costs" });
@@ -1369,7 +1369,7 @@ export async function registerRoutes(
     const user = await storage.getUser(userId);
     if (!user) return false;
     if (user.role === 'admin') return true;
-    if (user.role === 'manager') {
+    if (user.role === 'manager' || user.role === 'partner') {
       const userPermissions = user.permissions as Record<string, boolean> | null;
       if (userPermissions) {
         return userPermissions[permission] === true;
@@ -1501,7 +1501,7 @@ export async function registerRoutes(
       }
       
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can modify settings" });
       }
       
@@ -1671,12 +1671,12 @@ export async function registerRoutes(
       
       // Verify actor is admin/manager
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can adjust credits" });
       }
       
       // Check manager permissions
-      if (actor.role === "manager") {
+      if (actor.role === "manager" || actor.role === "partner") {
         const hasPermission = await checkPermission(actorId, "adjustBalances");
         if (!hasPermission) {
           return res.status(403).json({ error: "You don't have permission to adjust credit balances" });
@@ -1734,7 +1734,7 @@ export async function registerRoutes(
       
       // Verify actor is admin/manager
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can update broker lead costs" });
       }
       
@@ -1777,7 +1777,7 @@ export async function registerRoutes(
       const { brokerId, brokerTier, preferredInsuranceTypes, preferredDemographics, referenceId, actorId } = req.body;
       if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can update broker profiles" });
       }
       if (!brokerId) return res.status(400).json({ error: "Broker ID is required" });
@@ -1819,7 +1819,7 @@ export async function registerRoutes(
       const actorId = req.query.actorId as string;
       if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can view broker notes" });
       }
       const notes = await storage.getBrokerNotes(brokerId);
@@ -1835,7 +1835,7 @@ export async function registerRoutes(
       const { brokerId, content, actorId, authorName } = req.body;
       if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can add broker notes" });
       }
       if (!brokerId || !content) {
@@ -1860,7 +1860,7 @@ export async function registerRoutes(
       const actorId = req.query.actorId as string;
       if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can delete broker notes" });
       }
       const deleted = await storage.deleteBrokerNote(noteId);
@@ -1877,7 +1877,7 @@ export async function registerRoutes(
       const actorId = req.query.actorId as string;
       if (!actorId) return res.status(401).json({ error: "Actor ID is required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can view broker stats" });
       }
       const allQuotes = await storage.getAllQuotes();
@@ -1934,12 +1934,12 @@ export async function registerRoutes(
       
       // Verify actor has permission to assign leads
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can assign leads" });
       }
       
       // Check manager permissions
-      if (actor.role === "manager") {
+      if (actor.role === "manager" || actor.role === "partner") {
         const hasPermission = await checkPermission(actorId, "assignLeads");
         if (!hasPermission) {
           return res.status(403).json({ error: "You don't have permission to assign leads" });
@@ -2070,10 +2070,10 @@ export async function registerRoutes(
       if (!quoteId || !repId) return res.status(400).json({ error: "Quote ID and rep ID are required" });
       if (!actorId) return res.status(401).json({ error: "Actor ID required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can assign leads" });
       }
-      if (actor.role === "manager") {
+      if (actor.role === "manager" || actor.role === "partner") {
         const hasPerm = await checkPermission(actorId, "assignLeads");
         if (!hasPerm) return res.status(403).json({ error: "No permission to assign leads" });
       }
@@ -2103,7 +2103,7 @@ export async function registerRoutes(
       const { actorId } = req.query as any;
       if (!actorId) return res.status(401).json({ error: "Actor ID required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Access denied" });
       }
       const allQuotes = await storage.getQuotes();
@@ -2136,7 +2136,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Actor ID is required" });
       }
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can update expiry timer" });
       }
       if (typeof hours !== "number" || hours < 1 || hours > 720) {
@@ -2157,7 +2157,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Actor ID is required" });
       }
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can check lead expiry" });
       }
 
@@ -2205,10 +2205,10 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Actor ID is required" });
       }
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can reassign leads" });
       }
-      if (actor.role === "manager") {
+      if (actor.role === "manager" || actor.role === "partner") {
         const hasPermission = await checkPermission(actorId, "assignLeads");
         if (!hasPermission) {
           return res.status(403).json({ error: "You don't have permission to reassign leads" });
@@ -2619,7 +2619,7 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Actor ID is required for authentication" });
       }
       const actor = await storage.getUser(actorId);
-      if (!actor || (actor.role !== "admin" && actor.role !== "manager")) {
+      if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Only admin/manager can send reports" });
       }
       if (!subject || !body || !to) {
@@ -2665,7 +2665,7 @@ export async function registerRoutes(
       const actorId = req.body?.actorId ? String(req.body.actorId) : null;
       if (!actorId) return res.status(401).json({ error: "Unauthorized" });
       const actor = await storage.getUser(actorId);
-      if (!actor || !['admin', 'manager'].includes(actor.role)) {
+      if (!actor || !['admin', 'manager', 'partner'].includes(actor.role)) {
         return res.status(403).json({ error: "Only admins and managers can install updates" });
       }
 
@@ -2780,7 +2780,7 @@ export async function registerRoutes(
       const { actorId } = req.query;
       if (!actorId) return res.status(401).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId as string);
-      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (!actor || !["admin", "manager", "partner"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
       const leads = await storage.getAllRgLeads();
       const locations = await storage.getAllLocations();
       const allUsers = await storage.getAllUsers();
@@ -2806,8 +2806,8 @@ export async function registerRoutes(
       const { actorId, repId, brokerId } = req.body;
       if (!actorId) return res.status(401).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
-      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
-      if (actor.role === "manager") {
+      if (!actor || !["admin", "manager", "partner"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      if (actor.role === "manager" || actor.role === "partner") {
         const canAssign = await checkPermission(actorId, "assignLeads");
         if (!canAssign) return res.status(403).json({ error: "You don't have permission to assign leads" });
       }
@@ -3099,7 +3099,7 @@ export async function registerRoutes(
       if (!propertyAddress || !landlordName || !monthlyRent) return res.status(400).json({ error: "propertyAddress, landlordName, and monthlyRent are required" });
       // Admin/manager can specify a repId override to create on behalf of a rep
       let ownerRepId = actorId;
-      if (repIdOverride && ["admin", "manager"].includes(actor.role)) {
+      if (repIdOverride && ["admin", "manager", "partner"].includes(actor.role)) {
         const repUser = await storage.getUser(repIdOverride);
         if (!repUser || repUser.role !== "rep") return res.status(400).json({ error: "Target user is not a rep" });
         ownerRepId = repIdOverride;
