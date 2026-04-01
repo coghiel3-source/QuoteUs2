@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight, BadgePercent, CreditCard, Receipt, TrendingUp, Building2, ArrowUpDown, Banknote } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight, BadgePercent, CreditCard, Receipt, TrendingUp, Building2, ArrowUpDown, Banknote, Handshake } from "lucide-react";
 import AdvertisementManager, { AdvertisementManagerHandle } from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
@@ -1769,6 +1769,16 @@ export default function AdminCRMPage() {
                       <Users size={18} className="mr-3" /> Manager
                       {pendingBrokers.length > 0 && <Badge className="ml-auto bg-red-500 text-white border-none">{pendingBrokers.length}</Badge>}
                     </Button>
+                    {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
+                    <Button 
+                      variant={activeTab === 'partner-accounts' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { switchTab('partner-accounts'); setMobileMenuOpen(false); }}
+                    >
+                      <Handshake size={18} className="mr-3" /> Partner Accounts
+                      {partners.length > 0 && <Badge className="ml-auto bg-emerald-600 text-white border-none">{partners.length}</Badge>}
+                    </Button>
+                    )}
                     <Button 
                       variant={activeTab === 'reports' ? 'secondary' : 'ghost'} 
                       className="justify-start mb-1"
@@ -1883,6 +1893,17 @@ export default function AdminCRMPage() {
                   <Users size={16} className="mr-2" /> Manager
                   {pendingBrokers.length > 0 && <Badge className="ml-2 bg-red-500 text-white border-none h-5 px-1">{pendingBrokers.length}</Badge>}
                 </Button>
+                {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
+                <Button 
+                  variant={activeTab === 'partner-accounts' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => switchTab('partner-accounts')}
+                  className={activeTab === 'partner-accounts' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                >
+                  <Handshake size={16} className="mr-2" /> Partner Accounts
+                  {partners.length > 0 && <Badge className="ml-1 bg-emerald-600 text-white border-none h-5 px-1">{partners.length}</Badge>}
+                </Button>
+                )}
                 <Button 
                   variant={activeTab === 'reports' ? 'secondary' : 'ghost'} 
                   size="sm" 
@@ -4386,6 +4407,133 @@ export default function AdminCRMPage() {
                 </div>
               </CardContent>
            </Card>
+        )}
+
+        {/* PARTNER ACCOUNTS TAB */}
+        {activeTab === 'partner-accounts' && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
+          <Card className="shadow-lg border-none">
+            <CardHeader className="bg-white border-b pb-4">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Handshake size={20} className="text-emerald-600" /> Partner Accounts
+                  </CardTitle>
+                  <CardDescription>Manage CRM partner users and their access.</CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    setNewUser({
+                      name: "", email: "", phone: "", role: "partner", status: "active",
+                      password: "", brokerage: "", yearsOfService: "", productTypes: [],
+                      permissions: {
+                        viewLeads: true, assignLeads: true, manageBrokers: false,
+                        viewCredits: false, adjustBalances: false, viewSettings: false,
+                        viewLeadCosts: false, editLeadCosts: false, approveAds: false,
+                        manageAds: false, manageSocialMedia: false, manageCustomCss: false,
+                        managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false,
+                        viewRgLeads: false, manageRgLeads: false, approveRepCommission: false,
+                      }
+                    });
+                    setShowAddUserDialog(true);
+                  }}
+                  data-testid="button-add-partner"
+                >
+                  <UserPlus size={16} /> Add Partner
+                </Button>
+              </div>
+              {/* Search bar */}
+              <div className="mt-4 relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email or phone…"
+                  value={partnerSearch}
+                  onChange={e => setPartnerSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  data-testid="input-partner-search"
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {(() => {
+                const q = partnerSearch.trim().toLowerCase();
+                const filtered = partners.filter(p =>
+                  !q ||
+                  p.name?.toLowerCase().includes(q) ||
+                  p.email?.toLowerCase().includes(q) ||
+                  (p as any).phone?.toLowerCase().includes(q)
+                );
+                return filtered.length === 0 ? (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <Handshake size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">{partnerSearch ? "No partners match your search." : "No partner accounts yet."}</p>
+                    {!partnerSearch && (
+                      <p className="text-sm mt-1">Click <strong>Add Partner</strong> to create the first one.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-md border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/30">
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filtered.map(p => (
+                          <TableRow key={p.id} data-testid={`row-partner-${p.id}`}>
+                            <TableCell className="font-medium flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold text-xs shrink-0">
+                                {p.name?.charAt(0)?.toUpperCase() ?? "P"}
+                              </div>
+                              <span data-testid={`text-partner-name-${p.id}`}>{p.name}</span>
+                            </TableCell>
+                            <TableCell>
+                              <a href={`mailto:${p.email}`} className="text-primary hover:underline text-sm" data-testid={`text-partner-email-${p.id}`}>{p.email}</a>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground" data-testid={`text-partner-phone-${p.id}`}>
+                              {(p as any).phone || <span className="italic opacity-50">—</span>}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={
+                                  p.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' :
+                                  p.status === 'pending' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                  p.status === 'paused' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                  'bg-red-100 text-red-800 border-red-200'
+                                }
+                                variant="outline"
+                                data-testid={`status-partner-${p.id}`}
+                              >
+                                {p.status?.charAt(0).toUpperCase() + p.status?.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="gap-1"
+                                onClick={() => openEditUser(p)}
+                                data-testid={`button-edit-partner-${p.id}`}
+                              >
+                                <Pencil size={14} /> Edit
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
         )}
 
         {activeTab === 'reports' && (
