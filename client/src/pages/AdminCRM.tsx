@@ -4120,6 +4120,7 @@ export default function AdminCRMPage() {
                       <SelectItem value="all">All Roles</SelectItem>
                       <SelectItem value="admin">Admins</SelectItem>
                       <SelectItem value="manager">Managers</SelectItem>
+                      <SelectItem value="partner">Partners</SelectItem>
                       <SelectItem value="broker">Brokers</SelectItem>
                       <SelectItem value="rep">Reps</SelectItem>
                     </SelectContent>
@@ -4316,6 +4317,72 @@ export default function AdminCRMPage() {
                        )}
                     </TableBody>
                   </Table>
+                </div>
+
+                {/* Partner Accounts Section */}
+                <div className="mt-8 pt-6 border-t">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">{partners.length}</span>
+                        Partner Accounts
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-0.5">Partners have configurable manager-level access to the CRM. Add them using "Add New User" above and select the Partner role.</p>
+                    </div>
+                  </div>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Partner</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {partners.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                              No partner accounts yet. Click "Add New User" above and select the <strong>Partner</strong> role to create one.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          partners.map((partner) => (
+                            <TableRow key={partner.id} data-testid={`row-partner-${partner.id}`}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-semibold">
+                                    {partner.name.charAt(0)}
+                                  </div>
+                                  <span className="font-medium">{partner.name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>{partner.email}</TableCell>
+                              <TableCell>{partner.phone || '—'}</TableCell>
+                              <TableCell>
+                                <Badge className={getUserStatusBadge(partner.status)}>
+                                  {partner.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="gap-1"
+                                  onClick={() => openEditUser(partner)}
+                                  data-testid={`button-edit-partner-${partner.id}`}
+                                >
+                                  <Pencil size={14} /> Edit
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </CardContent>
            </Card>
@@ -4781,69 +4848,6 @@ export default function AdminCRMPage() {
                   </div>
                 </div>
               )}
-
-              {/* Partner Accounts Section */}
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="text-lg font-semibold">Partner Accounts</h3>
-                    <p className="text-sm text-muted-foreground">Partners have configurable manager-level access to the CRM.</p>
-                  </div>
-                </div>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Partner</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {partners.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                            No partner accounts yet. Use "Add New User" and select the Partner role to create one.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        partners.map((partner) => (
-                          <TableRow key={partner.id} data-testid={`row-partner-${partner.id}`}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-semibold">
-                                  {partner.name.charAt(0)}
-                                </div>
-                                <span className="font-medium">{partner.name}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{partner.email}</TableCell>
-                            <TableCell>{partner.phone || '—'}</TableCell>
-                            <TableCell>
-                              <Badge className={getUserStatusBadge(partner.status)}>
-                                {partner.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="gap-1"
-                                onClick={() => openEditUser(partner)}
-                                data-testid={`button-edit-partner-${partner.id}`}
-                              >
-                                <Pencil size={14} /> Edit
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
 
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-3">
