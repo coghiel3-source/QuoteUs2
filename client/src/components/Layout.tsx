@@ -186,7 +186,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
                 <li><Link href="/dashboard" className="hover:text-white transition-colors">Broker Login</Link></li>
-                <li><Link href="/customer-portal" className="hover:text-white transition-colors">Customer Portal</Link></li>
+                <li><Link href="/customer-portal" className="hover:text-white transition-colors">Make Payment</Link></li>
               </ul>
             </div>
 

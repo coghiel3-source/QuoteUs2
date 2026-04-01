@@ -616,7 +616,7 @@ export default function CustomerPortal() {
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-[#1B2B5E] text-lg leading-none">Customer Portal</h1>
+            <h1 className="font-bold text-[#1B2B5E] text-lg leading-none">Make Payment</h1>
             <p className="text-xs text-gray-500">QuoteUs.ca Insurance</p>
           </div>
         </div>
