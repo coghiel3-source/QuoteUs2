@@ -1066,6 +1066,20 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     }
   }
 
+  async function toggleLeadFlag(field: "creditReportOnFile" | "bankruptcyLastThreeYears" | "employmentLetterOnFile" | "governmentIdOnFile", value: boolean) {
+    if (!user || !selectedLead) return;
+    try {
+      const updated = await apiRequest<RgLead>(`/rep/leads/${selectedLead.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ actorId: user.id, [field]: value }),
+      });
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? updated : l));
+      setSelectedLead(updated);
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    }
+  }
+
   async function handleStatusChange(leadId: string, status: string) {
     if (!user) return;
     setUpdatingStatus(true);
@@ -2634,6 +2648,60 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       {selectedLead.coApplicantName && <p><span className="text-gray-500">Co-Applicant:</span> {selectedLead.coApplicantName} ({selectedLead.coApplicantEmail})</p>}
                     </CardContent>
                   </Card>
+
+                  {/* Verification Checklist */}
+                  <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Verification Checklist</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {([
+                        { field: "creditReportOnFile" as const, label: "Credit Report on File" },
+                        { field: "bankruptcyLastThreeYears" as const, label: "Bankruptcy in Last 3 Years" },
+                        { field: "employmentLetterOnFile" as const, label: "Employment Letter on File" },
+                        { field: "governmentIdOnFile" as const, label: "Government ID on File" },
+                      ]).map(({ field, label }) => {
+                        const checked = !!(selectedLead as any)[field];
+                        const isBankruptcy = field === "bankruptcyLastThreeYears";
+                        return (
+                          <label
+                            key={field}
+                            className="flex items-center gap-3 cursor-pointer group"
+                            data-testid={`check-${field}`}
+                          >
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={checked}
+                                onChange={e => toggleLeadFlag(field, e.target.checked)}
+                              />
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                checked
+                                  ? isBankruptcy ? "bg-red-500 border-red-500" : "bg-green-500 border-green-500"
+                                  : "border-gray-300 bg-white group-hover:border-gray-400"
+                              }`}>
+                                {checked && (
+                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                            <span className={`text-sm ${checked ? isBankruptcy ? "text-red-700 font-medium" : "text-green-700 font-medium" : "text-gray-600"}`}>
+                              {label}
+                            </span>
+                            <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              checked
+                                ? isBankruptcy ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-500"
+                            }`}>
+                              {checked ? (isBankruptcy ? "Yes" : "Yes") : "No"}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Property & Landlord</CardTitle></CardHeader>
                     <CardContent className="text-sm space-y-1">

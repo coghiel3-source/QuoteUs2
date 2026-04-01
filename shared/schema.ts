@@ -249,6 +249,10 @@ export const rgLeads = pgTable("rg_leads", {
   processingStatus: text("processing_status").default("none"), // "none" | "sent" | "file_received"
   processingFileNumber: text("processing_file_number"),
   processingSentAt: timestamp("processing_sent_at"),
+  creditReportOnFile: boolean("credit_report_on_file").default(false),
+  bankruptcyLastThreeYears: boolean("bankruptcy_last_three_years").default(false),
+  employmentLetterOnFile: boolean("employment_letter_on_file").default(false),
+  governmentIdOnFile: boolean("government_id_on_file").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
