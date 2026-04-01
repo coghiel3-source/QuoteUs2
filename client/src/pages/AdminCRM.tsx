@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight, BadgePercent, CreditCard, Receipt, TrendingUp, Building2, ArrowUpDown, Banknote, Handshake } from "lucide-react";
+import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight, ChevronDown, BadgePercent, CreditCard, Receipt, TrendingUp, Building2, ArrowUpDown, Banknote, Handshake } from "lucide-react";
 import AdvertisementManager, { AdvertisementManagerHandle } from "@/components/AdvertisementManager";
 import ReportsPanel from "@/components/ReportsPanel";
 import LeadDetailView from "@/components/LeadDetailView";
@@ -1772,10 +1772,10 @@ export default function AdminCRMPage() {
                     {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
                     <Button 
                       variant={activeTab === 'partner-accounts' ? 'secondary' : 'ghost'} 
-                      className="justify-start mb-1"
+                      className="justify-start mb-1 ml-6 text-sm"
                       onClick={() => { switchTab('partner-accounts'); setMobileMenuOpen(false); }}
                     >
-                      <Handshake size={18} className="mr-3" /> Partner Accounts
+                      <Handshake size={16} className="mr-3 text-emerald-600" /> Partner Accounts
                       {partners.length > 0 && <Badge className="ml-auto bg-emerald-600 text-white border-none">{partners.length}</Badge>}
                     </Button>
                     )}
@@ -1884,26 +1884,40 @@ export default function AdminCRMPage() {
                   <UserCog size={16} className="mr-2" /> Partners
                 </Button>
                 )}
-                <Button 
-                  variant={activeTab === 'manager' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  onClick={() => switchTab('manager')}
-                  className={activeTab === 'manager' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
-                >
-                  <Users size={16} className="mr-2" /> Manager
-                  {pendingBrokers.length > 0 && <Badge className="ml-2 bg-red-500 text-white border-none h-5 px-1">{pendingBrokers.length}</Badge>}
-                </Button>
-                {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
-                <Button 
-                  variant={activeTab === 'partner-accounts' ? 'secondary' : 'ghost'} 
-                  size="sm" 
-                  onClick={() => switchTab('partner-accounts')}
-                  className={activeTab === 'partner-accounts' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
-                >
-                  <Handshake size={16} className="mr-2" /> Partner Accounts
-                  {partners.length > 0 && <Badge className="ml-1 bg-emerald-600 text-white border-none h-5 px-1">{partners.length}</Badge>}
-                </Button>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={(activeTab === 'manager' || activeTab === 'partner-accounts') ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className={(activeTab === 'manager' || activeTab === 'partner-accounts') ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                    >
+                      <Users size={16} className="mr-2" /> Manager
+                      {pendingBrokers.length > 0 && <Badge className="ml-2 bg-red-500 text-white border-none h-5 px-1">{pendingBrokers.length}</Badge>}
+                      <ChevronDown size={14} className="ml-1 opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-52">
+                    <DropdownMenuItem
+                      className={activeTab === 'manager' ? 'bg-accent font-medium' : ''}
+                      onClick={() => switchTab('manager')}
+                    >
+                      <Users size={15} className="mr-2" /> Manager
+                      {pendingBrokers.length > 0 && <Badge className="ml-auto bg-red-500 text-white border-none h-4 px-1 text-[10px]">{pendingBrokers.length}</Badge>}
+                    </DropdownMenuItem>
+                    {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'partner') && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className={activeTab === 'partner-accounts' ? 'bg-accent font-medium' : ''}
+                          onClick={() => switchTab('partner-accounts')}
+                        >
+                          <Handshake size={15} className="mr-2 text-emerald-600" /> Partner Accounts
+                          {partners.length > 0 && <Badge className="ml-auto bg-emerald-600 text-white border-none h-4 px-1 text-[10px]">{partners.length}</Badge>}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button 
                   variant={activeTab === 'reports' ? 'secondary' : 'ghost'} 
                   size="sm" 
