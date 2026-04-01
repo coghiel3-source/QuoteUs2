@@ -3968,5 +3968,209 @@ export async function registerRoutes(
     }
   });
 
+  // ============== CUSTOMER PORTAL ==============
+
+  function generateAccountNumber() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return `CP-${code}`;
+  }
+
+  function generateAuthToken() {
+    return crypto.randomBytes(32).toString("hex");
+  }
+
+  async function getCustomerFromRequest(req: any): Promise<any> {
+    const authHeader = req.headers["authorization"] || "";
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) return null;
+    return await storage.getCustomerAccountByToken(token);
+  }
+
+  app.post("/api/customer/register", async (req, res) => {
+    try {
+      const { email, password, contactName, postalCode, phone } = req.body;
+      if (!email || !password || !contactName || !postalCode) {
+        return res.status(400).json({ error: "All fields are required." });
+      }
+      const existing = await storage.getCustomerAccountByEmail(email.toLowerCase().trim());
+      if (existing) return res.status(409).json({ error: "An account with this email already exists." });
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      const authToken = generateAuthToken();
+      let accountNumber = generateAccountNumber();
+      // Ensure uniqueness
+      while (await storage.getCustomerAccountByNumber(accountNumber)) {
+        accountNumber = generateAccountNumber();
+      }
+
+      const account = await storage.createCustomerAccount({
+        accountNumber,
+        contactName: contactName.trim(),
+        email: email.toLowerCase().trim(),
+        phone: phone?.trim() || null,
+        postalCode: postalCode.trim().toUpperCase(),
+        passwordHash,
+        authToken,
+      });
+
+      res.json({ token: authToken, account: { ...account, passwordHash: undefined, authToken: undefined } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/customer/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      if (!email || !password) return res.status(400).json({ error: "Email and password are required." });
+
+      const account = await storage.getCustomerAccountByEmail(email.toLowerCase().trim());
+      if (!account || !account.passwordHash) return res.status(401).json({ error: "Invalid email or password." });
+
+      const valid = await bcrypt.compare(password, account.passwordHash);
+      if (!valid) return res.status(401).json({ error: "Invalid email or password." });
+
+      const authToken = generateAuthToken();
+      await storage.updateCustomerAccount(account.id, { authToken });
+
+      res.json({ token: authToken, account: { ...account, passwordHash: undefined, authToken: undefined } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/customer/me", async (req, res) => {
+    try {
+      const account = await getCustomerFromRequest(req);
+      if (!account) return res.status(401).json({ error: "Not authenticated." });
+      res.json({ ...account, passwordHash: undefined, authToken: undefined });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/customer/logout", async (req, res) => {
+    try {
+      const account = await getCustomerFromRequest(req);
+      if (account) await storage.updateCustomerAccount(account.id, { authToken: null });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create a Stripe checkout session for a customer payment
+  app.post("/api/customer/payment", async (req, res) => {
+    try {
+      const { accountNumber, contactName, postalCode, amountCents, description, email } = req.body;
+      if (!accountNumber || !contactName || !postalCode || !amountCents || amountCents < 50) {
+        return res.status(400).json({ error: "Missing required fields or amount too small." });
+      }
+
+      const stripe = getUncachableStripeClient();
+      if (!stripe) return res.status(503).json({ error: "Payment processing unavailable." });
+
+      const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
+      const session = await (stripe as any).checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        customer_email: email || undefined,
+        line_items: [
+          {
+            price_data: {
+              currency: "cad",
+              unit_amount: amountCents,
+              product_data: {
+                name: description || "Insurance Payment",
+                description: `Account: ${accountNumber}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${origin}/customer-portal/success?session_id={CHECKOUT_SESSION_ID}&account=${encodeURIComponent(accountNumber)}`,
+        cancel_url: `${origin}/customer-portal`,
+        metadata: { accountNumber, contactName, postalCode },
+      });
+
+      const payment = await storage.createCustomerPayment({
+        accountNumber,
+        contactName,
+        email: email || null,
+        description: description || "Insurance Payment",
+        amount: (amountCents / 100).toFixed(2),
+        status: "pending",
+        stripeSessionId: session.id,
+      });
+
+      res.json({ sessionId: session.id, url: session.url, paymentId: payment.id });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Confirm payment after Stripe redirect
+  app.post("/api/customer/payment/confirm", async (req, res) => {
+    try {
+      const { sessionId } = req.body;
+      if (!sessionId) return res.status(400).json({ error: "Session ID required." });
+
+      const stripe = getUncachableStripeClient();
+      if (!stripe) return res.status(503).json({ error: "Payment processing unavailable." });
+
+      const session = await (stripe as any).checkout.sessions.retrieve(sessionId);
+      const payment = await storage.getCustomerPaymentBySession(sessionId);
+      if (!payment) return res.status(404).json({ error: "Payment record not found." });
+
+      const status = session.payment_status === "paid" ? "paid" : "pending";
+      const updated = await storage.updateCustomerPayment(payment.id, {
+        status,
+        stripePaymentIntentId: session.payment_intent || null,
+        paidAt: status === "paid" ? new Date() : null,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get payment history for authenticated customer
+  app.get("/api/customer/payments", async (req, res) => {
+    try {
+      const account = await getCustomerFromRequest(req);
+      if (!account) return res.status(401).json({ error: "Not authenticated." });
+      const payments = await storage.getCustomerPaymentsByAccount(account.accountNumber);
+      res.json(payments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get policy updates (quotes) linked to this customer's email
+  app.get("/api/customer/policies", async (req, res) => {
+    try {
+      const account = await getCustomerFromRequest(req);
+      if (!account) return res.status(401).json({ error: "Not authenticated." });
+      const quotes = await storage.getQuotesByEmail(account.email);
+      // Return only non-sensitive fields
+      const safe = quotes.map((q) => ({
+        id: q.id,
+        insuranceType: q.type,
+        status: q.status,
+        createdAt: q.createdAt,
+        postalCode: q.postalCode,
+        clientName: q.clientName,
+        quoteNumber: q.quoteNumber,
+        referenceId: q.referenceId,
+      }));
+      res.json(safe);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

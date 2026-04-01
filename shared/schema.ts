@@ -480,3 +480,46 @@ export type SignatureRequest = typeof signatureRequests.$inferSelect;
 
 export type RgPayment = typeof rgPayments.$inferSelect;
 export type RepPayout = typeof repPayouts.$inferSelect;
+
+// ── Customer Portal ────────────────────────────────────────────────────────
+
+export const customerAccounts = pgTable("customer_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountNumber: varchar("account_number", { length: 20 }).notNull().unique(),
+  contactName: text("contact_name").notNull(),
+  email: text("email").notNull().unique(),
+  phone: text("phone"),
+  postalCode: varchar("postal_code", { length: 10 }).notNull(),
+  passwordHash: text("password_hash"),
+  authToken: text("auth_token"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const customerPayments = pgTable("customer_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountNumber: varchar("account_number", { length: 20 }).notNull(),
+  contactName: text("contact_name").notNull(),
+  email: text("email"),
+  description: text("description"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  stripeSessionId: text("stripe_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCustomerAccountSchema = createInsertSchema(customerAccounts).omit({
+  id: true,
+  authToken: true,
+  createdAt: true,
+});
+export const insertCustomerPaymentSchema = createInsertSchema(customerPayments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CustomerAccount = typeof customerAccounts.$inferSelect;
+export type InsertCustomerAccount = z.infer<typeof insertCustomerAccountSchema>;
+export type CustomerPayment = typeof customerPayments.$inferSelect;
+export type InsertCustomerPayment = z.infer<typeof insertCustomerPaymentSchema>;

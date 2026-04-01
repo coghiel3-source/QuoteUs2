@@ -30,6 +30,7 @@ import RepDashboardPage from "@/pages/RepDashboard";
 import DocUploadPage from "@/pages/DocUpload";
 import SignAgreementPage from "@/pages/SignAgreement";
 import RgPaymentSuccessPage from "@/pages/RgPaymentSuccess";
+import CustomerPortalPage from "@/pages/CustomerPortal";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -49,6 +50,8 @@ function Router() {
       <Route path="/doc-upload/:token" component={DocUploadPage} />
       <Route path="/sign/:token" component={SignAgreementPage} />
       <Route path="/rg-payment/success" component={RgPaymentSuccessPage} />
+      <Route path="/customer-portal/success" component={CustomerPortalPage} />
+      <Route path="/customer-portal" component={CustomerPortalPage} />
       {/* Main app with layout */}
       <Route>
         <Layout>

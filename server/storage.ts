@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, rgPayments, repPayouts, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
 
@@ -129,6 +129,18 @@ export interface IStorage {
   getSignatureRequestByToken(token: string): Promise<any>;
   getSignatureRequestByLocation(locationId: string): Promise<any>;
   updateSignatureRequest(id: string, data: any): Promise<any>;
+
+  // Customer Portal
+  getCustomerAccountByEmail(email: string): Promise<CustomerAccount | undefined>;
+  getCustomerAccountByNumber(accountNumber: string): Promise<CustomerAccount | undefined>;
+  getCustomerAccountByToken(token: string): Promise<CustomerAccount | undefined>;
+  createCustomerAccount(data: any): Promise<CustomerAccount>;
+  updateCustomerAccount(id: string, data: any): Promise<CustomerAccount | undefined>;
+  createCustomerPayment(data: any): Promise<CustomerPayment>;
+  getCustomerPaymentBySession(sessionId: string): Promise<CustomerPayment | undefined>;
+  updateCustomerPayment(id: string, data: any): Promise<CustomerPayment | undefined>;
+  getCustomerPaymentsByAccount(accountNumber: string): Promise<CustomerPayment[]>;
+  getQuotesByEmail(email: string): Promise<Quote[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -809,6 +821,55 @@ export class DatabaseStorage implements IStorage {
       .where(eq(signatureRequests.id, id))
       .returning();
     return updated || null;
+  }
+
+  // Customer Portal operations
+  async getCustomerAccountByEmail(email: string): Promise<CustomerAccount | undefined> {
+    const [row] = await db.select().from(customerAccounts).where(eq(customerAccounts.email, email));
+    return row;
+  }
+
+  async getCustomerAccountByNumber(accountNumber: string): Promise<CustomerAccount | undefined> {
+    const [row] = await db.select().from(customerAccounts).where(eq(customerAccounts.accountNumber, accountNumber));
+    return row;
+  }
+
+  async getCustomerAccountByToken(token: string): Promise<CustomerAccount | undefined> {
+    const [row] = await db.select().from(customerAccounts).where(eq(customerAccounts.authToken, token));
+    return row;
+  }
+
+  async createCustomerAccount(data: any): Promise<CustomerAccount> {
+    const [created] = await db.insert(customerAccounts).values(data).returning();
+    return created;
+  }
+
+  async updateCustomerAccount(id: string, data: any): Promise<CustomerAccount | undefined> {
+    const [updated] = await db.update(customerAccounts).set(data).where(eq(customerAccounts.id, id)).returning();
+    return updated;
+  }
+
+  async createCustomerPayment(data: any): Promise<CustomerPayment> {
+    const [created] = await db.insert(customerPayments).values(data).returning();
+    return created;
+  }
+
+  async getCustomerPaymentBySession(sessionId: string): Promise<CustomerPayment | undefined> {
+    const [row] = await db.select().from(customerPayments).where(eq(customerPayments.stripeSessionId, sessionId));
+    return row;
+  }
+
+  async updateCustomerPayment(id: string, data: any): Promise<CustomerPayment | undefined> {
+    const [updated] = await db.update(customerPayments).set(data).where(eq(customerPayments.id, id)).returning();
+    return updated;
+  }
+
+  async getCustomerPaymentsByAccount(accountNumber: string): Promise<CustomerPayment[]> {
+    return db.select().from(customerPayments).where(eq(customerPayments.accountNumber, accountNumber)).orderBy(desc(customerPayments.createdAt));
+  }
+
+  async getQuotesByEmail(email: string): Promise<Quote[]> {
+    return db.select().from(quotes).where(eq(quotes.email, email)).orderBy(desc(quotes.createdAt));
   }
 }
 
