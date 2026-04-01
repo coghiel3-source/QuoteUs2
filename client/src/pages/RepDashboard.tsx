@@ -47,8 +47,8 @@ const STATUS_DISPLAY_LABELS: Record<Status, string> = {
 const IN_PROGRESS_STATUSES: Status[] = ["Contacted", "Documents Pending", "Documents Received", "Submitted"];
 const EMPLOYMENT_STATUSES = ["Employed Full-Time", "Employed Part-Time", "Self-Employed", "Student", "Retired", "Unemployed", "Other"];
 const PAYMENT_METHODS = ["e-Transfer", "Cheque", "Cash", "Direct Deposit", "Pre-Authorized Debit", "Other"];
-const TENANT_DOC_TYPES = ["Pay Stubs (Last 3 Months)", "T4 / Notice of Assessment", "Bank Statements (3 Months)", "Credit Check Authorization", "Government ID", "Employment Letter", "Tenants' Insurance", "Other"];
-const LANDLORD_DOC_TYPES = ["Lease Agreement", "Property Deed / Ownership Proof", "Property Insurance", "Tenants' Insurance", "Government ID", "Photo/Video (Time-Stamped, Pre-Move-In — No Damage)", "Other"];
+const TENANT_DOC_TYPES = ["Pay Stubs (Last 3 Months)", "T4 / Notice of Assessment", "Bank Statements (3 Months)", "Credit Check Authorization", "Government ID", "Employment Letter", "Tenants' Insurance", "PAD Form", "Other"];
+const LANDLORD_DOC_TYPES = ["Lease Agreement", "Property Deed / Ownership Proof", "Property Insurance", "Tenants' Insurance", "Government ID", "Photo/Video (Time-Stamped, Pre-Move-In — No Damage)", "PAD Form", "Other"];
 const REMINDER_PRESETS = [
   "Follow up on lease agreement", "Chase tenant documents", "Follow up with landlord",
   "Submit application", "Check approval status", "Review credit report", "Confirm move-in date",
@@ -531,13 +531,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [globalRgRates, setGlobalRgRates] = useState<{ annualRate: number; monthlyRate: number }>({ annualRate: 4.5, monthlyRate: 5 });
 
   // Location detail
-  const [locationDetailTab, setLocationDetailTab] = useState<"info" | "pricing" | "docs" | "pad">("info");
+  const [locationDetailTab, setLocationDetailTab] = useState<"info" | "pricing" | "docs">("info");
   const [locationDocRequests, setLocationDocRequests] = useState<DocumentRequest[]>([]);
   const [locationDocs, setLocationDocs] = useState<RepDocument[]>([]);
   const [updatingLocationStatus, setUpdatingLocationStatus] = useState(false);
-  const [padForm, setPadForm] = useState({ accountHolder: "", bankName: "", transitNumber: "", institutionNumber: "", accountNumber: "", accountType: "chequing", paymentAmount: "", paymentFrequency: "monthly", authorizedDate: new Date().toISOString().split("T")[0] });
-  const [savingPad, setSavingPad] = useState(false);
-  const [padSaved, setPadSaved] = useState(false);
 
   // RG Payments for selected location
   const [locationPayments, setLocationPayments] = useState<RgPaymentRecord[]>([]);
@@ -733,20 +730,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setShowSendAgreement(false);
     setAgreementEmail(loc.landlordEmail || "");
     setLocationPayments([]);
-    setPadSaved(false);
-    // Pre-populate PAD form from existing data
-    const l = loc as any;
-    setPadForm({
-      accountHolder: l.padAccountHolder || loc.landlordName || "",
-      bankName: l.padBankName || "",
-      transitNumber: l.padTransitNumber || "",
-      institutionNumber: l.padInstitutionNumber || "",
-      accountNumber: l.padAccountNumber || "",
-      accountType: l.padAccountType || "chequing",
-      paymentAmount: l.padPaymentAmount ? String(l.padPaymentAmount) : "",
-      paymentFrequency: l.padPaymentFrequency || "monthly",
-      authorizedDate: l.padAuthorizedDate || new Date().toISOString().split("T")[0],
-    });
     await loadTenantsForLocation(loc.id);
     loadLocationPayments(loc.id);
     if (user) {
@@ -949,36 +932,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       toast({ title: err.message || "Failed to save location", variant: "destructive" });
     } finally {
       setSavingLocation(false);
-    }
-  }
-
-  async function handleSavePad() {
-    if (!selectedLocation || !user) return;
-    setSavingPad(true);
-    try {
-      const payload = {
-        actorId: user.id,
-        padAccountHolder: padForm.accountHolder || null,
-        padBankName: padForm.bankName || null,
-        padTransitNumber: padForm.transitNumber || null,
-        padInstitutionNumber: padForm.institutionNumber || null,
-        padAccountNumber: padForm.accountNumber || null,
-        padAccountType: padForm.accountType || null,
-        padPaymentAmount: padForm.paymentAmount ? padForm.paymentAmount : null,
-        padPaymentFrequency: padForm.paymentFrequency || null,
-        padAuthorizedDate: padForm.authorizedDate || null,
-        padCompletedAt: new Date().toISOString(),
-      };
-      const updated = await apiRequest<RgLocation>(`/rep/locations/${selectedLocation.id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      setSelectedLocation(updated);
-      setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
-      setPadSaved(true);
-      toast({ title: "PAD form saved" });
-      setTimeout(() => setPadSaved(false), 3000);
-    } catch (err: any) {
-      toast({ title: err.message || "Failed to save PAD form", variant: "destructive" });
-    } finally {
-      setSavingPad(false);
     }
   }
 
@@ -1789,9 +1742,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     <button onClick={() => setLocationDetailTab("docs")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${locationDetailTab === "docs" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-docs">
                       Documents ({locationDocs.length})
                     </button>
-                    <button onClick={() => setLocationDetailTab("pad")} className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-1 ${locationDetailTab === "pad" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`} data-testid="tab-loc-pad">
-                      {(selectedLocation as any).padCompletedAt ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : null} PAD
-                    </button>
                   </div>
 
                   {/* INFO TAB */}
@@ -2059,153 +2009,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     </div>
                   )}
 
-                  {/* PAD TAB */}
-                  {locationDetailTab === "pad" && (
-                    <div className="space-y-5">
-
-                      {/* Status banner if already completed */}
-                      {(selectedLocation as any).padCompletedAt && (
-                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
-                          <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                          <span className="text-green-700">PAD form saved — last updated {new Date((selectedLocation as any).padCompletedAt).toLocaleDateString("en-CA")}</span>
-                          <button onClick={() => window.print()} className="ml-auto text-xs text-green-600 hover:underline flex items-center gap-1" data-testid="button-print-pad">Print / Export</button>
-                        </div>
-                      )}
-
-                      {/* Printable PAD form */}
-                      <div className="border border-gray-200 rounded-xl overflow-hidden" id="pad-form-printable">
-                        {/* Header */}
-                        <div className="bg-indigo-600 text-white px-5 py-4">
-                          <p className="font-bold text-base">Pre-Authorized Debit (PAD) Agreement</p>
-                          <p className="text-indigo-200 text-xs mt-0.5">Landlord Authorization for Rent Guarantee Program</p>
-                        </div>
-
-                        <div className="p-5 space-y-5 bg-white">
-                          {/* Property info (read-only summary) */}
-                          <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Property</p>
-                            <p className="font-medium">{selectedLocation.propertyAddress}{selectedLocation.unit ? `, Unit ${selectedLocation.unit}` : ""}</p>
-                            <p className="text-gray-500">${Number(selectedLocation.monthlyRent).toLocaleString()}/month</p>
-                          </div>
-
-                          {/* Account Holder */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold uppercase text-gray-500 tracking-wide">Account Holder Name *</Label>
-                            <Input value={padForm.accountHolder} onChange={e => setPadForm(p => ({ ...p, accountHolder: e.target.value }))} placeholder={selectedLocation.landlordName} data-testid="input-pad-account-holder" />
-                          </div>
-
-                          {/* Financial Institution */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold uppercase text-gray-500 tracking-wide">Financial Institution Name *</Label>
-                            <Input value={padForm.bankName} onChange={e => setPadForm(p => ({ ...p, bankName: e.target.value }))} placeholder="e.g. TD Bank, RBC, BMO…" data-testid="input-pad-bank-name" />
-                          </div>
-
-                          {/* Banking Numbers */}
-                          <div>
-                            <p className="text-xs font-semibold uppercase text-gray-500 tracking-wide mb-2">Banking Details</p>
-                            <div className="grid grid-cols-3 gap-3">
-                              <div className="space-y-1.5">
-                                <Label className="text-xs text-gray-500">Transit # <span className="text-gray-400">(5 digits)</span></Label>
-                                <Input value={padForm.transitNumber} onChange={e => setPadForm(p => ({ ...p, transitNumber: e.target.value.replace(/\D/g, "").slice(0, 5) }))} placeholder="00000" maxLength={5} className="font-mono" data-testid="input-pad-transit" />
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs text-gray-500">Institution # <span className="text-gray-400">(3 digits)</span></Label>
-                                <Input value={padForm.institutionNumber} onChange={e => setPadForm(p => ({ ...p, institutionNumber: e.target.value.replace(/\D/g, "").slice(0, 3) }))} placeholder="000" maxLength={3} className="font-mono" data-testid="input-pad-institution" />
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs text-gray-500">Account Number</Label>
-                                <Input value={padForm.accountNumber} onChange={e => setPadForm(p => ({ ...p, accountNumber: e.target.value.replace(/\D/g, "").slice(0, 12) }))} placeholder="000000000000" className="font-mono" data-testid="input-pad-account" />
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
-                              <span className="inline-block bg-gray-100 rounded px-1.5 py-0.5 font-mono text-gray-600">[Transit] [Institution] [Account]</span>
-                              — found on the bottom of a cheque
-                            </p>
-                          </div>
-
-                          {/* Account Type */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold uppercase text-gray-500 tracking-wide">Account Type</Label>
-                            <div className="flex gap-4">
-                              {["chequing", "savings"].map(type => (
-                                <label key={type} className="flex items-center gap-2 cursor-pointer text-sm capitalize">
-                                  <input type="radio" name="accountType" value={type} checked={padForm.accountType === type} onChange={() => setPadForm(p => ({ ...p, accountType: type }))} className="h-4 w-4 accent-indigo-600" data-testid={`radio-pad-${type}`} />
-                                  {type}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Payment Details */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold uppercase text-gray-500 tracking-wide">Payment Amount</Label>
-                              <div className="relative">
-                                <span className="absolute left-3 top-2.5 text-gray-400 text-sm">$</span>
-                                <Input value={padForm.paymentAmount} onChange={e => setPadForm(p => ({ ...p, paymentAmount: e.target.value }))} placeholder={String(selectedLocation.monthlyRent)} className="pl-7" data-testid="input-pad-amount" />
-                              </div>
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold uppercase text-gray-500 tracking-wide">Frequency</Label>
-                              <Select value={padForm.paymentFrequency} onValueChange={v => setPadForm(p => ({ ...p, paymentFrequency: v }))}>
-                                <SelectTrigger data-testid="select-pad-frequency"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="monthly">Monthly</SelectItem>
-                                  <SelectItem value="annual">Annual</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {/* Authorization Date */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold uppercase text-gray-500 tracking-wide">Authorization Date</Label>
-                            <Input type="date" value={padForm.authorizedDate} onChange={e => setPadForm(p => ({ ...p, authorizedDate: e.target.value }))} data-testid="input-pad-auth-date" />
-                          </div>
-
-                          {/* Authorization Text */}
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs text-gray-600 leading-relaxed">
-                            <p className="font-semibold text-gray-700 mb-1">Authorization</p>
-                            I, <strong>{padForm.accountHolder || selectedLocation.landlordName}</strong>, authorize the withdrawal of{" "}
-                            <strong>${padForm.paymentAmount || Number(selectedLocation.monthlyRent).toLocaleString()}</strong> on a{" "}
-                            <strong>{padForm.paymentFrequency}</strong> basis from my{" "}
-                            <strong>{padForm.accountType}</strong> account at{" "}
-                            <strong>{padForm.bankName || "[Financial Institution]"}</strong>{" "}
-                            (Transit: {padForm.transitNumber || "—"}, Institution: {padForm.institutionNumber || "—"}, Account: {padForm.accountNumber || "—"}).{" "}
-                            This authorization is effective as of <strong>{padForm.authorizedDate || new Date().toISOString().split("T")[0]}</strong> and
-                            may be cancelled at any time with written notice.
-                          </div>
-
-                          {/* Landlord signature line (visual only) */}
-                          <div className="flex items-end gap-6">
-                            <div className="flex-1 border-b-2 border-gray-300 pb-1">
-                              <p className="text-xs text-gray-400 mb-6">Landlord Signature</p>
-                            </div>
-                            <div className="w-36 border-b-2 border-gray-300 pb-1">
-                              <p className="text-xs text-gray-400 mb-6">Date</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Save & Print actions */}
-                      <div className="flex gap-3">
-                        <Button
-                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 gap-2"
-                          onClick={handleSavePad}
-                          disabled={savingPad}
-                          data-testid="button-save-pad"
-                        >
-                          {savingPad ? <><RefreshCw className="h-4 w-4 animate-spin" /> Saving…</> : padSaved ? <><CheckCircle2 className="h-4 w-4" /> Saved!</> : "Save PAD Form"}
-                        </Button>
-                        {(selectedLocation as any).padCompletedAt && (
-                          <Button variant="outline" onClick={() => window.print()} className="gap-2" data-testid="button-print-pad-footer">
-                            <FileText className="h-4 w-4" /> Print
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )
             )}
