@@ -1066,7 +1066,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     }
   }
 
-  async function toggleLeadFlag(field: "creditReportOnFile" | "bankruptcyLastThreeYears" | "employmentLetterOnFile" | "governmentIdOnFile", value: boolean) {
+  async function toggleLeadFlag(field: "creditReportOnFile" | "bankruptcyLastThreeYears" | "noEvictionsOrJudgements" | "employmentLetterOnFile" | "governmentIdOnFile" | "twelveMonthLease" | "leaseViolation" | "rentArrearsLastTwelveMonths" | "noDefaultFirstSixtyDays" | "ongoingEmploymentNoTerminationRisk", value: boolean) {
     if (!user || !selectedLead) return;
     try {
       const updated = await apiRequest<RgLead>(`/rep/leads/${selectedLead.id}`, {
@@ -2652,53 +2652,69 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   {/* Verification Checklist */}
                   <Card>
                     <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Verification Checklist</CardTitle></CardHeader>
-                    <CardContent className="space-y-3">
-                      {([
-                        { field: "creditReportOnFile" as const, label: "Credit Report on File" },
-                        { field: "bankruptcyLastThreeYears" as const, label: "Bankruptcy in Last 3 Years" },
-                        { field: "employmentLetterOnFile" as const, label: "Employment Letter on File" },
-                        { field: "governmentIdOnFile" as const, label: "Government ID on File" },
-                      ]).map(({ field, label }) => {
-                        const checked = !!(selectedLead as any)[field];
-                        const isBankruptcy = field === "bankruptcyLastThreeYears";
-                        return (
-                          <label
-                            key={field}
-                            className="flex items-center gap-3 cursor-pointer group"
-                            data-testid={`check-${field}`}
-                          >
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                className="sr-only"
-                                checked={checked}
-                                onChange={e => toggleLeadFlag(field, e.target.checked)}
-                              />
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                                checked
-                                  ? isBankruptcy ? "bg-red-500 border-red-500" : "bg-green-500 border-green-500"
-                                  : "border-gray-300 bg-white group-hover:border-gray-400"
-                              }`}>
-                                {checked && (
-                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
-                            </div>
-                            <span className={`text-sm ${checked ? isBankruptcy ? "text-red-700 font-medium" : "text-green-700 font-medium" : "text-gray-600"}`}>
-                              {label}
-                            </span>
-                            <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              checked
-                                ? isBankruptcy ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-500"
-                            }`}>
-                              {checked ? (isBankruptcy ? "Yes" : "Yes") : "No"}
-                            </span>
-                          </label>
-                        );
-                      })}
+                    <CardContent className="space-y-5">
+                      {/* ── New Customer Screening ── */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">New Customer Screening</p>
+                        <div className="space-y-2.5">
+                          {([
+                            { field: "creditReportOnFile" as const,        label: "Credit Report on File",           danger: false },
+                            { field: "bankruptcyLastThreeYears" as const,  label: "Bankruptcy in Last 3 Years",      danger: true  },
+                            { field: "noEvictionsOrJudgements" as const,   label: "No Evictions or Judgements",      danger: false },
+                            { field: "employmentLetterOnFile" as const,    label: "Employment Letter on File",       danger: false },
+                            { field: "governmentIdOnFile" as const,        label: "Government ID on File",           danger: false },
+                            { field: "twelveMonthLease" as const,          label: "12 Month Lease",                  danger: false },
+                          ]).map(({ field, label, danger }) => {
+                            const checked = !!(selectedLead as any)[field];
+                            const isRed = danger ? checked : false;
+                            const isGreen = !danger && checked;
+                            return (
+                              <label key={field} className="flex items-center gap-3 cursor-pointer group" data-testid={`check-${field}`}>
+                                <div className="relative shrink-0">
+                                  <input type="checkbox" className="sr-only" checked={checked} onChange={e => toggleLeadFlag(field, e.target.checked)} />
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isRed ? "bg-red-500 border-red-500" : isGreen ? "bg-green-500 border-green-500" : "border-gray-300 bg-white group-hover:border-gray-400"}`}>
+                                    {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                  </div>
+                                </div>
+                                <span className={`text-sm ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
+                                <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${isRed ? "bg-red-100 text-red-700" : isGreen ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                  {checked ? "Yes" : "No"}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Existing Tenant Review</p>
+                        <div className="space-y-2.5">
+                          {([
+                            { field: "leaseViolation" as const,                     label: "Lease Violation",                                          danger: true  },
+                            { field: "rentArrearsLastTwelveMonths" as const,        label: "Rent Arrears > 5 Days in Last 12 Months",                  danger: true  },
+                            { field: "noDefaultFirstSixtyDays" as const,            label: "No Default Within First 60 Days After Agreement Start",    danger: false },
+                            { field: "ongoingEmploymentNoTerminationRisk" as const, label: "Ongoing Employment — No Known Termination Risk",           danger: false },
+                          ]).map(({ field, label, danger }) => {
+                            const checked = !!(selectedLead as any)[field];
+                            const isRed = danger ? checked : false;
+                            const isGreen = !danger && checked;
+                            return (
+                              <label key={field} className="flex items-center gap-3 cursor-pointer group" data-testid={`check-${field}`}>
+                                <div className="relative shrink-0">
+                                  <input type="checkbox" className="sr-only" checked={checked} onChange={e => toggleLeadFlag(field, e.target.checked)} />
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isRed ? "bg-red-500 border-red-500" : isGreen ? "bg-green-500 border-green-500" : "border-gray-300 bg-white group-hover:border-gray-400"}`}>
+                                    {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                  </div>
+                                </div>
+                                <span className={`text-sm ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
+                                <span className={`ml-auto text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${isRed ? "bg-red-100 text-red-700" : isGreen ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                  {checked ? "Yes" : "No"}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
 
