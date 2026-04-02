@@ -156,9 +156,9 @@ function PricingTab({
   const annualPremiumMonthly = annualPremium / 12;
   const monthlyPremium = (finalMonthlyRate / 100) * rent;
   const monthlyPremiumAnnual = monthlyPremium * 12;
-  // Commission payout = base premium × commission%
-  const annualPayout = (commissionNum / 100) * annualPremium;
-  const monthlyPayout = (commissionNum / 100) * monthlyPremium;
+  // Commission payout = commission% × rent (annual or monthly)
+  const annualPayout = (commissionNum / 100) * annualRent;
+  const monthlyPayout = (commissionNum / 100) * rent;
 
   const selectedAmount = payDialog.planType === "annual" ? annualPremium : monthlyPremium;
   const selectedAmountCents = Math.round(selectedAmount * 100);
@@ -287,7 +287,7 @@ function PricingTab({
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">%</span>
               </div>
-              <p className="text-xs text-purple-600 mt-1">Applied to base premium to calculate payout</p>
+              <p className="text-xs text-purple-600 mt-1">Applied to annual / monthly rent to calculate payout</p>
             </div>
             <Button
               onClick={() => { onSaveCommission(commissionNum); setCommissionSaved(true); setTimeout(() => setCommissionSaved(false), 2000); }}
@@ -302,14 +302,14 @@ function PricingTab({
           {commissionNum > 0 && rent > 0 && (
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm border border-purple-100">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Annual Deal</p>
-                <div className="flex justify-between text-gray-500"><span>Base premium</span><span>${fmt(annualPremium)}</span></div>
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Annual</p>
+                <div className="flex justify-between text-gray-500"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
                 <div className="flex justify-between text-gray-400 text-xs"><span>× {commissionNum}%</span><span></span></div>
                 <div className="flex justify-between font-bold text-purple-700 border-t pt-1.5"><span>Payout</span><span>${fmt(annualPayout)}</span></div>
               </div>
               <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm border border-purple-100">
-                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Monthly Deal</p>
-                <div className="flex justify-between text-gray-500"><span>Base premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Monthly</p>
+                <div className="flex justify-between text-gray-500"><span>Monthly rent</span><span>${fmt(rent)}/mo</span></div>
                 <div className="flex justify-between text-gray-400 text-xs"><span>× {commissionNum}%</span><span></span></div>
                 <div className="flex justify-between font-bold text-purple-700 border-t pt-1.5"><span>Payout/mo</span><span>${fmt(monthlyPayout)}</span></div>
                 <div className="flex justify-between text-gray-400 text-xs"><span>Annual total</span><span>${fmt(monthlyPayout * 12)}/yr</span></div>
