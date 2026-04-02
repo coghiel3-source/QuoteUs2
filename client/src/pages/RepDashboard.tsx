@@ -256,13 +256,11 @@ function PricingTab({
       {/* Commission Breakdown — step-by-step with inline editable rates */}
       {(onSaveRates || onSaveCommission) && rent > 0 && (function() {
         const insA = (annualRateNum / 100) * annualRent;
-        const afterInsA = annualRent - insA;
-        const commA = (commissionNum / 100) * afterInsA;
-        const netA = afterInsA - commA;
+        const commA = (commissionNum / 100) * insA;
+        const netA = insA - commA;
         const insM = (monthlyRateNum / 100) * rent;
-        const afterInsM = rent - insM;
-        const commM = (commissionNum / 100) * afterInsM;
-        const netM = afterInsM - commM;
+        const commM = (commissionNum / 100) * insM;
+        const netM = insM - commM;
         const allSaved = ratesSaved && commissionSaved;
         return (
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
@@ -293,13 +291,13 @@ function PricingTab({
                   <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" />
                   </span>
-                  <span className="font-mono text-red-600">− ${fmt(insA)}</span>
+                  <span className="font-mono text-gray-700">${fmt(insA)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
                     <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-annual" />
                   </span>
-                  <span className="font-mono text-red-600">− ${fmt(commA)}</span>
+                  <span className="font-mono text-gray-700">${fmt(commA)}</span>
                 </div>
                 <WfRow label="Net" value={netA} total />
                 <div className="mt-1 text-xs text-purple-600 text-right font-semibold">Commission payout: ${fmt(commA)}</div>
@@ -311,13 +309,13 @@ function PricingTab({
                   <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" />
                   </span>
-                  <span className="font-mono text-red-600">− ${fmt(insM)}</span>
+                  <span className="font-mono text-gray-700">${fmt(insM)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
                     <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-monthly" />
                   </span>
-                  <span className="font-mono text-red-600">− ${fmt(commM)}</span>
+                  <span className="font-mono text-gray-700">${fmt(commM)}</span>
                 </div>
                 <WfRow label="Net/mo" value={netM} total />
                 <div className="mt-1 text-xs text-purple-600 text-right font-semibold">Commission/mo: ${fmt(commM)} · Annual: ${fmt(commM * 12)}</div>
