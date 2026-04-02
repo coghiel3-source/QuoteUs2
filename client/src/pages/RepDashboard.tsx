@@ -287,22 +287,12 @@ function PricingTab({
               {/* Annual */}
               <div className="bg-white rounded-lg p-3 border border-purple-100">
                 <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Annual Plan</p>
-                <div className="flex justify-between items-center text-sm py-1 border-t border-gray-200 pt-2">
-                  <span className="text-gray-700 font-semibold flex items-center gap-1">
-                    Total commission&nbsp;
+                <WfRow label="Total commission" value={insA} subtotal />
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" />
                   </span>
-                  <input
-                    type="number" min="0" step="0.01"
-                    value={insA > 0 ? insA.toFixed(2) : ""}
-                    onChange={e => {
-                      const d = parseFloat(e.target.value) || 0;
-                      setEditAnnual(annualRent > 0 ? String(((d / annualRent) * 100).toFixed(4)) : "0");
-                      setRatesSaved(false);
-                    }}
-                    className="w-24 text-right border border-purple-300 rounded px-1 py-0.5 text-sm font-mono bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    data-testid="input-annual-commission-dollar"
-                  />
+                  <span className="font-mono text-gray-700">${fmt(insA)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
@@ -316,24 +306,13 @@ function PricingTab({
               {/* Monthly */}
               <div className="bg-white rounded-lg p-3 border border-purple-100">
                 <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Monthly Plan</p>
-                <div className="flex justify-between items-center text-sm py-1 border-t border-gray-200 pt-2">
-                  <span className="text-gray-700 font-semibold flex items-center gap-1">
-                    Total commission&nbsp;
+                <WfRow label={<span>Total commission <span className="text-gray-400 font-normal">(${fmt(insM * 12)}/yr)</span></span>} value={insM} subtotal />
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" />
                   </span>
-                  <input
-                    type="number" min="0" step="0.01"
-                    value={insM > 0 ? insM.toFixed(2) : ""}
-                    onChange={e => {
-                      const d = parseFloat(e.target.value) || 0;
-                      setEditMonthly(rent > 0 ? String(((d / rent) * 100).toFixed(4)) : "0");
-                      setRatesSaved(false);
-                    }}
-                    className="w-24 text-right border border-purple-300 rounded px-1 py-0.5 text-sm font-mono bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
-                    data-testid="input-monthly-commission-dollar"
-                  />
+                  <span className="font-mono text-gray-700">${fmt(insM)}</span>
                 </div>
-                <p className="text-xs text-gray-400 text-right -mt-1 mb-1">{fmt(insM * 12)}/yr</p>
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
                     <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-monthly" />
