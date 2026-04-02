@@ -312,7 +312,7 @@ function PricingTab({
                   </span>
                   <span className="font-mono text-gray-700">${fmt(insM)}</span>
                 </div>
-                <WfRow label="Total commission" value={insM} subtotal />
+                <WfRow label={<span>Total commission <span className="text-gray-400 font-normal">(${fmt(insM * 12)}/yr)</span></span>} value={insM} subtotal />
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
                     <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-monthly" />
