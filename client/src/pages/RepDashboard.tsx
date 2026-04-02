@@ -98,9 +98,34 @@ type RgPaymentRecord = {
   landlordEmail?: string | null; landlordName?: string | null; createdAt: string;
 };
 
+function WfPctInput({ value, onChange, testId }: { value: string; onChange: (v: string) => void; testId: string }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <input
+        type="number" min="0" max="100" step="0.1"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-14 text-right border border-purple-300 rounded px-1 py-0.5 text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+        data-testid={testId}
+      />
+      <span className="text-xs text-gray-400">%</span>
+    </span>
+  );
+}
+
+function WfRow({ label, value, subtotal, total }: { label: React.ReactNode; value: number; subtotal?: boolean; total?: boolean }) {
+  return (
+    <div className={`flex justify-between items-center text-sm py-1 ${subtotal ? "border-t border-gray-200 mt-1 pt-2" : ""} ${total ? "border-t-2 border-purple-300 mt-1 pt-2 font-bold" : ""}`}>
+      <span className={total ? "text-purple-800" : subtotal ? "text-gray-700 font-semibold" : "text-gray-500"}>{label}</span>
+      <span className={`font-mono ${total ? "text-purple-700 text-base" : subtotal ? "text-gray-800 font-semibold" : "text-gray-700"}`}>${(value).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+    </div>
+  );
+}
+
 function PricingTab({
   monthlyRent, markupPercent, baseAnnualRate = 4.5, baseMonthlyRate = 5,
-  commissionPercent: commissionPercentProp, onSaveMarkup, onSaveRates, onSaveCommission,
+  commissionPercent: commissionPercentProp, pricingNotes: pricingNotesProp,
+  onSaveMarkup, onSaveRates, onSaveCommission, onSavePricingNotes,
   paymentLink, onSavePaymentLink,
   locationId, landlordEmail, landlordName, payments, onPaymentCreated,
 }: {
@@ -109,7 +134,9 @@ function PricingTab({
   baseAnnualRate?: number;
   baseMonthlyRate?: number;
   commissionPercent?: number | string | null;
+  pricingNotes?: string | null;
   onSaveCommission?: (pct: number) => void;
+  onSavePricingNotes?: (notes: string) => void;
   onSaveMarkup?: (pct: number) => void;
   onSaveRates?: (annual: number, monthly: number) => void;
   paymentLink?: string | null;
@@ -125,6 +152,8 @@ function PricingTab({
   const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
   const [commission, setCommission] = useState<string>(commissionPercentProp ? String(Number(commissionPercentProp)) : "0");
   const [commissionSaved, setCommissionSaved] = useState(false);
+  const [pricingNotes, setPricingNotes] = useState<string>(pricingNotesProp || "");
+  const [pricingNotesSaved, setPricingNotesSaved] = useState(false);
   const [editAnnual, setEditAnnual] = useState<string>(String(baseAnnualRate));
   const [editMonthly, setEditMonthly] = useState<string>(String(baseMonthlyRate));
   const [editLink, setEditLink] = useState<string>(paymentLink || "");
@@ -224,189 +253,127 @@ function PricingTab({
         </div>
       </div>
 
-      {/* Editable base rates (location level only) */}
-      {onSaveRates && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-blue-800 flex items-center gap-2 mb-3"><BadgePercent className="h-4 w-4" /> Base Rates</p>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <Label className="text-xs text-blue-700 mb-1 block">Annual Rate (%)</Label>
-              <div className="relative">
-                <Input type="number" min="0" max="30" step="0.1" value={editAnnual} onChange={e => { setEditAnnual(e.target.value); setRatesSaved(false); }} className="pr-8" data-testid="input-annual-rate" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-              </div>
+      {/* Commission Breakdown — step-by-step with inline editable rates */}
+      {(onSaveRates || onSaveCommission) && rent > 0 && (function() {
+        const insA = (annualRateNum / 100) * annualRent;
+        const afterInsA = annualRent - insA;
+        const commA = (commissionNum / 100) * afterInsA;
+        const netA = afterInsA - commA;
+        const insM = (monthlyRateNum / 100) * rent;
+        const afterInsM = rent - insM;
+        const commM = (commissionNum / 100) * afterInsM;
+        const netM = afterInsM - commM;
+        const allSaved = ratesSaved && commissionSaved;
+        return (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold text-purple-800 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" /> Commission Breakdown
+              </p>
+              <Button
+                size="sm"
+                variant={allSaved ? "outline" : "default"}
+                className={allSaved ? "border-green-500 text-green-600 h-7 text-xs" : "h-7 text-xs"}
+                onClick={() => {
+                  onSaveRates?.(annualRateNum, monthlyRateNum);
+                  onSaveCommission?.(commissionNum);
+                  setRatesSaved(true); setCommissionSaved(true);
+                  setTimeout(() => { setRatesSaved(false); setCommissionSaved(false); }, 2000);
+                }}
+                data-testid="button-save-breakdown"
+              >
+                {allSaved ? <><CheckCircle2 className="h-3 w-3 mr-1" />Saved</> : "Save Rates"}
+              </Button>
             </div>
-            <div>
-              <Label className="text-xs text-blue-700 mb-1 block">Monthly Rate (%)</Label>
-              <div className="relative">
-                <Input type="number" min="0" max="30" step="0.1" value={editMonthly} onChange={e => { setEditMonthly(e.target.value); setRatesSaved(false); }} className="pr-8" data-testid="input-monthly-rate" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Annual */}
+              <div className="bg-white rounded-lg p-3 border border-purple-100">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Annual Plan</p>
+                <WfRow label="Annual rent" value={annualRent} />
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
+                    <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" />
+                  </span>
+                  <span className="font-mono text-red-600">− ${fmt(insA)}</span>
+                </div>
+                <WfRow label="After insurance" value={afterInsA} subtotal />
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
+                    <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-annual" />
+                  </span>
+                  <span className="font-mono text-red-600">− ${fmt(commA)}</span>
+                </div>
+                <WfRow label="Net" value={netA} total />
+                <div className="mt-1 text-xs text-purple-600 text-right font-semibold">Commission payout: ${fmt(commA)}</div>
+              </div>
+              {/* Monthly */}
+              <div className="bg-white rounded-lg p-3 border border-purple-100">
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Monthly Plan</p>
+                <WfRow label="Monthly rent" value={rent} />
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
+                    <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" />
+                  </span>
+                  <span className="font-mono text-red-600">− ${fmt(insM)}</span>
+                </div>
+                <WfRow label="After insurance" value={afterInsM} subtotal />
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
+                    <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-monthly" />
+                  </span>
+                  <span className="font-mono text-red-600">− ${fmt(commM)}</span>
+                </div>
+                <WfRow label="Net/mo" value={netM} total />
+                <div className="mt-1 text-xs text-purple-600 text-right font-semibold">Commission/mo: ${fmt(commM)} · Annual: ${fmt(commM * 12)}</div>
               </div>
             </div>
           </div>
-          <Button onClick={() => { onSaveRates(annualRateNum, monthlyRateNum); setRatesSaved(true); setTimeout(() => setRatesSaved(false), 2000); }} size="sm" variant={ratesSaved ? "outline" : "default"} className={ratesSaved ? "border-green-500 text-green-600" : ""} data-testid="button-save-rates">
-            {ratesSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save Rates"}
-          </Button>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Markup (lead level) */}
-      {onSaveMarkup && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-3"><BadgePercent className="h-4 w-4" /> Additional Markup</p>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <div className="relative">
-                <Input type="number" min="0" max="20" step="0.5" value={markup} onChange={e => { setMarkup(e.target.value); setMarkupSaved(false); }} className="pr-8 text-lg font-semibold" data-testid="input-markup-percent" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">%</span>
-              </div>
-              <p className="text-xs text-amber-700 mt-1">Added to base rates ({annualRateNum}% / {monthlyRateNum}%)</p>
-            </div>
-            <Button onClick={() => { onSaveMarkup(markupNum); setMarkupSaved(true); setTimeout(() => setMarkupSaved(false), 2000); }} size="sm" variant={markupSaved ? "outline" : "default"} className={markupSaved ? "border-green-500 text-green-600" : ""} data-testid="button-save-markup">
-              {markupSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Commission % — configurable payout section */}
-      {onSaveCommission && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-purple-800 flex items-center gap-2 mb-3">
-            <TrendingUp className="h-4 w-4" /> Commission
-          </p>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Input
-                  type="number" min="0" max="100" step="0.5"
-                  value={commission}
-                  onChange={e => { setCommission(e.target.value); setCommissionSaved(false); }}
-                  className="pr-8 text-lg font-semibold"
-                  data-testid="input-commission-percent"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">%</span>
-              </div>
-              <p className="text-xs text-purple-600 mt-1">Applied to annual / monthly rent to calculate payout</p>
-            </div>
-            <Button
-              onClick={() => { onSaveCommission(commissionNum); setCommissionSaved(true); setTimeout(() => setCommissionSaved(false), 2000); }}
-              size="sm"
-              variant={commissionSaved ? "outline" : "default"}
-              className={commissionSaved ? "border-green-500 text-green-600" : ""}
-              data-testid="button-save-commission"
-            >
-              {commissionSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
-            </Button>
-          </div>
-          {commissionNum > 0 && rent > 0 && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm border border-purple-100">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Annual</p>
-                <div className="flex justify-between text-gray-500"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
-                <div className="flex justify-between text-gray-400 text-xs"><span>× {commissionNum}%</span><span></span></div>
-                <div className="flex justify-between font-bold text-purple-700 border-t pt-1.5"><span>Payout</span><span>${fmt(annualPayout)}</span></div>
-              </div>
-              <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm border border-purple-100">
-                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Monthly</p>
-                <div className="flex justify-between text-gray-500"><span>Monthly rent</span><span>${fmt(rent)}/mo</span></div>
-                <div className="flex justify-between text-gray-400 text-xs"><span>× {commissionNum}%</span><span></span></div>
-                <div className="flex justify-between font-bold text-purple-700 border-t pt-1.5"><span>Payout/mo</span><span>${fmt(monthlyPayout)}</span></div>
-                <div className="flex justify-between text-gray-400 text-xs"><span>Annual total</span><span>${fmt(monthlyPayout * 12)}/yr</span></div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Commission + Plan cards */}
+      {/* Plan cards */}
       <div className="grid grid-cols-2 gap-4 items-start">
-        {/* Commission Calculator — left */}
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-          <p className="text-sm font-semibold text-indigo-800 mb-3 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" /> Commission Estimate
-          </p>
-
-          {/* Annual commission */}
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Annual Deal (4.5%)</p>
-            <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-500">
-                <span>Annual premium</span><span>${fmt(annualPremium)}</span>
-              </div>
-              <div className="flex justify-between text-gray-400 text-xs">
-                <span>× 4.5% commission</span><span></span>
-              </div>
-              <div className="flex justify-between font-bold text-blue-700 border-t pt-1.5">
-                <span>Commission</span><span>${fmt(annualPremium * 0.045)}</span>
-              </div>
-            </div>
+        {/* Annual */}
+        <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
+          <div className="bg-blue-600 text-white px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /><span className="font-semibold text-xs">Annual Plan</span></div>
+            <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">{finalAnnualRate.toFixed(2)}%</span>
           </div>
-
-          {/* Monthly commission */}
-          <div>
-            <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Monthly Deal (5%)</p>
-            <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-500">
-                <span>Monthly premium</span><span>${fmt(monthlyPremium)}</span>
-              </div>
-              <div className="flex justify-between text-gray-400 text-xs">
-                <span>× 5% commission</span><span></span>
-              </div>
-              <div className="flex justify-between font-bold text-green-700 border-t pt-1.5">
-                <span>Commission/mo</span><span>${fmt(monthlyPremium * 0.05)}</span>
-              </div>
-              <div className="flex justify-between text-gray-400 text-xs">
-                <span>Annual total</span><span>${fmt(monthlyPremium * 0.05 * 12)}/yr</span>
-              </div>
+          <div className="p-3">
+            <p className="text-2xl font-bold text-gray-900">${fmt(annualPremium)}</p>
+            <p className="text-xs text-gray-400 mb-1">one-time · ${fmt(annualPremiumMonthly)}/mo equiv.</p>
+            <div className="space-y-1 text-xs text-gray-500 mb-2.5">
+              <div className="flex justify-between"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
+              {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * annualRent)}</span></div>}
+              <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
             </div>
+            {locationId && (
+              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); }} data-testid="button-collect-annual">
+                <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(annualPremium)}
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Plan cards — compact, right */}
-        <div className="space-y-3">
-          {/* Annual */}
-          <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden">
-            <div className="bg-blue-600 text-white px-3 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /><span className="font-semibold text-xs">Annual Plan</span></div>
-              <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">{finalAnnualRate.toFixed(2)}%</span>
-            </div>
-            <div className="p-3">
-              <p className="text-2xl font-bold text-gray-900">${fmt(annualPremium)}</p>
-              <p className="text-xs text-gray-400 mb-1">one-time · ${fmt(annualPremiumMonthly)}/mo equiv.</p>
-              <div className="space-y-1 text-xs text-gray-500 mb-2.5">
-                <div className="flex justify-between"><span>Annual rent</span><span>${fmt(annualRent)}</span></div>
-                {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * annualRent)}</span></div>}
-                <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
-              </div>
-              {locationId && (
-                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); }} data-testid="button-collect-annual">
-                  <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(annualPremium)}
-                </Button>
-              )}
-            </div>
+        {/* Monthly */}
+        <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
+          <div className="bg-green-600 text-white px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /><span className="font-semibold text-xs">Monthly Plan</span></div>
+            <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">{finalMonthlyRate.toFixed(2)}%</span>
           </div>
-
-          {/* Monthly */}
-          <div className="bg-white border-2 border-green-200 rounded-xl overflow-hidden">
-            <div className="bg-green-600 text-white px-3 py-2 flex items-center justify-between">
-              <div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5" /><span className="font-semibold text-xs">Monthly Plan</span></div>
-              <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">{finalMonthlyRate.toFixed(2)}%</span>
+          <div className="p-3">
+            <p className="text-2xl font-bold text-gray-900">${fmt(monthlyPremium)}<span className="text-sm font-normal text-gray-400">/mo</span></p>
+            <p className="text-xs text-gray-400 mb-1">Annual total: ${fmt(monthlyPremiumAnnual)}</p>
+            <div className="space-y-1 text-xs text-gray-500 mb-2.5">
+              <div className="flex justify-between"><span>Monthly rent</span><span>${fmt(rent)}</span></div>
+              {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * rent)}/mo</span></div>}
+              <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
             </div>
-            <div className="p-3">
-              <p className="text-2xl font-bold text-gray-900">${fmt(monthlyPremium)}<span className="text-sm font-normal text-gray-400">/mo</span></p>
-              <p className="text-xs text-gray-400 mb-1">Annual total: ${fmt(monthlyPremiumAnnual)}</p>
-              <div className="space-y-1 text-xs text-gray-500 mb-2.5">
-                <div className="flex justify-between"><span>Monthly rent</span><span>${fmt(rent)}</span></div>
-                {markupNum > 0 && <div className="flex justify-between text-amber-600"><span>Markup ({markupNum}%)</span><span>+${fmt((markupNum / 100) * rent)}/mo</span></div>}
-                <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
-              </div>
-              {locationId && (
-                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); }} data-testid="button-collect-monthly">
-                  <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(monthlyPremium)}/mo
-                </Button>
-              )}
-            </div>
+            {locationId && (
+              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); }} data-testid="button-collect-monthly">
+                <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(monthlyPremium)}/mo
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -488,6 +455,34 @@ function PricingTab({
               <Clock className="h-3 w-3" /> {pendingPayments.length} payment(s) awaiting completion
             </div>
           )}
+        </div>
+      )}
+
+      {/* Pricing Notes */}
+      {onSavePricingNotes && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
+            <BadgePercent className="h-4 w-4 text-gray-500" /> Pricing Notes
+          </p>
+          <textarea
+            value={pricingNotes}
+            onChange={e => { setPricingNotes(e.target.value); setPricingNotesSaved(false); }}
+            rows={4}
+            placeholder="Add commission agreements, special terms, or any pricing notes…"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+            data-testid="textarea-pricing-notes"
+          />
+          <div className="flex justify-end mt-2">
+            <Button
+              size="sm"
+              variant={pricingNotesSaved ? "outline" : "default"}
+              className={pricingNotesSaved ? "border-green-500 text-green-600" : ""}
+              onClick={() => { onSavePricingNotes(pricingNotes); setPricingNotesSaved(true); setTimeout(() => setPricingNotesSaved(false), 2000); }}
+              data-testid="button-save-pricing-notes"
+            >
+              {pricingNotesSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save Notes"}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -871,6 +866,16 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
       toast({ title: "Commission rate saved" });
     } catch { toast({ title: "Failed to save commission rate", variant: "destructive" }); }
+  }
+
+  async function handleSavePricingNotes(notes: string) {
+    if (!selectedLocation || !user) return;
+    try {
+      const updated = await apiRequest<RgLocation>(`/rep/locations/${selectedLocation.id}`, { method: "PATCH", body: JSON.stringify({ actorId: user.id, pricingNotes: notes || null }) });
+      setSelectedLocation(updated);
+      setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+      toast({ title: "Notes saved" });
+    } catch { toast({ title: "Failed to save notes", variant: "destructive" }); }
   }
 
   async function openLead(lead: RgLead) {
@@ -2035,8 +2040,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
                       baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || globalRgRates.monthlyRate}
                       commissionPercent={selectedLocation.commissionPercent ?? 0}
+                      pricingNotes={selectedLocation.pricingNotes}
                       onSaveRates={rgPerm("canEditPricing") ? handleSaveLocationRates : undefined}
                       onSaveCommission={rgPerm("canEditPricing") ? handleSaveCommission : undefined}
+                      onSavePricingNotes={rgPerm("canEditPricing") ? handleSavePricingNotes : undefined}
                       paymentLink={selectedLocation.paymentLink}
                       onSavePaymentLink={rgPerm("canEditPricing") ? handleSaveLocationPaymentLink : undefined}
                       locationId={selectedLocation.id}
