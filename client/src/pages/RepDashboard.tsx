@@ -287,12 +287,11 @@ function PricingTab({
               {/* Annual */}
               <div className="bg-white rounded-lg p-3 border border-purple-100">
                 <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Annual Plan</p>
-                <WfRow label="Total commission" value={insA} subtotal />
-                <div className="flex justify-between items-center text-sm py-1">
-                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
+                <div className="flex justify-between items-center text-sm py-1 border-t border-gray-200 pt-2">
+                  <span className="text-gray-700 font-semibold flex items-center gap-1">Commission&nbsp;
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" />
                   </span>
-                  <span className="font-mono text-gray-700">${fmt(insA)}</span>
+                  <span className="font-mono text-gray-800 font-semibold">${fmt(insA)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
@@ -306,12 +305,11 @@ function PricingTab({
               {/* Monthly */}
               <div className="bg-white rounded-lg p-3 border border-purple-100">
                 <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Monthly Plan</p>
-                <WfRow label={<span>Total commission <span className="text-gray-400 font-normal">(${fmt(insM * 12)}/yr)</span></span>} value={insM} subtotal />
-                <div className="flex justify-between items-center text-sm py-1">
-                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
+                <div className="flex justify-between items-center text-sm py-1 border-t border-gray-200 pt-2">
+                  <span className="text-gray-700 font-semibold flex items-center gap-1">Commission&nbsp;
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" />
                   </span>
-                  <span className="font-mono text-gray-700">${fmt(insM)}</span>
+                  <span className="font-mono text-gray-800 font-semibold">${fmt(insM)}<span className="text-xs text-gray-400 font-normal ml-1">(${fmt(insM * 12)}/yr)</span></span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-500 flex items-center gap-1">Less commission&nbsp;
