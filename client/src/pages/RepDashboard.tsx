@@ -100,13 +100,16 @@ type RgPaymentRecord = {
 
 function PricingTab({
   monthlyRent, markupPercent, baseAnnualRate = 4.5, baseMonthlyRate = 5,
-  onSaveMarkup, onSaveRates, paymentLink, onSavePaymentLink,
+  commissionPercent: commissionPercentProp, onSaveMarkup, onSaveRates, onSaveCommission,
+  paymentLink, onSavePaymentLink,
   locationId, landlordEmail, landlordName, payments, onPaymentCreated,
 }: {
   monthlyRent: number;
   markupPercent?: number | string | null;
   baseAnnualRate?: number;
   baseMonthlyRate?: number;
+  commissionPercent?: number | string | null;
+  onSaveCommission?: (pct: number) => void;
   onSaveMarkup?: (pct: number) => void;
   onSaveRates?: (annual: number, monthly: number) => void;
   paymentLink?: string | null;
@@ -120,6 +123,8 @@ function PricingTab({
   const { toast } = useToast();
   const rent = monthlyRent || 0;
   const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
+  const [commission, setCommission] = useState<string>(commissionPercentProp ? String(Number(commissionPercentProp)) : "0");
+  const [commissionSaved, setCommissionSaved] = useState(false);
   const [editAnnual, setEditAnnual] = useState<string>(String(baseAnnualRate));
   const [editMonthly, setEditMonthly] = useState<string>(String(baseMonthlyRate));
   const [editLink, setEditLink] = useState<string>(paymentLink || "");
@@ -141,6 +146,7 @@ function PricingTab({
   const [rcptLoading, setRcptLoading] = useState(false);
 
   const markupNum = Math.max(0, parseFloat(markup) || 0);
+  const commissionNum = Math.max(0, parseFloat(commission) || 0);
   const annualRateNum = parseFloat(editAnnual) || 4.5;
   const monthlyRateNum = parseFloat(editMonthly) || 5;
   const finalAnnualRate = annualRateNum + markupNum;
@@ -150,6 +156,9 @@ function PricingTab({
   const annualPremiumMonthly = annualPremium / 12;
   const monthlyPremium = (finalMonthlyRate / 100) * rent;
   const monthlyPremiumAnnual = monthlyPremium * 12;
+  // Commission payout = base premium × commission%
+  const annualPayout = (commissionNum / 100) * annualPremium;
+  const monthlyPayout = (commissionNum / 100) * monthlyPremium;
 
   const selectedAmount = payDialog.planType === "annual" ? annualPremium : monthlyPremium;
   const selectedAmountCents = Math.round(selectedAmount * 100);
@@ -257,6 +266,56 @@ function PricingTab({
               {markupSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Commission % — configurable payout section */}
+      {onSaveCommission && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-purple-800 flex items-center gap-2 mb-3">
+            <TrendingUp className="h-4 w-4" /> Commission
+          </p>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Input
+                  type="number" min="0" max="100" step="0.5"
+                  value={commission}
+                  onChange={e => { setCommission(e.target.value); setCommissionSaved(false); }}
+                  className="pr-8 text-lg font-semibold"
+                  data-testid="input-commission-percent"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">%</span>
+              </div>
+              <p className="text-xs text-purple-600 mt-1">Applied to base premium to calculate payout</p>
+            </div>
+            <Button
+              onClick={() => { onSaveCommission(commissionNum); setCommissionSaved(true); setTimeout(() => setCommissionSaved(false), 2000); }}
+              size="sm"
+              variant={commissionSaved ? "outline" : "default"}
+              className={commissionSaved ? "border-green-500 text-green-600" : ""}
+              data-testid="button-save-commission"
+            >
+              {commissionSaved ? <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</> : "Save"}
+            </Button>
+          </div>
+          {commissionNum > 0 && rent > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm border border-purple-100">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Annual Deal</p>
+                <div className="flex justify-between text-gray-500"><span>Base premium</span><span>${fmt(annualPremium)}</span></div>
+                <div className="flex justify-between text-gray-400 text-xs"><span>× {commissionNum}%</span><span></span></div>
+                <div className="flex justify-between font-bold text-purple-700 border-t pt-1.5"><span>Payout</span><span>${fmt(annualPayout)}</span></div>
+              </div>
+              <div className="bg-white rounded-lg p-3 space-y-1.5 text-sm border border-purple-100">
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Monthly Deal</p>
+                <div className="flex justify-between text-gray-500"><span>Base premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
+                <div className="flex justify-between text-gray-400 text-xs"><span>× {commissionNum}%</span><span></span></div>
+                <div className="flex justify-between font-bold text-purple-700 border-t pt-1.5"><span>Payout/mo</span><span>${fmt(monthlyPayout)}</span></div>
+                <div className="flex justify-between text-gray-400 text-xs"><span>Annual total</span><span>${fmt(monthlyPayout * 12)}/yr</span></div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -802,6 +861,16 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
       toast({ title: "Payment link saved" });
     } catch { toast({ title: "Failed to save payment link", variant: "destructive" }); }
+  }
+
+  async function handleSaveCommission(pct: number) {
+    if (!selectedLocation || !user) return;
+    try {
+      const updated = await apiRequest<RgLocation>(`/rep/locations/${selectedLocation.id}`, { method: "PATCH", body: JSON.stringify({ actorId: user.id, commissionPercent: String(pct) }) });
+      setSelectedLocation(updated);
+      setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+      toast({ title: "Commission rate saved" });
+    } catch { toast({ title: "Failed to save commission rate", variant: "destructive" }); }
   }
 
   async function openLead(lead: RgLead) {
@@ -1965,7 +2034,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       markupPercent={0}
                       baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
                       baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || globalRgRates.monthlyRate}
+                      commissionPercent={selectedLocation.commissionPercent ?? 0}
                       onSaveRates={rgPerm("canEditPricing") ? handleSaveLocationRates : undefined}
+                      onSaveCommission={rgPerm("canEditPricing") ? handleSaveCommission : undefined}
                       paymentLink={selectedLocation.paymentLink}
                       onSavePaymentLink={rgPerm("canEditPricing") ? handleSaveLocationPaymentLink : undefined}
                       locationId={selectedLocation.id}

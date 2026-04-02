@@ -205,6 +205,7 @@ export const rgLocations = pgTable("rg_locations", {
   status: text("status").default("New"),
   annualRatePercent: decimal("annual_rate_percent", { precision: 5, scale: 2 }).default("4.50"),
   monthlyRatePercent: decimal("monthly_rate_percent", { precision: 5, scale: 2 }).default("5.00"),
+  commissionPercent: decimal("commission_percent", { precision: 5, scale: 2 }).default("0"),
   paymentLink: text("payment_link"),
   otherContactName: text("other_contact_name"),
   otherContactEmail: text("other_contact_email"),
