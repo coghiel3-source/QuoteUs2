@@ -1,0 +1,138 @@
+TERMS OF SERVICE
+Effective Date: 04-01-2026
+Welcome to QuoteUs.ca ("QuoteUs", "we", "our", or "us"). These Terms of Service ("Terms") govern your access to and use of our website, platform, and services (collectively, the "Platform"). By accessing or using the Platform, you agree to be bound by these Terms.
+
+1. OVERVIEW OF SERVICES
+QuoteUs.ca provides:
+Insurance-related information, quotes, and referral services
+Rent Guarantee products and related services
+A peer-to-peer marketplace connecting independent vendors, brokers, landlords, tenants, and other users ("Vendors" and "Users")
+QuoteUs.ca is not an insurer, underwriter, broker (unless explicitly stated), or financial advisor. We do not guarantee the availability, accuracy, or suitability of any product or service offered through the Platform.
+
+2. PEER-TO-PEER MARKETPLACE DISCLAIMER
+The Platform may facilitate a peer-to-peer marketplace where Vendors offer products and services directly to Users.
+QuoteUs.ca acts solely as a technology platform and intermediary.
+All transactions are strictly between Users and Vendors.
+QuoteUs.ca does not endorse, guarantee, or assume responsibility for any Vendor, product, service, or transaction.
+Vendor Responsibility
+Vendors are solely responsible for:
+Compliance with all applicable laws and regulations
+Accuracy of listings, representations, and documentation
+Delivery, performance, and fulfillment of services
+Handling disputes, refunds, and claims
+User Responsibility
+Users acknowledge that:
+They engage Vendors at their own risk
+They must perform their own due diligence before entering into any agreement
+
+3. NO LIABILITY
+To the fullest extent permitted by law, QuoteUs.ca shall not be liable for:
+Any direct, indirect, incidental, consequential, or punitive damages
+Any loss arising from transactions between Users and Vendors
+Errors, omissions, or inaccuracies in listings or content
+Failure of any Vendor to perform or deliver services
+QuoteUs.ca does not assume liability for:
+Insurance coverage decisions
+Rent Guarantee claims or denials
+Financial losses incurred through use of the Platform
+All liability is expressly transferred to the Vendor or third-party provider.
+
+4. RENT GUARANTEE PRODUCTS
+Rent Guarantee products offered on the Platform may be provided by third-party Vendors.
+QuoteUs.ca is not the guarantor or insurer
+All obligations related to Rent Guarantee products lie solely with the issuing Vendor
+Terms, coverage, and claims are governed by the Vendor’s agreement
+Users must review Vendor-specific agreements carefully.
+
+5. USER ACCOUNTS
+Users may be required to create an account.
+You agree to:
+Provide accurate and complete information
+Maintain the confidentiality of your login credentials
+Be responsible for all activity under your account
+QuoteUs.ca reserves the right to suspend or terminate accounts at its discretion.
+
+6. PROHIBITED USES
+You agree not to:
+Use the Platform for unlawful or fraudulent purposes
+Misrepresent identity or authority
+Upload false, misleading, or harmful content
+Interfere with the security or operation of the Platform
+
+7. INTELLECTUAL PROPERTY
+All content on the Platform, including logos, text, graphics, and software, is owned by or licensed to QuoteUs.ca.
+You may not copy, distribute, or exploit any content without prior written consent.
+
+8. THIRD-PARTY SERVICES
+The Platform may include links or integrations with third-party services.
+QuoteUs.ca is not responsible for:
+Third-party content or policies
+Data handling by third parties
+Any damages resulting from third-party interactions
+
+9. DISCLAIMERS
+The Platform is provided "as is" and "as available".
+QuoteUs.ca makes no warranties, including:
+Merchantability
+Fitness for a particular purpose
+Non-infringement
+We do not guarantee uninterrupted or error-free service.
+
+10. INDEMNIFICATION
+You agree to indemnify and hold harmless QuoteUs.ca, its directors, officers, employees, and affiliates from any claims, damages, or liabilities arising from:
+Your use of the Platform
+Your interaction with Vendors
+Your violation of these Terms
+Vendors specifically agree to indemnify QuoteUs.ca against all claims related to their products, services, and transactions.
+
+11. LIMITATION OF LIABILITY
+To the maximum extent permitted by law:
+QuoteUs.ca’s total liability shall not exceed $100 CAD
+We are not liable for indirect or consequential damages
+
+12. TERMINATION
+We may suspend or terminate access to the Platform at any time without notice.
+
+13. GOVERNING LAW
+These Terms shall be governed by the laws of the Province of Ontario and the laws of Canada applicable therein.
+
+14. CHANGES TO TERMS
+We may update these Terms at any time. Continued use of the Platform constitutes acceptance of the revised Terms.
+
+15. CONTACT
+For questions regarding these Terms, contact:
+QuoteUs.ca
+Email: [Insert Email]
+Website: https://www.quoteus.ca
+
+16. ACKNOWLEDGEMENT
+By using the Platform, you acknowledge that you have read, understood, and agree to these Terms of Service.
+I’ve created a solid foundational Terms of Service in the canvas for you.
+Before you publish this, here are a few important upgrades you should strongly consider (these matter a lot for liability protection and compliance):
+1. Add a Separate Vendor Agreement
+Right now, liability is pushed to vendors—but for real protection, you should also have:
+A Vendor Terms / Partner Agreement
+With clauses like:
+Insurance requirements (E&O, liability)
+Licensing confirmation (especially for insurance/brokers)
+Indemnity + defense obligations
+Chargeback / dispute responsibility
+2. Strengthen Marketplace Language (Optional Enhancement)
+You may want to explicitly state:
+QuoteUs is not a party to any contract
+No agency, partnership, or employment relationship exists
+Vendors are independent contractors
+3. Add Payment Disclaimer (if applicable)
+If you’ll handle payments:
+Clarify if you are:
+A payment facilitator, OR
+Using Stripe/third-party processor
+State you are not responsible for payment failures, fraud, or reversals
+4. Add Jurisdiction Flexibility
+Since your platform may operate in Canada + U.S., consider:
+Adding “applicable jurisdiction depending on user location”
+Or keeping Ontario but clarifying cross-border use
+5. Privacy Policy Reference
+Legally, you should link:
+Privacy Policy
+Cookie Policy (especially for analytics + tracking)

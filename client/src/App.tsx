@@ -20,6 +20,7 @@ import MortgagePage from "@/pages/Mortgage";
 import AboutPage from "@/pages/About";
 import DashboardPage from "@/pages/Dashboard";
 import PrivacyPage from "@/pages/Privacy";
+import TermsPage from "@/pages/Terms";
 import ContactPage from "@/pages/Contact";
 import AdminCRMPage from "@/pages/AdminCRM";
 import BrokerCreditsPage from "@/pages/BrokerCredits";
@@ -70,6 +71,7 @@ function Router() {
             <Route path="/contact" component={ContactPage} />
             <Route path="/dashboard" component={DashboardPage} />
             <Route path="/privacy" component={PrivacyPage} />
+            <Route path="/terms" component={TermsPage} />
             <Route path="/admin" component={AdminCRMPage} />
             <Route path="/broker/credits" component={BrokerCreditsPage} />
             <Route path="/login" component={LoginPage} />
