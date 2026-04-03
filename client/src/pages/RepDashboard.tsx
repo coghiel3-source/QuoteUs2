@@ -255,8 +255,12 @@ function PricingTab({
 
       {/* Commission Breakdown — step-by-step with inline editable rates */}
       {(onSaveRates || onSaveCommission) && rent > 0 && (function() {
-        const insA = (annualRateNum / 100) * annualRent;
-        const insM = (monthlyRateNum / 100) * rent;
+        const topA  = (commissionNum / 100) * annualRent;
+        const midA  = (annualRateNum  / 100) * annualRent;
+        const netA  = topA - midA;
+        const topM  = (commissionNum / 100) * rent;
+        const midM  = (monthlyRateNum / 100) * rent;
+        const netM  = topM - midM;
         const allSaved = ratesSaved && commissionSaved;
         return (
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
@@ -283,26 +287,36 @@ function PricingTab({
               {/* Annual */}
               <div className="bg-white rounded-lg p-3 border border-purple-100">
                 <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Annual Plan</p>
-                <WfRow label="Total commission" value={insA} subtotal />
                 <div className="flex justify-between items-center text-sm py-1">
-                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
+                  <span className="text-gray-600 flex items-center gap-1">Total cost/fees&nbsp;
+                    <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-annual" />
+                  </span>
+                  <span className="font-mono text-gray-800">${fmt(topA)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Insurance payment&nbsp;
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" />
                   </span>
-                  <span className="font-mono text-gray-700">${fmt(insA)}</span>
+                  <span className="font-mono text-gray-500">${fmt(midA)}</span>
                 </div>
-                <WfRow label="Net" value={insA} total />
+                <WfRow label="Net" value={netA} total />
               </div>
               {/* Monthly */}
               <div className="bg-white rounded-lg p-3 border border-purple-100">
                 <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Monthly Plan</p>
-                <WfRow label={<span>Total commission <span className="text-gray-400 font-normal">(${fmt(insM * 12)}/yr)</span></span>} value={insM} subtotal />
                 <div className="flex justify-between items-center text-sm py-1">
-                  <span className="text-gray-500 flex items-center gap-1">Less insurance&nbsp;
+                  <span className="text-gray-600 flex items-center gap-1">Total cost/fees&nbsp;
+                    <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-monthly" />
+                  </span>
+                  <span className="font-mono text-gray-800">${fmt(topM)}<span className="text-xs text-gray-400 ml-1">(${fmt(topM * 12)}/yr)</span></span>
+                </div>
+                <div className="flex justify-between items-center text-sm py-1">
+                  <span className="text-gray-500 flex items-center gap-1">Insurance payment&nbsp;
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" />
                   </span>
-                  <span className="font-mono text-gray-700">${fmt(insM)}</span>
+                  <span className="font-mono text-gray-500">${fmt(midM)}<span className="text-xs text-gray-400 ml-1">(${fmt(midM * 12)}/yr)</span></span>
                 </div>
-                <WfRow label="Net/mo" value={insM} total />
+                <WfRow label="Net/mo" value={netM} total />
               </div>
             </div>
           </div>
