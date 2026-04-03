@@ -124,8 +124,10 @@ function WfRow({ label, value, subtotal, total }: { label: React.ReactNode; valu
 
 function PricingTab({
   monthlyRent, markupPercent, baseAnnualRate = 4.5, baseMonthlyRate = 5,
-  commissionPercent: commissionPercentProp, pricingNotes: pricingNotesProp,
-  onSaveMarkup, onSaveRates, onSaveCommission, onSavePricingNotes,
+  commissionPercent: commissionPercentProp,
+  monthlyCommissionPercent: monthlyCommissionPercentProp,
+  pricingNotes: pricingNotesProp,
+  onSaveMarkup, onSaveRates, onSaveCommission, onSaveMonthlyCommission, onSavePricingNotes,
   paymentLink, onSavePaymentLink,
   locationId, landlordEmail, landlordName, payments, onPaymentCreated,
 }: {
@@ -134,8 +136,10 @@ function PricingTab({
   baseAnnualRate?: number;
   baseMonthlyRate?: number;
   commissionPercent?: number | string | null;
+  monthlyCommissionPercent?: number | string | null;
   pricingNotes?: string | null;
   onSaveCommission?: (pct: number) => void;
+  onSaveMonthlyCommission?: (pct: number) => void;
   onSavePricingNotes?: (notes: string) => void;
   onSaveMarkup?: (pct: number) => void;
   onSaveRates?: (annual: number, monthly: number) => void;
@@ -151,6 +155,7 @@ function PricingTab({
   const rent = monthlyRent || 0;
   const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
   const [commission, setCommission] = useState<string>(commissionPercentProp ? String(Number(commissionPercentProp)) : "0");
+  const [commissionMonthly, setCommissionMonthly] = useState<string>(monthlyCommissionPercentProp ? String(Number(monthlyCommissionPercentProp)) : "0");
   const [commissionSaved, setCommissionSaved] = useState(false);
   const [pricingNotes, setPricingNotes] = useState<string>(pricingNotesProp || "");
   const [pricingNotesSaved, setPricingNotesSaved] = useState(false);
@@ -176,6 +181,7 @@ function PricingTab({
 
   const markupNum = Math.max(0, parseFloat(markup) || 0);
   const commissionNum = Math.max(0, parseFloat(commission) || 0);
+  const commissionMonthlyNum = Math.max(0, parseFloat(commissionMonthly) || 0);
   const annualRateNum = parseFloat(editAnnual) || 4.5;
   const monthlyRateNum = parseFloat(editMonthly) || 5;
   const finalAnnualRate = annualRateNum + markupNum;
@@ -258,7 +264,7 @@ function PricingTab({
         const topA  = (commissionNum / 100) * annualRent;
         const midA  = (annualRateNum  / 100) * annualRent;
         const netA  = topA - midA;
-        const topM  = (commissionNum / 100) * rent;
+        const topM  = (commissionMonthlyNum / 100) * rent;
         const midM  = (monthlyRateNum / 100) * rent;
         const netM  = topM - midM;
         const allSaved = ratesSaved && commissionSaved;
@@ -275,6 +281,7 @@ function PricingTab({
                 onClick={() => {
                   onSaveRates?.(annualRateNum, monthlyRateNum);
                   onSaveCommission?.(commissionNum);
+                  onSaveMonthlyCommission?.(commissionMonthlyNum);
                   setRatesSaved(true); setCommissionSaved(true);
                   setTimeout(() => { setRatesSaved(false); setCommissionSaved(false); }, 2000);
                 }}
@@ -306,7 +313,7 @@ function PricingTab({
                 <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Monthly Plan</p>
                 <div className="flex justify-between items-center text-sm py-1">
                   <span className="text-gray-600 flex items-center gap-1">Total cost/fees&nbsp;
-                    <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-monthly" />
+                    <WfPctInput value={commissionMonthly} onChange={v => { setCommissionMonthly(v); setCommissionSaved(false); }} testId="input-commission-monthly" />
                   </span>
                   <span className="font-mono text-gray-800">${fmt(topM)}<span className="text-xs text-gray-400 ml-1">(${fmt(topM * 12)}/yr)</span></span>
                 </div>
@@ -858,6 +865,16 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
       toast({ title: "Commission rate saved" });
     } catch { toast({ title: "Failed to save commission rate", variant: "destructive" }); }
+  }
+
+  async function handleSaveMonthlyCommission(pct: number) {
+    if (!selectedLocation || !user) return;
+    try {
+      const updated = await apiRequest<RgLocation>(`/rep/locations/${selectedLocation.id}`, { method: "PATCH", body: JSON.stringify({ actorId: user.id, monthlyCommissionPercent: String(pct) }) });
+      setSelectedLocation(updated);
+      setLocations(prev => prev.map(l => l.id === updated.id ? updated : l));
+      toast({ title: "Monthly commission rate saved" });
+    } catch { toast({ title: "Failed to save monthly commission rate", variant: "destructive" }); }
   }
 
   async function handleSavePricingNotes(notes: string) {
@@ -2032,9 +2049,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
                       baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || globalRgRates.monthlyRate}
                       commissionPercent={selectedLocation.commissionPercent ?? 0}
+                      monthlyCommissionPercent={selectedLocation.monthlyCommissionPercent ?? 0}
                       pricingNotes={selectedLocation.pricingNotes}
                       onSaveRates={rgPerm("canEditPricing") ? handleSaveLocationRates : undefined}
                       onSaveCommission={rgPerm("canEditPricing") ? handleSaveCommission : undefined}
+                      onSaveMonthlyCommission={rgPerm("canEditPricing") ? handleSaveMonthlyCommission : undefined}
                       onSavePricingNotes={rgPerm("canEditPricing") ? handleSavePricingNotes : undefined}
                       paymentLink={selectedLocation.paymentLink}
                       onSavePaymentLink={rgPerm("canEditPricing") ? handleSaveLocationPaymentLink : undefined}
