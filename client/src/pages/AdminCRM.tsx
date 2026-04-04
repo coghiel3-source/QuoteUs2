@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { useAuth } from "@/lib/AuthContext";
 import RepDashboard from "@/pages/RepDashboard";
-import { DollarSign } from "lucide-react";
+import { DollarSign, ClipboardList } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,6 +96,10 @@ export default function AdminCRMPage() {
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Partner referred leads (for partner role self-view)
+  const [partnerReferredLeads, setPartnerReferredLeads] = useState<any[]>([]);
+  const [partnerLeadsLoading, setPartnerLeadsLoading] = useState(false);
 
   // Referral Partners State
   const [referralPartners, setReferralPartners] = useState<any[]>([]);
@@ -746,6 +750,18 @@ export default function AdminCRMPage() {
       .catch(console.error);
 
   }, []);
+
+  // Fetch partner's own referred leads when partner logs in
+  useEffect(() => {
+    if (user?.id && user?.role === 'partner') {
+      setPartnerLeadsLoading(true);
+      fetch(`/api/partner/my-referred-leads?actorId=${user.id}`)
+        .then(r => r.json())
+        .then(data => { setPartnerReferredLeads(Array.isArray(data) ? data : []); })
+        .catch(console.error)
+        .finally(() => setPartnerLeadsLoading(false));
+    }
+  }, [user?.id]);
 
   // Check for expired leads when user loads (separate effect with user dependency)
   useEffect(() => {
@@ -1734,6 +1750,16 @@ export default function AdminCRMPage() {
                     >
                       <LayoutDashboard size={18} className="mr-3" /> Dashboard
                     </Button>
+                    {user?.role === 'partner' && (
+                    <Button 
+                      variant={activeTab === 'my-leads' ? 'secondary' : 'ghost'} 
+                      className="justify-start mb-1"
+                      onClick={() => { switchTab('my-leads'); setMobileMenuOpen(false); }}
+                    >
+                      <ClipboardList size={18} className="mr-3 text-emerald-600" /> My Leads
+                      {partnerReferredLeads.length > 0 && <Badge className="ml-auto bg-emerald-600 text-white border-none">{partnerReferredLeads.length}</Badge>}
+                    </Button>
+                    )}
                     {hasPermission('viewLeads') && (
                     <Button 
                       variant={activeTab === 'leads' ? 'secondary' : 'ghost'} 
@@ -1854,6 +1880,17 @@ export default function AdminCRMPage() {
                 >
                   <LayoutDashboard size={16} className="mr-2" /> Dashboard
                 </Button>
+                {user?.role === 'partner' && (
+                <Button 
+                  variant={activeTab === 'my-leads' ? 'secondary' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => switchTab('my-leads')}
+                  className={activeTab === 'my-leads' ? 'bg-white text-primary hover:bg-white/90' : 'text-white hover:bg-white/10 hover:text-white'}
+                >
+                  <ClipboardList size={16} className="mr-2" /> My Leads
+                  {partnerReferredLeads.length > 0 && <Badge className="ml-2 bg-emerald-600 text-white border-none h-5 px-1">{partnerReferredLeads.length}</Badge>}
+                </Button>
+                )}
                 {hasPermission('viewLeads') && (
                 <Button 
                   variant={activeTab === 'leads' ? 'secondary' : 'ghost'} 
@@ -2985,6 +3022,84 @@ export default function AdminCRMPage() {
               </Card>
             </div>
           </div>
+        )}
+
+        {/* MY LEADS TAB - Partner only: shows leads submitted via their Reference ID */}
+        {activeTab === 'my-leads' && user?.role === 'partner' && (
+          <Card className="shadow-lg border-none">
+            <CardHeader className="bg-white border-b pb-4">
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <ClipboardList size={20} className="text-emerald-600" /> My Referred Leads
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Leads submitted using your Reference ID: <span className="font-mono font-semibold text-emerald-700">{(user as any).referenceId || '—'}</span>
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-sm px-3 py-1 border-emerald-300 text-emerald-700">
+                  {partnerReferredLeads.length} lead{partnerReferredLeads.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {partnerLeadsLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+                </div>
+              ) : partnerReferredLeads.length === 0 ? (
+                <div className="text-center py-16 px-4">
+                  <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No referred leads yet</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    When clients submit a quote using your Reference ID (<span className="font-mono font-semibold">{(user as any).referenceId || '—'}</span>), they will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="font-semibold">Quote #</TableHead>
+                        <TableHead className="font-semibold">Insurance Type</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Postal Code</TableHead>
+                        <TableHead className="font-semibold">Date Submitted</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {partnerReferredLeads.map((lead: any) => {
+                        const statusColors: Record<string, string> = {
+                          New: "bg-blue-100 text-blue-700",
+                          Assigned: "bg-yellow-100 text-yellow-700",
+                          "In Progress": "bg-orange-100 text-orange-700",
+                          Quoted: "bg-purple-100 text-purple-700",
+                          Won: "bg-green-100 text-green-700",
+                          Lost: "bg-red-100 text-red-700",
+                          Cancelled: "bg-gray-100 text-gray-600",
+                        };
+                        return (
+                          <TableRow key={lead.id} className="hover:bg-gray-50">
+                            <TableCell className="font-mono text-sm">{lead.quoteNumber}</TableCell>
+                            <TableCell>{lead.type}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[lead.status] || 'bg-gray-100 text-gray-600'}`}>
+                                {lead.status}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-gray-600">{lead.postalCode || '—'}</TableCell>
+                            <TableCell className="text-gray-600 text-sm">
+                              {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* LEADS TAB */}

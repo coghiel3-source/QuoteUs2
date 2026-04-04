@@ -2107,6 +2107,33 @@ export async function registerRoutes(
     }
   });
 
+  // Get leads submitted using this partner's Reference ID (limited fields only)
+  app.get("/api/partner/my-referred-leads", async (req, res) => {
+    try {
+      const { actorId } = req.query as any;
+      if (!actorId) return res.status(401).json({ error: "Actor ID required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || actor.role !== "partner") {
+        return res.status(403).json({ error: "Partner access only" });
+      }
+      if (!actor.referenceId) return res.json([]);
+      const allQuotes = await storage.getQuotes();
+      const referred = allQuotes
+        .filter(q => q.referenceId && q.referenceId.toUpperCase() === actor.referenceId!.toUpperCase())
+        .map(q => ({
+          id: q.id,
+          quoteNumber: q.quoteNumber,
+          type: q.type,
+          status: q.status,
+          createdAt: q.createdAt,
+          postalCode: q.postalCode,
+        }));
+      res.json(referred);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get all quotes assigned to reps (for RG Leads section reflection)
   app.get("/api/rep/referred-quotes", async (req, res) => {
     try {
