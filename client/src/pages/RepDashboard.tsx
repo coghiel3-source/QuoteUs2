@@ -123,7 +123,7 @@ function WfRow({ label, value, subtotal, total }: { label: React.ReactNode; valu
 }
 
 function PricingTab({
-  monthlyRent, markupPercent, baseAnnualRate = 4.5, baseMonthlyRate = 5,
+  monthlyRent, markupPercent, baseAnnualRate = 6.5, baseMonthlyRate = 7,
   commissionPercent: commissionPercentProp,
   monthlyCommissionPercent: monthlyCommissionPercentProp,
   pricingNotes: pricingNotesProp,
@@ -183,8 +183,8 @@ function PricingTab({
   const markupNum = Math.max(0, parseFloat(markup) || 0);
   const commissionNum = Math.max(0, parseFloat(commission) || 0);
   const commissionMonthlyNum = Math.max(0, parseFloat(commissionMonthly) || 0);
-  const annualRateNum = parseFloat(editAnnual) || 4.5;
-  const monthlyRateNum = parseFloat(editMonthly) || 5;
+  const annualRateNum = parseFloat(editAnnual) || 6.5;
+  const monthlyRateNum = parseFloat(editMonthly) || 7;
   const finalAnnualRate = annualRateNum + markupNum;
   const finalMonthlyRate = monthlyRateNum + markupNum;
   const annualRent = rent * 12;
@@ -603,7 +603,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Global RG default rates from admin
-  const [globalRgRates, setGlobalRgRates] = useState<{ annualRate: number; monthlyRate: number }>({ annualRate: 4.5, monthlyRate: 5 });
+  const [globalRgRates, setGlobalRgRates] = useState<{ annualRate: number; monthlyRate: number }>({ annualRate: 6.5, monthlyRate: 7 });
 
   // Location detail
   const [locationDetailTab, setLocationDetailTab] = useState<"info" | "pricing" | "docs">("info");
