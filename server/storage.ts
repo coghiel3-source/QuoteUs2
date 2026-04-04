@@ -189,7 +189,7 @@ export class DatabaseStorage implements IStorage {
       .map(n => parseInt(n!.replace("PA-", ""), 10))
       .filter(n => !isNaN(n));
     const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-    return `PA-${String(next).padStart(4, "0")}`;
+    return `PA-${String(next).padStart(9, "0")}`;
   }
 
   async getUserByResetToken(token: string): Promise<User | undefined> {
