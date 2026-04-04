@@ -123,7 +123,7 @@ function WfRow({ label, value, subtotal, total }: { label: React.ReactNode; valu
 }
 
 function PricingTab({
-  monthlyRent, markupPercent, baseAnnualRate = 4.5, baseMonthlyRate = 5,
+  monthlyRent, markupPercent, baseAnnualRate = 6.5, baseMonthlyRate = 7,
   commissionPercent: commissionPercentProp,
   monthlyCommissionPercent: monthlyCommissionPercentProp,
   pricingNotes: pricingNotesProp,
@@ -2068,8 +2068,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     <PricingTab
                       monthlyRent={Number(selectedLocation.monthlyRent)}
                       markupPercent={0}
-                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
-                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || globalRgRates.monthlyRate}
+                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || 6.5}
+                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || 7}
                       commissionPercent={selectedLocation.commissionPercent ?? 0}
                       monthlyCommissionPercent={selectedLocation.monthlyCommissionPercent ?? 0}
                       pricingNotes={selectedLocation.pricingNotes}
