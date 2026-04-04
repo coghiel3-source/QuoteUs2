@@ -14,6 +14,7 @@ export interface IStorage {
   clearResetToken(userId: string): Promise<void>;
   updatePassword(userId: string, password: string): Promise<void>;
   getAllUsers(): Promise<User[]>;
+  getNextPartnerAccountNumber(): Promise<string>;
   
   // Quote operations
   getQuote(id: string): Promise<Quote | undefined>;
@@ -178,6 +179,17 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async getNextPartnerAccountNumber(): Promise<string> {
+    const allUsers = await db.select().from(users).where(sql`partner_account_number IS NOT NULL`);
+    const nums = allUsers
+      .map(u => u.partnerAccountNumber)
+      .filter(Boolean)
+      .map(n => parseInt(n!.replace("PA-", ""), 10))
+      .filter(n => !isNaN(n));
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    return `PA-${String(next).padStart(4, "0")}`;
   }
 
   async getUserByResetToken(token: string): Promise<User | undefined> {

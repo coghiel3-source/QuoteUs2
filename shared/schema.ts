@@ -42,6 +42,7 @@ export const users = pgTable("users", {
   preferredInsuranceTypes: text("preferred_insurance_types").array(),
   preferredDemographics: text("preferred_demographics"),
   referenceId: varchar("reference_id", { length: 6 }).unique(),
+  partnerAccountNumber: varchar("partner_account_number", { length: 12 }).unique(),
   // Rep commission settings (set by admin/manager)
   commissionType: varchar("commission_type", { length: 20 }), // "percentage" | "fixed"
   commissionRate: decimal("commission_rate", { precision: 10, scale: 4 }), // percent or $ per payment

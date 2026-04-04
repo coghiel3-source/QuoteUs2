@@ -303,6 +303,9 @@ export async function registerRoutes(
       if (userData.password) {
         userData.password = await bcrypt.hash(userData.password, 10);
       }
+      if (userData.role === "partner" && userData.status === "active" && !userData.partnerAccountNumber) {
+        userData.partnerAccountNumber = await storage.getNextPartnerAccountNumber();
+      }
       const user = await storage.createUser(userData);
       res.status(201).json(safeUser(user));
     } catch (error: any) {
@@ -369,6 +372,13 @@ export async function registerRoutes(
       
       if (updateData.password) {
         updateData.password = await bcrypt.hash(updateData.password, 10);
+      }
+      // Auto-assign partner account number when a partner is approved/activated
+      if (updateData.status === "active") {
+        const targetUser = await storage.getUser(req.params.id);
+        if (targetUser && targetUser.role === "partner" && !targetUser.partnerAccountNumber) {
+          updateData.partnerAccountNumber = await storage.getNextPartnerAccountNumber();
+        }
       }
       const user = await storage.updateUser(req.params.id, updateData);
       if (!user) {

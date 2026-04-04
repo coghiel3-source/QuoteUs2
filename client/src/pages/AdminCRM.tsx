@@ -4429,6 +4429,7 @@ export default function AdminCRMPage() {
                       <TableHeader>
                         <TableRow className="bg-muted/30">
                           <TableHead>Name</TableHead>
+                          <TableHead>Account #</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Phone</TableHead>
                           <TableHead>Status</TableHead>
@@ -4438,11 +4439,22 @@ export default function AdminCRMPage() {
                       <TableBody>
                         {filtered.map(p => (
                           <TableRow key={p.id} data-testid={`row-partner-${p.id}`}>
-                            <TableCell className="font-medium flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold text-xs shrink-0">
-                                {p.name?.charAt(0)?.toUpperCase() ?? "P"}
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold text-xs shrink-0">
+                                  {p.name?.charAt(0)?.toUpperCase() ?? "P"}
+                                </div>
+                                <span data-testid={`text-partner-name-${p.id}`}>{p.name}</span>
                               </div>
-                              <span data-testid={`text-partner-name-${p.id}`}>{p.name}</span>
+                            </TableCell>
+                            <TableCell>
+                              {(p as any).partnerAccountNumber ? (
+                                <span className="font-mono text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded" data-testid={`text-partner-account-${p.id}`}>
+                                  {(p as any).partnerAccountNumber}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Pending approval</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <a href={`mailto:${p.email}`} className="text-primary hover:underline text-sm" data-testid={`text-partner-email-${p.id}`}>{p.email}</a>
