@@ -4385,6 +4385,7 @@ export default function AdminCRMPage() {
                         viewRgLeads: false, manageRgLeads: false, approveRepCommission: false,
                       }
                     });
+                    setActiveTab('manager');
                     setIsAddUserOpen(true);
                   }}
                   data-testid="button-add-partner"
