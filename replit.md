@@ -82,6 +82,17 @@ Reps can collect Rent Guarantee insurance premiums directly from landlords via S
 - PricingTab in RepDashboard has "Collect Annual Payment" and "Collect Monthly Payment" buttons, payment history section, and "Send Receipt" button
 - Receipt email includes all paid payments for a location in a given year with a formatted HTML summary
 
+### DocuSign-like Document Signing (Per Location)
+A document-upload signature workflow lives on the Location Info tab inside the Rep Dashboard. Reps can:
+- Drag & drop or browse to upload any document (PDF, Word, image — up to 30 MB)
+- Fill in the landlord's name and email (pre-filled from location data)
+- Click "Send for Signature" — a unique token link is generated and emailed to the landlord
+- If SMTP is not configured, a copyable link is shown for manual sharing
+- Signed status and signer details display in the "Document Signing" card in the location Info tab; view doc and download signature links are included
+- Public signing page at `/doc-sign/:token` — no login required; shows the uploaded document (PDF in iframe, image preview), a signature pad, and a name field; submitting records the signature
+- DB table: `location_doc_signatures` (locationId, documentPath, documentName, documentMimeType, landlordName, landlordEmail, propertyAddress, token, status pending/signed, signatureData, signerName, signedAt, createdBy)
+- API routes: `POST /api/rep/locations/:id/doc-signatures` (multipart), `GET /api/rep/locations/:id/doc-signatures`, `GET /api/doc-sign/:token`, `POST /api/doc-sign/:token`
+
 ### Binder / Confirmation of Insurance
 The system allows admins/managers to require brokers to upload a binder (confirmation of insurance) for specific leads. Brokers can upload PDF, Word, or image files, which are then visible in the lead detail view. The activity log tracks all binder-related actions.
 

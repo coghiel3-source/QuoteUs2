@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
 
@@ -130,6 +130,12 @@ export interface IStorage {
   getSignatureRequestByToken(token: string): Promise<any>;
   getSignatureRequestByLocation(locationId: string): Promise<any>;
   updateSignatureRequest(id: string, data: any): Promise<any>;
+
+  // Document Signature operations (DocuSign-like upload + e-sign)
+  createDocSignature(data: any): Promise<LocationDocSignature>;
+  getDocSignaturesByLocation(locationId: string): Promise<LocationDocSignature[]>;
+  getDocSignatureByToken(token: string): Promise<LocationDocSignature | null>;
+  updateDocSignature(id: string, data: any): Promise<LocationDocSignature | null>;
 
   // Admin Billing
   getAllRgPayments(): Promise<RgPayment[]>;
@@ -835,6 +841,32 @@ export class DatabaseStorage implements IStorage {
       .update(signatureRequests)
       .set(data)
       .where(eq(signatureRequests.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  // Document Signature operations
+  async createDocSignature(data: any): Promise<LocationDocSignature> {
+    const [created] = await db.insert(locationDocSignatures).values(data).returning();
+    return created;
+  }
+
+  async getDocSignaturesByLocation(locationId: string): Promise<LocationDocSignature[]> {
+    return db.select().from(locationDocSignatures)
+      .where(eq(locationDocSignatures.locationId, locationId))
+      .orderBy(desc(locationDocSignatures.sentAt));
+  }
+
+  async getDocSignatureByToken(token: string): Promise<LocationDocSignature | null> {
+    const [row] = await db.select().from(locationDocSignatures)
+      .where(eq(locationDocSignatures.token, token));
+    return row || null;
+  }
+
+  async updateDocSignature(id: string, data: any): Promise<LocationDocSignature | null> {
+    const [updated] = await db.update(locationDocSignatures)
+      .set(data)
+      .where(eq(locationDocSignatures.id, id))
       .returning();
     return updated || null;
   }

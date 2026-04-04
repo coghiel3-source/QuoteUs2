@@ -106,6 +106,26 @@ const repDocUpload = multer({
   },
 });
 
+// Doc signature uploads
+const docSignDir = path.join(uploadDir, "doc-signatures");
+if (!fs.existsSync(docSignDir)) fs.mkdirSync(docSignDir, { recursive: true });
+const docSignUploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, docSignDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `docsig-${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
+});
+const docSignUpload = multer({
+  storage: docSignUploadStorage,
+  limits: { fileSize: 30 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|heic|webp/;
+    if (allowedTypes.test(path.extname(file.originalname).toLowerCase())) return cb(null, true);
+    cb(new Error("Only PDF, Word, and image files are allowed"));
+  },
+});
+
 // Default lead costs by type (fallback if not set in database)
 const DEFAULT_LEAD_COSTS: Record<string, number> = {
   "Auto": 10,
@@ -3884,6 +3904,117 @@ export async function registerRoutes(
         console.error("[sign] Failed to auto-approve lead:", e);
       }
 
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── Document Signature (DocuSign-like) ───────────────────────────
+  // POST /api/rep/locations/:id/doc-signatures  (multipart: file + landlordName + landlordEmail)
+  app.post("/api/rep/locations/:id/doc-signatures", docSignUpload.single("document"), async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      const actorId = req.body?.actorId || user?.id;
+      const actor = actorId ? await storage.getUser(actorId) : user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+
+      const { landlordName, landlordEmail } = req.body;
+      if (!landlordEmail) return res.status(400).json({ error: "Landlord email is required" });
+
+      const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      const documentPath = req.file ? `/uploads/doc-signatures/${req.file.filename}` : null;
+      const documentName = req.file ? req.file.originalname : null;
+      const documentMimeType = req.file ? req.file.mimetype : null;
+
+      const record = await storage.createDocSignature({
+        locationId: location.id,
+        documentPath,
+        documentName,
+        documentMimeType,
+        landlordName: landlordName || location.landlordName || "",
+        landlordEmail,
+        propertyAddress: `${location.address}${location.unit ? ", Unit " + location.unit : ""}`,
+        token,
+        status: "pending",
+        createdBy: actor.id,
+      });
+
+      const proto = req.headers["x-forwarded-proto"] || req.protocol;
+      const host = req.headers["x-forwarded-host"] || req.get("host");
+      const signingUrl = `${proto}://${host}/doc-sign/${token}`;
+
+      const emailSent = await sendEmail({
+        to: landlordEmail,
+        subject: `Document Ready for Your Signature — ${location.address}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#1a56db;">Document Ready for Your Signature</h2>
+            <p>Dear ${landlordName || location.landlordName || "Landlord"},</p>
+            <p>A document has been sent to you for review and signature for the property:</p>
+            <p><strong>${location.address}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
+            ${documentName ? `<p>Document: <strong>${documentName}</strong></p>` : ""}
+            <div style="margin:24px 0;">
+              <a href="${signingUrl}" style="background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
+                Review &amp; Sign Document
+              </a>
+            </div>
+            <p style="color:#666;font-size:13px;">If you did not expect this email, please ignore it.</p>
+          </div>`,
+        text: `Please review and sign the document at: ${signingUrl}`,
+      });
+
+      res.json({ record, signingUrl, emailSent });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/rep/locations/:id/doc-signatures
+  app.get("/api/rep/locations/:id/doc-signatures", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      const actorId = (req.query as any).actorId || user?.id;
+      const actor = actorId ? await storage.getUser(actorId) : user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const records = await storage.getDocSignaturesByLocation(req.params.id);
+      res.json(records);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/doc-sign/:token  (public)
+  app.get("/api/doc-sign/:token", async (req, res) => {
+    try {
+      const record = await storage.getDocSignatureByToken(req.params.token);
+      if (!record) return res.status(404).json({ error: "Signing request not found" });
+      res.json(record);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/doc-sign/:token  (public — submit signature)
+  app.post("/api/doc-sign/:token", async (req, res) => {
+    try {
+      const record = await storage.getDocSignatureByToken(req.params.token);
+      if (!record) return res.status(404).json({ error: "Signing request not found" });
+      if (record.status === "signed") return res.status(400).json({ error: "This document has already been signed" });
+      const { signatureData, signerName } = req.body;
+      if (!signatureData || !signerName) return res.status(400).json({ error: "Signature and name are required" });
+      const updated = await storage.updateDocSignature(record.id, {
+        status: "signed",
+        signatureData,
+        signerName,
+        signedAt: new Date(),
+      });
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

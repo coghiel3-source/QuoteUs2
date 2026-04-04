@@ -367,6 +367,26 @@ export const signatureRequests = pgTable("signature_requests", {
   createdBy: varchar("created_by"),
 });
 
+// Location Document Signatures (DocuSign-like custom document upload + e-sign)
+export const locationDocSignatures = pgTable("location_doc_signatures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => rgLocations.id, { onDelete: "cascade" }),
+  documentPath: text("document_path"),
+  documentName: text("document_name"),
+  documentMimeType: text("document_mime_type"),
+  landlordName: text("landlord_name"),
+  landlordEmail: text("landlord_email"),
+  propertyAddress: text("property_address"),
+  token: text("token").unique().notNull(),
+  status: varchar("status").notNull().default("pending"),
+  signatureData: text("signature_data"),
+  signerName: text("signer_name"),
+  signedAt: timestamp("signed_at"),
+  sentAt: timestamp("sent_at").defaultNow(),
+  createdBy: varchar("created_by"),
+});
+export type LocationDocSignature = typeof locationDocSignatures.$inferSelect;
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
