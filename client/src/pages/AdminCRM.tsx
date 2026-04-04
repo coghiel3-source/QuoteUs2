@@ -386,8 +386,8 @@ export default function AdminCRMPage() {
     setRepEarnings(null);
     setIsCommissionOpen(true);
     const [payoutsRes, earningsRes] = await Promise.all([
-      fetch(`/api/admin/reps/${rep.id}/payouts`).then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch(`/api/rep/earnings?repId=${rep.id}`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/admin/reps/${rep.id}/payouts?actorId=${user?.id}`).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`/api/rep/earnings?repId=${rep.id}&actorId=${user?.id}`).then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
     setRepPayouts(payoutsRes || []);
     setRepEarnings(earningsRes);
@@ -401,6 +401,7 @@ export default function AdminCRMPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          actorId: user?.id,
           commissionType: commType,
           commissionRate: commRate || null,
           payoutSchedule: commSchedule,
@@ -427,6 +428,7 @@ export default function AdminCRMPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          actorId: user?.id,
           periodLabel: payoutPeriod,
           commissionCents: Math.round(parseFloat(payoutCommCents) * 100),
           totalPaymentsCents: payoutTotalCents ? Math.round(parseFloat(payoutTotalCents) * 100) : 0,
@@ -452,7 +454,7 @@ export default function AdminCRMPage() {
       const res = await fetch(`/api/admin/payouts/${payoutId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "paid" }),
+        body: JSON.stringify({ actorId: user?.id, status: "paid" }),
       });
       if (!res.ok) throw new Error("Failed");
       const updated = await res.json();

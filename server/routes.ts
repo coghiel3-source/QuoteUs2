@@ -3415,7 +3415,9 @@ export async function registerRoutes(
   // Admin/manager: get or update commission settings for a rep
   app.get("/api/admin/reps/:id/commission", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
       if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
       const rep = await storage.getUser(req.params.id);
       if (!rep || rep.role !== "rep") return res.status(404).json({ error: "Rep not found" });
@@ -3433,10 +3435,12 @@ export async function registerRoutes(
 
   app.put("/api/admin/reps/:id/commission", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.body.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
       if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
       if (user.role === "manager") {
-        const perms = user.permissions || {};
+        const perms = (user as any).permissions || {};
         if (!perms.approveRepCommission) return res.status(403).json({ error: "You do not have permission to approve rep commission" });
       }
       const { commissionType, commissionRate, payoutSchedule, renewalCommissionRate, commissionNotes } = req.body;
@@ -3457,7 +3461,9 @@ export async function registerRoutes(
   // Admin/manager: get payout history for a rep
   app.get("/api/admin/reps/:id/payouts", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
       if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
       const payouts = await storage.getPayoutsForRep(req.params.id);
       res.json(payouts);
@@ -3469,7 +3475,9 @@ export async function registerRoutes(
   // Admin/manager: create a payout for a rep
   app.post("/api/admin/reps/:id/payouts", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.body.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
       if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
       const { periodLabel, periodStart, periodEnd, totalPaymentsCents, commissionCents, isRenewal, notes } = req.body;
       if (!periodLabel || commissionCents === undefined) {
@@ -3496,7 +3504,9 @@ export async function registerRoutes(
   // Admin/manager: update payout (mark as paid, etc.)
   app.put("/api/admin/payouts/:id", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.body.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
       if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
       const { status, notes } = req.body;
       const updateData: any = { notes: notes ?? undefined };
@@ -3515,7 +3525,9 @@ export async function registerRoutes(
   // Admin/manager: get all rep payouts
   app.get("/api/admin/payouts", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const user = sessionUser || (actorId ? await storage.getUser(actorId) : null);
       if (!user || !["admin", "manager"].includes(user.role)) return res.status(403).json({ error: "Access denied" });
       const payouts = await storage.getAllRepPayouts();
       res.json(payouts);
