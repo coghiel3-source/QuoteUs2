@@ -1176,7 +1176,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     }
   }
 
-  async function toggleLeadFlag(field: "creditReportOnFile" | "bankruptcyLastThreeYears" | "noEvictionsOrJudgements" | "employmentLetterOnFile" | "governmentIdOnFile" | "twelveMonthLease" | "leaseViolation" | "rentArrearsLastTwelveMonths" | "noDefaultFirstSixtyDays" | "ongoingEmploymentNoTerminationRisk", value: boolean) {
+  async function toggleLeadFlag(field: "creditReportOnFile" | "bankruptcyLastThreeYears" | "noEvictionsOrJudgements" | "employmentLetterOnFile" | "governmentIdOnFile" | "twelveMonthLease" | "leaseViolation" | "rentArrearsLastTwelveMonths" | "noDefaultFirstSixtyDays" | "ongoingEmploymentNoTerminationRisk" | "documentsReceived", value: boolean) {
     if (!user || !selectedLead) return;
     try {
       const updated = await apiRequest<RgLead>(`/rep/leads/${selectedLead.id}`, {
@@ -2820,6 +2820,30 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                             );
                           })}
                         </div>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <label className="flex items-center gap-3 cursor-pointer group" data-testid="check-documentsReceived">
+                          <div className="relative shrink-0">
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={!!(selectedLead as any).documentsReceived}
+                              onChange={e => toggleLeadFlag("documentsReceived", e.target.checked)}
+                            />
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${(selectedLead as any).documentsReceived ? "bg-blue-600 border-blue-600" : "border-gray-300 bg-white group-hover:border-blue-400"}`}>
+                              {(selectedLead as any).documentsReceived && (
+                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`text-sm font-semibold ${(selectedLead as any).documentsReceived ? "text-blue-700" : "text-gray-600"}`}>
+                            Documents Received
+                          </span>
+                          {(selectedLead as any).documentsReceived && (
+                            <span className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 shrink-0">Confirmed</span>
+                          )}
+                        </label>
                       </div>
                     </CardContent>
                   </Card>

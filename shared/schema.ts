@@ -264,6 +264,7 @@ export const rgLeads = pgTable("rg_leads", {
   rentArrearsLastTwelveMonths: boolean("rent_arrears_last_twelve_months").default(false),
   noDefaultFirstSixtyDays: boolean("no_default_first_sixty_days").default(false),
   ongoingEmploymentNoTerminationRisk: boolean("ongoing_employment_no_termination_risk").default(false),
+  documentsReceived: boolean("documents_received").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
