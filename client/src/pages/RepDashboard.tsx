@@ -195,6 +195,11 @@ function PricingTab({
   // Commission payout = commission% × rent (annual or monthly)
   const annualPayout = (commissionNum / 100) * annualRent;
   const monthlyPayout = (commissionNum / 100) * rent;
+  // Total cost/fees dollar amounts (used to default collect payment to the higher value)
+  const totalCostAnnual = annualPayout;
+  const totalCostMonthly = (commissionMonthlyNum / 100) * rent;
+  const collectDefaultAnnual = Math.max(annualPremium, totalCostAnnual);
+  const collectDefaultMonthly = Math.max(monthlyPremium, totalCostMonthly);
 
   const selectedAmount = payDialog.planType === "annual" ? annualPremium : monthlyPremium;
 
@@ -353,7 +358,7 @@ function PricingTab({
               <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
             </div>
             {locationId && (
-              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); setPayAmount(annualPremium.toFixed(2)); }} data-testid="button-collect-annual">
+              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); setPayAmount(collectDefaultAnnual.toFixed(2)); }} data-testid="button-collect-annual">
                 <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(annualPremium)}
               </Button>
             )}
@@ -375,7 +380,7 @@ function PricingTab({
               <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
             </div>
             {locationId && (
-              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); setPayAmount(monthlyPremium.toFixed(2)); }} data-testid="button-collect-monthly">
+              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); setPayAmount(collectDefaultMonthly.toFixed(2)); }} data-testid="button-collect-monthly">
                 <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(monthlyPremium)}/mo
               </Button>
             )}
