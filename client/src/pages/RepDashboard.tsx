@@ -2792,6 +2792,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                     {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                   </div>
                                 </div>
+                                <span className={`text-xs font-semibold shrink-0 ${isRed ? "text-red-600" : isGreen ? "text-green-600" : "text-gray-400"}`}>Yes</span>
                                 <span className={`text-sm flex-1 ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${isRed ? "bg-red-100 text-red-700" : isGreen ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                                   {checked ? "Yes" : "No"}
@@ -2822,6 +2823,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                     {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                                   </div>
                                 </div>
+                                <span className={`text-xs font-semibold shrink-0 ${isRed ? "text-red-600" : isGreen ? "text-green-600" : "text-gray-400"}`}>Yes</span>
                                 <span className={`text-sm flex-1 ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${isRed ? "bg-red-100 text-red-700" : isGreen ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                                   {checked ? "Yes" : "No"}
