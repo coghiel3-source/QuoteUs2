@@ -171,6 +171,7 @@ function PricingTab({
   const [payEmail, setPayEmail] = useState(landlordEmail || "");
   const [payName, setPayName] = useState(landlordName || "");
   const [payPeriod, setPayPeriod] = useState("");
+  const [payAmount, setPayAmount] = useState("");
   const [payLoading, setPayLoading] = useState(false);
 
   // Receipt dialog state
@@ -196,10 +197,15 @@ function PricingTab({
   const monthlyPayout = (commissionNum / 100) * rent;
 
   const selectedAmount = payDialog.planType === "annual" ? annualPremium : monthlyPremium;
-  const selectedAmountCents = Math.round(selectedAmount * 100);
 
   async function handleCollectPayment() {
     if (!locationId || !payEmail) return;
+    const parsedAmount = parseFloat(payAmount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast({ title: "Invalid amount", description: "Please enter a valid payment amount.", variant: "destructive" });
+      return;
+    }
+    const amountCents = Math.round(parsedAmount * 100);
     setPayLoading(true);
     try {
       const res = await fetch(`/api/rep/locations/${locationId}/create-payment`, {
@@ -207,7 +213,7 @@ function PricingTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planType: payDialog.planType,
-          amountCents: selectedAmountCents,
+          amountCents,
           landlordEmail: payEmail,
           landlordName: payName,
           periodLabel: payPeriod,
@@ -347,7 +353,7 @@ function PricingTab({
               <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Total premium</span><span>${fmt(annualPremium)}</span></div>
             </div>
             {locationId && (
-              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); }} data-testid="button-collect-annual">
+              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); setPayAmount(annualPremium.toFixed(2)); }} data-testid="button-collect-annual">
                 <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(annualPremium)}
               </Button>
             )}
@@ -369,7 +375,7 @@ function PricingTab({
               <div className="flex justify-between font-semibold text-gray-700 border-t pt-1"><span>Monthly premium</span><span>${fmt(monthlyPremium)}/mo</span></div>
             </div>
             {locationId && (
-              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); }} data-testid="button-collect-monthly">
+              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white text-xs h-8" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); setPayAmount(monthlyPremium.toFixed(2)); }} data-testid="button-collect-monthly">
                 <CreditCard className="h-3 w-3 mr-1" /> Collect — ${fmt(monthlyPremium)}/mo
               </Button>
             )}
@@ -492,9 +498,25 @@ function PricingTab({
             <DialogTitle>Collect {payDialog.planType === "annual" ? "Annual" : "Monthly"} Payment</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between items-center">
-              <span className="text-sm text-gray-600">Amount</span>
-              <span className="text-xl font-bold text-gray-900">${fmt(selectedAmount)} CAD</span>
+            <div className="bg-gray-50 rounded-lg px-4 py-3 space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">Calculated from pricing</span>
+                <span className="text-xs text-gray-400">${fmt(selectedAmount)} CAD</span>
+              </div>
+              <Label className="text-xs text-gray-600 block">Charge Amount (CAD) *</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={payAmount}
+                  onChange={e => setPayAmount(e.target.value)}
+                  className="pl-7 text-lg font-semibold"
+                  placeholder="0.00"
+                  data-testid="input-pay-amount"
+                />
+              </div>
             </div>
             <div>
               <Label className="text-xs text-gray-600 mb-1 block">Landlord Name</Label>
