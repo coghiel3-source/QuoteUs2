@@ -13,7 +13,7 @@ export default function TermsPage() {
           <p className="text-xl text-primary-foreground/90 max-w-2xl mx-auto">
             Please read these terms carefully before using the QuoteUs.ca platform and services.
           </p>
-          <p className="text-sm text-primary-foreground/60 mt-4">Effective Date: April 1, 2026</p>
+          <p className="text-sm text-primary-foreground/60 mt-4">Effective Date: 04-03-2026</p>
         </div>
       </div>
 
@@ -166,7 +166,24 @@ export default function TermsPage() {
               Website: <a href="https://www.quoteus.ca" target="_blank" rel="noopener noreferrer">https://www.quoteus.ca</a>
             </p>
 
-            <h2>16. Acknowledgement</h2>
+            <h2>16. Refunds and Processing Fees</h2>
+            <p>
+              All fees charged by QuoteUs.ca for use of the Platform, including but not limited to processing fees, service fees, and transaction fees, are non-refundable.
+            </p>
+            <p>QuoteUs.ca does not issue refunds for any products or services purchased through the Platform.</p>
+            <p>To request a refund, Users must:</p>
+            <ul>
+              <li>Contact the Vendor directly</li>
+              <li>Follow the Vendor's individual refund, cancellation, and dispute policies</li>
+            </ul>
+            <p>Users acknowledge and agree that:</p>
+            <ul>
+              <li>Each Vendor sets their own refund policies</li>
+              <li>QuoteUs.ca has no control over and is not responsible for Vendor refund decisions</li>
+              <li>Any disputes regarding refunds must be resolved solely between the User and the Vendor</li>
+            </ul>
+
+            <h2>17. Acknowledgement</h2>
             <p>
               By using the Platform, you acknowledge that you have read, understood, and agree to these Terms of Service.
             </p>
