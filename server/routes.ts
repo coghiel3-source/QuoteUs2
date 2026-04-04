@@ -1147,7 +1147,7 @@ export async function registerRoutes(
     if (stored) {
       try { return res.json(JSON.parse(stored)); } catch {}
     }
-    res.json({ annualRate: 6.5, monthlyRate: 7 });
+    res.json({ annualRate: 4.5, monthlyRate: 5 });
   });
 
   // Admin: Get province-specific RG rates
@@ -3142,12 +3142,12 @@ export async function registerRoutes(
         ownerRepId = repIdOverride;
       }
       // Resolve rates: province-specific override → global default → hardcoded fallback
-      const globalRates = await storage.getSetting("rg_rates").then(v => v ? JSON.parse(v) : { annualRate: 6.5, monthlyRate: 7 }).catch(() => ({ annualRate: 6.5, monthlyRate: 7 }));
+      const globalRates = await storage.getSetting("rg_rates").then(v => v ? JSON.parse(v) : { annualRate: 4.5, monthlyRate: 5 }).catch(() => ({ annualRate: 4.5, monthlyRate: 5 }));
       const provinceRatesAll = await storage.getSetting("rg_province_rates").then(v => v ? JSON.parse(v) : {}).catch(() => ({}));
       const prov = (province || "ON").toUpperCase();
       const provRates = provinceRatesAll[prov] || {};
-      const finalAnnual = provRates.annualRate ?? globalRates.annualRate ?? 6.5;
-      const finalMonthly = provRates.monthlyRate ?? globalRates.monthlyRate ?? 7;
+      const finalAnnual = provRates.annualRate ?? globalRates.annualRate ?? 4.5;
+      const finalMonthly = provRates.monthlyRate ?? globalRates.monthlyRate ?? 5;
       const location = await storage.createLocation({
         repId: ownerRepId,
         propertyAddress, unit: unit || null, landlordName,

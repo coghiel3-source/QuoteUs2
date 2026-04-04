@@ -603,7 +603,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Global RG default rates from admin
-  const [globalRgRates, setGlobalRgRates] = useState<{ annualRate: number; monthlyRate: number }>({ annualRate: 6.5, monthlyRate: 7 });
+  const [globalRgRates, setGlobalRgRates] = useState<{ annualRate: number; monthlyRate: number }>({ annualRate: 4.5, monthlyRate: 5 });
 
   // Location detail
   const [locationDetailTab, setLocationDetailTab] = useState<"info" | "pricing" | "docs">("info");
@@ -2068,8 +2068,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     <PricingTab
                       monthlyRent={Number(selectedLocation.monthlyRent)}
                       markupPercent={0}
-                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
-                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || globalRgRates.monthlyRate}
+                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || 6.5}
+                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || 7}
                       commissionPercent={selectedLocation.commissionPercent ?? 0}
                       monthlyCommissionPercent={selectedLocation.monthlyCommissionPercent ?? 0}
                       pricingNotes={selectedLocation.pricingNotes}
