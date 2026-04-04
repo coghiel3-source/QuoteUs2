@@ -2785,13 +2785,18 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                             const isRed = danger ? checked : false;
                             const isGreen = !danger && checked;
                             return (
-                              <div key={field} className="flex items-center gap-3" data-testid={`check-${field}`}>
-                                <span className={`text-sm flex-1 ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
-                                <div className="flex shrink-0 rounded-full border border-gray-200 overflow-hidden text-xs font-semibold">
-                                  <button onClick={() => toggleLeadFlag(field, true)} className={`px-3 py-1 transition-colors ${checked ? (danger ? "bg-red-500 text-white" : "bg-green-500 text-white") : "bg-white text-gray-400 hover:bg-gray-50"}`} data-testid={`yes-${field}`}>Yes</button>
-                                  <button onClick={() => toggleLeadFlag(field, false)} className={`px-3 py-1 border-l border-gray-200 transition-colors ${!checked ? "bg-gray-200 text-gray-700" : "bg-white text-gray-400 hover:bg-gray-50"}`} data-testid={`no-${field}`}>No</button>
+                              <label key={field} className="flex items-center gap-3 cursor-pointer group" data-testid={`check-${field}`}>
+                                <div className="relative shrink-0">
+                                  <input type="checkbox" className="sr-only" checked={checked} onChange={e => toggleLeadFlag(field, e.target.checked)} />
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isRed ? "bg-red-500 border-red-500" : isGreen ? "bg-green-500 border-green-500" : "border-gray-300 bg-white group-hover:border-gray-400"}`}>
+                                    {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                  </div>
                                 </div>
-                              </div>
+                                <span className={`text-sm flex-1 ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${isRed ? "bg-red-100 text-red-700" : isGreen ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                  {checked ? "Yes" : "No"}
+                                </span>
+                              </label>
                             );
                           })}
                         </div>
@@ -2810,13 +2815,18 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                             const isRed = danger ? checked : false;
                             const isGreen = !danger && checked;
                             return (
-                              <div key={field} className="flex items-center gap-3" data-testid={`check-${field}`}>
-                                <span className={`text-sm flex-1 ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
-                                <div className="flex shrink-0 rounded-full border border-gray-200 overflow-hidden text-xs font-semibold">
-                                  <button onClick={() => toggleLeadFlag(field, true)} className={`px-3 py-1 transition-colors ${checked ? (danger ? "bg-red-500 text-white" : "bg-green-500 text-white") : "bg-white text-gray-400 hover:bg-gray-50"}`} data-testid={`yes-${field}`}>Yes</button>
-                                  <button onClick={() => toggleLeadFlag(field, false)} className={`px-3 py-1 border-l border-gray-200 transition-colors ${!checked ? "bg-gray-200 text-gray-700" : "bg-white text-gray-400 hover:bg-gray-50"}`} data-testid={`no-${field}`}>No</button>
+                              <label key={field} className="flex items-center gap-3 cursor-pointer group" data-testid={`check-${field}`}>
+                                <div className="relative shrink-0">
+                                  <input type="checkbox" className="sr-only" checked={checked} onChange={e => toggleLeadFlag(field, e.target.checked)} />
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isRed ? "bg-red-500 border-red-500" : isGreen ? "bg-green-500 border-green-500" : "border-gray-300 bg-white group-hover:border-gray-400"}`}>
+                                    {checked && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                  </div>
                                 </div>
-                              </div>
+                                <span className={`text-sm flex-1 ${isRed ? "text-red-700 font-medium" : isGreen ? "text-green-700 font-medium" : "text-gray-600"}`}>{label}</span>
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${isRed ? "bg-red-100 text-red-700" : isGreen ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                  {checked ? "Yes" : "No"}
+                                </span>
+                              </label>
                             );
                           })}
                         </div>
