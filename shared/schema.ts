@@ -49,6 +49,7 @@ export const users = pgTable("users", {
   payoutSchedule: varchar("payout_schedule", { length: 20 }), // "monthly" | "quarterly" | "annually"
   renewalCommissionRate: decimal("renewal_commission_rate", { precision: 10, scale: 4 }),
   commissionNotes: text("commission_notes"),
+  partnerNotes: text("partner_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

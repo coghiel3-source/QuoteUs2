@@ -146,7 +146,9 @@ export default function AdminCRMPage() {
       viewRgLeads: false,
       manageRgLeads: false,
       approveRepCommission: false,
-    }
+    },
+    partnerCompany: "",
+    partnerNotes: "",
   });
   
   // Edit Permissions Dialog State
@@ -196,6 +198,7 @@ export default function AdminCRMPage() {
     role: string;
     brokerage: string;
     status: string;
+    partnerNotes: string;
   } | null>(null);
   const [editingDefaultCosts, setEditingDefaultCosts] = useState(false);
   const [editedCosts, setEditedCosts] = useState<Record<string, string>>({});
@@ -1001,6 +1004,10 @@ export default function AdminCRMPage() {
           }),
           ...((newUser.role === 'manager' || newUser.role === 'partner') && {
             permissions: newUser.permissions
+          }),
+          ...(newUser.role === 'partner' && {
+            brokerage: newUser.partnerCompany || undefined,
+            partnerNotes: newUser.partnerNotes || undefined,
           })
         }),
       });
@@ -1026,7 +1033,9 @@ export default function AdminCRMPage() {
           manageAds: false, manageSocialMedia: false, manageCustomCss: false,
           managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false,
           viewRgLeads: false, manageRgLeads: false, approveRepCommission: false,
-        }
+        },
+        partnerCompany: "",
+        partnerNotes: "",
       });
       toast({
         title: "User Added",
@@ -1424,6 +1433,7 @@ export default function AdminCRMPage() {
       role: userToEdit.role || "broker",
       brokerage: userToEdit.brokerage || "",
       status: userToEdit.status || "active",
+      partnerNotes: userToEdit.partnerNotes || "",
     });
     setIsEditUserOpen(true);
   };
@@ -1443,6 +1453,9 @@ export default function AdminCRMPage() {
           status: editingUser.status,
           role: editingUser.role,
           actorId: user?.id,
+          ...(editingUser.role === 'partner' && {
+            partnerNotes: editingUser.partnerNotes || null,
+          }),
         }),
       });
       
@@ -2816,6 +2829,33 @@ export default function AdminCRMPage() {
                     />
                   </div>
                 )}
+                {editingUser.role === 'partner' && (
+                  <div className="space-y-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <Label className="text-emerald-800 font-semibold">Partner Details</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="editPartnerCompany" className="text-sm">Company Name</Label>
+                      <Input
+                        id="editPartnerCompany"
+                        value={editingUser.brokerage}
+                        onChange={(e) => setEditingUser({...editingUser, brokerage: e.target.value})}
+                        placeholder="e.g. Acme Insurance Partners"
+                        data-testid="input-edit-partner-company"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editPartnerNotes" className="text-sm">Internal Notes</Label>
+                      <textarea
+                        id="editPartnerNotes"
+                        value={editingUser.partnerNotes}
+                        onChange={(e) => setEditingUser({...editingUser, partnerNotes: e.target.value})}
+                        placeholder="Internal notes about this partner..."
+                        rows={3}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        data-testid="input-edit-partner-notes"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="editStatus">Account Status</Label>
                   <Select 
@@ -3880,6 +3920,32 @@ export default function AdminCRMPage() {
                           </div>
                         </div>
                         
+                        {newUser.role === 'partner' && (
+                          <div className="space-y-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                            <Label className="text-emerald-800 font-semibold">Partner Details</Label>
+                            <div className="space-y-2">
+                              <Label htmlFor="partnerCompany" className="text-sm">Company Name</Label>
+                              <Input
+                                id="partnerCompany"
+                                value={newUser.partnerCompany}
+                                onChange={(e) => setNewUser({...newUser, partnerCompany: e.target.value})}
+                                placeholder="e.g. Acme Insurance Partners"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="partnerNotesField" className="text-sm">Internal Notes</Label>
+                              <textarea
+                                id="partnerNotesField"
+                                value={newUser.partnerNotes}
+                                onChange={(e) => setNewUser({...newUser, partnerNotes: e.target.value})}
+                                placeholder="Internal notes about this partner..."
+                                rows={3}
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {(newUser.role === 'manager' || newUser.role === 'admin' || newUser.role === 'partner') && (
                           <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                             <Label className="text-blue-800 font-semibold">{newUser.role === 'admin' ? 'Admin' : newUser.role === 'partner' ? 'Partner' : 'Manager'} Permissions</Label>
@@ -4545,6 +4611,7 @@ export default function AdminCRMPage() {
                         <TableRow className="bg-muted/30">
                           <TableHead>Name</TableHead>
                           <TableHead>Account #</TableHead>
+                          <TableHead>Company</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>Phone</TableHead>
                           <TableHead>Status</TableHead>
@@ -4569,6 +4636,18 @@ export default function AdminCRMPage() {
                                 </span>
                               ) : (
                                 <span className="text-xs text-muted-foreground italic">Pending approval</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {(p as any).brokerage ? (
+                                <span className="text-gray-700" data-testid={`text-partner-company-${p.id}`}>{(p as any).brokerage}</span>
+                              ) : (
+                                <span className="text-muted-foreground italic opacity-50">—</span>
+                              )}
+                              {(p as any).partnerNotes && (
+                                <span className="ml-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5" title={(p as any).partnerNotes}>
+                                  Note
+                                </span>
                               )}
                             </TableCell>
                             <TableCell>
