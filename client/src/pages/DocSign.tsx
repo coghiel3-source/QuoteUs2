@@ -149,18 +149,6 @@ function FieldModal({
 }) {
   const [localValue, setLocalValue] = useState(currentValue);
 
-  // Lock body scroll while modal is open — use position:fixed trick to prevent
-  // the scrollbar-width layout shift that occurs with overflow:hidden alone.
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.cssText = `overflow: hidden; position: fixed; top: -${scrollY}px; width: 100%; padding-right: ${scrollbarW}px;`;
-    return () => {
-      document.body.style.cssText = "";
-      window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior });
-    };
-  }, []);
-
   return (
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
