@@ -647,11 +647,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [docSignLandlordEmail, setDocSignLandlordEmail] = useState("");
   const [sendingDocSig, setSendingDocSig] = useState(false);
   const [docSignLink, setDocSignLink] = useState<string | null>(null);
-  const [docSignDialogTab, setDocSignDialogTab] = useState<"upload" | "library" | "fields">("upload");
+  const [docSignDialogTab, setDocSignDialogTab] = useState<"upload" | "library" | "fields" | "preview">("upload");
   const [adminDocTemplates, setAdminDocTemplates] = useState<any[]>([]);
   const [docSignSelectedTemplates, setDocSignSelectedTemplates] = useState<string[]>([]);
-  const [docSignFields, setDocSignFields] = useState<Array<{ id: string; type: string; label: string; required: boolean }>>([]);
+  const [docSignFields, setDocSignFields] = useState<Array<{ id: string; type: string; label: string; required: boolean; x?: number; y?: number; page?: number }>>([]);
   const [loadingDocTemplates, setLoadingDocTemplates] = useState(false);
+  const [activePlaceTool, setActivePlaceTool] = useState<string>("signature");
+  const [previewDocIndex, setPreviewDocIndex] = useState(0);
+  const [docSignFileUrls, setDocSignFileUrls] = useState<string[]>([]);
 
   // Edit lead dialog
   const [showEditLead, setShowEditLead] = useState(false);
@@ -860,12 +863,22 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setLoadingDocTemplates(false);
   }
 
+  // Generate preview URLs when uploaded files change
+  useEffect(() => {
+    const urls = docSignFiles.map(f => URL.createObjectURL(f));
+    setDocSignFileUrls(urls);
+    return () => urls.forEach(u => URL.revokeObjectURL(u));
+  }, [docSignFiles]);
+
   function openDocSignDialog() {
     setDocSignLink(null);
     setDocSignFiles([]);
+    setDocSignFileUrls([]);
     setDocSignSelectedTemplates([]);
     setDocSignFields([]);
     setDocSignDialogTab("upload");
+    setActivePlaceTool("signature");
+    setPreviewDocIndex(0);
     setShowDocSignDialog(true);
     loadAdminDocTemplates();
   }
@@ -3577,9 +3590,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             {/* Tabs */}
             <div className="border rounded-xl overflow-hidden">
               <div className="flex border-b bg-gray-50">
-                {(["upload", "library", "fields"] as const).map(tab => (
+                {(["upload", "library", "fields", "preview"] as const).map(tab => (
                   <button key={tab} onClick={() => setDocSignDialogTab(tab)} className={`flex-1 py-2 text-xs font-semibold capitalize transition-colors ${docSignDialogTab === tab ? "bg-white text-blue-700 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
-                    {tab === "upload" ? `Upload Docs ${docSignFiles.length > 0 ? `(${docSignFiles.length})` : ""}` : tab === "library" ? `Library ${docSignSelectedTemplates.length > 0 ? `(${docSignSelectedTemplates.length})` : ""}` : `Fields ${docSignFields.length > 0 ? `(${docSignFields.length})` : ""}`}
+                    {tab === "upload" ? `Upload ${docSignFiles.length > 0 ? `(${docSignFiles.length})` : ""}` :
+                     tab === "library" ? `Library ${docSignSelectedTemplates.length > 0 ? `(${docSignSelectedTemplates.length})` : ""}` :
+                     tab === "fields" ? `Fields ${docSignFields.filter(f => f.x === undefined).length > 0 ? `(${docSignFields.filter(f => f.x === undefined).length})` : ""}` :
+                     `Place ${docSignFields.filter(f => f.x !== undefined).length > 0 ? `(${docSignFields.filter(f => f.x !== undefined).length})` : "✎"}`}
                   </button>
                 ))}
               </div>
@@ -3668,11 +3684,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 </div>
               )}
 
-              {/* Fields tab */}
+              {/* Fields tab — form-style fields (no position) */}
               {docSignDialogTab === "fields" && (
                 <div className="p-4 space-y-3">
-                  <p className="text-xs text-gray-500">Add fields that the landlord must complete on the signing page.</p>
-                  {/* Add field buttons */}
+                  <p className="text-xs text-gray-500">Add form fields below the document (no placement). To place fields visually on the document, use the <strong>Place</strong> tab.</p>
                   <div className="flex flex-wrap gap-2">
                     {[
                       { type: "signature", label: "Signature", color: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -3680,35 +3695,23 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       { type: "date", label: "Date", color: "bg-green-100 text-green-700 border-green-200" },
                       { type: "text", label: "Text", color: "bg-gray-100 text-gray-700 border-gray-200" },
                     ].map(({ type, label, color }) => (
-                      <button
-                        key={type}
-                        onClick={() => addDocSignField(type)}
-                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 hover:opacity-80 transition-opacity ${color}`}
-                      >
+                      <button key={type} onClick={() => addDocSignField(type)}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 hover:opacity-80 ${color}`}>
                         <Plus className="h-3 w-3" /> {label}
                       </button>
                     ))}
                   </div>
-                  {/* Field list */}
-                  {docSignFields.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic py-2">No fields added yet. Use the buttons above to add signature, initials, date, or text fields.</p>
+                  {docSignFields.filter(f => f.x === undefined).length === 0 ? (
+                    <p className="text-xs text-gray-400 italic py-2">No form fields added yet.</p>
                   ) : (
                     <div className="space-y-2">
-                      {docSignFields.map((f, i) => (
+                      {docSignFields.map((f, i) => f.x !== undefined ? null : (
                         <div key={f.id} className="flex items-center gap-2.5 bg-white border rounded-lg px-3 py-2">
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${f.type === "signature" ? "bg-blue-100 text-blue-700" : f.type === "initials" ? "bg-purple-100 text-purple-700" : f.type === "date" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>{f.type}</span>
-                          <input
-                            className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0"
-                            value={f.label}
-                            onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))}
-                          />
+                          <input className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0" value={f.label}
+                            onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
                           <label className="flex items-center gap-1 text-xs text-gray-500 shrink-0 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={f.required}
-                              onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, required: e.target.checked } : x))}
-                              className="rounded"
-                            />
+                            <input type="checkbox" checked={f.required} onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, required: e.target.checked } : x))} className="rounded" />
                             Required
                           </label>
                           <button onClick={() => setDocSignFields(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 shrink-0">
@@ -3720,6 +3723,141 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   )}
                 </div>
               )}
+
+              {/* Preview & Place tab */}
+              {docSignDialogTab === "preview" && (() => {
+                const allPreviewDocs = [
+                  ...docSignFiles.map((f, i) => ({ name: f.name, url: docSignFileUrls[i] || "", isPdf: f.type === "application/pdf", docIdx: i })),
+                  ...docSignSelectedTemplates.map((id, ti) => {
+                    const t = adminDocTemplates.find(t => t.id === id);
+                    return t ? { name: t.title, url: t.filePath, isPdf: t.mimeType === "application/pdf", docIdx: docSignFiles.length + ti } : null;
+                  }).filter(Boolean) as any[],
+                ];
+                const currentDoc = allPreviewDocs[previewDocIndex];
+                const fieldColors: Record<string, string> = { signature: "bg-blue-600", initials: "bg-purple-600", date: "bg-emerald-600", text: "bg-gray-500" };
+                const fieldBtns = [
+                  { type: "signature", label: "Signature", ring: "ring-blue-400 bg-blue-600" },
+                  { type: "initials", label: "Initials", ring: "ring-purple-400 bg-purple-600" },
+                  { type: "date", label: "Date", ring: "ring-emerald-400 bg-emerald-600" },
+                  { type: "text", label: "Text", ring: "ring-gray-400 bg-gray-500" },
+                ];
+                return (
+                  <div>
+                    {allPreviewDocs.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-gray-400 italic">
+                        Upload or select documents first to place fields on them.
+                      </div>
+                    ) : (
+                      <>
+                        {/* Tool selector */}
+                        <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 flex-wrap">
+                          <span className="text-xs text-gray-500 font-medium">Tool:</span>
+                          {fieldBtns.map(btn => (
+                            <button
+                              key={btn.type}
+                              onClick={() => setActivePlaceTool(btn.type)}
+                              className={`px-2.5 py-1 rounded text-xs font-semibold text-white transition-all ${btn.ring.split(" ")[1]} ${activePlaceTool === btn.type ? `ring-2 ${btn.ring.split(" ")[0]} scale-105` : "opacity-60 hover:opacity-90"}`}
+                            >
+                              {btn.label}
+                            </button>
+                          ))}
+                          <span className="ml-auto text-xs text-gray-400 hidden sm:block">Click on document to place</span>
+                        </div>
+
+                        {/* Doc tabs */}
+                        {allPreviewDocs.length > 1 && (
+                          <div className="flex overflow-x-auto border-b bg-white">
+                            {allPreviewDocs.map((doc, i) => (
+                              <button key={i} onClick={() => setPreviewDocIndex(i)}
+                                className={`px-3 py-2 text-xs font-medium shrink-0 border-b-2 transition-colors ${previewDocIndex === i ? "border-blue-600 text-blue-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                                {doc.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Document + click overlay */}
+                        <div className="relative bg-gray-200" style={{ height: "380px", cursor: "crosshair" }}>
+                          {currentDoc ? (
+                            currentDoc.isPdf ? (
+                              <iframe src={currentDoc.url} className="w-full h-full" style={{ border: "none", pointerEvents: "none" }} title={currentDoc.name} />
+                            ) : (
+                              <img src={currentDoc.url} alt={currentDoc.name} className="w-full h-full object-contain" style={{ pointerEvents: "none" }} />
+                            )
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">Preview not available</div>
+                          )}
+
+                          {/* Click capture overlay */}
+                          <div
+                            className="absolute inset-0"
+                            style={{ zIndex: 10 }}
+                            onClick={e => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = ((e.clientX - rect.left) / rect.width) * 100;
+                              const y = ((e.clientY - rect.top) / rect.height) * 100;
+                              const labels: Record<string, string> = { signature: "Signature", initials: "Initials", date: "Date", text: "Text" };
+                              setDocSignFields(prev => [...prev, {
+                                id: Math.random().toString(36).slice(2),
+                                type: activePlaceTool,
+                                label: labels[activePlaceTool] || activePlaceTool,
+                                required: true,
+                                x, y,
+                                page: previewDocIndex,
+                              }]);
+                            }}
+                          >
+                            {/* Render placed fields */}
+                            {docSignFields
+                              .filter(f => f.x !== undefined && f.page === previewDocIndex)
+                              .map(f => (
+                                <div
+                                  key={f.id}
+                                  style={{ position: "absolute", left: `${f.x}%`, top: `${f.y}%`, transform: "translate(-50%,-50%)", zIndex: 20 }}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  <div className={`${fieldColors[f.type] || "bg-gray-600"} text-white text-xs px-2 py-1 rounded-lg shadow-lg flex items-center gap-1.5 whitespace-nowrap border-2 border-white/40`}>
+                                    <span className="font-medium">{f.label}</span>
+                                    <button
+                                      onClick={() => setDocSignFields(prev => prev.filter(x => x.id !== f.id))}
+                                      className="text-white/70 hover:text-white ml-0.5"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+
+                        {/* Placed fields list */}
+                        {docSignFields.filter(f => f.x !== undefined).length > 0 && (
+                          <div className="p-3 border-t bg-gray-50 space-y-1.5 max-h-32 overflow-y-auto">
+                            <p className="text-xs text-gray-500 font-medium">Placed fields ({docSignFields.filter(f => f.x !== undefined).length})</p>
+                            {docSignFields.filter(f => f.x !== undefined).map((f, i) => {
+                              const globalIdx = docSignFields.indexOf(f);
+                              return (
+                                <div key={f.id} className="flex items-center gap-2 bg-white border rounded px-2.5 py-1.5">
+                                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded text-white ${fieldColors[f.type] || "bg-gray-500"}`}>{f.type}</span>
+                                  <input
+                                    className="flex-1 text-xs bg-transparent border-none outline-none text-gray-700 min-w-0"
+                                    value={f.label}
+                                    onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === globalIdx ? { ...x, label: e.target.value } : x))}
+                                  />
+                                  <span className="text-xs text-gray-400 shrink-0">Doc {(f.page ?? 0) + 1}</span>
+                                  <button onClick={() => setDocSignFields(prev => prev.filter(x => x.id !== f.id))} className="text-gray-400 hover:text-red-500">
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Summary of selected */}
