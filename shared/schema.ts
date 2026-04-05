@@ -384,8 +384,32 @@ export const locationDocSignatures = pgTable("location_doc_signatures", {
   signedAt: timestamp("signed_at"),
   sentAt: timestamp("sent_at").defaultNow(),
   createdBy: varchar("created_by"),
+  signatureFields: text("signature_fields"),
 });
 export type LocationDocSignature = typeof locationDocSignatures.$inferSelect;
+
+// Individual files for a doc-signature request (supports multiple docs per request)
+export const locationDocSignatureFiles = pgTable("location_doc_signature_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sigRequestId: varchar("sig_request_id").notNull().references(() => locationDocSignatures.id, { onDelete: "cascade" }),
+  filePath: text("file_path").notNull(),
+  fileName: text("file_name"),
+  mimeType: text("mime_type"),
+  sortOrder: integer("sort_order").default(0),
+});
+export type LocationDocSignatureFile = typeof locationDocSignatureFiles.$inferSelect;
+
+// Admin document template library
+export const docTemplates = pgTable("doc_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  filePath: text("file_path").notNull(),
+  fileName: text("file_name"),
+  mimeType: text("mime_type"),
+  uploadedBy: varchar("uploaded_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export type DocTemplate = typeof docTemplates.$inferSelect;
 
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({

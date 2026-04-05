@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
 
@@ -136,6 +136,13 @@ export interface IStorage {
   getDocSignaturesByLocation(locationId: string): Promise<LocationDocSignature[]>;
   getDocSignatureByToken(token: string): Promise<LocationDocSignature | null>;
   updateDocSignature(id: string, data: any): Promise<LocationDocSignature | null>;
+  createDocSigFile(data: { sigRequestId: string; filePath: string; fileName?: string; mimeType?: string; sortOrder?: number }): Promise<LocationDocSignatureFile>;
+  getFilesForDocSig(sigRequestId: string): Promise<LocationDocSignatureFile[]>;
+
+  // Admin document template library
+  createDocTemplate(data: { title: string; filePath: string; fileName?: string; mimeType?: string; uploadedBy?: string }): Promise<DocTemplate>;
+  getAllDocTemplates(): Promise<DocTemplate[]>;
+  deleteDocTemplate(id: string): Promise<void>;
 
   // Admin Billing
   getAllRgPayments(): Promise<RgPayment[]>;
@@ -869,6 +876,36 @@ export class DatabaseStorage implements IStorage {
       .where(eq(locationDocSignatures.id, id))
       .returning();
     return updated || null;
+  }
+
+  async createDocSigFile(data: { sigRequestId: string; filePath: string; fileName?: string; mimeType?: string; sortOrder?: number }): Promise<LocationDocSignatureFile> {
+    const [created] = await db.insert(locationDocSignatureFiles).values({
+      sigRequestId: data.sigRequestId,
+      filePath: data.filePath,
+      fileName: data.fileName,
+      mimeType: data.mimeType,
+      sortOrder: data.sortOrder ?? 0,
+    }).returning();
+    return created;
+  }
+
+  async getFilesForDocSig(sigRequestId: string): Promise<LocationDocSignatureFile[]> {
+    return db.select().from(locationDocSignatureFiles)
+      .where(eq(locationDocSignatureFiles.sigRequestId, sigRequestId))
+      .orderBy(locationDocSignatureFiles.sortOrder);
+  }
+
+  async createDocTemplate(data: { title: string; filePath: string; fileName?: string; mimeType?: string; uploadedBy?: string }): Promise<DocTemplate> {
+    const [created] = await db.insert(docTemplates).values(data).returning();
+    return created;
+  }
+
+  async getAllDocTemplates(): Promise<DocTemplate[]> {
+    return db.select().from(docTemplates).orderBy(desc(docTemplates.createdAt));
+  }
+
+  async deleteDocTemplate(id: string): Promise<void> {
+    await db.delete(docTemplates).where(eq(docTemplates.id, id));
   }
 
   // Admin Billing operations

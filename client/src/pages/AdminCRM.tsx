@@ -259,6 +259,11 @@ export default function AdminCRMPage() {
   const [sigTemplateTitle, setSigTemplateTitle] = useState("Rent Secure Agreement");
   const [sigTemplateContent, setSigTemplateContent] = useState("");
   const [savingSigTemplate, setSavingSigTemplate] = useState(false);
+  const [adminLibraryTemplates, setAdminLibraryTemplates] = useState<any[]>([]);
+  const [loadingLibraryTemplates, setLoadingLibraryTemplates] = useState(false);
+  const [libraryUploadFile, setLibraryUploadFile] = useState<File | null>(null);
+  const [libraryUploadTitle, setLibraryUploadTitle] = useState("");
+  const [libraryUploading, setLibraryUploading] = useState(false);
 
   // Social Media State
   const [socialMedia, setSocialMedia] = useState({
@@ -696,6 +701,14 @@ export default function AdminCRMPage() {
         }
       })
       .catch(console.error);
+
+    // Load document library templates
+    setLoadingLibraryTemplates(true);
+    fetch("/api/admin/doc-templates")
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setAdminLibraryTemplates(data); })
+      .catch(console.error)
+      .finally(() => setLoadingLibraryTemplates(false));
     
     // Load manager permissions
     fetch("/api/admin/manager-permissions")
@@ -5704,6 +5717,7 @@ export default function AdminCRMPage() {
         
         {/* SETTINGS TAB - Signature Template (admin/manager) */}
         {activeTab === 'settings' && (user?.role === 'admin' || ((user?.role === 'manager' || user?.role === 'partner') && managerPermissions.viewSettings)) && (
+          <>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -5766,6 +5780,117 @@ export default function AdminCRMPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Document Library */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0120 8.414V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                Document Library
+              </CardTitle>
+              <CardDescription>Upload reusable document templates that reps can select when sending signature requests.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Upload form */}
+              <div className="border rounded-xl p-4 space-y-3 bg-gray-50">
+                <p className="text-sm font-semibold text-gray-700">Add New Template</p>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-600">Template Name</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. Rent Guarantee Application"
+                    value={libraryUploadTitle}
+                    onChange={e => setLibraryUploadTitle(e.target.value)}
+                    data-testid="input-library-template-title"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-600">File (PDF, Word, or image)</label>
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${libraryUploadFile ? "border-blue-300 bg-blue-50" : "border-gray-300 hover:border-gray-400"}`}
+                    onClick={() => document.getElementById("library-file-input")?.click()}
+                  >
+                    <input
+                      id="library-file-input"
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      className="sr-only"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) { setLibraryUploadFile(f); if (!libraryUploadTitle) setLibraryUploadTitle(f.name.replace(/\.[^/.]+$/, "")); } }}
+                    />
+                    {libraryUploadFile ? (
+                      <div className="flex items-center justify-center gap-2 text-sm text-blue-700">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        {libraryUploadFile.name} <span className="text-gray-400 text-xs">({(libraryUploadFile.size / 1024).toFixed(0)} KB)</span>
+                        <button type="button" onClick={e => { e.stopPropagation(); setLibraryUploadFile(null); }} className="ml-1 text-gray-400 hover:text-red-500 text-xs">✕</button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">Click to browse or drag & drop a document</p>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  disabled={libraryUploading || !libraryUploadFile || !libraryUploadTitle.trim()}
+                  onClick={async () => {
+                    if (!libraryUploadFile || !libraryUploadTitle.trim() || !user) return;
+                    setLibraryUploading(true);
+                    try {
+                      const fd = new FormData();
+                      fd.append("document", libraryUploadFile);
+                      fd.append("title", libraryUploadTitle.trim());
+                      fd.append("actorId", user.id);
+                      const res = await fetch("/api/admin/doc-templates", { method: "POST", body: fd });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || "Upload failed");
+                      setAdminLibraryTemplates(prev => [data, ...prev]);
+                      setLibraryUploadFile(null);
+                      setLibraryUploadTitle("");
+                      (document.getElementById("library-file-input") as HTMLInputElement).value = "";
+                    } catch (err: any) {
+                      alert(err.message || "Upload failed");
+                    } finally {
+                      setLibraryUploading(false);
+                    }
+                  }}
+                  data-testid="button-upload-library-template"
+                >
+                  {libraryUploading ? "Uploading…" : "Upload Template"}
+                </Button>
+              </div>
+
+              {/* Template list */}
+              {loadingLibraryTemplates ? (
+                <p className="text-sm text-gray-400 text-center py-4">Loading…</p>
+              ) : adminLibraryTemplates.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">No templates uploaded yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {adminLibraryTemplates.map((t: any) => (
+                    <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 bg-white">
+                      <svg className="h-5 w-5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{t.title}</p>
+                        <p className="text-xs text-gray-400 truncate">{t.fileName}</p>
+                      </div>
+                      <a href={t.filePath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline shrink-0">Preview</a>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete "${t.title}"?`)) return;
+                          const res = await fetch(`/api/admin/doc-templates/${t.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actorId: user?.id }) });
+                          if (res.ok) setAdminLibraryTemplates(prev => prev.filter(x => x.id !== t.id));
+                        }}
+                        className="text-xs text-red-500 hover:text-red-700 shrink-0"
+                        data-testid={`button-delete-template-${t.id}`}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          </>
         )}
 
         {/* SETTINGS TAB - Manager/Partner view (if permitted - read-only) */}

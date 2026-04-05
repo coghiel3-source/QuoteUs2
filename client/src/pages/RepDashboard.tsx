@@ -642,11 +642,16 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [locationDocSigs, setLocationDocSigs] = useState<any[]>([]);
   const [showDocSignDialog, setShowDocSignDialog] = useState(false);
   const [docSignDragOver, setDocSignDragOver] = useState(false);
-  const [docSignFile, setDocSignFile] = useState<File | null>(null);
+  const [docSignFiles, setDocSignFiles] = useState<File[]>([]);
   const [docSignLandlordName, setDocSignLandlordName] = useState("");
   const [docSignLandlordEmail, setDocSignLandlordEmail] = useState("");
   const [sendingDocSig, setSendingDocSig] = useState(false);
   const [docSignLink, setDocSignLink] = useState<string | null>(null);
+  const [docSignDialogTab, setDocSignDialogTab] = useState<"upload" | "library" | "fields">("upload");
+  const [adminDocTemplates, setAdminDocTemplates] = useState<any[]>([]);
+  const [docSignSelectedTemplates, setDocSignSelectedTemplates] = useState<string[]>([]);
+  const [docSignFields, setDocSignFields] = useState<Array<{ id: string; type: string; label: string; required: boolean }>>([]);
+  const [loadingDocTemplates, setLoadingDocTemplates] = useState(false);
 
   // Edit lead dialog
   const [showEditLead, setShowEditLead] = useState(false);
@@ -821,8 +826,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setAgreementEmail(loc.landlordEmail || "");
     setLocationPayments([]);
     setLocationDocSigs([]);
-    setDocSignFile(null);
+    setDocSignFiles([]);
     setDocSignLink(null);
+    setDocSignSelectedTemplates([]);
+    setDocSignFields([]);
     setDocSignLandlordName(loc.landlordName || "");
     setDocSignLandlordEmail(loc.landlordEmail || "");
     await loadTenantsForLocation(loc.id);
@@ -843,9 +850,44 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     }
   }
 
+  async function loadAdminDocTemplates() {
+    if (!user) return;
+    setLoadingDocTemplates(true);
+    try {
+      const templates = await apiRequest<any[]>(`/admin/doc-templates?actorId=${user.id}`);
+      setAdminDocTemplates(templates || []);
+    } catch {}
+    setLoadingDocTemplates(false);
+  }
+
+  function openDocSignDialog() {
+    setDocSignLink(null);
+    setDocSignFiles([]);
+    setDocSignSelectedTemplates([]);
+    setDocSignFields([]);
+    setDocSignDialogTab("upload");
+    setShowDocSignDialog(true);
+    loadAdminDocTemplates();
+  }
+
+  function addDocSignField(type: string) {
+    const labels: Record<string, string> = {
+      signature: "Signature", initials: "Initials", date: "Date", text: "Text Field"
+    };
+    setDocSignFields(prev => [...prev, {
+      id: Math.random().toString(36).slice(2),
+      type,
+      label: labels[type] || type,
+      required: true,
+    }]);
+  }
+
   async function handleSendDocSignature() {
     if (!selectedLocation || !user) return;
     if (!docSignLandlordEmail.trim()) { toast({ title: "Landlord email is required", variant: "destructive" }); return; }
+    if (docSignFiles.length === 0 && docSignSelectedTemplates.length === 0) {
+      toast({ title: "Please add at least one document", variant: "destructive" }); return;
+    }
     setSendingDocSig(true);
     setDocSignLink(null);
     try {
@@ -853,7 +895,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       formData.append("actorId", user.id);
       formData.append("landlordName", docSignLandlordName.trim());
       formData.append("landlordEmail", docSignLandlordEmail.trim());
-      if (docSignFile) formData.append("document", docSignFile);
+      if (docSignFields.length > 0) formData.append("signatureFields", JSON.stringify(docSignFields));
+      docSignSelectedTemplates.forEach(id => formData.append("templateIds", id));
+      docSignFiles.forEach(f => formData.append("documents", f));
       const res = await fetch(`/api/rep/locations/${selectedLocation.id}/doc-signatures`, {
         method: "POST",
         body: formData,
@@ -861,7 +905,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to create signature request");
       setLocationDocSigs(prev => [result.record, ...prev]);
-      setDocSignFile(null);
+      setDocSignFiles([]);
+      setDocSignSelectedTemplates([]);
+      setDocSignFields([]);
       if (result.emailSent) {
         toast({ title: "Signature request sent!", description: `Email sent to ${docSignLandlordEmail}` });
         setShowDocSignDialog(false);
@@ -1980,7 +2026,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           <CardTitle className="text-sm text-gray-600 flex items-center justify-between">
                             <span className="flex items-center gap-1.5"><FileText className="h-4 w-4" /> Document Signing</span>
                             <button
-                              onClick={() => { setShowDocSignDialog(true); setDocSignLink(null); setDocSignFile(null); }}
+                              onClick={openDocSignDialog}
                               className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
                               data-testid="button-request-doc-signature"
                             >
@@ -1992,28 +2038,38 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           {locationDocSigs.length === 0 ? (
                             <p className="text-gray-400 italic text-xs">No document signing requests yet. Click "Send for Signature" to upload a document and request a landlord signature.</p>
                           ) : (
-                            locationDocSigs.map((sig: any) => (
-                              <div key={sig.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
-                                <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${sig.status === "signed" ? "bg-green-500" : "bg-yellow-400"}`} />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-semibold text-gray-800 truncate">{sig.documentName || "Document"}</p>
-                                  <p className="text-xs text-gray-500">Sent to {sig.landlordEmail}</p>
-                                  {sig.status === "signed" ? (
-                                    <p className="text-xs text-green-600 font-medium mt-0.5">✓ Signed by {sig.signerName} on {sig.signedAt ? new Date(sig.signedAt).toLocaleDateString("en-CA") : "—"}</p>
-                                  ) : (
-                                    <p className="text-xs text-yellow-600 mt-0.5">Awaiting signature</p>
+                            locationDocSigs.map((sig: any) => {
+                              const docFiles: any[] = sig.files || (sig.documentPath ? [{ filePath: sig.documentPath, fileName: sig.documentName || "Document" }] : []);
+                              return (
+                                <div key={sig.id} className="p-2.5 rounded-lg bg-gray-50 border border-gray-100 space-y-1.5">
+                                  <div className="flex items-start gap-2">
+                                    <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${sig.status === "signed" ? "bg-green-500" : "bg-yellow-400"}`} />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-semibold text-gray-800">
+                                        {docFiles.length} doc{docFiles.length !== 1 ? "s" : ""} — {sig.landlordName || sig.landlordEmail}
+                                      </p>
+                                      {sig.status === "signed" ? (
+                                        <p className="text-xs text-green-600 font-medium">✓ Signed by {sig.signerName} on {sig.signedAt ? new Date(sig.signedAt).toLocaleDateString("en-CA") : "—"}</p>
+                                      ) : (
+                                        <p className="text-xs text-yellow-600">Awaiting signature</p>
+                                      )}
+                                    </div>
+                                    {sig.status === "signed" && sig.signatureData && (
+                                      <a href={sig.signatureData} download={`signature-${sig.id}.png`} className="text-xs text-blue-500 hover:underline shrink-0">Sig</a>
+                                    )}
+                                  </div>
+                                  {docFiles.length > 0 && (
+                                    <div className="ml-4 space-y-1">
+                                      {docFiles.map((f: any, fi: number) => (
+                                        <a key={fi} href={f.filePath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center gap-1">
+                                          <FileText className="h-3 w-3" />{f.fileName || `Document ${fi + 1}`}
+                                        </a>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
-                                <div className="flex flex-col items-end gap-1 shrink-0">
-                                  {sig.status === "signed" && sig.signatureData && (
-                                    <a href={sig.signatureData} download={`signature-${sig.id}.png`} className="text-xs text-blue-500 hover:underline">Download sig</a>
-                                  )}
-                                  {sig.documentPath && (
-                                    <a href={sig.documentPath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">View doc</a>
-                                  )}
-                                </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
                         </CardContent>
                       </Card>
@@ -3491,63 +3547,20 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
       {/* ── DocuSign — Request Document Signature Dialog ── */}
       <Dialog open={showDocSignDialog} onOpenChange={open => { setShowDocSignDialog(open); if (!open) setDocSignLink(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" /> Request Document Signature
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+
+          <div className="overflow-y-auto flex-1 space-y-4 py-2 pr-1">
             {selectedLocation && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-800">
-                {selectedLocation.address}{selectedLocation.unit ? `, Unit ${selectedLocation.unit}` : ""}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-800 flex items-center gap-2">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                {selectedLocation.propertyAddress}{selectedLocation.unit ? `, Unit ${selectedLocation.unit}` : ""}
               </div>
             )}
-
-            {/* Drag & Drop Zone */}
-            <div
-              onDragOver={e => { e.preventDefault(); setDocSignDragOver(true); }}
-              onDragLeave={() => setDocSignDragOver(false)}
-              onDrop={e => {
-                e.preventDefault();
-                setDocSignDragOver(false);
-                const file = e.dataTransfer.files[0];
-                if (file) setDocSignFile(file);
-              }}
-              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${docSignDragOver ? "border-blue-400 bg-blue-50" : "border-gray-300 bg-gray-50 hover:border-gray-400"}`}
-              onClick={() => document.getElementById("doc-sign-file-input")?.click()}
-              data-testid="dropzone-doc-signature"
-            >
-              <input
-                id="doc-sign-file-input"
-                type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.heic,.webp"
-                className="sr-only"
-                onChange={e => { const f = e.target.files?.[0]; if (f) setDocSignFile(f); }}
-              />
-              {docSignFile ? (
-                <div className="flex items-center justify-center gap-3">
-                  <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-gray-800">{docSignFile.name}</p>
-                    <p className="text-xs text-gray-400">{(docSignFile.size / 1024).toFixed(0)} KB</p>
-                  </div>
-                  <button onClick={e => { e.stopPropagation(); setDocSignFile(null); }} className="ml-auto text-gray-400 hover:text-red-500">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div className="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <FileText className="h-6 w-6 text-gray-500" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-600">Drag & drop a document here</p>
-                  <p className="text-xs text-gray-400 mt-1">or click to browse — PDF, Word, or image (max 30 MB)</p>
-                </div>
-              )}
-            </div>
 
             {/* Landlord Details */}
             <div className="grid grid-cols-2 gap-3">
@@ -3561,35 +3574,192 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               </div>
             </div>
 
+            {/* Tabs */}
+            <div className="border rounded-xl overflow-hidden">
+              <div className="flex border-b bg-gray-50">
+                {(["upload", "library", "fields"] as const).map(tab => (
+                  <button key={tab} onClick={() => setDocSignDialogTab(tab)} className={`flex-1 py-2 text-xs font-semibold capitalize transition-colors ${docSignDialogTab === tab ? "bg-white text-blue-700 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}>
+                    {tab === "upload" ? `Upload Docs ${docSignFiles.length > 0 ? `(${docSignFiles.length})` : ""}` : tab === "library" ? `Library ${docSignSelectedTemplates.length > 0 ? `(${docSignSelectedTemplates.length})` : ""}` : `Fields ${docSignFields.length > 0 ? `(${docSignFields.length})` : ""}`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Upload tab */}
+              {docSignDialogTab === "upload" && (
+                <div className="p-4 space-y-3">
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDocSignDragOver(true); }}
+                    onDragLeave={() => setDocSignDragOver(false)}
+                    onDrop={e => {
+                      e.preventDefault();
+                      setDocSignDragOver(false);
+                      const files = Array.from(e.dataTransfer.files);
+                      setDocSignFiles(prev => [...prev, ...files]);
+                    }}
+                    className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${docSignDragOver ? "border-blue-400 bg-blue-50" : "border-gray-300 bg-gray-50 hover:border-gray-400"}`}
+                    onClick={() => document.getElementById("doc-sign-file-input-multi")?.click()}
+                    data-testid="dropzone-doc-signature"
+                  >
+                    <input
+                      id="doc-sign-file-input-multi"
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.heic,.webp"
+                      className="sr-only"
+                      onChange={e => { const files = Array.from(e.target.files || []); setDocSignFiles(prev => [...prev, ...files]); }}
+                    />
+                    <div className="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center mx-auto mb-2">
+                      <FileText className="h-5 w-5 text-gray-500" />
+                    </div>
+                    <p className="text-sm font-medium text-gray-600">Drag & drop documents here</p>
+                    <p className="text-xs text-gray-400 mt-1">or click to browse — PDF, Word, image (up to 10 files, 30 MB each)</p>
+                  </div>
+                  {/* File list */}
+                  {docSignFiles.length > 0 && (
+                    <div className="space-y-1.5">
+                      {docSignFiles.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2.5 bg-white border rounded-lg px-3 py-2">
+                          <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-800 truncate">{f.name}</p>
+                            <p className="text-xs text-gray-400">{(f.size / 1024).toFixed(0)} KB</p>
+                          </div>
+                          <button onClick={() => setDocSignFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 shrink-0">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Library tab */}
+              {docSignDialogTab === "library" && (
+                <div className="p-4">
+                  {loadingDocTemplates ? (
+                    <p className="text-sm text-gray-400 text-center py-4">Loading templates…</p>
+                  ) : adminDocTemplates.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6 italic">No document templates in the library yet. An admin can upload templates from the Settings area.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {adminDocTemplates.map(t => {
+                        const selected = docSignSelectedTemplates.includes(t.id);
+                        return (
+                          <div
+                            key={t.id}
+                            onClick={() => setDocSignSelectedTemplates(prev => selected ? prev.filter(id => id !== t.id) : [...prev, t.id])}
+                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selected ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}
+                          >
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${selected ? "bg-blue-600 border-blue-600" : "border-gray-300"}`}>
+                              {selected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-800">{t.title}</p>
+                              <p className="text-xs text-gray-400 truncate">{t.fileName}</p>
+                            </div>
+                            <a href={t.filePath} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-xs text-blue-500 hover:underline shrink-0">Preview</a>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Fields tab */}
+              {docSignDialogTab === "fields" && (
+                <div className="p-4 space-y-3">
+                  <p className="text-xs text-gray-500">Add fields that the landlord must complete on the signing page.</p>
+                  {/* Add field buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { type: "signature", label: "Signature", color: "bg-blue-100 text-blue-700 border-blue-200" },
+                      { type: "initials", label: "Initials", color: "bg-purple-100 text-purple-700 border-purple-200" },
+                      { type: "date", label: "Date", color: "bg-green-100 text-green-700 border-green-200" },
+                      { type: "text", label: "Text", color: "bg-gray-100 text-gray-700 border-gray-200" },
+                    ].map(({ type, label, color }) => (
+                      <button
+                        key={type}
+                        onClick={() => addDocSignField(type)}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 hover:opacity-80 transition-opacity ${color}`}
+                      >
+                        <Plus className="h-3 w-3" /> {label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Field list */}
+                  {docSignFields.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic py-2">No fields added yet. Use the buttons above to add signature, initials, date, or text fields.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {docSignFields.map((f, i) => (
+                        <div key={f.id} className="flex items-center gap-2.5 bg-white border rounded-lg px-3 py-2">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${f.type === "signature" ? "bg-blue-100 text-blue-700" : f.type === "initials" ? "bg-purple-100 text-purple-700" : f.type === "date" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>{f.type}</span>
+                          <input
+                            className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0"
+                            value={f.label}
+                            onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))}
+                          />
+                          <label className="flex items-center gap-1 text-xs text-gray-500 shrink-0 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={f.required}
+                              onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, required: e.target.checked } : x))}
+                              className="rounded"
+                            />
+                            Required
+                          </label>
+                          <button onClick={() => setDocSignFields(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 shrink-0">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Summary of selected */}
+            {(docSignFiles.length > 0 || docSignSelectedTemplates.length > 0) && (
+              <div className="bg-gray-50 border rounded-lg px-3 py-2 text-xs text-gray-600">
+                <span className="font-semibold">Ready to send: </span>
+                {[
+                  docSignFiles.length > 0 && `${docSignFiles.length} uploaded file${docSignFiles.length > 1 ? "s" : ""}`,
+                  docSignSelectedTemplates.length > 0 && `${docSignSelectedTemplates.length} library template${docSignSelectedTemplates.length > 1 ? "s" : ""}`,
+                  docSignFields.length > 0 && `${docSignFields.length} signature field${docSignFields.length > 1 ? "s" : ""}`,
+                ].filter(Boolean).join(", ")}
+              </div>
+            )}
+
             {/* Copyable signing link if SMTP not configured */}
             {docSignLink && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold text-amber-800">Email not sent — share this link with the landlord:</p>
                 <div className="flex items-center gap-2 bg-white border rounded-lg px-2.5 py-2">
                   <p className="text-xs text-gray-700 flex-1 truncate">{docSignLink}</p>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(docSignLink); toast({ title: "Link copied!" }); }}
-                    className="shrink-0 text-blue-600 hover:text-blue-800"
-                    title="Copy link"
-                  >
+                  <button onClick={() => { navigator.clipboard.writeText(docSignLink!); toast({ title: "Link copied!" }); }} className="shrink-0 text-blue-600 hover:text-blue-800" title="Copy link">
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
             )}
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="border-t pt-3">
             <Button variant="outline" onClick={() => { setShowDocSignDialog(false); setDocSignLink(null); }}>
               {docSignLink ? "Done" : "Cancel"}
             </Button>
             {!docSignLink && (
               <Button
                 onClick={handleSendDocSignature}
-                disabled={sendingDocSig || !docSignLandlordEmail.trim()}
+                disabled={sendingDocSig || !docSignLandlordEmail.trim() || (docSignFiles.length === 0 && docSignSelectedTemplates.length === 0)}
                 className="bg-blue-700 hover:bg-blue-800"
                 data-testid="button-send-doc-signature"
               >
-                {sendingDocSig ? "Sending…" : "Send for Signature"}
+                {sendingDocSig ? "Sending…" : `Send for Signature${docSignFiles.length + docSignSelectedTemplates.length > 1 ? ` (${docSignFiles.length + docSignSelectedTemplates.length} docs)` : ""}`}
               </Button>
             )}
           </DialogFooter>

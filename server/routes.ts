@@ -3911,8 +3911,8 @@ export async function registerRoutes(
   });
 
   // ── Document Signature (DocuSign-like) ───────────────────────────
-  // POST /api/rep/locations/:id/doc-signatures  (multipart: file + landlordName + landlordEmail)
-  app.post("/api/rep/locations/:id/doc-signatures", docSignUpload.single("document"), async (req, res) => {
+  // POST /api/rep/locations/:id/doc-signatures  (multipart: documents[] + signatureFields JSON + landlordName + landlordEmail + templateIds)
+  app.post("/api/rep/locations/:id/doc-signatures", docSignUpload.array("documents", 10), async (req, res) => {
     try {
       const user = (req.session as any)?.user;
       const actorId = req.body?.actorId || user?.id;
@@ -3923,31 +3923,61 @@ export async function registerRoutes(
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
 
-      const { landlordName, landlordEmail } = req.body;
+      const { landlordName, landlordEmail, signatureFields, templateIds } = req.body;
       if (!landlordEmail) return res.status(400).json({ error: "Landlord email is required" });
 
+      const uploadedFiles = (req.files as Express.Multer.File[]) || [];
       const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      const documentPath = req.file ? `/uploads/doc-signatures/${req.file.filename}` : null;
-      const documentName = req.file ? req.file.originalname : null;
-      const documentMimeType = req.file ? req.file.mimetype : null;
 
+      // Create the signature request record
       const record = await storage.createDocSignature({
         locationId: location.id,
-        documentPath,
-        documentName,
-        documentMimeType,
+        documentPath: uploadedFiles[0] ? `/uploads/doc-signatures/${uploadedFiles[0].filename}` : null,
+        documentName: uploadedFiles[0] ? uploadedFiles[0].originalname : null,
+        documentMimeType: uploadedFiles[0] ? uploadedFiles[0].mimetype : null,
         landlordName: landlordName || location.landlordName || "",
         landlordEmail,
         propertyAddress: `${location.address}${location.unit ? ", Unit " + location.unit : ""}`,
         token,
         status: "pending",
         createdBy: actor.id,
+        signatureFields: signatureFields || null,
       });
+
+      // Save each uploaded file to location_doc_signature_files
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const f = uploadedFiles[i];
+        await storage.createDocSigFile({
+          sigRequestId: record.id,
+          filePath: `/uploads/doc-signatures/${f.filename}`,
+          fileName: f.originalname,
+          mimeType: f.mimetype,
+          sortOrder: i,
+        });
+      }
+
+      // Include template files from admin library
+      if (templateIds) {
+        const ids: string[] = Array.isArray(templateIds) ? templateIds : [templateIds];
+        const allTemplates = await storage.getAllDocTemplates();
+        const selectedTemplates = allTemplates.filter(t => ids.includes(t.id));
+        for (let i = 0; i < selectedTemplates.length; i++) {
+          const t = selectedTemplates[i];
+          await storage.createDocSigFile({
+            sigRequestId: record.id,
+            filePath: t.filePath,
+            fileName: t.fileName || t.title,
+            mimeType: t.mimeType || undefined,
+            sortOrder: uploadedFiles.length + i,
+          });
+        }
+      }
 
       const proto = req.headers["x-forwarded-proto"] || req.protocol;
       const host = req.headers["x-forwarded-host"] || req.get("host");
       const signingUrl = `${proto}://${host}/doc-sign/${token}`;
 
+      const allFileNames = uploadedFiles.map(f => f.originalname).join(", ");
       const emailSent = await sendEmail({
         to: landlordEmail,
         subject: `Document Ready for Your Signature — ${location.address}`,
@@ -3957,7 +3987,7 @@ export async function registerRoutes(
             <p>Dear ${landlordName || location.landlordName || "Landlord"},</p>
             <p>A document has been sent to you for review and signature for the property:</p>
             <p><strong>${location.address}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
-            ${documentName ? `<p>Document: <strong>${documentName}</strong></p>` : ""}
+            ${allFileNames ? `<p>Documents: <strong>${allFileNames}</strong></p>` : ""}
             <div style="margin:24px 0;">
               <a href="${signingUrl}" style="background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
                 Review &amp; Sign Document
@@ -3968,13 +3998,14 @@ export async function registerRoutes(
         text: `Please review and sign the document at: ${signingUrl}`,
       });
 
-      res.json({ record, signingUrl, emailSent });
+      const files = await storage.getFilesForDocSig(record.id);
+      res.json({ record: { ...record, files }, signingUrl, emailSent });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // GET /api/rep/locations/:id/doc-signatures
+  // GET /api/rep/locations/:id/doc-signatures  (includes files per request)
   app.get("/api/rep/locations/:id/doc-signatures", async (req, res) => {
     try {
       const user = (req.session as any)?.user;
@@ -3984,38 +4015,117 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       const records = await storage.getDocSignaturesByLocation(req.params.id);
-      res.json(records);
+      const withFiles = await Promise.all(records.map(async r => ({
+        ...r,
+        fields: r.signatureFields ? JSON.parse(r.signatureFields) : [],
+        files: await storage.getFilesForDocSig(r.id),
+      })));
+      res.json(withFiles);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // GET /api/doc-sign/:token  (public)
+  // GET /api/doc-sign/:token  (public — returns record + files + fields)
   app.get("/api/doc-sign/:token", async (req, res) => {
     try {
       const record = await storage.getDocSignatureByToken(req.params.token);
       if (!record) return res.status(404).json({ error: "Signing request not found" });
-      res.json(record);
+      const files = await storage.getFilesForDocSig(record.id);
+      const fields = record.signatureFields ? JSON.parse(record.signatureFields) : [];
+      res.json({ ...record, files, fields });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // POST /api/doc-sign/:token  (public — submit signature)
+  // POST /api/doc-sign/:token  (public — submit; auto-attaches to rep_documents)
   app.post("/api/doc-sign/:token", async (req, res) => {
     try {
       const record = await storage.getDocSignatureByToken(req.params.token);
       if (!record) return res.status(404).json({ error: "Signing request not found" });
       if (record.status === "signed") return res.status(400).json({ error: "This document has already been signed" });
-      const { signatureData, signerName } = req.body;
+      const { signatureData, signerName, fieldResponses } = req.body;
       if (!signatureData || !signerName) return res.status(400).json({ error: "Signature and name are required" });
       const updated = await storage.updateDocSignature(record.id, {
         status: "signed",
         signatureData,
         signerName,
         signedAt: new Date(),
+        signatureFields: fieldResponses ? JSON.stringify(fieldResponses) : record.signatureFields,
       });
+
+      // Auto-attach document files to rep_documents via the location's active lead (for processing)
+      try {
+        const leads = await storage.getLeadsForLocation(record.locationId);
+        const activeLead = leads.find(l => l.status !== "Declined") || leads[0];
+        if (activeLead) {
+          const files = await storage.getFilesForDocSig(record.id);
+          for (const f of files) {
+            await storage.createRepDocument({
+              rgLeadId: activeLead.id,
+              documentRequestId: null,
+              docType: "signed-document",
+              fileName: f.fileName || "Signed Document",
+              fileUrl: f.filePath,
+              fileSize: null,
+            });
+          }
+        }
+      } catch (e) {
+        console.error("[doc-sign] Failed to attach signed docs:", e);
+      }
+
       res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── Admin Document Template Library ──────────────────────────────
+  app.post("/api/admin/doc-templates", docSignUpload.single("document"), async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      const actorId = req.body?.actorId || user?.id;
+      const actor = actorId ? await storage.getUser(actorId) : user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      if (!req.file) return res.status(400).json({ error: "File is required" });
+      const { title } = req.body;
+      if (!title) return res.status(400).json({ error: "Title is required" });
+      const template = await storage.createDocTemplate({
+        title,
+        filePath: `/uploads/doc-signatures/${req.file.filename}`,
+        fileName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        uploadedBy: actor.id,
+      });
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/doc-templates", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      const actorId = (req.query as any).actorId || user?.id;
+      const actor = actorId ? await storage.getUser(actorId) : user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const templates = await storage.getAllDocTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/admin/doc-templates/:id", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      const actorId = req.body?.actorId || (req.query as any).actorId || user?.id;
+      const actor = actorId ? await storage.getUser(actorId) : user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      await storage.deleteDocTemplate(req.params.id);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
