@@ -11,9 +11,12 @@ interface SignatureField {
   type: FieldType;
   label: string;
   required: boolean;
-  x?: number;   // % from left of document container
-  y?: number;   // % from top of document container
-  page?: number; // which document (0-indexed)
+  x?: number;       // % from left of document container
+  y?: number;       // % from top of document container
+  page?: number;    // which document (0-indexed)
+  pageNum?: number; // which PDF page within that document (1-indexed)
+  width?: number;   // % of overlay width
+  height?: number;  // % of overlay height
 }
 
 // ── Signature Pad ─────────────────────────────────────────────────────────────
@@ -232,6 +235,12 @@ export default function DocSign() {
   const [submitting, setSubmitting] = useState(false);
   const [signed, setSigned] = useState(false);
 
+  // Per-document current PDF page (docIndex → pageNum, 1-indexed)
+  const [docPages, setDocPages] = useState<Record<number, number>>({});
+  const getDocPage = (docIdx: number) => docPages[docIdx] ?? 1;
+  const setDocPage = (docIdx: number, page: number) =>
+    setDocPages(prev => ({ ...prev, [docIdx]: Math.max(1, page) }));
+
   // Positioned field modal
   const [fieldModal, setFieldModal] = useState<string | null>(null);
 
@@ -447,71 +456,97 @@ export default function DocSign() {
                 <a href={currentFile.filePath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline shrink-0 ml-4">Open ↗</a>
               </div>
 
-              {/* Positioned fields hint */}
-              {positionedFields.filter(f => (f.page ?? 0) === activeDoc).length > 0 && (
-                <div className="bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center gap-2">
-                  <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
-                  </svg>
-                  <p className="text-xs text-blue-700">Click the highlighted fields on the document to sign or fill them in.</p>
-                </div>
-              )}
+              {/* Page nav + field hint bar */}
+              {(() => {
+                const currentPage = getDocPage(activeDoc);
+                const fieldsOnThisPage = positionedFields.filter(f => (f.page ?? 0) === activeDoc && (f.pageNum ?? 1) === currentPage);
+                const isPdfFile = isPdf(currentFile);
+                return (
+                  <>
+                    <div className="flex items-center gap-3 px-4 py-2 border-b bg-gray-50">
+                      {fieldsOnThisPage.length > 0 ? (
+                        <div className="flex items-center gap-1.5 flex-1">
+                          <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+                          </svg>
+                          <p className="text-xs text-blue-700">Click the highlighted fields to sign or fill them in.</p>
+                        </div>
+                      ) : <span className="flex-1" />}
+                      {isPdfFile && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs text-gray-500">Page:</span>
+                          <button onClick={() => setDocPage(activeDoc, currentPage - 1)} disabled={currentPage <= 1}
+                            className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center disabled:opacity-30 hover:bg-gray-100">‹</button>
+                          <span className="text-xs font-semibold text-gray-700 min-w-[1.5rem] text-center">{currentPage}</span>
+                          <button onClick={() => setDocPage(activeDoc, currentPage + 1)}
+                            className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center hover:bg-gray-100">›</button>
+                        </div>
+                      )}
+                    </div>
 
-              <div className="relative" style={{ minHeight: isPdf(currentFile) ? "60vh" : "auto" }}>
-                {isPdf(currentFile) ? (
-                  <iframe
-                    src={currentFile.filePath}
-                    className="w-full"
-                    style={{ height: "60vh", border: "none", display: "block" }}
-                    title={currentFile.fileName}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center p-6 bg-gray-100">
-                    <img src={currentFile.filePath} alt={currentFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded shadow" />
-                  </div>
-                )}
+                    <div className="relative" style={{ minHeight: isPdfFile ? "60vh" : "auto" }}>
+                      {isPdfFile ? (
+                        <iframe
+                          key={`${activeDoc}-${currentPage}`}
+                          src={`${currentFile.filePath}#page=${currentPage}`}
+                          className="w-full"
+                          style={{ height: "60vh", border: "none", display: "block" }}
+                          title={currentFile.fileName}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center p-6 bg-gray-100">
+                          <img src={currentFile.filePath} alt={currentFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded shadow" />
+                        </div>
+                      )}
 
-                {/* Positioned field overlays */}
-                {positionedFields.filter(f => (f.page ?? 0) === activeDoc).length > 0 && (
-                  <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
-                    {positionedFields
-                      .filter(f => (f.page ?? 0) === activeDoc)
-                      .map(f => {
-                        const isFilled = !!fieldResponses[f.id];
-                        return (
-                          <div
-                            key={f.id}
-                            style={{
-                              position: "absolute",
-                              left: `${f.x}%`,
-                              top: `${f.y}%`,
-                              transform: "translate(-50%, -50%)",
-                              pointerEvents: "auto",
-                            }}
-                            onClick={() => setFieldModal(f.id)}
-                            className="cursor-pointer select-none"
-                          >
-                            {isFilled ? (
-                              <div className="bg-green-500 text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 font-medium">
-                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                                {f.label}
+                      {/* Positioned field overlays — only for this page */}
+                      {fieldsOnThisPage.length > 0 && (
+                        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+                          {fieldsOnThisPage.map(f => {
+                            const isFilled = !!fieldResponses[f.id];
+                            const w = f.width ?? 14;
+                            const h = f.height ?? 6;
+                            return (
+                              <div
+                                key={f.id}
+                                style={{
+                                  position: "absolute",
+                                  left: `${f.x}%`,
+                                  top: `${f.y}%`,
+                                  width: `${w}%`,
+                                  height: `${h}%`,
+                                  minWidth: 80,
+                                  minHeight: 28,
+                                  pointerEvents: "auto",
+                                }}
+                                onClick={() => setFieldModal(f.id)}
+                                className="cursor-pointer select-none"
+                              >
+                                {isFilled ? (
+                                  <div className="bg-green-500 w-full h-full rounded-lg shadow-lg border-2 border-white/50 flex items-center gap-1.5 px-2 text-white text-xs font-semibold overflow-hidden">
+                                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span className="truncate">{f.label}</span>
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`${FIELD_COLORS[f.type]} w-full h-full rounded-lg shadow-lg border-2 border-white/50 hover:border-white/90 flex items-center gap-1.5 px-2 text-white text-xs font-semibold overflow-hidden transition-all`}
+                                  >
+                                    <span className="shrink-0">✎</span>
+                                    <span className="truncate">{f.label}</span>
+                                    {f.required && <span className="text-red-300 shrink-0">*</span>}
+                                  </div>
+                                )}
                               </div>
-                            ) : (
-                              <div className={`${FIELD_COLORS[f.type]} text-white text-xs px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 font-medium border-2 border-white/40 hover:border-white/80 transition-all`}
-                                style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" }}>
-                                <span className="text-sm">✎</span>
-                                {f.label}
-                                {f.required && <span className="text-red-300">*</span>}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </>
           ) : (
             <div className="p-8 text-center text-gray-400 text-sm">No documents attached.</div>

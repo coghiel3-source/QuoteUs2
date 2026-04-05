@@ -650,11 +650,26 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [docSignDialogTab, setDocSignDialogTab] = useState<"upload" | "library" | "fields" | "preview">("upload");
   const [adminDocTemplates, setAdminDocTemplates] = useState<any[]>([]);
   const [docSignSelectedTemplates, setDocSignSelectedTemplates] = useState<string[]>([]);
-  const [docSignFields, setDocSignFields] = useState<Array<{ id: string; type: string; label: string; required: boolean; x?: number; y?: number; page?: number }>>([]);
+  const [docSignFields, setDocSignFields] = useState<Array<{
+    id: string; type: string; label: string; required: boolean;
+    x?: number; y?: number;
+    page?: number;    // which document (0-indexed)
+    pageNum?: number; // which PDF page within that document (1-indexed)
+    width?: number;   // % of overlay width
+    height?: number;  // % of overlay height
+  }>>([]);
   const [loadingDocTemplates, setLoadingDocTemplates] = useState(false);
   const [activePlaceTool, setActivePlaceTool] = useState<string>("signature");
   const [previewDocIndex, setPreviewDocIndex] = useState(0);
+  const [previewPageNum, setPreviewPageNum] = useState(1);
   const [docSignFileUrls, setDocSignFileUrls] = useState<string[]>([]);
+  const [draggingField, setDraggingField] = useState<{
+    id: string; startMouseX: number; startMouseY: number; startFieldX: number; startFieldY: number;
+  } | null>(null);
+  const [resizingField, setResizingField] = useState<{
+    id: string; startMouseX: number; startMouseY: number; startW: number; startH: number;
+  } | null>(null);
+  const hasDraggedRef = React.useRef(false);
 
   // Edit lead dialog
   const [showEditLead, setShowEditLead] = useState(false);
@@ -879,6 +894,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setDocSignDialogTab("upload");
     setActivePlaceTool("signature");
     setPreviewDocIndex(0);
+    setPreviewPageNum(1);
+    setDraggingField(null);
+    setResizingField(null);
+    hasDraggedRef.current = false;
     setShowDocSignDialog(true);
     loadAdminDocTemplates();
   }
@@ -3734,13 +3753,65 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   }).filter(Boolean) as any[],
                 ];
                 const currentDoc = allPreviewDocs[previewDocIndex];
-                const fieldColors: Record<string, string> = { signature: "bg-blue-600", initials: "bg-purple-600", date: "bg-emerald-600", text: "bg-gray-500" };
+                const FC: Record<string, string> = { signature: "bg-blue-600", initials: "bg-purple-600", date: "bg-emerald-600", text: "bg-gray-500" };
                 const fieldBtns = [
-                  { type: "signature", label: "Signature", ring: "ring-blue-400 bg-blue-600" },
-                  { type: "initials", label: "Initials", ring: "ring-purple-400 bg-purple-600" },
-                  { type: "date", label: "Date", ring: "ring-emerald-400 bg-emerald-600" },
-                  { type: "text", label: "Text", ring: "ring-gray-400 bg-gray-500" },
+                  { type: "signature", label: "Signature", bg: "bg-blue-600", ring: "ring-blue-400" },
+                  { type: "initials", label: "Initials", bg: "bg-purple-600", ring: "ring-purple-400" },
+                  { type: "date", label: "Date", bg: "bg-emerald-600", ring: "ring-emerald-400" },
+                  { type: "text", label: "Text", bg: "bg-gray-500", ring: "ring-gray-400" },
                 ];
+                const iframeSrc = currentDoc
+                  ? (currentDoc.isPdf ? `${currentDoc.url}#page=${previewPageNum}` : currentDoc.url)
+                  : "";
+                const visibleFields = docSignFields.filter(
+                  f => f.x !== undefined && f.page === previewDocIndex && (f.pageNum ?? 1) === previewPageNum
+                );
+                const placedAll = docSignFields.filter(f => f.x !== undefined);
+
+                const handleOverlayMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  if (draggingField) {
+                    hasDraggedRef.current = true;
+                    const dX = ((e.clientX - draggingField.startMouseX) / rect.width) * 100;
+                    const dY = ((e.clientY - draggingField.startMouseY) / rect.height) * 100;
+                    setDocSignFields(prev => prev.map(f =>
+                      f.id === draggingField.id
+                        ? { ...f, x: Math.max(0, Math.min(95, draggingField.startFieldX + dX)), y: Math.max(0, Math.min(95, draggingField.startFieldY + dY)) }
+                        : f
+                    ));
+                  } else if (resizingField) {
+                    hasDraggedRef.current = true;
+                    const dX = ((e.clientX - resizingField.startMouseX) / rect.width) * 100;
+                    const dY = ((e.clientY - resizingField.startMouseY) / rect.height) * 100;
+                    setDocSignFields(prev => prev.map(f =>
+                      f.id === resizingField.id
+                        ? { ...f, width: Math.max(5, resizingField.startW + dX), height: Math.max(3, resizingField.startH + dY) }
+                        : f
+                    ));
+                  }
+                };
+                const stopInteraction = () => { setDraggingField(null); setResizingField(null); };
+                const handleOverlayMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+                  if (hasDraggedRef.current) { hasDraggedRef.current = false; return; }
+                  const target = e.target as HTMLElement;
+                  if (target.closest("[data-field-box]")) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                  const labels: Record<string, string> = { signature: "Signature", initials: "Initials", date: "Date", text: "Text" };
+                  setDocSignFields(prev => [...prev, {
+                    id: Math.random().toString(36).slice(2),
+                    type: activePlaceTool,
+                    label: labels[activePlaceTool] || activePlaceTool,
+                    required: true,
+                    x, y,
+                    page: previewDocIndex,
+                    pageNum: previewPageNum,
+                    width: 16,
+                    height: 6,
+                  }]);
+                };
+
                 return (
                   <div>
                     {allPreviewDocs.length === 0 ? (
@@ -3749,26 +3820,34 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       </div>
                     ) : (
                       <>
-                        {/* Tool selector */}
+                        {/* ── Toolbar row ── */}
                         <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 flex-wrap">
-                          <span className="text-xs text-gray-500 font-medium">Tool:</span>
+                          <span className="text-xs text-gray-500 font-medium shrink-0">Add:</span>
                           {fieldBtns.map(btn => (
-                            <button
-                              key={btn.type}
-                              onClick={() => setActivePlaceTool(btn.type)}
-                              className={`px-2.5 py-1 rounded text-xs font-semibold text-white transition-all ${btn.ring.split(" ")[1]} ${activePlaceTool === btn.type ? `ring-2 ${btn.ring.split(" ")[0]} scale-105` : "opacity-60 hover:opacity-90"}`}
-                            >
+                            <button key={btn.type} onClick={() => setActivePlaceTool(btn.type)}
+                              className={`${btn.bg} px-2.5 py-1 rounded text-xs font-semibold text-white transition-all ${activePlaceTool === btn.type ? `ring-2 ${btn.ring} scale-105` : "opacity-55 hover:opacity-90"}`}>
                               {btn.label}
                             </button>
                           ))}
-                          <span className="ml-auto text-xs text-gray-400 hidden sm:block">Click on document to place</span>
+                          {/* Page nav */}
+                          {currentDoc?.isPdf && (
+                            <div className="ml-auto flex items-center gap-1 shrink-0">
+                              <span className="text-xs text-gray-500">Page:</span>
+                              <button onClick={() => setPreviewPageNum(p => Math.max(1, p - 1))} disabled={previewPageNum <= 1}
+                                className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center disabled:opacity-30 hover:bg-gray-100">‹</button>
+                              <span className="text-xs font-semibold text-gray-700 min-w-[1.5rem] text-center">{previewPageNum}</span>
+                              <button onClick={() => setPreviewPageNum(p => p + 1)}
+                                className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center hover:bg-gray-100">›</button>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-400 w-full">Click empty area to place · Drag to move · Corner handle to resize</p>
                         </div>
 
                         {/* Doc tabs */}
                         {allPreviewDocs.length > 1 && (
                           <div className="flex overflow-x-auto border-b bg-white">
                             {allPreviewDocs.map((doc, i) => (
-                              <button key={i} onClick={() => setPreviewDocIndex(i)}
+                              <button key={i} onClick={() => { setPreviewDocIndex(i); setPreviewPageNum(1); }}
                                 className={`px-3 py-2 text-xs font-medium shrink-0 border-b-2 transition-colors ${previewDocIndex === i ? "border-blue-600 text-blue-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                                 {doc.name}
                               </button>
@@ -3776,11 +3855,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           </div>
                         )}
 
-                        {/* Document + click overlay */}
-                        <div className="relative bg-gray-200" style={{ height: "380px", cursor: "crosshair" }}>
+                        {/* ── Document + overlay ── */}
+                        <div className="relative bg-gray-300 select-none" style={{ height: 420 }}>
+                          {/* Document */}
                           {currentDoc ? (
                             currentDoc.isPdf ? (
-                              <iframe src={currentDoc.url} className="w-full h-full" style={{ border: "none", pointerEvents: "none" }} title={currentDoc.name} />
+                              <iframe key={iframeSrc} src={iframeSrc} className="w-full h-full" style={{ border: "none", pointerEvents: "none", display: "block" }} title={currentDoc.name} />
                             ) : (
                               <img src={currentDoc.url} alt={currentDoc.name} className="w-full h-full object-contain" style={{ pointerEvents: "none" }} />
                             )
@@ -3788,64 +3868,93 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                             <div className="flex items-center justify-center h-full text-gray-400 text-sm">Preview not available</div>
                           )}
 
-                          {/* Click capture overlay */}
+                          {/* Interaction overlay */}
                           <div
                             className="absolute inset-0"
-                            style={{ zIndex: 10 }}
-                            onClick={e => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const x = ((e.clientX - rect.left) / rect.width) * 100;
-                              const y = ((e.clientY - rect.top) / rect.height) * 100;
-                              const labels: Record<string, string> = { signature: "Signature", initials: "Initials", date: "Date", text: "Text" };
-                              setDocSignFields(prev => [...prev, {
-                                id: Math.random().toString(36).slice(2),
-                                type: activePlaceTool,
-                                label: labels[activePlaceTool] || activePlaceTool,
-                                required: true,
-                                x, y,
-                                page: previewDocIndex,
-                              }]);
-                            }}
+                            style={{ zIndex: 10, cursor: draggingField || resizingField ? "grabbing" : "crosshair" }}
+                            onMouseMove={handleOverlayMouseMove}
+                            onMouseUp={stopInteraction}
+                            onMouseLeave={stopInteraction}
+                            onMouseDown={handleOverlayMouseDown}
                           >
-                            {/* Render placed fields */}
-                            {docSignFields
-                              .filter(f => f.x !== undefined && f.page === previewDocIndex)
-                              .map(f => (
-                                <div
-                                  key={f.id}
-                                  style={{ position: "absolute", left: `${f.x}%`, top: `${f.y}%`, transform: "translate(-50%,-50%)", zIndex: 20 }}
-                                  onClick={e => e.stopPropagation()}
-                                >
-                                  <div className={`${fieldColors[f.type] || "bg-gray-600"} text-white text-xs px-2 py-1 rounded-lg shadow-lg flex items-center gap-1.5 whitespace-nowrap border-2 border-white/40`}>
-                                    <span className="font-medium">{f.label}</span>
-                                    <button
-                                      onClick={() => setDocSignFields(prev => prev.filter(x => x.id !== f.id))}
-                                      className="text-white/70 hover:text-white ml-0.5"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  </div>
+                            {visibleFields.map(f => (
+                              <div
+                                key={f.id}
+                                data-field-box="1"
+                                style={{
+                                  position: "absolute",
+                                  left: `${f.x}%`,
+                                  top: `${f.y}%`,
+                                  width: `${f.width ?? 16}%`,
+                                  height: `${f.height ?? 6}%`,
+                                  minWidth: 60,
+                                  minHeight: 22,
+                                  zIndex: 20,
+                                  cursor: draggingField?.id === f.id ? "grabbing" : "grab",
+                                }}
+                                onMouseDown={e => {
+                                  if ((e.target as HTMLElement).closest("[data-resize-handle]")) return;
+                                  e.stopPropagation();
+                                  hasDraggedRef.current = false;
+                                  setDraggingField({ id: f.id, startMouseX: e.clientX, startMouseY: e.clientY, startFieldX: f.x!, startFieldY: f.y! });
+                                }}
+                              >
+                                {/* Field body */}
+                                <div className={`${FC[f.type] || "bg-gray-600"} w-full h-full rounded-md border-2 border-white/50 shadow-lg flex items-center justify-between px-2 overflow-hidden`}>
+                                  <input
+                                    data-field-box="1"
+                                    className="flex-1 bg-transparent text-white text-xs font-semibold outline-none placeholder-white/60 min-w-0 truncate"
+                                    value={f.label}
+                                    onChange={e => setDocSignFields(prev => prev.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                                    onMouseDown={e => e.stopPropagation()}
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ cursor: "text" }}
+                                  />
+                                  <button
+                                    data-field-box="1"
+                                    className="text-white/70 hover:text-white ml-1 shrink-0"
+                                    onMouseDown={e => e.stopPropagation()}
+                                    onClick={e => { e.stopPropagation(); setDocSignFields(prev => prev.filter(x => x.id !== f.id)); }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
                                 </div>
-                              ))}
+                                {/* Resize handle */}
+                                <div
+                                  data-resize-handle="1"
+                                  data-field-box="1"
+                                  style={{ position: "absolute", bottom: -5, right: -5, width: 14, height: 14, cursor: "se-resize", zIndex: 25 }}
+                                  className="bg-white border-2 border-gray-500 rounded-sm shadow"
+                                  onMouseDown={e => {
+                                    e.stopPropagation();
+                                    hasDraggedRef.current = false;
+                                    setResizingField({ id: f.id, startMouseX: e.clientX, startMouseY: e.clientY, startW: f.width ?? 16, startH: f.height ?? 6 });
+                                  }}
+                                />
+                              </div>
+                            ))}
                           </div>
                         </div>
 
-                        {/* Placed fields list */}
-                        {docSignFields.filter(f => f.x !== undefined).length > 0 && (
-                          <div className="p-3 border-t bg-gray-50 space-y-1.5 max-h-32 overflow-y-auto">
-                            <p className="text-xs text-gray-500 font-medium">Placed fields ({docSignFields.filter(f => f.x !== undefined).length})</p>
-                            {docSignFields.filter(f => f.x !== undefined).map((f, i) => {
-                              const globalIdx = docSignFields.indexOf(f);
+                        {/* ── Placed fields list ── */}
+                        {placedAll.length > 0 && (
+                          <div className="p-3 border-t bg-gray-50 max-h-36 overflow-y-auto space-y-1.5">
+                            <p className="text-xs text-gray-500 font-semibold">All placed fields ({placedAll.length})</p>
+                            {placedAll.map(f => {
+                              const docName = allPreviewDocs[f.page ?? 0]?.name ?? `Doc ${(f.page ?? 0) + 1}`;
                               return (
                                 <div key={f.id} className="flex items-center gap-2 bg-white border rounded px-2.5 py-1.5">
-                                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded text-white ${fieldColors[f.type] || "bg-gray-500"}`}>{f.type}</span>
+                                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded text-white shrink-0 ${FC[f.type] || "bg-gray-500"}`}>{f.type}</span>
                                   <input
                                     className="flex-1 text-xs bg-transparent border-none outline-none text-gray-700 min-w-0"
                                     value={f.label}
-                                    onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === globalIdx ? { ...x, label: e.target.value } : x))}
+                                    onChange={e => setDocSignFields(prev => prev.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
                                   />
-                                  <span className="text-xs text-gray-400 shrink-0">Doc {(f.page ?? 0) + 1}</span>
-                                  <button onClick={() => setDocSignFields(prev => prev.filter(x => x.id !== f.id))} className="text-gray-400 hover:text-red-500">
+                                  <span className="text-xs text-gray-400 shrink-0">{docName}{(f.pageNum ?? 1) > 1 ? ` p.${f.pageNum}` : ""}</span>
+                                  <button
+                                    onClick={() => { setPreviewDocIndex(f.page ?? 0); setPreviewPageNum(f.pageNum ?? 1); }}
+                                    className="text-xs text-blue-500 hover:underline shrink-0">Go</button>
+                                  <button onClick={() => setDocSignFields(prev => prev.filter(x => x.id !== f.id))} className="text-gray-400 hover:text-red-500 shrink-0">
                                     <X className="h-3 w-3" />
                                   </button>
                                 </div>
