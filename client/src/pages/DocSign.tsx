@@ -387,57 +387,39 @@ export default function DocSign() {
   const pct = totalRequired > 0 ? Math.round((filled / totalRequired) * 100) : 100;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ── Header ── */}
-      <div className="bg-blue-700 text-white px-4 py-4 flex items-center gap-3">
-        <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    /* h-screen + overflow-hidden: the whole page fits the viewport exactly — nothing scrolls as a page */
+    <div className="h-screen overflow-hidden flex flex-col bg-gray-50">
+
+      {/* ── Header (shrink-to-content, never scrolls away) ── */}
+      <div className="bg-blue-700 text-white px-4 py-3 flex items-center gap-3 shrink-0">
+        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-sm font-bold">Document Signing Request</h1>
+          <h1 className="text-sm font-bold leading-tight">Document Signing</h1>
           {record?.propertyAddress && <p className="text-blue-200 text-xs truncate">{record.propertyAddress}</p>}
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-blue-200 text-xs">{record?.landlordName}</p>
-          <p className="text-blue-300 text-xs">{files.length} doc{files.length !== 1 ? "s" : ""} · {positionedFields.length} field{positionedFields.length !== 1 ? "s" : ""}</p>
-        </div>
+        {totalRequired > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-24 h-1.5 bg-white/30 rounded-full overflow-hidden">
+              <div className="h-full bg-white rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-blue-200 text-xs">{filled}/{totalRequired}</span>
+          </div>
+        )}
       </div>
 
-      {/* ── Progress bar ── */}
-      {totalRequired > 0 && (
-        <div className="bg-white border-b px-4 py-2">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-xs text-gray-500 shrink-0">{filled}/{totalRequired} fields</span>
-          </div>
-        </div>
-      )}
+      {/* ── Main area: document (left, fills space) + controls (right, own scroll) ── */}
+      <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
 
-      <div className="max-w-4xl mx-auto py-6 px-4 space-y-4">
-        {/* ── Signer Name ── */}
-        <div className="bg-white rounded-xl shadow-sm border p-4">
-          <Label htmlFor="signerName" className="text-sm font-semibold text-gray-700 block mb-2">
-            Your Full Legal Name <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="signerName"
-            data-testid="input-signer-name"
-            placeholder="Enter your full name as it appears on ID"
-            value={signerName}
-            onChange={e => setSignerName(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
+        {/* LEFT — document viewer (never causes page scroll) */}
+        <div className="flex-1 overflow-hidden flex flex-col bg-white border-r">
 
-        {/* ── Document viewer with positioned fields ── */}
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
           {/* Doc tabs */}
           {files.length > 1 && (
-            <div className="flex overflow-x-auto border-b bg-gray-50">
+            <div className="flex overflow-x-auto border-b bg-gray-50 shrink-0">
               {files.map((f, i) => {
                 const fieldsOnDoc = positionedFields.filter(field => (field.page ?? 0) === i);
                 const filledOnDoc = fieldsOnDoc.filter(field => fieldResponses[field.id]).length;
@@ -462,7 +444,7 @@ export default function DocSign() {
           {/* Document + overlay */}
           {currentFile ? (
             <>
-              <div className="bg-gray-50 px-4 py-2 border-b flex items-center justify-between">
+              <div className="bg-gray-50 px-4 py-1.5 border-b flex items-center justify-between shrink-0">
                 <p className="text-xs font-medium text-gray-600 truncate">{currentFile.fileName}</p>
                 <a href={currentFile.filePath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline shrink-0 ml-4">Open ↗</a>
               </div>
@@ -560,101 +542,120 @@ export default function DocSign() {
               })()}
             </>
           ) : (
-            <div className="p-8 text-center text-gray-400 text-sm">No documents attached.</div>
+            <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">No documents attached.</div>
           )}
-        </div>
+        </div>{/* ── end LEFT panel ── */}
 
-        {/* ── Form fields (no positions) ── */}
-        {formFields.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">Additional Fields</h3>
-            {formFields.map(field => (
-              <div key={field.id} className="space-y-1.5">
-                <Label className="text-sm font-medium text-gray-700">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                  <span className="ml-2 text-xs font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded capitalize">{field.type}</span>
-                </Label>
-                {(field.type === "signature" || field.type === "initials") ? (
-                  <SignaturePad
-                    id={`pad-${field.id}`}
-                    height={field.type === "initials" ? 80 : 140}
-                    onCapture={data => setFieldResponse(field.id, data || "")}
-                  />
-                ) : field.type === "date" ? (
-                  <Input type="date" className="max-w-xs" value={fieldResponses[field.id] || ""} onChange={e => setFieldResponse(field.id, e.target.value)} />
-                ) : (
-                  <Input placeholder={`Enter ${field.label.toLowerCase()}`} value={fieldResponses[field.id] || ""} onChange={e => setFieldResponse(field.id, e.target.value)} className="max-w-sm" />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {/* RIGHT — controls panel (own scroll, completely isolated from document) */}
+        <div className="w-full md:w-72 shrink-0 overflow-y-auto bg-gray-50 border-t md:border-t-0 md:border-l flex flex-col">
+          <div className="p-4 space-y-4 flex-1">
 
-        {/* ── Main signature (only if no positioned signature fields) ── */}
-        {!hasPositionedSig && (
-          <div className="bg-white rounded-xl shadow-sm border p-5">
-            <Label className="text-sm font-semibold text-gray-700 block mb-3">
-              Signature <span className="text-red-500">*</span>
-            </Label>
-            <SignaturePad
-              id="main-signature-pad"
-              height={160}
-              onCapture={data => setMainSigData(data)}
-            />
-            {!mainSigData && <p className="text-xs text-gray-400 mt-1">Draw your signature above</p>}
-          </div>
-        )}
+            {/* Signer name */}
+            <div className="bg-white rounded-lg border p-3">
+              <Label htmlFor="signerName" className="text-xs font-semibold text-gray-700 block mb-1.5">
+                Your Full Legal Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="signerName"
+                data-testid="input-signer-name"
+                placeholder="Full name as on ID"
+                value={signerName}
+                onChange={e => setSignerName(e.target.value)}
+                className="text-sm"
+              />
+            </div>
 
-        {/* ── Positioned fields checklist ── */}
-        {positionedFields.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Fields to Complete</h3>
-            <div className="space-y-2">
-              {positionedFields.map(f => {
-                const isFilled = !!fieldResponses[f.id];
-                const docName = files[(f.page ?? 0)]?.fileName || `Document ${(f.page ?? 0) + 1}`;
-                return (
-                  <div
-                    key={f.id}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${isFilled ? "border-green-200 bg-green-50" : "border-gray-200 hover:border-blue-200 hover:bg-blue-50"}`}
-                    onClick={() => { setActiveDoc(f.page ?? 0); setFieldModal(f.id); }}
-                  >
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isFilled ? "bg-green-500" : "bg-gray-200"}`}>
-                      {isFilled ? (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : <span className="text-gray-400 text-xs">✎</span>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${isFilled ? "text-green-700" : "text-gray-700"}`}>{f.label}</p>
-                      <p className="text-xs text-gray-400 capitalize">{f.type} · {docName}</p>
-                    </div>
-                    {!isFilled && (
-                      <span className="text-xs text-blue-600 font-medium shrink-0">Click to fill →</span>
+            {/* Form fields (no positions) */}
+            {formFields.length > 0 && (
+              <div className="bg-white rounded-lg border p-3 space-y-3">
+                <p className="text-xs font-semibold text-gray-700">Additional Fields</p>
+                {formFields.map(field => (
+                  <div key={field.id} className="space-y-1">
+                    <Label className="text-xs font-medium text-gray-700">
+                      {field.label} {field.required && <span className="text-red-500">*</span>}
+                    </Label>
+                    {(field.type === "signature" || field.type === "initials") ? (
+                      <SignaturePad
+                        id={`pad-${field.id}`}
+                        height={field.type === "initials" ? 70 : 120}
+                        onCapture={data => setFieldResponse(field.id, data || "")}
+                      />
+                    ) : field.type === "date" ? (
+                      <Input type="date" className="text-sm" value={fieldResponses[field.id] || ""} onChange={e => setFieldResponse(field.id, e.target.value)} />
+                    ) : (
+                      <Input placeholder={`Enter ${field.label.toLowerCase()}`} value={fieldResponses[field.id] || ""} onChange={e => setFieldResponse(field.id, e.target.value)} className="text-sm" />
                     )}
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            )}
+
+            {/* Main signature (only when no positioned sig fields) */}
+            {!hasPositionedSig && (
+              <div className="bg-white rounded-lg border p-3">
+                <Label className="text-xs font-semibold text-gray-700 block mb-1.5">
+                  Signature <span className="text-red-500">*</span>
+                </Label>
+                <SignaturePad
+                  id="main-signature-pad"
+                  height={140}
+                  onCapture={data => setMainSigData(data)}
+                />
+                {!mainSigData && <p className="text-xs text-gray-400 mt-1">Draw your signature above</p>}
+              </div>
+            )}
+
+            {/* Positioned fields checklist */}
+            {positionedFields.length > 0 && (
+              <div className="bg-white rounded-lg border p-3">
+                <p className="text-xs font-semibold text-gray-700 mb-2">Fields to Complete</p>
+                <div className="space-y-1.5">
+                  {positionedFields.map(f => {
+                    const isFilled = !!fieldResponses[f.id];
+                    const docName = files[(f.page ?? 0)]?.fileName || `Doc ${(f.page ?? 0) + 1}`;
+                    return (
+                      <div
+                        key={f.id}
+                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors text-xs ${isFilled ? "border-green-200 bg-green-50" : "border-gray-200 hover:border-blue-300 hover:bg-blue-50"}`}
+                        onClick={() => { setActiveDoc(f.page ?? 0); setFieldModal(f.id); }}
+                      >
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${isFilled ? "bg-green-500" : "bg-gray-200"}`}>
+                          {isFilled ? (
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : <span className="text-gray-400" style={{ fontSize: 8 }}>✎</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium truncate ${isFilled ? "text-green-700" : "text-gray-700"}`}>{f.label}</p>
+                          <p className="text-gray-400 capitalize truncate">{f.type} · {docName}</p>
+                        </div>
+                        {!isFilled && <span className="text-blue-600 font-medium shrink-0">Fill →</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Submit */}
+            <div className="bg-white rounded-lg border p-3">
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting || !signerName.trim() || (!hasPositionedSig && !mainSigData)}
+                className="bg-blue-700 hover:bg-blue-800 text-white w-full"
+                data-testid="button-submit-signature"
+              >
+                {submitting ? "Submitting…" : `Submit Signed Document${files.length > 1 ? "s" : ""}`}
+              </Button>
+              <p className="text-xs text-gray-400 mt-2">By submitting you confirm you have reviewed all documents.</p>
             </div>
+
+            <p className="text-center text-xs text-gray-400 pb-2">Powered by QuoteUs.ca</p>
           </div>
-        )}
+        </div>{/* ── end RIGHT panel ── */}
 
-        {/* ── Submit ── */}
-        <div className="bg-white rounded-xl shadow-sm border p-5">
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting || !signerName.trim() || (!hasPositionedSig && !mainSigData)}
-            className="bg-blue-700 hover:bg-blue-800 text-white w-full sm:w-auto px-8"
-            data-testid="button-submit-signature"
-          >
-            {submitting ? "Submitting…" : `Submit Signed Document${files.length > 1 ? "s" : ""}`}
-          </Button>
-          <p className="text-xs text-gray-400 mt-2">By submitting, you confirm you have reviewed all documents and agree to their contents.</p>
-        </div>
-
-        <p className="text-center text-xs text-gray-400 pb-4">Powered by QuoteUs.ca — Secure document signing</p>
-      </div>
+      </div>{/* ── end main area ── */}
 
       {/* ── Field Fill Modal ── */}
       {fieldModal && (() => {
