@@ -149,11 +149,16 @@ function FieldModal({
 }) {
   const [localValue, setLocalValue] = useState(currentValue);
 
-  // Lock body scroll while modal is open so canvas init can't trigger page jump
+  // Lock body scroll while modal is open — use position:fixed trick to prevent
+  // the scrollbar-width layout shift that occurs with overflow:hidden alone.
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    const scrollY = window.scrollY;
+    const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.cssText = `overflow: hidden; position: fixed; top: -${scrollY}px; width: 100%; padding-right: ${scrollbarW}px;`;
+    return () => {
+      document.body.style.cssText = "";
+      window.scrollTo({ top: scrollY, behavior: "instant" as ScrollBehavior });
+    };
   }, []);
 
   return (
