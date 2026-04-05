@@ -149,6 +149,13 @@ function FieldModal({
 }) {
   const [localValue, setLocalValue] = useState(currentValue);
 
+  // Lock body scroll while modal is open so canvas init can't trigger page jump
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   return (
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
@@ -197,7 +204,6 @@ function FieldModal({
                 value={localValue}
                 onChange={e => setLocalValue(e.target.value)}
                 className="text-sm"
-                autoFocus
               />
             </div>
           )}
@@ -484,24 +490,24 @@ export default function DocSign() {
                       )}
                     </div>
 
-                    <div className="relative" style={{ minHeight: isPdfFile ? "75vh" : "auto" }}>
+                    <div className="relative overflow-hidden" style={{ height: isPdfFile ? "75vh" : "auto" }}>
                       {isPdfFile ? (
                         <iframe
                           key={`${activeDoc}-${currentPage}`}
                           src={`${currentFile.filePath}#page=${currentPage}`}
-                          className="w-full"
-                          style={{ height: "75vh", border: "none", display: "block" }}
+                          className="w-full h-full"
+                          style={{ border: "none", display: "block" }}
                           title={currentFile.fileName}
                         />
                       ) : (
-                        <div className="flex items-center justify-center p-6 bg-gray-100">
-                          <img src={currentFile.filePath} alt={currentFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded shadow" />
+                        <div className="flex items-center justify-center p-6 bg-gray-100 h-full overflow-auto">
+                          <img src={currentFile.filePath} alt={currentFile.fileName} className="max-w-full object-contain rounded shadow" />
                         </div>
                       )}
 
                       {/* Positioned field overlays — only for this page */}
                       {fieldsOnThisPage.length > 0 && (
-                        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 10 }}>
                           {fieldsOnThisPage.map(f => {
                             const isFilled = !!fieldResponses[f.id];
                             const w = f.width ?? 14;
