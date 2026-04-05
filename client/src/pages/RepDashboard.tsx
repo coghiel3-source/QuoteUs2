@@ -670,6 +670,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     id: string; startMouseX: number; startMouseY: number; startW: number; startH: number;
   } | null>(null);
   const hasDraggedRef = React.useRef(false);
+  const [isPlacingMode, setIsPlacingMode] = useState(false);
 
   // Edit lead dialog
   const [showEditLead, setShowEditLead] = useState(false);
@@ -897,6 +898,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setPreviewPageNum(1);
     setDraggingField(null);
     setResizingField(null);
+    setIsPlacingMode(false);
     hasDraggedRef.current = false;
     setShowDocSignDialog(true);
     loadAdminDocTemplates();
@@ -3754,6 +3756,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 ];
                 const currentDoc = allPreviewDocs[previewDocIndex];
                 const FC: Record<string, string> = { signature: "bg-blue-600", initials: "bg-purple-600", date: "bg-emerald-600", text: "bg-gray-500" };
+                const FCLABELS: Record<string, string> = { signature: "Signature", initials: "Initials", date: "Date", text: "Text" };
                 const fieldBtns = [
                   { type: "signature", label: "Signature", bg: "bg-blue-600", ring: "ring-blue-400" },
                   { type: "initials", label: "Initials", bg: "bg-purple-600", ring: "ring-purple-400" },
@@ -3768,10 +3771,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 );
                 const placedAll = docSignFields.filter(f => f.x !== undefined);
 
-                const handleOverlayMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+                // Mouse handlers for drag / resize (used on the capture overlay that's shown only during drag)
+                const handleDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   if (draggingField) {
-                    hasDraggedRef.current = true;
                     const dX = ((e.clientX - draggingField.startMouseX) / rect.width) * 100;
                     const dY = ((e.clientY - draggingField.startMouseY) / rect.height) * 100;
                     setDocSignFields(prev => prev.map(f =>
@@ -3780,7 +3783,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                         : f
                     ));
                   } else if (resizingField) {
-                    hasDraggedRef.current = true;
                     const dX = ((e.clientX - resizingField.startMouseX) / rect.width) * 100;
                     const dY = ((e.clientY - resizingField.startMouseY) / rect.height) * 100;
                     setDocSignFields(prev => prev.map(f =>
@@ -3790,19 +3792,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     ));
                   }
                 };
-                const stopInteraction = () => { setDraggingField(null); setResizingField(null); };
-                const handleOverlayMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-                  if (hasDraggedRef.current) { hasDraggedRef.current = false; return; }
-                  const target = e.target as HTMLElement;
-                  if (target.closest("[data-field-box]")) return;
+                const stopDrag = () => { setDraggingField(null); setResizingField(null); };
+
+                // Handle a click in place-mode overlay → place field, exit place mode
+                const handlePlaceClick = (e: React.MouseEvent<HTMLDivElement>) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = ((e.clientX - rect.left) / rect.width) * 100;
                   const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  const labels: Record<string, string> = { signature: "Signature", initials: "Initials", date: "Date", text: "Text" };
                   setDocSignFields(prev => [...prev, {
                     id: Math.random().toString(36).slice(2),
                     type: activePlaceTool,
-                    label: labels[activePlaceTool] || activePlaceTool,
+                    label: FCLABELS[activePlaceTool] || activePlaceTool,
                     required: true,
                     x, y,
                     page: previewDocIndex,
@@ -3810,6 +3810,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     width: 16,
                     height: 6,
                   }]);
+                  setIsPlacingMode(false); // one-shot: exit placing mode after each drop
                 };
 
                 return (
@@ -3820,34 +3821,48 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       </div>
                     ) : (
                       <>
-                        {/* ── Toolbar row ── */}
-                        <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 flex-wrap">
-                          <span className="text-xs text-gray-500 font-medium shrink-0">Add:</span>
-                          {fieldBtns.map(btn => (
-                            <button key={btn.type} onClick={() => setActivePlaceTool(btn.type)}
-                              className={`${btn.bg} px-2.5 py-1 rounded text-xs font-semibold text-white transition-all ${activePlaceTool === btn.type ? `ring-2 ${btn.ring} scale-105` : "opacity-55 hover:opacity-90"}`}>
-                              {btn.label}
-                            </button>
-                          ))}
-                          {/* Page nav */}
-                          {currentDoc?.isPdf && (
-                            <div className="ml-auto flex items-center gap-1 shrink-0">
-                              <span className="text-xs text-gray-500">Page:</span>
-                              <button onClick={() => setPreviewPageNum(p => Math.max(1, p - 1))} disabled={previewPageNum <= 1}
-                                className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center disabled:opacity-30 hover:bg-gray-100">‹</button>
-                              <span className="text-xs font-semibold text-gray-700 min-w-[1.5rem] text-center">{previewPageNum}</span>
-                              <button onClick={() => setPreviewPageNum(p => p + 1)}
-                                className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center hover:bg-gray-100">›</button>
-                            </div>
-                          )}
-                          <p className="text-xs text-gray-400 w-full">Click empty area to place · Drag to move · Corner handle to resize</p>
-                        </div>
+                        {/* ── Toolbar ── */}
+                        {isPlacingMode ? (
+                          /* Placing-mode banner */
+                          <div className="flex items-center gap-2 px-3 py-2 border-b bg-blue-50 flex-wrap">
+                            <div className={`w-3 h-3 rounded-full ${FC[activePlaceTool] || "bg-gray-500"} shrink-0`} />
+                            <span className="text-xs font-semibold text-blue-800 flex-1">
+                              Click anywhere on the document to place a <strong>{FCLABELS[activePlaceTool]}</strong> field
+                            </span>
+                            <button onClick={() => setIsPlacingMode(false)} className="text-xs text-blue-600 hover:text-blue-800 underline shrink-0">Cancel</button>
+                          </div>
+                        ) : (
+                          /* Normal toolbar */
+                          <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 flex-wrap">
+                            <span className="text-xs text-gray-500 font-medium shrink-0">Place:</span>
+                            {fieldBtns.map(btn => (
+                              <button
+                                key={btn.type}
+                                onClick={() => { setActivePlaceTool(btn.type); setIsPlacingMode(true); }}
+                                className={`${btn.bg} px-2.5 py-1 rounded text-xs font-semibold text-white opacity-80 hover:opacity-100 transition-all`}
+                              >
+                                + {btn.label}
+                              </button>
+                            ))}
+                            {currentDoc?.isPdf && (
+                              <div className="ml-auto flex items-center gap-1 shrink-0">
+                                <span className="text-xs text-gray-500">Page:</span>
+                                <button onClick={() => setPreviewPageNum(p => Math.max(1, p - 1))} disabled={previewPageNum <= 1}
+                                  className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center disabled:opacity-30 hover:bg-gray-100">‹</button>
+                                <span className="text-xs font-semibold text-gray-700 min-w-[1.5rem] text-center">{previewPageNum}</span>
+                                <button onClick={() => setPreviewPageNum(p => p + 1)}
+                                  className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center hover:bg-gray-100">›</button>
+                              </div>
+                            )}
+                            <p className="text-xs text-gray-400 w-full">Scroll document freely · Click a button above to place a field · Drag fields to reposition · Corner handle to resize</p>
+                          </div>
+                        )}
 
                         {/* Doc tabs */}
                         {allPreviewDocs.length > 1 && (
                           <div className="flex overflow-x-auto border-b bg-white">
                             {allPreviewDocs.map((doc, i) => (
-                              <button key={i} onClick={() => { setPreviewDocIndex(i); setPreviewPageNum(1); }}
+                              <button key={i} onClick={() => { setPreviewDocIndex(i); setPreviewPageNum(1); setIsPlacingMode(false); }}
                                 className={`px-3 py-2 text-xs font-medium shrink-0 border-b-2 transition-colors ${previewDocIndex === i ? "border-blue-600 text-blue-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
                                 {doc.name}
                               </button>
@@ -3855,32 +3870,36 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           </div>
                         )}
 
-                        {/* ── Document + overlay ── */}
-                        <div className="relative bg-gray-300 select-none" style={{ height: 420 }}>
+                        {/* ── Document viewer — three-layer approach ── */}
+                        {/* Layer 1: document (fully scrollable/interactive when not in place mode)       */}
+                        {/* Layer 2: field boxes (always on top, pointer-events only on each box)         */}
+                        {/* Layer 3a: place-mode overlay (shown only when placing — one click then gone)  */}
+                        {/* Layer 3b: drag overlay (shown only during drag/resize — captures mouse)       */}
+                        <div className="relative bg-gray-100" style={{ height: 520 }}>
                           {/* Document */}
                           {currentDoc ? (
                             currentDoc.isPdf ? (
-                              <iframe key={iframeSrc} src={iframeSrc} className="w-full h-full" style={{ border: "none", pointerEvents: "none", display: "block" }} title={currentDoc.name} />
+                              <iframe
+                                key={iframeSrc}
+                                src={iframeSrc}
+                                className="w-full h-full"
+                                style={{ border: "none", display: "block" }}
+                                title={currentDoc.name}
+                              />
                             ) : (
-                              <img src={currentDoc.url} alt={currentDoc.name} className="w-full h-full object-contain" style={{ pointerEvents: "none" }} />
+                              <div className="w-full h-full overflow-auto flex items-start justify-center bg-gray-200 p-2">
+                                <img src={currentDoc.url} alt={currentDoc.name} className="max-w-full object-contain" style={{ pointerEvents: "none" }} />
+                              </div>
                             )
                           ) : (
                             <div className="flex items-center justify-center h-full text-gray-400 text-sm">Preview not available</div>
                           )}
 
-                          {/* Interaction overlay */}
-                          <div
-                            className="absolute inset-0"
-                            style={{ zIndex: 10, cursor: draggingField || resizingField ? "grabbing" : "crosshair" }}
-                            onMouseMove={handleOverlayMouseMove}
-                            onMouseUp={stopInteraction}
-                            onMouseLeave={stopInteraction}
-                            onMouseDown={handleOverlayMouseDown}
-                          >
+                          {/* Layer 2: Field boxes — always visible, scrollable around by the iframe */}
+                          <div className="absolute inset-0" style={{ pointerEvents: "none", zIndex: 15 }}>
                             {visibleFields.map(f => (
                               <div
                                 key={f.id}
-                                data-field-box="1"
                                 style={{
                                   position: "absolute",
                                   left: `${f.x}%`,
@@ -3889,8 +3908,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                   height: `${f.height ?? 6}%`,
                                   minWidth: 60,
                                   minHeight: 22,
-                                  zIndex: 20,
+                                  pointerEvents: "auto",
                                   cursor: draggingField?.id === f.id ? "grabbing" : "grab",
+                                  zIndex: 20,
                                 }}
                                 onMouseDown={e => {
                                   if ((e.target as HTMLElement).closest("[data-resize-handle]")) return;
@@ -3899,11 +3919,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                   setDraggingField({ id: f.id, startMouseX: e.clientX, startMouseY: e.clientY, startFieldX: f.x!, startFieldY: f.y! });
                                 }}
                               >
-                                {/* Field body */}
-                                <div className={`${FC[f.type] || "bg-gray-600"} w-full h-full rounded-md border-2 border-white/50 shadow-lg flex items-center justify-between px-2 overflow-hidden`}>
+                                <div className={`${FC[f.type] || "bg-gray-600"} w-full h-full rounded-md border-2 border-white/60 shadow-lg flex items-center justify-between px-2 overflow-hidden`}>
                                   <input
-                                    data-field-box="1"
-                                    className="flex-1 bg-transparent text-white text-xs font-semibold outline-none placeholder-white/60 min-w-0 truncate"
+                                    className="flex-1 bg-transparent text-white text-xs font-semibold outline-none min-w-0 truncate"
                                     value={f.label}
                                     onChange={e => setDocSignFields(prev => prev.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
                                     onMouseDown={e => e.stopPropagation()}
@@ -3911,7 +3929,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                     style={{ cursor: "text" }}
                                   />
                                   <button
-                                    data-field-box="1"
                                     className="text-white/70 hover:text-white ml-1 shrink-0"
                                     onMouseDown={e => e.stopPropagation()}
                                     onClick={e => { e.stopPropagation(); setDocSignFields(prev => prev.filter(x => x.id !== f.id)); }}
@@ -3922,18 +3939,41 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                 {/* Resize handle */}
                                 <div
                                   data-resize-handle="1"
-                                  data-field-box="1"
                                   style={{ position: "absolute", bottom: -5, right: -5, width: 14, height: 14, cursor: "se-resize", zIndex: 25 }}
-                                  className="bg-white border-2 border-gray-500 rounded-sm shadow"
+                                  className="bg-white border-2 border-gray-400 rounded-sm shadow"
                                   onMouseDown={e => {
                                     e.stopPropagation();
-                                    hasDraggedRef.current = false;
                                     setResizingField({ id: f.id, startMouseX: e.clientX, startMouseY: e.clientY, startW: f.width ?? 16, startH: f.height ?? 6 });
                                   }}
                                 />
                               </div>
                             ))}
                           </div>
+
+                          {/* Layer 3a: Placing-mode overlay — only active when isPlacingMode */}
+                          {isPlacingMode && (
+                            <div
+                              className="absolute inset-0"
+                              style={{
+                                zIndex: 30,
+                                cursor: "crosshair",
+                                background: "rgba(59,130,246,0.07)",
+                                border: "2px dashed rgba(59,130,246,0.45)",
+                              }}
+                              onMouseDown={handlePlaceClick}
+                            />
+                          )}
+
+                          {/* Layer 3b: Drag/resize capture overlay — only during active drag */}
+                          {(draggingField || resizingField) && (
+                            <div
+                              className="absolute inset-0"
+                              style={{ zIndex: 35, cursor: draggingField ? "grabbing" : "se-resize" }}
+                              onMouseMove={handleDragMove}
+                              onMouseUp={stopDrag}
+                              onMouseLeave={stopDrag}
+                            />
+                          )}
                         </div>
 
                         {/* ── Placed fields list ── */}
@@ -3952,7 +3992,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                   />
                                   <span className="text-xs text-gray-400 shrink-0">{docName}{(f.pageNum ?? 1) > 1 ? ` p.${f.pageNum}` : ""}</span>
                                   <button
-                                    onClick={() => { setPreviewDocIndex(f.page ?? 0); setPreviewPageNum(f.pageNum ?? 1); }}
+                                    onClick={() => { setPreviewDocIndex(f.page ?? 0); setPreviewPageNum(f.pageNum ?? 1); setIsPlacingMode(false); }}
                                     className="text-xs text-blue-500 hover:underline shrink-0">Go</button>
                                   <button onClick={() => setDocSignFields(prev => prev.filter(x => x.id !== f.id))} className="text-gray-400 hover:text-red-500 shrink-0">
                                     <X className="h-3 w-3" />

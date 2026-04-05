@@ -484,13 +484,13 @@ export default function DocSign() {
                       )}
                     </div>
 
-                    <div className="relative" style={{ minHeight: isPdfFile ? "60vh" : "auto" }}>
+                    <div className="relative" style={{ minHeight: isPdfFile ? "75vh" : "auto" }}>
                       {isPdfFile ? (
                         <iframe
                           key={`${activeDoc}-${currentPage}`}
                           src={`${currentFile.filePath}#page=${currentPage}`}
                           className="w-full"
-                          style={{ height: "60vh", border: "none", display: "block" }}
+                          style={{ height: "75vh", border: "none", display: "block" }}
                           title={currentFile.fileName}
                         />
                       ) : (
