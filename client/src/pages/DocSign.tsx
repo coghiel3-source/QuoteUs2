@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -246,6 +247,23 @@ export default function DocSign() {
   // Main signature (only shown if no positioned signature fields)
   const [mainSigData, setMainSigData] = useState<string | null>(null);
 
+  // Lock html + body scroll on mount so the browser never shows a page-level
+  // scrollbar. This prevents the ~15px scrollbar-width shift that occurs when
+  // any element (modal, dialog, dropdown) causes the scrollbar to appear/vanish.
+  // We only set overflow:hidden — no position:fixed — so there is zero layout impact.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, []);
+
   useEffect(() => {
     if (!token) return;
     fetch(`/api/doc-sign/${token}`)
@@ -465,17 +483,17 @@ export default function DocSign() {
                       )}
                     </div>
 
-                    <div className="relative overflow-hidden" style={{ height: isPdfFile ? "75vh" : "auto" }}>
+                    <div className="relative overflow-hidden flex-1 flex flex-col">
                       {isPdfFile ? (
                         <iframe
                           key={`${activeDoc}-${currentPage}`}
                           src={`${currentFile.filePath}#page=${currentPage}`}
-                          className="w-full h-full"
-                          style={{ border: "none", display: "block" }}
+                          className="w-full flex-1"
+                          style={{ border: "none", display: "block", minHeight: 0 }}
                           title={currentFile.fileName}
                         />
                       ) : (
-                        <div className="flex items-center justify-center p-6 bg-gray-100 h-full overflow-auto">
+                        <div className="flex items-center justify-center p-6 bg-gray-100 flex-1 overflow-auto">
                           <img src={currentFile.filePath} alt={currentFile.fileName} className="max-w-full object-contain rounded shadow" />
                         </div>
                       )}
@@ -645,17 +663,21 @@ export default function DocSign() {
 
       </div>{/* ── end main area ── */}
 
-      {/* ── Field Fill Modal ── */}
+      {/* ── Field Fill Modal — rendered via portal at document.body so it sits  ──
+           completely outside this component's DOM subtree. This guarantees that
+           no CSS transform, overflow, or stacking context from the signing page
+           can affect the modal's position or cause any layout shift. ── */}
       {fieldModal && (() => {
         const field = fields.find(f => f.id === fieldModal);
         if (!field) return null;
-        return (
+        return createPortal(
           <FieldModal
             field={field}
             currentValue={fieldResponses[fieldModal] || ""}
             onSave={value => setFieldResponse(fieldModal, value)}
             onClose={() => setFieldModal(null)}
-          />
+          />,
+          document.body
         );
       })()}
     </div>
