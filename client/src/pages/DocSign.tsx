@@ -395,11 +395,12 @@ export default function DocSign() {
   const pct = totalRequired > 0 ? Math.round((filled / totalRequired) * 100) : 100;
 
   return (
-    /* h-screen + overflow-hidden: the whole page fits the viewport exactly — nothing scrolls as a page */
-    <div className="h-screen overflow-hidden flex flex-col bg-gray-50">
+    <div className="fixed inset-0 bg-slate-400 flex items-center justify-center p-4 md:p-8 overflow-hidden">
+      <div className="w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col bg-gray-50"
+        style={{ height: "min(90vh, 860px)" }}>
 
-      {/* ── Header (shrink-to-content, never scrolls away) ── */}
-      <div className="bg-blue-700 text-white px-4 py-3 flex items-center gap-3 shrink-0">
+      {/* ── Header ── */}
+      <div className="bg-blue-700 text-white px-4 py-3 flex items-center gap-3 shrink-0 rounded-t-2xl">
         <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -691,6 +692,8 @@ export default function DocSign() {
           document.body
         );
       })()}
+
+      </div>
     </div>
   );
 }
