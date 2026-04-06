@@ -12,6 +12,7 @@ interface SignatureField {
   type: FieldType;
   label: string;
   required: boolean;
+  defaultValue?: string; // pre-filled value for contact-info fields
   x?: number;       // % from left of document container
   y?: number;       // % from top of document container
   page?: number;    // which document (0-indexed)
@@ -274,11 +275,12 @@ export default function DocSign() {
           setRecord(d);
           setFiles(d.files || []);
           setFields(d.fields || []);
-          // Pre-fill date fields
+          // Pre-fill date fields with today and any contact-info fields with their defaultValue
           const today = new Date().toLocaleDateString("en-CA");
           const init: Record<string, string> = {};
           (d.fields || []).forEach((f: SignatureField) => {
             if (f.type === "date") init[f.id] = today;
+            if (f.defaultValue) init[f.id] = f.defaultValue;
           });
           setFieldResponses(init);
         }
@@ -522,12 +524,21 @@ export default function DocSign() {
                                 className="cursor-pointer select-none"
                               >
                                 {isFilled ? (
-                                  <div className="bg-green-500 w-full h-full rounded-lg shadow-lg border-2 border-white/50 flex items-center gap-1.5 px-2 text-white text-xs font-semibold overflow-hidden">
-                                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span className="truncate">{f.label}</span>
-                                  </div>
+                                  f.type === "text" && fieldResponses[f.id] ? (
+                                    /* Contact-info / text fields: show the actual value */
+                                    <div className="bg-green-500 w-full h-full rounded-lg shadow-lg border-2 border-white/50 flex flex-col justify-center px-2 text-white overflow-hidden cursor-pointer"
+                                      onClick={() => setFieldModal(f.id)}>
+                                      <p className="text-[10px] text-white/70 leading-none truncate">{f.label}</p>
+                                      <p className="text-xs font-semibold truncate">{fieldResponses[f.id]}</p>
+                                    </div>
+                                  ) : (
+                                    <div className="bg-green-500 w-full h-full rounded-lg shadow-lg border-2 border-white/50 flex items-center gap-1.5 px-2 text-white text-xs font-semibold overflow-hidden">
+                                      <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      <span className="truncate">{f.label}</span>
+                                    </div>
+                                  )
                                 ) : (
                                   <div
                                     className={`${FIELD_COLORS[f.type]} w-full h-full rounded-lg shadow-lg border-2 border-white/50 hover:border-white/90 flex items-center gap-1.5 px-2 text-white text-xs font-semibold overflow-hidden transition-all`}

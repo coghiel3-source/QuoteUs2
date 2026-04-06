@@ -652,6 +652,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [docSignSelectedTemplates, setDocSignSelectedTemplates] = useState<string[]>([]);
   const [docSignFields, setDocSignFields] = useState<Array<{
     id: string; type: string; label: string; required: boolean;
+    defaultValue?: string; // pre-filled value (used for contact-info fields)
     x?: number; y?: number;
     page?: number;    // which document (0-indexed)
     pageNum?: number; // which PDF page within that document (1-indexed)
@@ -670,6 +671,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     id: string; startMouseX: number; startMouseY: number; startW: number; startH: number;
   } | null>(null);
   const hasDraggedRef = React.useRef(false);
+  // Ref tracks which contact-info chip is being HTML5-dragged from the sidebar onto the document
+  const sidebarDragRef = React.useRef<{ label: string; value: string } | null>(null);
   const [isPlacingMode, setIsPlacingMode] = useState(false);
 
   // Edit lead dialog
@@ -2025,11 +2028,60 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       {/* Agreement / Signature Status Card */}
                       <Card>
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-sm text-gray-600 flex items-center gap-1.5">
-                            <FileSignature className="h-4 w-4" /> Agreement Status
+                          <CardTitle className="text-sm text-gray-600 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5"><FileSignature className="h-4 w-4" /> Agreement Status</span>
+                            <button
+                              onClick={openDocSignDialog}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                              data-testid="button-send-docusign-agreement"
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Send for DocuSign
+                            </button>
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="text-sm">
+                        <CardContent className="text-sm space-y-3">
+                          {/* Landlord Contact Details */}
+                          <div className="bg-gray-50 rounded-lg border p-3 space-y-2">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Landlord Contact</p>
+                            <div className="grid grid-cols-1 gap-1.5">
+                              {selectedLocation.landlordName && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400 w-16 shrink-0">Name</span>
+                                  <span className="text-xs font-medium text-gray-800">{selectedLocation.landlordName}</span>
+                                </div>
+                              )}
+                              {selectedLocation.landlordEmail && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400 w-16 shrink-0">Email</span>
+                                  <a href={`mailto:${selectedLocation.landlordEmail}`} className="text-xs text-blue-600 hover:underline truncate">{selectedLocation.landlordEmail}</a>
+                                </div>
+                              )}
+                              {selectedLocation.landlordPhone && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400 w-16 shrink-0">Phone</span>
+                                  <a href={`tel:${selectedLocation.landlordPhone}`} className="text-xs text-blue-600 hover:underline">{selectedLocation.landlordPhone}</a>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 w-16 shrink-0">Address</span>
+                                <span className="text-xs text-gray-800">{selectedLocation.propertyAddress}{selectedLocation.unit ? `, Unit ${selectedLocation.unit}` : ""}</span>
+                              </div>
+                              {selectedLocation.moveInDate && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400 w-16 shrink-0">Move-in</span>
+                                  <span className="text-xs text-gray-800">{selectedLocation.moveInDate}</span>
+                                </div>
+                              )}
+                              {selectedLocation.monthlyRent && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-400 w-16 shrink-0">Rent</span>
+                                  <span className="text-xs text-gray-800">${parseFloat(selectedLocation.monthlyRent).toLocaleString()}/mo</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Signature status */}
                           {locationSignature ? (
                             <div className="space-y-2">
                               <div className="flex items-center gap-2">
@@ -2049,7 +2101,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                               )}
                             </div>
                           ) : (
-                            <p className="text-gray-400 italic text-xs">No agreement has been sent yet. Use "Send Agreement" to request a signature from the landlord.</p>
+                            <p className="text-gray-400 italic text-xs">No agreement sent yet. Click "Send for DocuSign" to upload a document and request a landlord signature.</p>
                           )}
                         </CardContent>
                       </Card>
@@ -3833,28 +3885,64 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           </div>
                         ) : (
                           /* Normal toolbar */
-                          <div className="flex items-center gap-2 px-3 py-2 border-b bg-gray-50 flex-wrap">
-                            <span className="text-xs text-gray-500 font-medium shrink-0">Place:</span>
-                            {fieldBtns.map(btn => (
-                              <button
-                                key={btn.type}
-                                onClick={() => { setActivePlaceTool(btn.type); setIsPlacingMode(true); }}
-                                className={`${btn.bg} px-2.5 py-1 rounded text-xs font-semibold text-white opacity-80 hover:opacity-100 transition-all`}
-                              >
-                                + {btn.label}
-                              </button>
-                            ))}
-                            {currentDoc?.isPdf && (
-                              <div className="ml-auto flex items-center gap-1 shrink-0">
-                                <span className="text-xs text-gray-500">Page:</span>
-                                <button onClick={() => setPreviewPageNum(p => Math.max(1, p - 1))} disabled={previewPageNum <= 1}
-                                  className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center disabled:opacity-30 hover:bg-gray-100">‹</button>
-                                <span className="text-xs font-semibold text-gray-700 min-w-[1.5rem] text-center">{previewPageNum}</span>
-                                <button onClick={() => setPreviewPageNum(p => p + 1)}
-                                  className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center hover:bg-gray-100">›</button>
-                              </div>
-                            )}
-                            <p className="text-xs text-gray-400 w-full">Scroll document freely · Click a button above to place a field · Drag fields to reposition · Corner handle to resize</p>
+                          <div className="px-3 py-2 border-b bg-gray-50 space-y-2">
+                            {/* Signature / field type buttons */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-gray-500 font-medium shrink-0">Fields:</span>
+                              {fieldBtns.map(btn => (
+                                <button
+                                  key={btn.type}
+                                  onClick={() => { setActivePlaceTool(btn.type); setIsPlacingMode(true); }}
+                                  className={`${btn.bg} px-2.5 py-1 rounded text-xs font-semibold text-white opacity-80 hover:opacity-100 transition-all`}
+                                >
+                                  + {btn.label}
+                                </button>
+                              ))}
+                              {currentDoc?.isPdf && (
+                                <div className="ml-auto flex items-center gap-1 shrink-0">
+                                  <span className="text-xs text-gray-500">Page:</span>
+                                  <button onClick={() => setPreviewPageNum(p => Math.max(1, p - 1))} disabled={previewPageNum <= 1}
+                                    className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center disabled:opacity-30 hover:bg-gray-100">‹</button>
+                                  <span className="text-xs font-semibold text-gray-700 min-w-[1.5rem] text-center">{previewPageNum}</span>
+                                  <button onClick={() => setPreviewPageNum(p => p + 1)}
+                                    className="w-6 h-6 rounded border bg-white text-gray-700 text-xs font-bold flex items-center justify-center hover:bg-gray-100">›</button>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Contact info chips — drag onto the document to place as pre-filled text */}
+                            {selectedLocation && (() => {
+                              const chips = [
+                                { label: "Landlord Name", value: selectedLocation.landlordName || "" },
+                                { label: "Email", value: selectedLocation.landlordEmail || "" },
+                                { label: "Phone", value: selectedLocation.landlordPhone || "" },
+                                { label: "Property Address", value: selectedLocation.propertyAddress || "" },
+                                { label: "Unit", value: selectedLocation.unit || "" },
+                                { label: "Move-in Date", value: selectedLocation.moveInDate || "" },
+                                { label: "Monthly Rent", value: selectedLocation.monthlyRent ? `$${parseFloat(selectedLocation.monthlyRent).toLocaleString()}` : "" },
+                              ].filter(c => c.value);
+                              if (chips.length === 0) return null;
+                              return (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs text-gray-500 font-medium shrink-0">Contact info:</span>
+                                  {chips.map(chip => (
+                                    <div
+                                      key={chip.label}
+                                      draggable
+                                      onDragStart={() => { sidebarDragRef.current = chip; }}
+                                      onDragEnd={() => { sidebarDragRef.current = null; }}
+                                      className="px-2 py-0.5 rounded border border-orange-200 bg-orange-50 text-orange-700 text-xs font-medium cursor-grab active:cursor-grabbing select-none hover:bg-orange-100 transition-colors"
+                                      title={`Drag onto document · Value: ${chip.value}`}
+                                    >
+                                      ⠿ {chip.label}
+                                    </div>
+                                  ))}
+                                  <span className="text-xs text-gray-400 italic">drag onto document</span>
+                                </div>
+                              );
+                            })()}
+
+                            <p className="text-xs text-gray-400">Click a field button to place · Drag placed fields to reposition · Corner handle to resize · Drag orange chips to pre-fill landlord info</p>
                           </div>
                         )}
 
@@ -3875,7 +3963,32 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                         {/* Layer 2: field boxes (always on top, pointer-events only on each box)         */}
                         {/* Layer 3a: place-mode overlay (shown only when placing — one click then gone)  */}
                         {/* Layer 3b: drag overlay (shown only during drag/resize — captures mouse)       */}
-                        <div className="relative bg-gray-100" style={{ height: 520 }}>
+                        <div
+                          className="relative bg-gray-100"
+                          style={{ height: 520 }}
+                          onDragOver={e => { if (sidebarDragRef.current) e.preventDefault(); }}
+                          onDrop={e => {
+                            const chip = sidebarDragRef.current;
+                            if (!chip) return;
+                            e.preventDefault();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = Math.max(0, Math.min(80, ((e.clientX - rect.left) / rect.width) * 100));
+                            const y = Math.max(0, Math.min(93, ((e.clientY - rect.top) / rect.height) * 100));
+                            setDocSignFields(prev => [...prev, {
+                              id: Math.random().toString(36).slice(2),
+                              type: "text",
+                              label: chip.label,
+                              required: false,
+                              defaultValue: chip.value,
+                              x, y,
+                              page: previewDocIndex,
+                              pageNum: previewPageNum,
+                              width: 22,
+                              height: 5,
+                            }]);
+                            sidebarDragRef.current = null;
+                          }}
+                        >
                           {/* Document */}
                           {currentDoc ? (
                             currentDoc.isPdf ? (
@@ -3919,15 +4032,20 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                   setDraggingField({ id: f.id, startMouseX: e.clientX, startMouseY: e.clientY, startFieldX: f.x!, startFieldY: f.y! });
                                 }}
                               >
-                                <div className={`${FC[f.type] || "bg-gray-600"} w-full h-full rounded-md border-2 border-white/60 shadow-lg flex items-center justify-between px-2 overflow-hidden`}>
-                                  <input
-                                    className="flex-1 bg-transparent text-white text-xs font-semibold outline-none min-w-0 truncate"
-                                    value={f.label}
-                                    onChange={e => setDocSignFields(prev => prev.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
-                                    onMouseDown={e => e.stopPropagation()}
-                                    onClick={e => e.stopPropagation()}
-                                    style={{ cursor: "text" }}
-                                  />
+                                <div className={`${f.defaultValue ? "bg-orange-500" : (FC[f.type] || "bg-gray-600")} w-full h-full rounded-md border-2 border-white/60 shadow-lg flex items-center justify-between px-2 overflow-hidden`}>
+                                  <div className="flex-1 min-w-0 overflow-hidden">
+                                    <input
+                                      className="w-full bg-transparent text-white text-xs font-semibold outline-none truncate"
+                                      value={f.label}
+                                      onChange={e => setDocSignFields(prev => prev.map(x => x.id === f.id ? { ...x, label: e.target.value } : x))}
+                                      onMouseDown={e => e.stopPropagation()}
+                                      onClick={e => e.stopPropagation()}
+                                      style={{ cursor: "text" }}
+                                    />
+                                    {f.defaultValue && (
+                                      <p className="text-white/80 text-[10px] leading-tight truncate">{f.defaultValue}</p>
+                                    )}
+                                  </div>
                                   <button
                                     className="text-white/70 hover:text-white ml-1 shrink-0"
                                     onMouseDown={e => e.stopPropagation()}
