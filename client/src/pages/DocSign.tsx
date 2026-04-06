@@ -488,9 +488,10 @@ export default function DocSign() {
                       {isPdfFile ? (
                         <iframe
                           key={`${activeDoc}-${currentPage}`}
-                          src={`${currentFile.filePath}#page=${currentPage}`}
+                          src={`${currentFile.filePath}#page=${currentPage}&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
                           className="w-full flex-1"
-                          style={{ border: "none", display: "block", minHeight: 0 }}
+                          scrolling="no"
+                          style={{ border: "none", display: "block", minHeight: 0, overflow: "hidden", pointerEvents: "none" }}
                           title={currentFile.fileName}
                         />
                       ) : (

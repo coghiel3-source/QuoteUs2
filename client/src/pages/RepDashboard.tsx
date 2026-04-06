@@ -2677,10 +2677,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                           </div>
                                         )}
 
-                                        {/* Document iframe with field overlay */}
+                                        {/* Document iframe with field overlay — fixed height so overlay & doc stay in sync */}
                                         <div
                                           className="relative bg-gray-100"
-                                          style={{ minHeight: 400 }}
+                                          style={{ height: 480, overflow: "hidden" }}
                                           onDragOver={e => { e.preventDefault(); }}
                                           onDrop={e => {
                                             if (!sidebarDragRef.current) return;
@@ -2706,14 +2706,15 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                           {currentDoc?.isPdf ? (
                                             <iframe
                                               key={`${previewDocIndex}-${previewPageNum}`}
-                                              src={iframeSrc}
+                                              src={`${iframeSrc}${iframeSrc.includes("#") ? "&" : "#"}toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
                                               className="w-full"
-                                              style={{ height: 420, border: "none", display: "block" }}
+                                              scrolling="no"
+                                              style={{ height: "100%", border: "none", display: "block", overflow: "hidden", pointerEvents: "none" }}
                                               title={currentDoc?.name}
                                             />
                                           ) : currentDoc ? (
-                                            <div className="flex items-center justify-center p-4 bg-gray-100" style={{ minHeight: 420 }}>
-                                              <img src={currentDoc.url} alt={currentDoc.name} className="max-w-full max-h-96 object-contain rounded shadow" />
+                                            <div className="flex items-center justify-center p-4 bg-gray-100" style={{ height: "100%" }}>
+                                              <img src={currentDoc.url} alt={currentDoc.name} className="max-w-full max-h-full object-contain rounded shadow" />
                                             </div>
                                           ) : null}
 
