@@ -4052,7 +4052,8 @@ export async function registerRoutes(
       if (!record) return res.status(404).json({ error: "Signing request not found" });
       if (record.status === "signed") return res.status(400).json({ error: "This document has already been signed" });
       const { signatureData, signerName, fieldResponses } = req.body;
-      if (!signatureData || !signerName) return res.status(400).json({ error: "Signature and name are required" });
+      if (!signerName) return res.status(400).json({ error: "Signer name is required" });
+      // signatureData may come from a form field response (initials/sig field) — just require signerName
       const updated = await storage.updateDocSignature(record.id, {
         status: "signed",
         signatureData,
