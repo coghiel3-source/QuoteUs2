@@ -217,6 +217,7 @@ function PricingTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          actorId: user?.id,
           planType: payDialog.planType,
           amountCents,
           landlordEmail: payEmail,
@@ -966,7 +967,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     try {
       const result = await apiRequest<any>(`/rep/locations/${selectedLocation.id}/send-signature`, {
         method: "POST",
-        body: JSON.stringify({ landlordEmail: agreementEmail.trim() }),
+        body: JSON.stringify({ actorId: user?.id, landlordEmail: agreementEmail.trim() }),
       });
       setLocationSignature(result.request);
       setShowSendAgreement(false);

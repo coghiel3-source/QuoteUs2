@@ -254,6 +254,10 @@ export default function AdminCRMPage() {
   // Notification Email State
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
   const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
+
+  // Processing Email State
+  const [processingEmail, setProcessingEmail] = useState("");
+  const [savingProcessingEmail, setSavingProcessingEmail] = useState(false);
   
   // Signature Template State
   const [sigTemplateTitle, setSigTemplateTitle] = useState("Rent Secure Agreement");
@@ -684,11 +688,13 @@ export default function AdminCRMPage() {
     // Load notification email setting
     fetch("/api/admin/settings/notification_email")
       .then(r => r.json())
-      .then(data => {
-        if (data.value) {
-          setNotificationEmail(data.value);
-        }
-      })
+      .then(data => { if (data.value) setNotificationEmail(data.value); })
+      .catch(console.error);
+
+    // Load processing email setting
+    fetch("/api/admin/settings/processing_email")
+      .then(r => r.json())
+      .then(data => { if (data.value) setProcessingEmail(data.value); })
       .catch(console.error);
     
     // Load signature template
@@ -6932,6 +6938,63 @@ export default function AdminCRMPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Leave a URL empty to hide that social media icon from the footer.</p>
+              </div>
+
+              {/* Processing Email */}
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <Mail className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Send for Processing Email</h3>
+                    <p className="text-sm text-muted-foreground">Email address that receives RG applications sent for processing</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Processing Email Address</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="processing@quoteus.ca"
+                      value={processingEmail}
+                      onChange={(e) => setProcessingEmail(e.target.value)}
+                      data-testid="input-processing-email"
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={savingProcessingEmail}
+                      onClick={async () => {
+                        if (!processingEmail) {
+                          toast({ title: "Error", description: "Please enter an email address", variant: "destructive" });
+                          return;
+                        }
+                        setSavingProcessingEmail(true);
+                        try {
+                          const res = await fetch("/api/admin/settings/processing_email", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ value: processingEmail, actorId: user?.id }),
+                          });
+                          if (res.ok) {
+                            toast({ title: "Saved", description: "Processing email updated successfully." });
+                          } else {
+                            const err = await res.json();
+                            toast({ title: "Error", description: err.error || "Failed to save", variant: "destructive" });
+                          }
+                        } catch {
+                          toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
+                        } finally {
+                          setSavingProcessingEmail(false);
+                        }
+                      }}
+                      data-testid="button-save-processing-email"
+                    >
+                      {savingProcessingEmail ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">When a rep sends an RG application for processing, this address receives the email with all documents attached. Falls back to <code>info@quoteus.ca</code> if not set.</p>
+                </div>
               </div>
 
               {/* Custom CSS */}

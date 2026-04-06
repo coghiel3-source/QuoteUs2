@@ -3570,14 +3570,14 @@ export async function registerRoutes(
   // Create Stripe checkout for a landlord payment
   app.post("/api/rep/locations/:id/create-payment", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const { actorId, planType, amountCents, landlordEmail, landlordName, periodLabel, description } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
       if (!user || !["admin", "manager", "rep"].includes(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
-
-      const { planType, amountCents, landlordEmail, landlordName, periodLabel, description } = req.body;
       if (!planType || !amountCents || !landlordEmail) {
         return res.status(400).json({ error: "planType, amountCents, and landlordEmail are required" });
       }
@@ -3794,14 +3794,14 @@ export async function registerRoutes(
   // ── Send Signature Request (rep/admin/manager) ────────────────────
   app.post("/api/rep/locations/:id/send-signature", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const { actorId, landlordEmail } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
       if (!user || !["admin", "manager", "rep"].includes(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
-
-      const { landlordEmail } = req.body;
       if (!landlordEmail) return res.status(400).json({ error: "Landlord email is required" });
 
       // Generate unique token
