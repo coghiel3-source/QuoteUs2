@@ -3679,7 +3679,9 @@ export async function registerRoutes(
   // Get payment history for a location
   app.get("/api/rep/locations/:id/payments", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
       if (!user || !["admin", "manager", "rep"].includes(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
@@ -3693,7 +3695,9 @@ export async function registerRoutes(
   // Send year-end or monthly receipt email
   app.post("/api/rep/locations/:id/send-receipt", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const actorId = req.body?.actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
       if (!user || !["admin", "manager", "rep"].includes(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
@@ -3851,7 +3855,9 @@ export async function registerRoutes(
 
   app.get("/api/rep/locations/:id/signature-status", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
+      const actorId = req.query.actorId as string | undefined;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
       if (!user || !["admin", "manager", "rep"].includes(user.role)) {
         return res.status(403).json({ error: "Access denied" });
       }

@@ -129,7 +129,7 @@ function PricingTab({
   pricingNotes: pricingNotesProp,
   onSaveMarkup, onSaveRates, onSaveCommission, onSaveMonthlyCommission, onSavePricingNotes,
   paymentLink, onSavePaymentLink,
-  locationId, landlordEmail, landlordName, payments, onPaymentCreated,
+  locationId, landlordEmail, landlordName, payments, onPaymentCreated, actorId,
 }: {
   monthlyRent: number;
   markupPercent?: number | string | null;
@@ -150,6 +150,7 @@ function PricingTab({
   landlordName?: string | null;
   payments?: RgPaymentRecord[];
   onPaymentCreated?: () => void;
+  actorId?: string;
 }) {
   const { toast } = useToast();
   const rent = monthlyRent || 0;
@@ -217,7 +218,7 @@ function PricingTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          actorId: user?.id,
+          actorId,
           planType: payDialog.planType,
           amountCents,
           landlordEmail: payEmail,
@@ -244,7 +245,7 @@ function PricingTab({
       const res = await fetch(`/api/rep/locations/${locationId}/send-receipt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipientEmail: rcptEmail, year: Number(rcptYear), type: "annual" }),
+        body: JSON.stringify({ actorId, recipientEmail: rcptEmail, year: Number(rcptYear), type: "annual" }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -822,7 +823,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   async function loadLocationPayments(locationId: string) {
     try {
-      const res = await fetch(`/api/rep/locations/${locationId}/payments`);
+      const actorParam = user?.id ? `?actorId=${user.id}` : "";
+      const res = await fetch(`/api/rep/locations/${locationId}/payments${actorParam}`);
       if (res.ok) { const data = await res.json(); setLocationPayments(data || []); }
     } catch { setLocationPayments([]); }
   }
@@ -2326,6 +2328,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       landlordName={selectedLocation.landlordName}
                       payments={locationPayments}
                       onPaymentCreated={() => loadLocationPayments(selectedLocation.id)}
+                      actorId={user?.id}
                     />
                   )}
 
@@ -3704,21 +3707,35 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     <p className="text-sm font-medium text-gray-600">Drag & drop documents here</p>
                     <p className="text-xs text-gray-400 mt-1">or click to browse — PDF, Word, image (up to 10 files, 30 MB each)</p>
                   </div>
-                  {/* File list */}
+                  {/* File list with thumbnails */}
                   {docSignFiles.length > 0 && (
                     <div className="space-y-1.5">
-                      {docSignFiles.map((f, i) => (
-                        <div key={i} className="flex items-center gap-2.5 bg-white border rounded-lg px-3 py-2">
-                          <FileText className="h-4 w-4 text-blue-600 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-800 truncate">{f.name}</p>
-                            <p className="text-xs text-gray-400">{(f.size / 1024).toFixed(0)} KB</p>
+                      {docSignFiles.map((f, i) => {
+                        const isImage = f.type.startsWith("image/");
+                        const previewUrl = docSignFileUrls[i];
+                        return (
+                          <div key={i} className="flex items-center gap-2.5 bg-white border rounded-lg px-3 py-2">
+                            {isImage && previewUrl ? (
+                              <img src={previewUrl} alt={f.name} className="w-10 h-10 object-cover rounded border shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 flex items-center justify-center rounded border bg-blue-50 shrink-0">
+                                <FileText className="h-5 w-5 text-blue-500" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-800 truncate">{f.name}</p>
+                              <p className="text-xs text-gray-400">{(f.size / 1024).toFixed(0)} KB · Doc {i + 1}</p>
+                            </div>
+                            <div className="flex flex-col gap-0.5 shrink-0">
+                              <button disabled={i === 0} onClick={() => setDocSignFiles(prev => { const a = [...prev]; [a[i-1], a[i]] = [a[i], a[i-1]]; return a; })} className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▲</button>
+                              <button disabled={i === docSignFiles.length - 1} onClick={() => setDocSignFiles(prev => { const a = [...prev]; [a[i], a[i+1]] = [a[i+1], a[i]]; return a; })} className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▼</button>
+                            </div>
+                            <button onClick={() => setDocSignFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 shrink-0 ml-1">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
                           </div>
-                          <button onClick={() => setDocSignFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 shrink-0">
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -3779,20 +3796,40 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     <p className="text-xs text-gray-400 italic py-2">No form fields added yet.</p>
                   ) : (
                     <div className="space-y-2">
-                      {docSignFields.map((f, i) => f.x !== undefined ? null : (
-                        <div key={f.id} className="flex items-center gap-2.5 bg-white border rounded-lg px-3 py-2">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${f.type === "signature" ? "bg-blue-100 text-blue-700" : f.type === "initials" ? "bg-purple-100 text-purple-700" : f.type === "date" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>{f.type}</span>
-                          <input className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0" value={f.label}
-                            onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
-                          <label className="flex items-center gap-1 text-xs text-gray-500 shrink-0 cursor-pointer">
-                            <input type="checkbox" checked={f.required} onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === i ? { ...x, required: e.target.checked } : x))} className="rounded" />
-                            Required
-                          </label>
-                          <button onClick={() => setDocSignFields(prev => prev.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 shrink-0">
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                      {(() => {
+                        const formOnly = docSignFields.filter(f => f.x === undefined);
+                        return formOnly.map((f, formIdx) => {
+                          const globalIdx = docSignFields.indexOf(f);
+                          const prevFormIdx = formOnly[formIdx - 1] ? docSignFields.indexOf(formOnly[formIdx - 1]) : -1;
+                          const nextFormIdx = formOnly[formIdx + 1] ? docSignFields.indexOf(formOnly[formIdx + 1]) : -1;
+                          return (
+                            <div key={f.id} className="flex items-center gap-2.5 bg-white border rounded-lg px-3 py-2">
+                              <div className="flex flex-col gap-0.5 shrink-0">
+                                <button
+                                  disabled={formIdx === 0}
+                                  onClick={() => setDocSignFields(prev => { const a = [...prev]; [a[prevFormIdx], a[globalIdx]] = [a[globalIdx], a[prevFormIdx]]; return a; })}
+                                  className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs"
+                                >▲</button>
+                                <button
+                                  disabled={formIdx === formOnly.length - 1}
+                                  onClick={() => setDocSignFields(prev => { const a = [...prev]; [a[globalIdx], a[nextFormIdx]] = [a[nextFormIdx], a[globalIdx]]; return a; })}
+                                  className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs"
+                                >▼</button>
+                              </div>
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${f.type === "signature" ? "bg-blue-100 text-blue-700" : f.type === "initials" ? "bg-purple-100 text-purple-700" : f.type === "date" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>{f.type}</span>
+                              <input className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0" value={f.label}
+                                onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === globalIdx ? { ...x, label: e.target.value } : x))} />
+                              <label className="flex items-center gap-1 text-xs text-gray-500 shrink-0 cursor-pointer">
+                                <input type="checkbox" checked={f.required} onChange={e => setDocSignFields(prev => prev.map((x, idx) => idx === globalIdx ? { ...x, required: e.target.checked } : x))} className="rounded" />
+                                Req
+                              </label>
+                              <button onClick={() => setDocSignFields(prev => prev.filter((_, idx) => idx !== globalIdx))} className="text-gray-400 hover:text-red-500 shrink-0">
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   )}
                 </div>
