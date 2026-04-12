@@ -244,8 +244,8 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ error: "User not found" });
       const secret = (user as any).twoFactorSecret;
       if (!secret) return res.status(400).json({ error: "No 2FA setup in progress. Please start setup first." });
-      const isValid = totpVerifySync({ token, secret });
-      if (!isValid) return res.status(401).json({ error: "Invalid code. Please try again." });
+      const verifyResult = totpVerifySync({ token, secret });
+      if (!verifyResult || !(verifyResult as any).valid) return res.status(401).json({ error: "Invalid code. Please try again." });
       await storage.updateUser(userId, { twoFactorEnabled: true } as any);
       res.json({ success: true });
     } catch (error: any) {
@@ -263,8 +263,8 @@ export async function registerRoutes(
       if (!(user as any).twoFactorEnabled) return res.status(400).json({ error: "2FA not enabled for this account" });
       const secret = (user as any).twoFactorSecret;
       if (!secret) return res.status(500).json({ error: "2FA misconfigured" });
-      const isValid = totpVerifySync({ token, secret });
-      if (!isValid) return res.status(401).json({ error: "Invalid or expired code. Please try again." });
+      const verifyResult2 = totpVerifySync({ token, secret });
+      if (!verifyResult2 || !(verifyResult2 as any).valid) return res.status(401).json({ error: "Invalid or expired code. Please try again." });
       res.json(safeUser(user));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -280,8 +280,8 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ error: "User not found" });
       const secret = (user as any).twoFactorSecret;
       if (!secret) return res.status(400).json({ error: "2FA not enabled" });
-      const isValid = totpVerifySync({ token, secret });
-      if (!isValid) return res.status(401).json({ error: "Invalid code. Please try again." });
+      const verifyResult3 = totpVerifySync({ token, secret });
+      if (!verifyResult3 || !(verifyResult3 as any).valid) return res.status(401).json({ error: "Invalid code. Please try again." });
       await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null } as any);
       res.json({ success: true });
     } catch (error: any) {
