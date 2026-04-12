@@ -10,9 +10,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcryptjs";
-import { TOTP, generateSecret as totpGenerateSecret } from "otplib";
+import { generateSecret as totpGenerateSecret, verifySync as totpVerifySync, generateURI as totpGenerateURI } from "otplib";
 import qrcode from "qrcode";
-const totp = new TOTP();
 
 function safeUser(user: any): any {
   if (!user) return user;
@@ -226,7 +225,7 @@ export async function registerRoutes(
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
       const secret = totpGenerateSecret();
-      const otpAuthUrl = totp.keyuri(user.email, "QuoteUs.ca", secret);
+      const otpAuthUrl = totpGenerateURI({ strategy: "totp", label: user.email, issuer: "QuoteUs.ca", secret });
       const qrCodeDataUrl = await qrcode.toDataURL(otpAuthUrl);
       // Store the pending secret (not enabled yet — user must verify first)
       await storage.updateUser(userId, { twoFactorSecret: secret } as any);
@@ -245,7 +244,7 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ error: "User not found" });
       const secret = (user as any).twoFactorSecret;
       if (!secret) return res.status(400).json({ error: "No 2FA setup in progress. Please start setup first." });
-      const isValid = totp.verify({ token, secret });
+      const isValid = totpVerifySync({ token, secret });
       if (!isValid) return res.status(401).json({ error: "Invalid code. Please try again." });
       await storage.updateUser(userId, { twoFactorEnabled: true } as any);
       res.json({ success: true });
@@ -264,7 +263,7 @@ export async function registerRoutes(
       if (!(user as any).twoFactorEnabled) return res.status(400).json({ error: "2FA not enabled for this account" });
       const secret = (user as any).twoFactorSecret;
       if (!secret) return res.status(500).json({ error: "2FA misconfigured" });
-      const isValid = totp.verify({ token, secret });
+      const isValid = totpVerifySync({ token, secret });
       if (!isValid) return res.status(401).json({ error: "Invalid or expired code. Please try again." });
       res.json(safeUser(user));
     } catch (error: any) {
@@ -281,7 +280,7 @@ export async function registerRoutes(
       if (!user) return res.status(404).json({ error: "User not found" });
       const secret = (user as any).twoFactorSecret;
       if (!secret) return res.status(400).json({ error: "2FA not enabled" });
-      const isValid = totp.verify({ token, secret });
+      const isValid = totpVerifySync({ token, secret });
       if (!isValid) return res.status(401).json({ error: "Invalid code. Please try again." });
       await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null } as any);
       res.json({ success: true });

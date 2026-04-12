@@ -55,7 +55,7 @@ interface AuthContextType {
   users: User[];
   loading: boolean;
   pendingTwoFactor: { userId: string } | null;
-  login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string) => Promise<boolean>;
+  login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string) => Promise<boolean | 'twoFactor'>;
   verifyTwoFactor: (token: string) => Promise<boolean>;
   loginWithGoogle: (userId: string) => Promise<boolean>;
   logout: () => void;
@@ -170,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  const login = async (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string): Promise<boolean> => {
+  const login = async (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string): Promise<boolean | 'twoFactor'> => {
     try {
       const response = await apiRequest<any>('/auth/login', {
         method: 'POST',
@@ -181,10 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // 2FA required — hold userId, let caller handle OTP step
+      // 2FA required — hold userId, return 'twoFactor' so caller knows not to show error
       if (response.twoFactorRequired) {
         setPendingTwoFactor({ userId: response.userId });
-        return false; // not logged in yet
+        return 'twoFactor';
       }
 
       const foundUser = response as User;

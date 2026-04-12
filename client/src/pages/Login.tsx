@@ -34,14 +34,14 @@ export default function LoginPage() {
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    const success = await login(data.email, selectedRole as any, data.password);
+    const result = await login(data.email, selectedRole as any, data.password);
     setIsSubmitting(false);
 
-    if (success) {
+    if (result === true) {
       toast({ title: "Welcome!", description: "You have successfully logged in." });
       setLocation(selectedRole === "rep" ? "/rep" : "/admin");
-    } else if (pendingTwoFactor) {
-      // 2FA required — the OTP form will now show (pendingTwoFactor is set in context)
+    } else if (result === 'twoFactor') {
+      // 2FA required — OTP form will render (pendingTwoFactor is now set in context)
       setOtpDigits(["", "", "", "", "", ""]);
       setTimeout(() => otpRefs[0].current?.focus(), 100);
     } else {

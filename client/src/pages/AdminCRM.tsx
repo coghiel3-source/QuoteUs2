@@ -28,7 +28,7 @@ import { Link, useLocation } from "wouter";
 
 export default function AdminCRMPage() {
   const { quotes, updateStatus, assignQuote, assignQuoteLocal, refreshQuotes, addQuote, deleteQuote, addNote, logEmail } = useQuotes();
-  const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword, register } = useAuth();
+  const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword, register, refreshUser } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -6004,8 +6004,7 @@ export default function AdminCRMPage() {
                             toast({ title: "2FA Enabled!", description: "Your account is now protected with two-factor authentication." });
                             setTwoFaStep("idle");
                             setTwoFaOtp("");
-                            // Update local user state
-                            updateUser(user.id, { twoFactorEnabled: true } as any);
+                            refreshUser();
                           } catch (e: any) {
                             toast({ title: "Invalid Code", description: e.message, variant: "destructive" });
                           }
@@ -6054,7 +6053,7 @@ export default function AdminCRMPage() {
                           toast({ title: "2FA Disabled", description: "Two-factor authentication has been removed from your account." });
                           setTwoFaStep("idle");
                           setTwoFaOtp("");
-                          updateUser(user.id, { twoFactorEnabled: false } as any);
+                          refreshUser();
                         } catch (e: any) {
                           toast({ title: "Invalid Code", description: e.message, variant: "destructive" });
                         }
