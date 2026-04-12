@@ -10,10 +10,13 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcryptjs";
+import { TOTP, generateSecret as totpGenerateSecret } from "otplib";
+import qrcode from "qrcode";
+const totp = new TOTP();
 
 function safeUser(user: any): any {
   if (!user) return user;
-  const { password, resetToken, resetTokenExpiry, ...safe } = user;
+  const { password, resetToken, resetTokenExpiry, twoFactorSecret, ...safe } = user;
   return safe;
 }
 
@@ -169,7 +172,7 @@ export async function registerRoutes(
   
   // ===== USER / AUTH ROUTES =====
   
-  // Login (checks email + password)
+  // Login (checks email + password; returns twoFactorRequired if 2FA is enabled)
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, role, password } = req.body;
@@ -201,8 +204,104 @@ export async function registerRoutes(
           }
         }
       }
+
+      // If user has 2FA enabled, require OTP before returning user data
+      if ((user as any).twoFactorEnabled) {
+        return res.json({ twoFactorRequired: true, userId: user.id });
+      }
       
       res.json(safeUser(user));
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── 2FA Routes ──────────────────────────────────────────────────────────────
+
+  // GET /api/auth/2fa/setup — generate a new TOTP secret + QR code for the current user
+  app.post("/api/auth/2fa/setup", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) return res.status(400).json({ error: "userId required" });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const secret = totpGenerateSecret();
+      const otpAuthUrl = totp.keyuri(user.email, "QuoteUs.ca", secret);
+      const qrCodeDataUrl = await qrcode.toDataURL(otpAuthUrl);
+      // Store the pending secret (not enabled yet — user must verify first)
+      await storage.updateUser(userId, { twoFactorSecret: secret } as any);
+      res.json({ secret, qrCodeDataUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/auth/2fa/verify-setup — verify OTP and officially enable 2FA
+  app.post("/api/auth/2fa/verify-setup", async (req, res) => {
+    try {
+      const { userId, token } = req.body;
+      if (!userId || !token) return res.status(400).json({ error: "userId and token required" });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const secret = (user as any).twoFactorSecret;
+      if (!secret) return res.status(400).json({ error: "No 2FA setup in progress. Please start setup first." });
+      const isValid = totp.verify({ token, secret });
+      if (!isValid) return res.status(401).json({ error: "Invalid code. Please try again." });
+      await storage.updateUser(userId, { twoFactorEnabled: true } as any);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/auth/2fa/verify-login — verify OTP during login flow, return user
+  app.post("/api/auth/2fa/verify-login", async (req, res) => {
+    try {
+      const { userId, token } = req.body;
+      if (!userId || !token) return res.status(400).json({ error: "userId and token required" });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      if (!(user as any).twoFactorEnabled) return res.status(400).json({ error: "2FA not enabled for this account" });
+      const secret = (user as any).twoFactorSecret;
+      if (!secret) return res.status(500).json({ error: "2FA misconfigured" });
+      const isValid = totp.verify({ token, secret });
+      if (!isValid) return res.status(401).json({ error: "Invalid or expired code. Please try again." });
+      res.json(safeUser(user));
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/auth/2fa/disable — user disables their own 2FA (requires current OTP)
+  app.post("/api/auth/2fa/disable", async (req, res) => {
+    try {
+      const { userId, token } = req.body;
+      if (!userId || !token) return res.status(400).json({ error: "userId and current OTP required" });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const secret = (user as any).twoFactorSecret;
+      if (!secret) return res.status(400).json({ error: "2FA not enabled" });
+      const isValid = totp.verify({ token, secret });
+      if (!isValid) return res.status(401).json({ error: "Invalid code. Please try again." });
+      await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null } as any);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/admin/users/:id/disable-2fa — admin resets 2FA for any user (account recovery)
+  app.post("/api/admin/users/:id/disable-2fa", async (req, res) => {
+    try {
+      const actorId = req.body.actorId;
+      const actor = actorId ? await storage.getUser(actorId) : null;
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
+        return res.status(403).json({ error: "Admin or manager access required" });
+      }
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      await storage.updateUser(req.params.id, { twoFactorEnabled: false, twoFactorSecret: null } as any);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

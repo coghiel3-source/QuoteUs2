@@ -50,6 +50,8 @@ export const users = pgTable("users", {
   renewalCommissionRate: decimal("renewal_commission_rate", { precision: 10, scale: 4 }),
   commissionNotes: text("commission_notes"),
   partnerNotes: text("partner_notes"),
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

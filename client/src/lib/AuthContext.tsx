@@ -43,6 +43,7 @@ export interface User {
   lastLogin?: string;
   pauseStartDate?: string;
   pauseEndDate?: string;
+  twoFactorEnabled?: boolean;
   performance?: {
     conversionRate: number;
     responseTime: string;
@@ -53,7 +54,9 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   loading: boolean;
+  pendingTwoFactor: { userId: string } | null;
   login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string) => Promise<boolean>;
+  verifyTwoFactor: (token: string) => Promise<boolean>;
   loginWithGoogle: (userId: string) => Promise<boolean>;
   logout: () => void;
   register: (name: string, email: string, password?: string, role?: 'broker' | 'customer' | 'manager' | 'admin', phone?: string, brokerFields?: { brokerage?: string; yearsOfService?: number; productTypes?: string[] }) => Promise<void>;
@@ -78,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
+  const [pendingTwoFactor, setPendingTwoFactor] = useState<{ userId: string } | null>(null);
   // Seed database with initial users
   const seedUsers = async () => {
     try {
@@ -168,14 +172,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string): Promise<boolean> => {
     try {
-      const foundUser = await apiRequest<User>('/auth/login', {
+      const response = await apiRequest<any>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, role, password }),
       });
 
-      if (!foundUser) {
+      if (!response) {
         return false;
       }
+
+      // 2FA required — hold userId, let caller handle OTP step
+      if (response.twoFactorRequired) {
+        setPendingTwoFactor({ userId: response.userId });
+        return false; // not logged in yet
+      }
+
+      const foundUser = response as User;
 
       if (foundUser.status !== 'active') {
         if (foundUser.status === 'paused') {
@@ -194,6 +206,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return true;
     } catch (error) {
       console.error('Login failed:', error);
+      return false;
+    }
+  };
+
+  const verifyTwoFactor = async (token: string): Promise<boolean> => {
+    if (!pendingTwoFactor) return false;
+    try {
+      const foundUser = await apiRequest<User>('/auth/2fa/verify-login', {
+        method: 'POST',
+        body: JSON.stringify({ userId: pendingTwoFactor.userId, token }),
+      });
+      if (!foundUser) return false;
+      if (foundUser.status !== 'active') {
+        alert("Your account is not active.");
+        return false;
+      }
+      setPendingTwoFactor(null);
+      setUser(foundUser);
+      return true;
+    } catch (error) {
+      console.error('2FA verification failed:', error);
       return false;
     }
   };
@@ -315,7 +348,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, users, loading, login, loginWithGoogle, logout, register, approveBroker, denyBroker, updateUser, resetPassword, refreshUser }}>
+    <AuthContext.Provider value={{ user, users, loading, pendingTwoFactor, login, verifyTwoFactor, loginWithGoogle, logout, register, approveBroker, denyBroker, updateUser, resetPassword, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

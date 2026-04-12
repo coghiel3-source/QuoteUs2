@@ -269,6 +269,13 @@ export default function AdminCRMPage() {
   const [libraryUploadTitle, setLibraryUploadTitle] = useState("");
   const [libraryUploading, setLibraryUploading] = useState(false);
 
+  // 2FA Security State
+  const [twoFaStep, setTwoFaStep] = useState<"idle" | "setup" | "verify-setup" | "disable">("idle");
+  const [twoFaQrCode, setTwoFaQrCode] = useState<string>("");
+  const [twoFaSecret, setTwoFaSecret] = useState<string>("");
+  const [twoFaOtp, setTwoFaOtp] = useState("");
+  const [twoFaBusy, setTwoFaBusy] = useState(false);
+
   // Social Media State
   const [socialMedia, setSocialMedia] = useState({
     facebook: "",
@@ -1883,15 +1890,13 @@ export default function AdminCRMPage() {
                       </Button>
                     )}
                     <div className="border-t my-2" />
-                    {(user?.role === 'admin' || hasPermission('viewSettings')) && (
-                      <Button 
-                        variant={activeTab === 'settings' ? 'secondary' : 'ghost'} 
-                        className="justify-start mb-1"
-                        onClick={() => { switchTab('settings'); setMobileMenuOpen(false); }}
-                      >
-                        <Settings size={18} className="mr-3" /> Settings
-                      </Button>
-                    )}
+                    <Button
+                      variant={activeTab === 'settings' ? 'secondary' : 'ghost'}
+                      className="justify-start mb-1"
+                      onClick={() => { switchTab('settings'); setMobileMenuOpen(false); }}
+                    >
+                      <Settings size={18} className="mr-3" /> Settings
+                    </Button>
                     <Button 
                       variant="ghost" 
                       className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -5897,6 +5902,212 @@ export default function AdminCRMPage() {
             </CardContent>
           </Card>
           </>
+        )}
+
+        {/* SETTINGS TAB - Two-Factor Authentication (all logged-in staff) */}
+        {activeTab === 'settings' && user && ['admin', 'manager', 'partner', 'broker', 'rep'].includes(user.role) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                Two-Factor Authentication (2FA)
+              </CardTitle>
+              <CardDescription>
+                {user.twoFactorEnabled
+                  ? "Your account is protected with two-factor authentication."
+                  : "Add an extra layer of security to your account using an authenticator app."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {twoFaStep === "idle" && (
+                <div className="flex items-start gap-4">
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold ${user.twoFactorEnabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                    <span className={`w-2 h-2 rounded-full ${user.twoFactorEnabled ? "bg-green-500" : "bg-gray-400"}`} />
+                    {user.twoFactorEnabled ? "Enabled" : "Disabled"}
+                  </div>
+                  <div className="flex gap-2">
+                    {!user.twoFactorEnabled ? (
+                      <button
+                        className="px-4 py-1.5 bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors"
+                        onClick={async () => {
+                          setTwoFaBusy(true);
+                          try {
+                            const res = await fetch("/api/auth/2fa/setup", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ userId: user.id }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error);
+                            setTwoFaQrCode(data.qrCodeDataUrl);
+                            setTwoFaSecret(data.secret);
+                            setTwoFaOtp("");
+                            setTwoFaStep("setup");
+                          } catch (e: any) {
+                            toast({ title: "Error", description: e.message, variant: "destructive" });
+                          }
+                          setTwoFaBusy(false);
+                        }}
+                        disabled={twoFaBusy}
+                      >
+                        {twoFaBusy ? "Loading…" : "Set Up 2FA"}
+                      </button>
+                    ) : (
+                      <button
+                        className="px-4 py-1.5 border border-red-300 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition-colors"
+                        onClick={() => { setTwoFaOtp(""); setTwoFaStep("disable"); }}
+                      >
+                        Disable 2FA
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {twoFaStep === "setup" && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                    <p className="text-sm font-semibold text-blue-800">Step 1 — Scan the QR code</p>
+                    <p className="text-xs text-blue-700">Open Google Authenticator, Authy, or any TOTP app and scan this code:</p>
+                    {twoFaQrCode && <img src={twoFaQrCode} alt="QR Code" className="w-40 h-40 rounded-lg border bg-white p-1" />}
+                    <details className="text-xs text-blue-600">
+                      <summary className="cursor-pointer hover:underline">Can't scan? Enter this code manually</summary>
+                      <code className="block mt-1 bg-white border rounded px-2 py-1 font-mono text-gray-800 break-all">{twoFaSecret}</code>
+                    </details>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-gray-700">Step 2 — Enter the 6-digit code shown in your app</p>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="000000"
+                        value={twoFaOtp}
+                        onChange={e => setTwoFaOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        className="w-36 text-center text-xl font-mono font-bold border-2 rounded-xl px-3 py-2 focus:border-blue-500 focus:outline-none"
+                        data-testid="input-2fa-setup-otp"
+                      />
+                      <button
+                        className="px-4 py-2 bg-blue-700 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 disabled:opacity-50 transition-colors"
+                        disabled={twoFaOtp.length !== 6 || twoFaBusy}
+                        onClick={async () => {
+                          setTwoFaBusy(true);
+                          try {
+                            const res = await fetch("/api/auth/2fa/verify-setup", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ userId: user.id, token: twoFaOtp }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error);
+                            toast({ title: "2FA Enabled!", description: "Your account is now protected with two-factor authentication." });
+                            setTwoFaStep("idle");
+                            setTwoFaOtp("");
+                            // Update local user state
+                            updateUser(user.id, { twoFactorEnabled: true } as any);
+                          } catch (e: any) {
+                            toast({ title: "Invalid Code", description: e.message, variant: "destructive" });
+                          }
+                          setTwoFaBusy(false);
+                        }}
+                        data-testid="button-2fa-verify-setup"
+                      >
+                        {twoFaBusy ? "Verifying…" : "Activate 2FA"}
+                      </button>
+                    </div>
+                  </div>
+                  <button onClick={() => { setTwoFaStep("idle"); setTwoFaOtp(""); }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                </div>
+              )}
+
+              {twoFaStep === "disable" && (
+                <div className="space-y-3">
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <p className="text-sm font-semibold text-red-800 mb-1">Disable Two-Factor Authentication</p>
+                    <p className="text-xs text-red-700">Enter your current 6-digit authenticator code to confirm.</p>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={twoFaOtp}
+                      onChange={e => setTwoFaOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="w-36 text-center text-xl font-mono font-bold border-2 rounded-xl px-3 py-2 focus:border-red-400 focus:outline-none"
+                      data-testid="input-2fa-disable-otp"
+                    />
+                    <button
+                      className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                      disabled={twoFaOtp.length !== 6 || twoFaBusy}
+                      onClick={async () => {
+                        setTwoFaBusy(true);
+                        try {
+                          const res = await fetch("/api/auth/2fa/disable", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ userId: user.id, token: twoFaOtp }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error);
+                          toast({ title: "2FA Disabled", description: "Two-factor authentication has been removed from your account." });
+                          setTwoFaStep("idle");
+                          setTwoFaOtp("");
+                          updateUser(user.id, { twoFactorEnabled: false } as any);
+                        } catch (e: any) {
+                          toast({ title: "Invalid Code", description: e.message, variant: "destructive" });
+                        }
+                        setTwoFaBusy(false);
+                      }}
+                      data-testid="button-2fa-confirm-disable"
+                    >
+                      {twoFaBusy ? "Disabling…" : "Confirm Disable"}
+                    </button>
+                    <button onClick={() => { setTwoFaStep("idle"); setTwoFaOtp(""); }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Admin: reset 2FA for other users */}
+              {user.role === 'admin' && (
+                <div className="border-t pt-4 mt-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Account Recovery — Reset User 2FA</p>
+                  <p className="text-xs text-gray-500 mb-3">If a user is locked out because they lost access to their authenticator app, you can disable their 2FA here.</p>
+                  <div className="space-y-2">
+                    {users.filter(u => u.twoFactorEnabled).map(u => (
+                      <div key={u.id} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{u.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{u.email} · <span className="capitalize">{u.role}</span></p>
+                        </div>
+                        <button
+                          className="shrink-0 text-xs text-red-600 hover:text-red-800 font-medium border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-50 transition-colors"
+                          onClick={async () => {
+                            if (!confirm(`Disable 2FA for ${u.name}? They will be able to log in without a code.`)) return;
+                            const res = await fetch(`/api/admin/users/${u.id}/disable-2fa`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ actorId: user.id }),
+                            });
+                            if (res.ok) {
+                              toast({ title: "2FA Disabled", description: `Two-factor authentication removed for ${u.name}.` });
+                              updateUser(u.id, { twoFactorEnabled: false } as any);
+                            }
+                          }}
+                        >
+                          Reset 2FA
+                        </button>
+                      </div>
+                    ))}
+                    {users.filter(u => u.twoFactorEnabled).length === 0 && (
+                      <p className="text-xs text-gray-400 italic">No users currently have 2FA enabled.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* SETTINGS TAB - Manager/Partner view (if permitted - read-only) */}

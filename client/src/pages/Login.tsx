@@ -5,38 +5,45 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Mail, Eye, EyeOff, Briefcase, UserCog } from "lucide-react";
-import { useState } from "react";
+import { Lock, Mail, Eye, EyeOff, Briefcase, ShieldCheck, ArrowLeft } from "lucide-react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 
 import { useAuth } from "@/lib/AuthContext";
 
 export default function LoginPage() {
   const { toast } = useToast();
-  const { login } = useAuth();
+  const { login, verifyTwoFactor, pendingTwoFactor } = useAuth();
   const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("broker");
+
+  // OTP step state
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
+  const otpRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
+
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    
     const success = await login(data.email, selectedRole as any, data.password);
-    
     setIsSubmitting(false);
-    
+
     if (success) {
-      toast({
-        title: "Welcome!",
-        description: "You have successfully logged in.",
-      });
-      if (selectedRole === "rep") {
-        setLocation("/rep");
-      } else {
-        setLocation("/admin");
-      }
+      toast({ title: "Welcome!", description: "You have successfully logged in." });
+      setLocation(selectedRole === "rep" ? "/rep" : "/admin");
+    } else if (pendingTwoFactor) {
+      // 2FA required — the OTP form will now show (pendingTwoFactor is set in context)
+      setOtpDigits(["", "", "", "", "", ""]);
+      setTimeout(() => otpRefs[0].current?.focus(), 100);
     } else {
       toast({
         variant: "destructive",
@@ -46,6 +53,126 @@ export default function LoginPage() {
     }
   };
 
+  const handleOtpInput = (index: number, value: string) => {
+    // Accept paste of full 6-digit code
+    if (value.length === 6 && /^\d{6}$/.test(value)) {
+      const digits = value.split("");
+      setOtpDigits(digits);
+      otpRefs[5].current?.focus();
+      return;
+    }
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    if (digit && index < 5) {
+      otpRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      if (otpDigits[index]) {
+        const next = [...otpDigits];
+        next[index] = "";
+        setOtpDigits(next);
+      } else if (index > 0) {
+        otpRefs[index - 1].current?.focus();
+      }
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    const token = otpDigits.join("");
+    if (token.length !== 6) {
+      toast({ variant: "destructive", title: "Enter all 6 digits" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const success = await verifyTwoFactor(token);
+      if (success) {
+        toast({ title: "Welcome!", description: "You have successfully logged in." });
+        setLocation(selectedRole === "rep" ? "/rep" : "/admin");
+      } else {
+        toast({ variant: "destructive", title: "Invalid code", description: "The code is incorrect or expired. Please try again." });
+        setOtpDigits(["", "", "", "", "", ""]);
+        otpRefs[0].current?.focus();
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Verification failed. Please try again." });
+    }
+    setIsSubmitting(false);
+  };
+
+  // ── 2FA step ──
+  if (pendingTwoFactor) {
+    return (
+      <div className="bg-secondary/30 min-h-screen pb-20">
+        <div className="bg-primary text-white py-12 px-4">
+          <div className="container mx-auto max-w-4xl text-center">
+            <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Two-Factor Verification</h1>
+            <p className="text-lg text-primary-foreground/80 max-w-2xl mx-auto">
+              Enter the 6-digit code from your authenticator app.
+            </p>
+          </div>
+        </div>
+
+        <div className="container mx-auto max-w-md px-4 -mt-8">
+          <Card className="shadow-lg border-none">
+            <CardHeader className="text-center">
+              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <ShieldCheck className="h-7 w-7 text-blue-600" />
+              </div>
+              <CardTitle>Authentication Code</CardTitle>
+              <CardDescription>Open your authenticator app (Google Authenticator, Authy, etc.) and enter the 6-digit code shown.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex justify-center gap-2">
+                {otpDigits.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={otpRefs[i]}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={digit}
+                    onChange={e => handleOtpInput(i, e.target.value)}
+                    onKeyDown={e => handleOtpKeyDown(i, e)}
+                    onFocus={e => e.target.select()}
+                    className="w-12 h-14 text-center text-2xl font-bold border-2 rounded-xl bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                    data-testid={`input-otp-${i}`}
+                  />
+                ))}
+              </div>
+
+              <Button
+                onClick={handleOtpSubmit}
+                disabled={isSubmitting || otpDigits.join("").length !== 6}
+                className="w-full bg-blue-700 hover:bg-blue-800 text-white h-12 text-base font-semibold"
+                data-testid="button-verify-2fa"
+              >
+                {isSubmitting ? "Verifying…" : "Verify & Sign In"}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="w-full flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to login
+              </button>
+            </CardContent>
+          </Card>
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            Codes expire every 30 seconds. If your code is not working, wait for a new one.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Credentials step ──
   return (
     <div className="bg-secondary/30 min-h-screen pb-20">
       <div className="bg-primary text-white py-12 px-4">
@@ -78,17 +205,17 @@ export default function LoginPage() {
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    {...register("password", { required: "Password is required" })} 
-                    className="pl-9 pr-10" 
-                    placeholder="••••••••" 
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    {...register("password", { required: "Password is required" })}
+                    className="pl-9 pr-10"
+                    placeholder="••••••••"
                     autoComplete="current-password"
                     data-testid="input-password"
                   />
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                   >
