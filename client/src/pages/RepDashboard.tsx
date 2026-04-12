@@ -314,7 +314,7 @@ function PricingTab({
                   <span className="font-mono text-gray-800">${fmt(topA)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1">
-                  <span className="text-gray-500 flex items-center gap-1">Insurance payment&nbsp;
+                  <span className="text-gray-500 flex items-center gap-1">Rent guarantee payment&nbsp;
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" />
                   </span>
                   <span className="font-mono text-gray-500">${fmt(midA)}</span>
@@ -331,7 +331,7 @@ function PricingTab({
                   <span className="font-mono text-gray-800">${fmt(topM)}<span className="text-xs text-gray-400 ml-1">(${fmt(topM * 12)}/yr)</span></span>
                 </div>
                 <div className="flex justify-between items-center text-sm py-1">
-                  <span className="text-gray-500 flex items-center gap-1">Insurance payment&nbsp;
+                  <span className="text-gray-500 flex items-center gap-1">Rent guarantee payment&nbsp;
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" />
                   </span>
                   <span className="font-mono text-gray-500">${fmt(midM)}<span className="text-xs text-gray-400 ml-1">(${fmt(midM * 12)}/yr)</span></span>
