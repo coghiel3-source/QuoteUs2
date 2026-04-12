@@ -228,6 +228,11 @@ export const rgLocations = pgTable("rg_locations", {
   padPaymentFrequency: text("pad_payment_frequency"), // "monthly" | "annual"
   padAuthorizedDate: text("pad_authorized_date"),
   padCompletedAt: timestamp("pad_completed_at"),
+  // Recurring subscription
+  serviceFeeEnabled: boolean("service_fee_enabled").default(false),
+  serviceFee: decimal("service_fee", { precision: 10, scale: 2 }).default("0"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  subscriptionStatus: varchar("subscription_status"), // "active" | "cancelled" | "past_due"
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -337,6 +342,7 @@ export const rgPayments = pgTable("rg_payments", {
   status: varchar("status", { length: 20 }).notNull().default("pending"), // "pending" | "paid" | "failed"
   stripeSessionId: varchar("stripe_session_id"),
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"), // set for auto-charged recurring payments
   landlordEmail: text("landlord_email"),
   landlordName: text("landlord_name"),
   description: text("description"),

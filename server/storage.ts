@@ -111,6 +111,7 @@ export interface IStorage {
   getPaymentsForLocation(locationId: string): Promise<RgPayment[]>;
   getRgPaymentByTrackingCode(code: string): Promise<RgPayment | null>;
   getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null>;
+  getRgPaymentByStripePaymentIntent(intentId: string): Promise<RgPayment | null>;
   updateRgPayment(id: string, data: any): Promise<RgPayment | null>;
 
   // Rep commission payout operations
@@ -790,6 +791,11 @@ export class DatabaseStorage implements IStorage {
 
   async getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null> {
     const [row] = await db.select().from(rgPayments).where(eq(rgPayments.stripeSessionId, sessionId));
+    return row || null;
+  }
+
+  async getRgPaymentByStripePaymentIntent(intentId: string): Promise<RgPayment | null> {
+    const [row] = await db.select().from(rgPayments).where(eq(rgPayments.stripePaymentIntentId, intentId));
     return row || null;
   }
 

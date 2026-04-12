@@ -139,6 +139,9 @@ function PricingTab({
   onSaveMarkup, onSaveRates, onSaveCommission, onSaveMonthlyCommission, onSavePricingNotes,
   paymentLink, onSavePaymentLink,
   locationId, landlordEmail, landlordName, payments, onPaymentCreated, actorId,
+  serviceFeeEnabled: serviceFeeEnabledProp, serviceFee: serviceFeeProp,
+  stripeSubscriptionId, subscriptionStatus,
+  onSaveServiceFee, onCancelSubscription, onSyncPayments,
 }: {
   monthlyRent: number;
   markupPercent?: number | string | null;
@@ -160,6 +163,13 @@ function PricingTab({
   payments?: RgPaymentRecord[];
   onPaymentCreated?: () => void;
   actorId?: string;
+  serviceFeeEnabled?: boolean | null;
+  serviceFee?: number | string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  onSaveServiceFee?: (enabled: boolean, fee: number) => void;
+  onCancelSubscription?: () => void;
+  onSyncPayments?: () => void;
 }) {
   const { toast } = useToast();
   const rent = monthlyRent || 0;
@@ -181,6 +191,15 @@ function PricingTab({
   const [markupSaved, setMarkupSaved] = useState(false);
   const [ratesSaved, setRatesSaved] = useState(false);
   const [linkSaved, setLinkSaved] = useState(false);
+
+  // Service fee + recurring state
+  const [sfEnabled, setSfEnabled] = useState<boolean>(!!serviceFeeEnabledProp);
+  const [sfAmount, setSfAmount] = useState<string>(String(Number(serviceFeeProp) || 0));
+  const [sfSaved, setSfSaved] = useState(false);
+  const [sfSaving, setSfSaving] = useState(false);
+  const [recurringEnabled, setRecurringEnabled] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   // Payment dialog state
   const [payDialog, setPayDialog] = useState<{ open: boolean; planType: "annual" | "monthly" | null }>({ open: false, planType: null });
@@ -236,6 +255,8 @@ function PricingTab({
       return;
     }
     const amountCents = Math.round(parsedAmount * 100);
+    const isMonthlyRecurring = payDialog.planType === "monthly" && recurringEnabled;
+    const sfAmountCents = isMonthlyRecurring && sfEnabled ? Math.round((parseFloat(sfAmount) || 0) * 100) : 0;
     setPayLoading(true);
     try {
       const res = await fetch(`/api/rep/locations/${locationId}/create-payment`, {
@@ -248,6 +269,8 @@ function PricingTab({
           landlordEmail: payEmail,
           landlordName: payName,
           periodLabel: payPeriod,
+          recurring: isMonthlyRecurring,
+          serviceFeeAmountCents: sfAmountCents,
         }),
       });
       const data = await res.json();
@@ -259,6 +282,66 @@ function PricingTab({
       toast({ title: "Payment error", description: err.message, variant: "destructive" });
     } finally {
       setPayLoading(false);
+    }
+  }
+
+  async function handleSaveServiceFee() {
+    if (!locationId) return;
+    setSfSaving(true);
+    try {
+      await fetch(`/api/rep/locations/${locationId}/service-fee`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId, serviceFeeEnabled: sfEnabled, serviceFee: parseFloat(sfAmount) || 0 }),
+      });
+      setSfSaved(true);
+      setTimeout(() => setSfSaved(false), 2000);
+      onSaveServiceFee?.(sfEnabled, parseFloat(sfAmount) || 0);
+    } catch {
+      toast({ title: "Failed to save service fee", variant: "destructive" });
+    } finally {
+      setSfSaving(false);
+    }
+  }
+
+  async function handleCancelSubscription() {
+    if (!locationId) return;
+    if (!confirm("Cancel the active Stripe subscription? The landlord will no longer be charged monthly.")) return;
+    setCancelLoading(true);
+    try {
+      const res = await fetch(`/api/rep/locations/${locationId}/cancel-subscription`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      toast({ title: "Subscription cancelled" });
+      onCancelSubscription?.();
+    } catch (err: any) {
+      toast({ title: "Failed to cancel", description: err.message, variant: "destructive" });
+    } finally {
+      setCancelLoading(false);
+    }
+  }
+
+  async function handleSyncPayments() {
+    if (!locationId) return;
+    setSyncLoading(true);
+    try {
+      const res = await fetch(`/api/rep/locations/${locationId}/sync-subscription-payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actorId }),
+      });
+      const data = await res.json();
+      toast({ title: `Synced ${data.synced ?? 0} new payment(s) from Stripe` });
+      onSyncPayments?.();
+      onPaymentCreated?.();
+    } catch (err: any) {
+      toast({ title: "Sync failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncLoading(false);
     }
   }
 
@@ -456,14 +539,87 @@ function PricingTab({
         </div>
       )}
 
+      {/* Service Fee & Recurring Configuration */}
+      {locationId && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-green-800 flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" /> Monthly Recurring Settings
+          </p>
+
+          {/* Subscription status */}
+          {stripeSubscriptionId && (
+            <div className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${subscriptionStatus === "active" ? "bg-green-100 border border-green-300" : "bg-gray-100 border border-gray-300"}`}>
+              <span className="flex items-center gap-2 font-medium">
+                <span className={`w-2 h-2 rounded-full ${subscriptionStatus === "active" ? "bg-green-500" : "bg-gray-400"}`}></span>
+                Stripe Subscription: <span className="capitalize">{subscriptionStatus || "unknown"}</span>
+              </span>
+              <div className="flex gap-2">
+                {subscriptionStatus === "active" && (
+                  <>
+                    <Button size="sm" variant="outline" className="h-7 text-xs border-green-400 text-green-700 hover:bg-green-50" onClick={handleSyncPayments} disabled={syncLoading} data-testid="button-sync-payments">
+                      <RefreshCw className={`h-3 w-3 mr-1 ${syncLoading ? "animate-spin" : ""}`} /> Sync
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50" onClick={handleCancelSubscription} disabled={cancelLoading} data-testid="button-cancel-subscription">
+                      {cancelLoading ? "Cancelling…" : "Cancel"}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Recurring toggle */}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input type="checkbox" checked={recurringEnabled} onChange={e => setRecurringEnabled(e.target.checked)} className="w-4 h-4 accent-green-600" data-testid="toggle-recurring" />
+            <span className="text-sm text-gray-700 font-medium">Enable Stripe Recurring Subscription on next collect</span>
+          </label>
+
+          {/* Service fee section */}
+          <div className="border-t border-green-200 pt-3 space-y-2">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input type="checkbox" checked={sfEnabled} onChange={e => { setSfEnabled(e.target.checked); setSfSaved(false); }} className="w-4 h-4 accent-green-600" data-testid="toggle-service-fee" />
+              <span className="text-sm text-gray-700 font-medium">Charge a one-time service fee on the first payment</span>
+            </label>
+            {sfEnabled && (
+              <div className="flex items-center gap-2 ml-7">
+                <span className="text-sm text-gray-500">$</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={sfAmount}
+                  onChange={e => { setSfAmount(e.target.value); setSfSaved(false); }}
+                  className="w-32 h-8 text-sm"
+                  placeholder="0.00"
+                  data-testid="input-service-fee"
+                />
+                {onSaveServiceFee !== undefined && (
+                  <Button size="sm" onClick={handleSaveServiceFee} disabled={sfSaving} variant={sfSaved ? "outline" : "default"} className={`h-8 text-xs ${sfSaved ? "border-green-500 text-green-600" : "bg-green-600 hover:bg-green-700 text-white"}`} data-testid="button-save-service-fee">
+                    {sfSaved ? <><CheckCircle2 className="h-3 w-3 mr-1" />Saved</> : sfSaving ? "Saving…" : "Save Fee"}
+                  </Button>
+                )}
+              </div>
+            )}
+            {sfEnabled && recurringEnabled && (
+              <p className="ml-7 text-xs text-green-700 font-medium">
+                First invoice: ${fmt(totalDeductionMonthly)} (monthly) + ${fmt(parseFloat(sfAmount) || 0)} (fee) = <span className="font-bold">${fmt(totalDeductionMonthly + (parseFloat(sfAmount) || 0))}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Collect buttons */}
       {locationId && (
         <div className="grid grid-cols-2 gap-4">
           <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm h-10" onClick={() => { setPayDialog({ open: true, planType: "annual" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(`${new Date().getFullYear()} Full Year`); setPayAmount(totalDeductionAnnual.toFixed(2)); }} data-testid="button-collect-annual">
             <CreditCard className="h-4 w-4 mr-1.5" /> Collect Annual — ${fmt(totalDeductionAnnual)}
           </Button>
-          <Button className="w-full bg-green-600 hover:bg-green-700 text-white text-sm h-10" onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); setPayAmount(totalDeductionMonthly.toFixed(2)); }} data-testid="button-collect-monthly">
-            <CreditCard className="h-4 w-4 mr-1.5" /> Collect Monthly — ${fmt(totalDeductionMonthly)}/mo
+          <Button className={`w-full text-white text-sm h-10 ${recurringEnabled ? "bg-purple-600 hover:bg-purple-700" : "bg-green-600 hover:bg-green-700"}`}
+            onClick={() => { setPayDialog({ open: true, planType: "monthly" }); setPayEmail(landlordEmail || ""); setPayName(landlordName || ""); setPayPeriod(new Date().toLocaleString("en-CA", { month: "long", year: "numeric" })); setPayAmount(totalDeductionMonthly.toFixed(2)); }}
+            data-testid="button-collect-monthly">
+            <CreditCard className="h-4 w-4 mr-1.5" />
+            {recurringEnabled ? `Start Subscription — ${fmt(totalDeductionMonthly)}/mo` : `Collect Monthly — $${fmt(totalDeductionMonthly)}/mo`}
           </Button>
         </div>
       )}
@@ -568,15 +724,30 @@ function PricingTab({
       <Dialog open={payDialog.open} onOpenChange={open => setPayDialog(p => ({ ...p, open }))}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Collect {payDialog.planType === "annual" ? "Annual" : "Monthly"} Payment</DialogTitle>
+            <DialogTitle>
+              {payDialog.planType === "annual" ? "Collect Annual Payment" : recurringEnabled ? "Start Recurring Subscription" : "Collect Monthly Payment"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Recurring mode badge */}
+            {payDialog.planType === "monthly" && recurringEnabled && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-700 space-y-1">
+                <p className="font-semibold flex items-center gap-1.5"><RefreshCw className="h-3 w-3" /> Recurring subscription via Stripe</p>
+                <p>Monthly amount: <strong>${fmt(parseFloat(payAmount) || 0)}</strong></p>
+                {sfEnabled && (parseFloat(sfAmount) || 0) > 0 && (
+                  <>
+                    <p>First-payment service fee: <strong>${fmt(parseFloat(sfAmount) || 0)}</strong></p>
+                    <p className="font-bold border-t border-purple-200 pt-1">First invoice total: ${fmt((parseFloat(payAmount) || 0) + (parseFloat(sfAmount) || 0))}</p>
+                  </>
+                )}
+              </div>
+            )}
             <div className="bg-gray-50 rounded-lg px-4 py-3 space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-500">Calculated from pricing</span>
                 <span className="text-xs text-gray-400">${fmt(selectedAmount)} CAD</span>
               </div>
-              <Label className="text-xs text-gray-600 block">Charge Amount (CAD) *</Label>
+              <Label className="text-xs text-gray-600 block">{recurringEnabled && payDialog.planType === "monthly" ? "Recurring Monthly Amount (CAD) *" : "Charge Amount (CAD) *"}</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
                 <Input
@@ -599,16 +770,22 @@ function PricingTab({
               <Label className="text-xs text-gray-600 mb-1 block">Landlord Email *</Label>
               <Input type="email" value={payEmail} onChange={e => setPayEmail(e.target.value)} placeholder="landlord@email.com" required data-testid="input-pay-email" />
             </div>
-            <div>
-              <Label className="text-xs text-gray-600 mb-1 block">Period Label</Label>
-              <Input value={payPeriod} onChange={e => setPayPeriod(e.target.value)} placeholder={payDialog.planType === "annual" ? "2026 Full Year" : "June 2026"} data-testid="input-pay-period" />
-            </div>
-            <p className="text-xs text-gray-400">The landlord will be redirected to a secure Stripe checkout to complete payment.</p>
+            {(!recurringEnabled || payDialog.planType === "annual") && (
+              <div>
+                <Label className="text-xs text-gray-600 mb-1 block">Period Label</Label>
+                <Input value={payPeriod} onChange={e => setPayPeriod(e.target.value)} placeholder={payDialog.planType === "annual" ? "2026 Full Year" : "June 2026"} data-testid="input-pay-period" />
+              </div>
+            )}
+            <p className="text-xs text-gray-400">
+              {recurringEnabled && payDialog.planType === "monthly"
+                ? "Stripe will automatically charge the landlord each month. You can cancel anytime from the recurring settings."
+                : "The landlord will be redirected to a secure Stripe checkout to complete payment."}
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayDialog({ open: false, planType: null })}>Cancel</Button>
-            <Button disabled={!payEmail || payLoading} onClick={handleCollectPayment} className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="button-confirm-payment">
-              {payLoading ? "Redirecting…" : "Open Stripe Checkout →"}
+            <Button disabled={!payEmail || payLoading} onClick={handleCollectPayment} className={recurringEnabled && payDialog.planType === "monthly" ? "bg-purple-600 hover:bg-purple-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"} data-testid="button-confirm-payment">
+              {payLoading ? "Redirecting…" : recurringEnabled && payDialog.planType === "monthly" ? "Start Subscription →" : "Open Stripe Checkout →"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2340,6 +2517,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       payments={locationPayments}
                       onPaymentCreated={() => loadLocationPayments(selectedLocation.id)}
                       actorId={user?.id}
+                      serviceFeeEnabled={selectedLocation.serviceFeeEnabled}
+                      serviceFee={selectedLocation.serviceFee}
+                      stripeSubscriptionId={selectedLocation.stripeSubscriptionId}
+                      subscriptionStatus={selectedLocation.subscriptionStatus}
+                      onSaveServiceFee={(enabled, fee) => setSelectedLocation((prev: any) => prev ? { ...prev, serviceFeeEnabled: enabled, serviceFee: String(fee) } : prev)}
+                      onCancelSubscription={() => setSelectedLocation((prev: any) => prev ? { ...prev, subscriptionStatus: "cancelled", stripeSubscriptionId: null } : prev)}
+                      onSyncPayments={() => loadLocationPayments(selectedLocation.id)}
                     />
                   )}
 
@@ -2474,6 +2658,21 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                 <div className="space-y-1.5">
                                   {docSignFields.map((f, idx) => (
                                     <div key={f.id} className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2">
+                                      {/* Move up/down */}
+                                      <div className="flex flex-col gap-0.5 shrink-0">
+                                        <button
+                                          onClick={() => setDocSignFields(prev => { if (idx === 0) return prev; const a = [...prev]; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; return a; })}
+                                          disabled={idx === 0}
+                                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                                          title="Move up"
+                                        >▴</button>
+                                        <button
+                                          onClick={() => setDocSignFields(prev => { if (idx === prev.length - 1) return prev; const a = [...prev]; [a[idx], a[idx + 1]] = [a[idx + 1], a[idx]]; return a; })}
+                                          disabled={idx === docSignFields.length - 1}
+                                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                                          title="Move down"
+                                        >▾</button>
+                                      </div>
                                       <span className={`text-xs font-bold px-2 py-0.5 rounded text-white shrink-0 ${f.type === "signature" ? "bg-blue-600" : f.type === "initials" ? "bg-purple-600" : f.type === "date" ? "bg-emerald-600" : "bg-gray-600"}`}>
                                         {f.type === "signature" ? "SIG" : f.type === "initials" ? "INI" : f.type === "date" ? "DATE" : "TXT"}
                                       </span>

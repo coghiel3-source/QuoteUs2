@@ -3663,7 +3663,7 @@ export async function registerRoutes(
   // Create Stripe checkout for a landlord payment
   app.post("/api/rep/locations/:id/create-payment", async (req, res) => {
     try {
-      const { actorId, planType, amountCents, landlordEmail, landlordName, periodLabel, description } = req.body;
+      const { actorId, planType, amountCents, landlordEmail, landlordName, periodLabel, description, recurring, serviceFeeAmountCents } = req.body;
       const sessionUser = (req.session as any)?.user;
       const user = actorId ? await storage.getUser(actorId) : sessionUser;
       if (!user || !["admin", "manager", "rep"].includes(user.role)) {
@@ -3688,7 +3688,9 @@ export async function registerRoutes(
         trackingCode = generateTrackingCode(planType);
       }
 
-      // Create pending payment record
+      const desc = description || `${planType === "annual" ? "Annual" : "Monthly"} RG Premium – ${location.propertyAddress || location.address}`;
+
+      // Create pending payment record (amountCents = recurring monthly amount)
       const payment = await storage.createRgPayment({
         locationId: location.id,
         trackingCode,
@@ -3696,44 +3698,188 @@ export async function registerRoutes(
         amountCents,
         landlordEmail,
         landlordName: landlordName || location.landlordName || "",
-        description: description || `${planType === "annual" ? "Annual" : "Monthly"} RG Premium – ${location.address}`,
+        description: desc + (recurring && (serviceFeeAmountCents || 0) > 0 ? ` + Service Fee ($${((serviceFeeAmountCents || 0) / 100).toFixed(2)})` : ""),
         periodLabel: periodLabel || "",
         createdBy: user.id,
         status: "pending",
       });
 
-      // Create Stripe checkout session
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        customer_email: landlordEmail,
-        line_items: [{
-          price_data: {
-            currency: "cad",
-            product_data: {
-              name: payment.description || "Rent Guarantee Premium",
-              description: `Tracking: ${trackingCode}`,
+      let session: any;
+
+      if (recurring && planType === "monthly") {
+        // --- Subscription mode (recurring monthly with optional setup fee on first invoice) ---
+        const lineItems: any[] = [
+          {
+            price_data: {
+              currency: "cad",
+              product_data: { name: `Monthly RG Premium – ${location.propertyAddress || location.address}` },
+              recurring: { interval: "month" },
+              unit_amount: amountCents,
             },
-            unit_amount: amountCents,
+            quantity: 1,
           },
-          quantity: 1,
-        }],
-        mode: "payment",
-        success_url: `${baseUrl}/rg-payment/success?session_id={CHECKOUT_SESSION_ID}&code=${trackingCode}`,
-        cancel_url: `${baseUrl}/rep?tab=locations`,
-        metadata: {
-          type: "rg_payment",
-          paymentId: payment.id,
-          trackingCode,
-          locationId: location.id,
-        },
-      });
+        ];
+        if ((serviceFeeAmountCents || 0) > 0) {
+          lineItems.push({
+            price_data: {
+              currency: "cad",
+              product_data: { name: "Service Fee (First Month)" },
+              unit_amount: serviceFeeAmountCents,
+            },
+            quantity: 1,
+          });
+        }
+        session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          customer_email: landlordEmail,
+          line_items: lineItems,
+          mode: "subscription",
+          subscription_data: {
+            metadata: {
+              rg_type: "rg_subscription",
+              locationId: location.id,
+              paymentId: payment.id,
+              trackingCode,
+            },
+          },
+          success_url: `${baseUrl}/rg-payment/success?session_id={CHECKOUT_SESSION_ID}&code=${trackingCode}`,
+          cancel_url: `${baseUrl}/rep?tab=locations`,
+          metadata: {
+            rg_type: "rg_subscription",
+            paymentId: payment.id,
+            trackingCode,
+            locationId: location.id,
+          },
+        });
+      } else {
+        // --- One-time payment (existing logic) ---
+        session = await stripe.checkout.sessions.create({
+          payment_method_types: ["card"],
+          customer_email: landlordEmail,
+          line_items: [{
+            price_data: {
+              currency: "cad",
+              product_data: { name: desc, description: `Tracking: ${trackingCode}` },
+              unit_amount: amountCents,
+            },
+            quantity: 1,
+          }],
+          mode: "payment",
+          success_url: `${baseUrl}/rg-payment/success?session_id={CHECKOUT_SESSION_ID}&code=${trackingCode}`,
+          cancel_url: `${baseUrl}/rep?tab=locations`,
+          metadata: {
+            rg_type: "rg_payment",
+            paymentId: payment.id,
+            trackingCode,
+            locationId: location.id,
+          },
+        });
+      }
 
-      // Save session ID
       await storage.updateRgPayment(payment.id, { stripeSessionId: session.id });
-
-      res.json({ url: session.url, sessionId: session.id, trackingCode, paymentId: payment.id });
+      res.json({ url: session.url, sessionId: session.id, trackingCode, paymentId: payment.id, recurring: !!recurring });
     } catch (error: any) {
       console.error("[RG Payment] Checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Save service fee settings for a location
+  app.post("/api/rep/locations/:id/service-fee", async (req, res) => {
+    try {
+      const { actorId, serviceFeeEnabled, serviceFee } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const updated = await storage.updateLocation(req.params.id, {
+        serviceFeeEnabled: !!serviceFeeEnabled,
+        serviceFee: String(Number(serviceFee) || 0),
+      } as any);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Cancel active Stripe subscription for a location
+  app.post("/api/rep/locations/:id/cancel-subscription", async (req, res) => {
+    try {
+      const { actorId } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+      if (!location.stripeSubscriptionId) return res.status(400).json({ error: "No active subscription" });
+
+      const stripe = await getUncachableStripeClient();
+      await stripe.subscriptions.cancel(location.stripeSubscriptionId);
+      const updated = await storage.updateLocation(req.params.id, {
+        subscriptionStatus: "cancelled",
+      } as any);
+      res.json({ success: true, location: updated });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Sync paid invoices from a Stripe subscription into rg_payments
+  app.post("/api/rep/locations/:id/sync-subscription-payments", async (req, res) => {
+    try {
+      const { actorId } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const location = await storage.getLocation(req.params.id);
+      if (!location || !location.stripeSubscriptionId) {
+        return res.json({ synced: 0 });
+      }
+      const stripe = await getUncachableStripeClient();
+      const invoices = await stripe.invoices.list({
+        subscription: location.stripeSubscriptionId,
+        status: "paid",
+        limit: 100,
+      });
+
+      let synced = 0;
+      for (const inv of invoices.data) {
+        // Skip if already recorded
+        const existing = await storage.getRgPaymentByStripePaymentIntent(inv.payment_intent as string);
+        if (existing) continue;
+
+        const periodStart = inv.period_start ? new Date(inv.period_start * 1000) : new Date();
+        const periodLabel = periodStart.toLocaleString("en-CA", { month: "long", year: "numeric" });
+        let trackingCode = generateTrackingCode("monthly");
+        for (let i = 0; i < 5; i++) {
+          const ex = await storage.getRgPaymentByTrackingCode(trackingCode);
+          if (!ex) break;
+          trackingCode = generateTrackingCode("monthly");
+        }
+        await storage.createRgPayment({
+          locationId: location.id,
+          trackingCode,
+          planType: "monthly",
+          amountCents: inv.amount_paid,
+          landlordEmail: location.landlordEmail || "",
+          landlordName: location.landlordName || "",
+          description: `Monthly RG Premium – ${periodLabel} (auto)`,
+          periodLabel,
+          createdBy: user.id,
+          status: "paid",
+          stripeSubscriptionId: location.stripeSubscriptionId,
+          stripePaymentIntentId: inv.payment_intent as string,
+          paidAt: new Date(inv.status_transitions?.paid_at ? inv.status_transitions.paid_at * 1000 : Date.now()),
+        } as any);
+        synced++;
+      }
+      res.json({ synced });
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
@@ -3756,12 +3902,21 @@ export async function registerRoutes(
 
       if (payment.status === "paid") return res.json(payment); // already confirmed
 
-      const updated = await storage.updateRgPayment(payment.id, {
-        status: "paid",
-        stripePaymentIntentId: session.payment_intent as string,
-        paidAt: new Date(),
-      });
+      const updateData: any = { status: "paid", paidAt: new Date() };
 
+      if (session.mode === "subscription" && session.subscription) {
+        // Store subscription ID on the payment and on the location
+        const subId = session.subscription as string;
+        updateData.stripeSubscriptionId = subId;
+        await storage.updateLocation(payment.locationId, {
+          stripeSubscriptionId: subId,
+          subscriptionStatus: "active",
+        } as any);
+      } else {
+        updateData.stripePaymentIntentId = session.payment_intent as string;
+      }
+
+      const updated = await storage.updateRgPayment(payment.id, updateData);
       res.json(updated);
     } catch (error: any) {
       console.error("[RG Payment] Confirm error:", error);
