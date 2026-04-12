@@ -343,8 +343,8 @@ function PricingTab({
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" min={MIN_ANNUAL_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5 opacity-90">
-                    <span className="text-xs">Commission = {totalAnnualNum.toFixed(2)}% − {annualRateNum.toFixed(2)}% =</span>
-                    <span className="font-bold text-sm">{commissionNum.toFixed(2)}%</span>
+                    <span className="text-xs">Commission = ${fmt(totalDeductionAnnual)} − ${fmt(rgAmountAnnual)} =</span>
+                    <span className="font-bold text-sm">${fmt(commAmountAnnual)}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -369,7 +369,7 @@ function PricingTab({
               <div className="flex justify-between items-center text-sm px-3 py-2.5 border-b border-gray-100">
                 <span className="flex items-center gap-2 text-gray-600">
                   <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
-                  <span>Commission <span className="text-xs text-gray-400">({totalAnnualNum.toFixed(2)}% − {annualRateNum.toFixed(2)}%)</span></span>
+                  <span>Commission <span className="text-xs text-gray-400">(${fmt(totalDeductionAnnual)} − ${fmt(rgAmountAnnual)})</span></span>
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="text-xs text-gray-400 font-mono">{commissionNum.toFixed(2)}% × ${fmt(annualRent)}</span>
@@ -410,8 +410,8 @@ function PricingTab({
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" min={MIN_MONTHLY_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5 opacity-90">
-                    <span className="text-xs">Commission = {totalMonthlyNum.toFixed(2)}% − {monthlyRateNum.toFixed(2)}% =</span>
-                    <span className="font-bold text-sm">{commissionMonthlyNum.toFixed(2)}%</span>
+                    <span className="text-xs">Commission = ${fmt(totalDeductionMonthly)} − ${fmt(rgAmountMonthly)} =</span>
+                    <span className="font-bold text-sm">${fmt(commAmountMonthly)}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -436,7 +436,7 @@ function PricingTab({
               <div className="flex justify-between items-center text-sm px-3 py-2.5 border-b border-gray-100">
                 <span className="flex items-center gap-2 text-gray-600">
                   <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
-                  <span>Commission <span className="text-xs text-gray-400">({totalMonthlyNum.toFixed(2)}% − {monthlyRateNum.toFixed(2)}%)</span></span>
+                  <span>Commission <span className="text-xs text-gray-400">(${fmt(totalDeductionMonthly)} − ${fmt(rgAmountMonthly)})</span></span>
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="text-xs text-gray-400 font-mono">{commissionMonthlyNum.toFixed(2)}% × ${fmt(rent)}</span>
