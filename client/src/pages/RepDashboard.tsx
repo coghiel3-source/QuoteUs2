@@ -164,8 +164,14 @@ function PricingTab({
   const { toast } = useToast();
   const rent = monthlyRent || 0;
   const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
-  const [commission, setCommission] = useState<string>(commissionPercentProp ? String(Number(commissionPercentProp)) : "0");
-  const [commissionMonthly, setCommissionMonthly] = useState<string>(monthlyCommissionPercentProp ? String(Number(monthlyCommissionPercentProp)) : "0");
+  // totalAnnualStr / totalMonthlyStr = the COMBINED rate the user enters (RG + commission)
+  // Commission is derived as: totalRate - rgRate
+  const initAnnualRg = Number(baseAnnualRate) || 4.5;
+  const initMonthlyRg = Number(baseMonthlyRate) || 4.5;
+  const initCommA = Number(commissionPercentProp) || 0;
+  const initCommM = Number(monthlyCommissionPercentProp) || 0;
+  const [totalAnnualStr, setTotalAnnualStr] = useState<string>(String(initAnnualRg + initCommA));
+  const [totalMonthlyStr, setTotalMonthlyStr] = useState<string>(String(initMonthlyRg + initCommM));
   const [commissionSaved, setCommissionSaved] = useState(false);
   const [pricingNotes, setPricingNotes] = useState<string>(pricingNotesProp || "");
   const [pricingNotesSaved, setPricingNotesSaved] = useState(false);
@@ -191,25 +197,28 @@ function PricingTab({
   const [rcptLoading, setRcptLoading] = useState(false);
 
   const markupNum = Math.max(0, parseFloat(markup) || 0);
-  const commissionNum = Math.max(0, parseFloat(commission) || 0);
-  const commissionMonthlyNum = Math.max(0, parseFloat(commissionMonthly) || 0);
   const MIN_ANNUAL_RATE = 4.5;
   const MIN_MONTHLY_RATE = 4.5;
   const annualRateNum = Math.max(MIN_ANNUAL_RATE, parseFloat(editAnnual) || MIN_ANNUAL_RATE);
   const monthlyRateNum = Math.max(MIN_MONTHLY_RATE, parseFloat(editMonthly) || MIN_MONTHLY_RATE);
+  // Total rate entered by user; must be >= the RG rate
+  const totalAnnualNum = Math.max(annualRateNum, parseFloat(totalAnnualStr) || annualRateNum);
+  const totalMonthlyNum = Math.max(monthlyRateNum, parseFloat(totalMonthlyStr) || monthlyRateNum);
+  // Commission is the difference between total and RG rate
+  const commissionNum = Math.max(0, totalAnnualNum - annualRateNum);
+  const commissionMonthlyNum = Math.max(0, totalMonthlyNum - monthlyRateNum);
   const finalAnnualRate = annualRateNum + markupNum;
   const finalMonthlyRate = monthlyRateNum + markupNum;
   const annualRent = rent * 12;
-  // RG amounts (what the insurance costs)
+  // RG amounts
   const rgAmountAnnual = (annualRateNum / 100) * annualRent;
   const rgAmountMonthly = (monthlyRateNum / 100) * rent;
-  // Commission amounts (rep's cut, added on top of RG rate)
+  // Commission amounts (derived from difference)
   const commAmountAnnual = (commissionNum / 100) * annualRent;
   const commAmountMonthly = (commissionMonthlyNum / 100) * rent;
-  // Total deduction = RG + Commission
-  const totalDeductionAnnual = rgAmountAnnual + commAmountAnnual;
-  const totalDeductionMonthly = rgAmountMonthly + commAmountMonthly;
-  // Legacy compat
+  // Total deduction = totalRate × rent (same as RG + Commission)
+  const totalDeductionAnnual = (totalAnnualNum / 100) * annualRent;
+  const totalDeductionMonthly = (totalMonthlyNum / 100) * rent;
   const annualPremium = rgAmountAnnual;
   const annualPremiumMonthly = annualPremium / 12;
   const monthlyPremium = rgAmountMonthly;
@@ -322,18 +331,25 @@ function PricingTab({
                 <span className="text-gray-500">Annual rent (12 × ${fmt(rent)}/mo)</span>
                 <span className="font-mono font-semibold text-gray-800">${fmt(annualRent)}</span>
               </div>
-              {/* Combined rate + total — the headline row */}
-              <div className="px-3 py-3 bg-blue-600 text-white flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-sm">
-                  <span className="opacity-80">Rate:</span>
-                  <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" min={MIN_ANNUAL_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
-                  <span className="opacity-70">+</span>
-                  <WfPctInput value={commission} onChange={v => { setCommission(v); setCommissionSaved(false); }} testId="input-commission-annual" color="border-white/40 focus:ring-white/60 text-gray-900" />
-                  <span className="font-bold ml-1">= {(annualRateNum + commissionNum).toFixed(2)}%</span>
+              {/* Combined rate + total — headline row */}
+              <div className="px-3 py-3 bg-blue-600 text-white flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-1 text-sm min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="opacity-70 text-xs shrink-0">Total %</span>
+                    <WfPctInput value={totalAnnualStr} onChange={v => { setTotalAnnualStr(v); setCommissionSaved(false); }} testId="input-total-annual" min={annualRateNum} color="border-white/40 focus:ring-white/60 text-gray-900" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="opacity-70 text-xs shrink-0">RG min %</span>
+                    <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" min={MIN_ANNUAL_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
+                  </div>
+                  <div className="flex items-center gap-1.5 opacity-90">
+                    <span className="text-xs">Commission = {totalAnnualNum.toFixed(2)}% − {annualRateNum.toFixed(2)}% =</span>
+                    <span className="font-bold text-sm">{commissionNum.toFixed(2)}%</span>
+                  </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="text-xs opacity-70">Total Deduction</p>
-                  <p className="font-bold text-lg font-mono">${fmt(totalDeductionAnnual)}</p>
+                  <p className="font-bold text-xl font-mono">${fmt(totalDeductionAnnual)}</p>
                 </div>
               </div>
               {/* Breakdown of how the total splits */}
@@ -353,7 +369,7 @@ function PricingTab({
               <div className="flex justify-between items-center text-sm px-3 py-2.5 border-b border-gray-100">
                 <span className="flex items-center gap-2 text-gray-600">
                   <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
-                  Commission
+                  <span>Commission <span className="text-xs text-gray-400">({totalAnnualNum.toFixed(2)}% − {annualRateNum.toFixed(2)}%)</span></span>
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="text-xs text-gray-400 font-mono">{commissionNum.toFixed(2)}% × ${fmt(annualRent)}</span>
@@ -365,7 +381,7 @@ function PricingTab({
                 <span className="font-mono text-purple-700 font-semibold">${fmt(commAmountAnnual)}</span>
               </div>
               <div className="flex justify-between items-center text-sm px-3 py-3 bg-blue-600 text-white font-bold">
-                <span>Total Deduction <span className="font-normal opacity-80 text-xs">({(annualRateNum + commissionNum).toFixed(2)}% of ${fmt(annualRent)})</span></span>
+                <span>Total Deduction <span className="font-normal opacity-80 text-xs">({totalAnnualNum.toFixed(2)}% of ${fmt(annualRent)})</span></span>
                 <span className="font-mono text-base">${fmt(totalDeductionAnnual)}</span>
               </div>
             </div>
@@ -383,17 +399,24 @@ function PricingTab({
                 <span className="font-mono font-semibold text-gray-800">${fmt(rent)}/mo</span>
               </div>
               {/* Combined rate + total */}
-              <div className="px-3 py-3 bg-green-600 text-white flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-sm">
-                  <span className="opacity-80">Rate:</span>
-                  <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" min={MIN_MONTHLY_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
-                  <span className="opacity-70">+</span>
-                  <WfPctInput value={commissionMonthly} onChange={v => { setCommissionMonthly(v); setCommissionSaved(false); }} testId="input-commission-monthly" color="border-white/40 focus:ring-white/60 text-gray-900" />
-                  <span className="font-bold ml-1">= {(monthlyRateNum + commissionMonthlyNum).toFixed(2)}%</span>
+              <div className="px-3 py-3 bg-green-600 text-white flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-1 text-sm min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="opacity-70 text-xs shrink-0">Total %</span>
+                    <WfPctInput value={totalMonthlyStr} onChange={v => { setTotalMonthlyStr(v); setCommissionSaved(false); }} testId="input-total-monthly" min={monthlyRateNum} color="border-white/40 focus:ring-white/60 text-gray-900" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="opacity-70 text-xs shrink-0">RG min %</span>
+                    <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" min={MIN_MONTHLY_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
+                  </div>
+                  <div className="flex items-center gap-1.5 opacity-90">
+                    <span className="text-xs">Commission = {totalMonthlyNum.toFixed(2)}% − {monthlyRateNum.toFixed(2)}% =</span>
+                    <span className="font-bold text-sm">{commissionMonthlyNum.toFixed(2)}%</span>
+                  </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="text-xs opacity-70">Total Deduction</p>
-                  <p className="font-bold text-lg font-mono">${fmt(totalDeductionMonthly)}<span className="text-sm font-normal opacity-80">/mo</span></p>
+                  <p className="font-bold text-xl font-mono">${fmt(totalDeductionMonthly)}<span className="text-sm font-normal opacity-80">/mo</span></p>
                 </div>
               </div>
               {/* Breakdown */}
@@ -413,7 +436,7 @@ function PricingTab({
               <div className="flex justify-between items-center text-sm px-3 py-2.5 border-b border-gray-100">
                 <span className="flex items-center gap-2 text-gray-600">
                   <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
-                  Commission
+                  <span>Commission <span className="text-xs text-gray-400">({totalMonthlyNum.toFixed(2)}% − {monthlyRateNum.toFixed(2)}%)</span></span>
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="text-xs text-gray-400 font-mono">{commissionMonthlyNum.toFixed(2)}% × ${fmt(rent)}</span>
@@ -425,7 +448,7 @@ function PricingTab({
                 <span className="font-mono text-purple-700 font-semibold">${fmt(commAmountMonthly)}/mo <span className="text-xs text-gray-400">(${fmt(commAmountMonthly * 12)}/yr)</span></span>
               </div>
               <div className="flex justify-between items-center text-sm px-3 py-3 bg-green-600 text-white font-bold">
-                <span>Total Deduction <span className="font-normal opacity-80 text-xs">({(monthlyRateNum + commissionMonthlyNum).toFixed(2)}% of ${fmt(rent)}/mo)</span></span>
+                <span>Total Deduction <span className="font-normal opacity-80 text-xs">({totalMonthlyNum.toFixed(2)}% of ${fmt(rent)}/mo)</span></span>
                 <span className="font-mono text-base">${fmt(totalDeductionMonthly)}/mo</span>
               </div>
             </div>
