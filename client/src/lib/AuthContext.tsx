@@ -54,7 +54,7 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   loading: boolean;
-  pendingTwoFactor: { userId: string } | null;
+  pendingTwoFactor: { userId: string; previewCode?: string } | null;
   login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string) => Promise<boolean | 'twoFactor'>;
   verifyTwoFactor: (token: string) => Promise<boolean>;
   loginWithGoogle: (userId: string) => Promise<boolean>;
@@ -181,9 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      // 2FA required — hold userId, return 'twoFactor' so caller knows not to show error
+      // 2FA required — hold userId (+ preview code if SMTP not configured), return 'twoFactor'
       if (response.twoFactorRequired) {
-        setPendingTwoFactor({ userId: response.userId });
+        setPendingTwoFactor({ userId: response.userId, previewCode: response.previewCode });
         return 'twoFactor';
       }
 

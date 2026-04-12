@@ -10,12 +10,10 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcryptjs";
-import { generateSecret as totpGenerateSecret, verifySync as totpVerifySync, generateURI as totpGenerateURI } from "otplib";
-import qrcode from "qrcode";
 
 function safeUser(user: any): any {
   if (!user) return user;
-  const { password, resetToken, resetTokenExpiry, twoFactorSecret, ...safe } = user;
+  const { password, resetToken, resetTokenExpiry, twoFactorSecret, twoFactorCode, twoFactorCodeExpiry, ...safe } = user;
   return safe;
 }
 
@@ -204,9 +202,29 @@ export async function registerRoutes(
         }
       }
 
-      // If user has 2FA enabled, require OTP before returning user data
+      // If user has 2FA enabled, generate + email a one-time code
       if ((user as any).twoFactorEnabled) {
-        return res.json({ twoFactorRequired: true, userId: user.id });
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        await storage.updateUser(user.id, { twoFactorCode: otp, twoFactorCodeExpiry: expiry } as any);
+
+        const emailHtml = `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+            <h2 style="color:#1e3a5f;margin-bottom:8px">QuoteUs.ca — Login Verification</h2>
+            <p style="color:#555;margin-bottom:20px">Use the code below to complete your sign-in. It expires in <strong>10 minutes</strong>.</p>
+            <div style="background:#f0f4ff;border:2px solid #3b5bdb;border-radius:12px;padding:24px;text-align:center;margin-bottom:20px">
+              <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#1e3a5f">${otp}</span>
+            </div>
+            <p style="color:#888;font-size:13px">If you did not attempt to log in, please ignore this email and consider changing your password.</p>
+          </div>`;
+
+        const sent = await sendEmail({ to: user.email, subject: "QuoteUs.ca — Your Login Code", html: emailHtml });
+
+        const response: any = { twoFactorRequired: true, userId: user.id };
+        if (!sent) {
+          response.previewCode = otp;
+        }
+        return res.json(response);
       }
       
       res.json(safeUser(user));
@@ -215,37 +233,15 @@ export async function registerRoutes(
     }
   });
 
-  // ── 2FA Routes ──────────────────────────────────────────────────────────────
+  // ── 2FA Routes (Email OTP) ───────────────────────────────────────────────────
 
-  // GET /api/auth/2fa/setup — generate a new TOTP secret + QR code for the current user
-  app.post("/api/auth/2fa/setup", async (req, res) => {
+  // POST /api/auth/2fa/enable — enable email 2FA for the current user (no code required)
+  app.post("/api/auth/2fa/enable", async (req, res) => {
     try {
       const { userId } = req.body;
       if (!userId) return res.status(400).json({ error: "userId required" });
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const secret = totpGenerateSecret();
-      const otpAuthUrl = totpGenerateURI({ strategy: "totp", label: user.email, issuer: "QuoteUs.ca", secret });
-      const qrCodeDataUrl = await qrcode.toDataURL(otpAuthUrl);
-      // Store the pending secret (not enabled yet — user must verify first)
-      await storage.updateUser(userId, { twoFactorSecret: secret } as any);
-      res.json({ secret, qrCodeDataUrl });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // POST /api/auth/2fa/verify-setup — verify OTP and officially enable 2FA
-  app.post("/api/auth/2fa/verify-setup", async (req, res) => {
-    try {
-      const { userId, token } = req.body;
-      if (!userId || !token) return res.status(400).json({ error: "userId and token required" });
-      const user = await storage.getUser(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
-      const secret = (user as any).twoFactorSecret;
-      if (!secret) return res.status(400).json({ error: "No 2FA setup in progress. Please start setup first." });
-      const verifyResult = totpVerifySync({ token, secret });
-      if (!verifyResult || !(verifyResult as any).valid) return res.status(401).json({ error: "Invalid code. Please try again." });
       await storage.updateUser(userId, { twoFactorEnabled: true } as any);
       res.json({ success: true });
     } catch (error: any) {
@@ -253,7 +249,7 @@ export async function registerRoutes(
     }
   });
 
-  // POST /api/auth/2fa/verify-login — verify OTP during login flow, return user
+  // POST /api/auth/2fa/verify-login — verify email OTP during login, return user
   app.post("/api/auth/2fa/verify-login", async (req, res) => {
     try {
       const { userId, token } = req.body;
@@ -261,28 +257,27 @@ export async function registerRoutes(
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
       if (!(user as any).twoFactorEnabled) return res.status(400).json({ error: "2FA not enabled for this account" });
-      const secret = (user as any).twoFactorSecret;
-      if (!secret) return res.status(500).json({ error: "2FA misconfigured" });
-      const verifyResult2 = totpVerifySync({ token, secret });
-      if (!verifyResult2 || !(verifyResult2 as any).valid) return res.status(401).json({ error: "Invalid or expired code. Please try again." });
+      const stored = (user as any).twoFactorCode;
+      const expiry = (user as any).twoFactorCodeExpiry;
+      if (!stored) return res.status(400).json({ error: "No verification code found. Please log in again." });
+      if (!expiry || new Date() > new Date(expiry)) return res.status(401).json({ error: "Verification code has expired. Please log in again." });
+      if (token.trim() !== stored) return res.status(401).json({ error: "Invalid code. Please check your email and try again." });
+      // Clear the used code
+      await storage.updateUser(userId, { twoFactorCode: null, twoFactorCodeExpiry: null } as any);
       res.json(safeUser(user));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // POST /api/auth/2fa/disable — user disables their own 2FA (requires current OTP)
+  // POST /api/auth/2fa/disable — disable 2FA for the current user (already logged in)
   app.post("/api/auth/2fa/disable", async (req, res) => {
     try {
-      const { userId, token } = req.body;
-      if (!userId || !token) return res.status(400).json({ error: "userId and current OTP required" });
+      const { userId } = req.body;
+      if (!userId) return res.status(400).json({ error: "userId required" });
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      const secret = (user as any).twoFactorSecret;
-      if (!secret) return res.status(400).json({ error: "2FA not enabled" });
-      const verifyResult3 = totpVerifySync({ token, secret });
-      if (!verifyResult3 || !(verifyResult3 as any).valid) return res.status(401).json({ error: "Invalid code. Please try again." });
-      await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null } as any);
+      await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorCode: null, twoFactorCodeExpiry: null } as any);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -299,7 +294,7 @@ export async function registerRoutes(
       }
       const user = await storage.getUser(req.params.id);
       if (!user) return res.status(404).json({ error: "User not found" });
-      await storage.updateUser(req.params.id, { twoFactorEnabled: false, twoFactorSecret: null } as any);
+      await storage.updateUser(req.params.id, { twoFactorEnabled: false, twoFactorCode: null, twoFactorCodeExpiry: null } as any);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

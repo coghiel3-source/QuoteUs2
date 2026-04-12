@@ -111,9 +111,9 @@ export default function LoginPage() {
       <div className="bg-secondary/30 min-h-screen pb-20">
         <div className="bg-primary text-white py-12 px-4">
           <div className="container mx-auto max-w-4xl text-center">
-            <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Two-Factor Verification</h1>
+            <h1 className="text-3xl md:text-5xl font-serif font-bold mb-4">Check Your Email</h1>
             <p className="text-lg text-primary-foreground/80 max-w-2xl mx-auto">
-              Enter the 6-digit code from your authenticator app.
+              A 6-digit verification code has been sent to your email address.
             </p>
           </div>
         </div>
@@ -124,8 +124,8 @@ export default function LoginPage() {
               <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <ShieldCheck className="h-7 w-7 text-blue-600" />
               </div>
-              <CardTitle>Authentication Code</CardTitle>
-              <CardDescription>Open your authenticator app (Google Authenticator, Authy, etc.) and enter the 6-digit code shown.</CardDescription>
+              <CardTitle>Email Verification</CardTitle>
+              <CardDescription>Enter the 6-digit code sent to your email address. The code expires in 10 minutes.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex justify-center gap-2">
@@ -146,6 +146,13 @@ export default function LoginPage() {
                 ))}
               </div>
 
+              {pendingTwoFactor.previewCode && (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-center">
+                  <p className="text-xs text-amber-700 font-medium mb-1">SMTP not configured — code for testing:</p>
+                  <p className="text-2xl font-bold font-mono tracking-widest text-amber-800">{pendingTwoFactor.previewCode}</p>
+                </div>
+              )}
+
               <Button
                 onClick={handleOtpSubmit}
                 disabled={isSubmitting || otpDigits.join("").length !== 6}
@@ -165,7 +172,7 @@ export default function LoginPage() {
             </CardContent>
           </Card>
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Codes expire every 30 seconds. If your code is not working, wait for a new one.
+            Didn't receive the email? Check your spam folder, or go back and try again.
           </p>
         </div>
       </div>
