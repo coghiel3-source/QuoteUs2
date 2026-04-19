@@ -2665,6 +2665,62 @@ export async function registerRoutes(
     }
   });
 
+  // Report which Stripe keys are saved (no key values exposed)
+  app.get("/api/settings/stripe-status", async (req, res) => {
+    try {
+      const secret = await storage.getSetting("stripe_secret_key");
+      const publishable = await storage.getSetting("stripe_publishable_key");
+      res.json({ hasSecret: !!(secret && secret.length > 0), hasPublishable: !!(publishable && publishable.length > 0) });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── Stripe Key Management ────────────────────────────────────────────────────
+  // Save Stripe keys to system_settings
+  app.post("/api/admin/stripe-keys", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      const actorId = req.body?.actorId || user?.id;
+      const actor = actorId ? await storage.getUser(actorId) : user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { secretKey, publishableKey, webhookSecret } = req.body;
+      if (secretKey !== undefined && secretKey !== null) {
+        await storage.setSetting("stripe_secret_key", secretKey.trim(), actor.id);
+      }
+      if (publishableKey !== undefined && publishableKey !== null) {
+        await storage.setSetting("stripe_publishable_key", publishableKey.trim(), actor.id);
+      }
+      if (webhookSecret !== undefined && webhookSecret !== null) {
+        await storage.setSetting("stripe_webhook_secret", webhookSecret.trim(), actor.id);
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Test Stripe connection with the currently saved keys
+  app.post("/api/admin/stripe-test", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      const actorId = req.body?.actorId || user?.id;
+      const actor = actorId ? await storage.getUser(actorId) : user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      // Lightweight API call to verify the key is valid
+      const balance = await stripe.balance.retrieve();
+      res.json({ success: true, available: balance.available?.map(b => `${b.amount / 100} ${b.currency.toUpperCase()}`).join(", ") || "0.00 CAD" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Connection failed" });
+    }
+  });
+
   // Get active ad(s) for page (used by AdPlacement component)
   app.get("/api/advertisements/active", async (req, res) => {
     try {

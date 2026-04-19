@@ -1,9 +1,20 @@
 import Stripe from 'stripe';
+import { pool } from './db';
 
-let connectionSettings: any;
+async function getKeyFromDb(key: string): Promise<string | null> {
+  try {
+    const result = await pool.query(
+      "SELECT value FROM system_settings WHERE key = $1 LIMIT 1",
+      [key]
+    );
+    return result.rows[0]?.value || null;
+  } catch {
+    return null;
+  }
+}
 
 async function getCredentials() {
-  // Fast path: plain env vars (always works in any environment)
+  // 1. Plain env vars (highest priority — works in any environment)
   if (process.env.STRIPE_SECRET_KEY) {
     return {
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
@@ -11,6 +22,17 @@ async function getCredentials() {
     };
   }
 
+  // 2. Admin-saved keys in system_settings (saved via Connections tab)
+  const dbSecret = await getKeyFromDb('stripe_secret_key');
+  const dbPublishable = await getKeyFromDb('stripe_publishable_key');
+  if (dbSecret) {
+    return {
+      publishableKey: dbPublishable || '',
+      secretKey: dbSecret,
+    };
+  }
+
+  // 3. Replit Connector (development or production environment)
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? 'repl ' + process.env.REPL_IDENTITY
@@ -18,45 +40,40 @@ async function getCredentials() {
       ? 'depl ' + process.env.WEB_REPL_RENEWAL
       : null;
 
-  if (!xReplitToken || !hostname) {
-    throw new Error('Stripe credentials not configured. Set STRIPE_SECRET_KEY or configure the Stripe integration.');
-  }
+  if (xReplitToken && hostname) {
+    const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+    const environments = isProduction ? ['production', 'development'] : ['development', 'production'];
 
-  const connectorName = 'stripe';
-  const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+    for (const targetEnvironment of environments) {
+      try {
+        const url = new URL(`https://${hostname}/api/v2/connection`);
+        url.searchParams.set('include_secrets', 'true');
+        url.searchParams.set('connector_names', 'stripe');
+        url.searchParams.set('environment', targetEnvironment);
 
-  // Try preferred environment first, then fall back to the other one
-  const environments = isProduction ? ['production', 'development'] : ['development', 'production'];
+        const response = await fetch(url.toString(), {
+          headers: {
+            'Accept': 'application/json',
+            'X_REPLIT_TOKEN': xReplitToken
+          }
+        });
 
-  for (const targetEnvironment of environments) {
-    try {
-      const url = new URL(`https://${hostname}/api/v2/connection`);
-      url.searchParams.set('include_secrets', 'true');
-      url.searchParams.set('connector_names', connectorName);
-      url.searchParams.set('environment', targetEnvironment);
+        const data = await response.json();
+        const conn = data.items?.[0];
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Accept': 'application/json',
-          'X_REPLIT_TOKEN': xReplitToken
+        if (conn?.settings?.publishable && conn?.settings?.secret) {
+          return {
+            publishableKey: conn.settings.publishable,
+            secretKey: conn.settings.secret,
+          };
         }
-      });
-
-      const data = await response.json();
-      connectionSettings = data.items?.[0];
-
-      if (connectionSettings?.settings?.publishable && connectionSettings?.settings?.secret) {
-        return {
-          publishableKey: connectionSettings.settings.publishable,
-          secretKey: connectionSettings.settings.secret,
-        };
+      } catch {
+        // Try next environment
       }
-    } catch {
-      // Try next environment
     }
   }
 
-  throw new Error('Stripe connection not found. Please configure the Stripe integration or set STRIPE_SECRET_KEY.');
+  throw new Error('Stripe not configured. Enter your keys in Settings → Connections or set STRIPE_SECRET_KEY.');
 }
 
 export async function getUncachableStripeClient() {

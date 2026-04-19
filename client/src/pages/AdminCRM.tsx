@@ -251,6 +251,18 @@ export default function AdminCRMPage() {
   const [smtpSendingTest, setSmtpSendingTest] = useState(false);
   const [testEmailAddress, setTestEmailAddress] = useState("");
   
+  // Stripe Key State
+  const [stripeSecretKey, setStripeSecretKey] = useState("");
+  const [stripePublishableKey, setStripePublishableKey] = useState("");
+  const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
+  const [showStripeSecret, setShowStripeSecret] = useState(false);
+  const [showStripeWebhook, setShowStripeWebhook] = useState(false);
+  const [stripeSaving, setStripeSaving] = useState<string | null>(null);
+  const [stripeTesting, setStripeTesting] = useState(false);
+  const [stripeTestResult, setStripeTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [stripeHasSecret, setStripeHasSecret] = useState(false);
+  const [stripeHasPublishable, setStripeHasPublishable] = useState(false);
+
   // Notification Email State
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
   const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
@@ -687,6 +699,15 @@ export default function AdminCRMPage() {
       })
       .catch(console.error);
     
+    // Check if Stripe keys are saved in system_settings
+    fetch("/api/settings/stripe-status")
+      .then(r => r.json())
+      .then(data => {
+        if (data.hasSecret) setStripeHasSecret(true);
+        if (data.hasPublishable) setStripeHasPublishable(true);
+      })
+      .catch(console.error);
+
     // Load notification email setting
     fetch("/api/admin/settings/notification_email")
       .then(r => r.json())
@@ -6564,50 +6585,210 @@ export default function AdminCRMPage() {
                       <p className="text-sm text-muted-foreground">Process credit purchases and payments</p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3 text-green-500" />
-                    Connected
-                  </Badge>
+                  {stripeTestResult ? (
+                    stripeTestResult.ok ? (
+                      <Badge variant="outline" className="flex items-center gap-1 text-green-600">
+                        <CheckCircle className="h-3 w-3" />
+                        Connected
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="flex items-center gap-1 text-red-500">
+                        <XCircle className="h-3 w-3" />
+                        Error
+                      </Badge>
+                    )
+                  ) : (stripeHasSecret || stripeHasPublishable) ? (
+                    <Badge variant="outline" className="flex items-center gap-1 text-green-600">
+                      <CheckCircle className="h-3 w-3" />
+                      Keys Saved
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
+                      <XCircle className="h-3 w-3" />
+                      Not Configured
+                    </Badge>
+                  )}
                 </div>
                 <div className="space-y-3 mt-4">
                   <div className="space-y-2">
-                    <Label>Stripe Secret Key</Label>
+                    <Label>Stripe Secret Key {stripeHasSecret && <span className="text-xs text-green-600 font-normal">(saved)</span>}</Label>
                     <div className="flex gap-2">
-                      <Input 
-                        type="password" 
-                        placeholder="sk_live_••••••••••••••••"
-                        className="font-mono"
-                        data-testid="input-stripe-secret-key"
-                      />
-                      <Button variant="outline" data-testid="button-save-stripe-key">Save</Button>
+                      <div className="relative flex-1">
+                        <Input
+                          type={showStripeSecret ? "text" : "password"}
+                          placeholder={stripeHasSecret ? "Leave blank to keep existing key" : "sk_live_••••••••••••••••"}
+                          className="font-mono pr-10"
+                          value={stripeSecretKey}
+                          onChange={e => setStripeSecretKey(e.target.value)}
+                          data-testid="input-stripe-secret-key"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStripeSecret(!showStripeSecret)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showStripeSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        disabled={!stripeSecretKey || stripeSaving === "secret"}
+                        data-testid="button-save-stripe-key"
+                        onClick={async () => {
+                          setStripeSaving("secret");
+                          try {
+                            const res = await fetch("/api/admin/stripe-keys", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ actorId: user?.id, secretKey: stripeSecretKey }),
+                            });
+                            if (res.ok) {
+                              setStripeHasSecret(true);
+                              setStripeSecretKey("");
+                              toast({ title: "Stripe secret key saved" });
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "Save failed", description: err.error, variant: "destructive" });
+                            }
+                          } catch {
+                            toast({ title: "Network error", variant: "destructive" });
+                          }
+                          setStripeSaving(null);
+                        }}
+                      >
+                        {stripeSaving === "secret" ? "Saving…" : "Save"}
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Your Stripe secret key from the Stripe Dashboard</p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Stripe Publishable Key</Label>
+                    <Label>Stripe Publishable Key {stripeHasPublishable && <span className="text-xs text-green-600 font-normal">(saved)</span>}</Label>
                     <div className="flex gap-2">
-                      <Input 
-                        type="text" 
-                        placeholder="pk_live_••••••••••••••••"
-                        className="font-mono"
+                      <Input
+                        type="text"
+                        placeholder={stripeHasPublishable ? "Leave blank to keep existing key" : "pk_live_••••••••••••••••"}
+                        className="font-mono flex-1"
+                        value={stripePublishableKey}
+                        onChange={e => setStripePublishableKey(e.target.value)}
                         data-testid="input-stripe-publishable-key"
                       />
-                      <Button variant="outline" data-testid="button-save-stripe-pub-key">Save</Button>
+                      <Button
+                        variant="outline"
+                        disabled={!stripePublishableKey || stripeSaving === "publishable"}
+                        data-testid="button-save-stripe-pub-key"
+                        onClick={async () => {
+                          setStripeSaving("publishable");
+                          try {
+                            const res = await fetch("/api/admin/stripe-keys", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ actorId: user?.id, publishableKey: stripePublishableKey }),
+                            });
+                            if (res.ok) {
+                              setStripeHasPublishable(true);
+                              setStripePublishableKey("");
+                              toast({ title: "Stripe publishable key saved" });
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "Save failed", description: err.error, variant: "destructive" });
+                            }
+                          } catch {
+                            toast({ title: "Network error", variant: "destructive" });
+                          }
+                          setStripeSaving(null);
+                        }}
+                      >
+                        {stripeSaving === "publishable" ? "Saving…" : "Save"}
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Your Stripe publishable key (safe to expose client-side)</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Webhook Signing Secret</Label>
                     <div className="flex gap-2">
-                      <Input 
-                        type="password" 
-                        placeholder="whsec_••••••••••••••••"
-                        className="font-mono"
-                        data-testid="input-stripe-webhook-secret"
-                      />
-                      <Button variant="outline" data-testid="button-save-stripe-webhook">Save</Button>
+                      <div className="relative flex-1">
+                        <Input
+                          type={showStripeWebhook ? "text" : "password"}
+                          placeholder="whsec_••••••••••••••••"
+                          className="font-mono pr-10"
+                          value={stripeWebhookSecret}
+                          onChange={e => setStripeWebhookSecret(e.target.value)}
+                          data-testid="input-stripe-webhook-secret"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStripeWebhook(!showStripeWebhook)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showStripeWebhook ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <Button
+                        variant="outline"
+                        disabled={!stripeWebhookSecret || stripeSaving === "webhook"}
+                        data-testid="button-save-stripe-webhook"
+                        onClick={async () => {
+                          setStripeSaving("webhook");
+                          try {
+                            const res = await fetch("/api/admin/stripe-keys", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ actorId: user?.id, webhookSecret: stripeWebhookSecret }),
+                            });
+                            if (res.ok) {
+                              setStripeWebhookSecret("");
+                              toast({ title: "Webhook secret saved" });
+                            } else {
+                              const err = await res.json();
+                              toast({ title: "Save failed", description: err.error, variant: "destructive" });
+                            }
+                          } catch {
+                            toast({ title: "Network error", variant: "destructive" });
+                          }
+                          setStripeSaving(null);
+                        }}
+                      >
+                        {stripeSaving === "webhook" ? "Saving…" : "Save"}
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Used to verify webhook events from Stripe</p>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      disabled={stripeTesting}
+                      data-testid="button-test-stripe"
+                      onClick={async () => {
+                        setStripeTesting(true);
+                        setStripeTestResult(null);
+                        try {
+                          const res = await fetch("/api/admin/stripe-test", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ actorId: user?.id }),
+                          });
+                          const data = await res.json();
+                          if (res.ok && data.success) {
+                            setStripeTestResult({ ok: true, message: `Connected · Balance: ${data.available}` });
+                            toast({ title: "Stripe connected", description: `Balance: ${data.available}` });
+                          } else {
+                            setStripeTestResult({ ok: false, message: data.error || "Connection failed" });
+                            toast({ title: "Stripe connection failed", description: data.error, variant: "destructive" });
+                          }
+                        } catch {
+                          setStripeTestResult({ ok: false, message: "Network error" });
+                          toast({ title: "Network error", variant: "destructive" });
+                        }
+                        setStripeTesting(false);
+                      }}
+                    >
+                      {stripeTesting ? "Testing…" : "Test Connection"}
+                    </Button>
+                    {stripeTestResult && (
+                      <p className={`text-sm self-center ${stripeTestResult.ok ? "text-green-600" : "text-red-500"}`}>
+                        {stripeTestResult.message}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
