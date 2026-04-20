@@ -173,8 +173,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li><Link href="/auto" className="hover:text-white transition-colors">Auto Insurance</Link></li>
                 <li><Link href="/home-insurance" className="hover:text-white transition-colors">Home Insurance</Link></li>
                 <li><Link href="/tenant" className="hover:text-white transition-colors">Tenant Insurance</Link></li>
+                <li><Link href="/travel" className="hover:text-white transition-colors">Travel Insurance</Link></li>
+                <li><Link href="/life" className="hover:text-white transition-colors">Life Insurance</Link></li>
                 <li><Link href="/business" className="hover:text-white transition-colors">Business Insurance</Link></li>
+                <li><Link href="/pet" className="hover:text-white transition-colors">Pet Insurance</Link></li>
+                <li><Link href="/mortgage" className="hover:text-white transition-colors">Mortgage Insurance</Link></li>
                 <li><Link href="/rent-guarantee" className="hover:text-white transition-colors">Rent Guarantee</Link></li>
+                <li><Link href="/compare" className="hover:text-white transition-colors">Compare Quotes</Link></li>
               </ul>
             </div>
 
