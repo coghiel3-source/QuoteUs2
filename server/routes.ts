@@ -2230,7 +2230,7 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Partner access only" });
       }
       if (!actor.referenceId) return res.json([]);
-      const allQuotes = await storage.getQuotes();
+      const allQuotes = await storage.getAllQuotes();
       const referred = allQuotes
         .filter(q => q.referenceId && q.referenceId.toUpperCase() === actor.referenceId!.toUpperCase())
         .map(q => ({
@@ -2256,7 +2256,7 @@ export async function registerRoutes(
       if (!actor || (actor.role !== "admin" && actor.role !== "manager" && actor.role !== "partner")) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const allQuotes = await storage.getQuotes();
+      const allQuotes = await storage.getAllQuotes();
       const allUsers = await storage.getUsers();
       const repIds = new Set(allUsers.filter(u => u.role === "rep").map(u => u.id));
       const referred = allQuotes.filter(q => q.assignedTo && repIds.has(q.assignedTo));
@@ -4071,8 +4071,10 @@ export async function registerRoutes(
   // ── Signature Template (admin/manager only) ──────────────────────
   app.get("/api/admin/signature-template", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
-      if (!user || !["admin", "manager"].includes(user.role)) {
+      const sessionUser = (req.session as any)?.user;
+      const actorId = (req.query as any).actorId || sessionUser?.id;
+      const actor = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       const template = await storage.getSignatureTemplate();
@@ -4084,8 +4086,10 @@ export async function registerRoutes(
 
   app.put("/api/admin/signature-template", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
-      if (!user || !["admin", "manager"].includes(user.role)) {
+      const sessionUser = (req.session as any)?.user;
+      const actorId = req.body?.actorId || sessionUser?.id;
+      const actor = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
         return res.status(403).json({ error: "Access denied" });
       }
       const { title, content } = req.body;

@@ -721,7 +721,7 @@ export default function AdminCRMPage() {
       .catch(console.error);
     
     // Load signature template
-    fetch("/api/admin/signature-template")
+    fetch(`/api/admin/signature-template${user?.id ? `?actorId=${user.id}` : ""}`)
       .then(r => r.json())
       .then(data => {
         if (data) {
@@ -733,7 +733,7 @@ export default function AdminCRMPage() {
 
     // Load document library templates
     setLoadingLibraryTemplates(true);
-    fetch("/api/admin/doc-templates")
+    fetch(`/api/admin/doc-templates${user?.id ? `?actorId=${user.id}` : ""}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setAdminLibraryTemplates(data); })
       .catch(console.error)
@@ -5789,7 +5789,7 @@ export default function AdminCRMPage() {
                         const res = await fetch("/api/admin/signature-template", {
                           method: "PUT",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ title: sigTemplateTitle, content: sigTemplateContent }),
+                          body: JSON.stringify({ actorId: user?.id, title: sigTemplateTitle, content: sigTemplateContent }),
                         });
                         if (res.ok) { alert("Agreement template saved!"); }
                         else { const d = await res.json(); alert(d.error || "Failed to save"); }
