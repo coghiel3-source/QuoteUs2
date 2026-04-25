@@ -21,7 +21,11 @@ export default function TermsPage() {
         <Card className="shadow-xl border-none mb-8">
           <CardContent className="p-8 md:p-12 prose prose-slate max-w-none">
 
-            <p className="lead">
+            <h2>Ownership and Operator</h2>
+            <p>
+              QuoteUs.ca is owned and operated by <strong>1001569714 Ontario Inc. o/a QuoteUs.ca</strong> ("QuoteUs.ca", "QuoteUs", "we", "our", or "us").
+            </p>
+            <p>
               Welcome to QuoteUs.ca ("QuoteUs", "we", "our", or "us"). These Terms of Service ("Terms") govern your access to and use of our website, platform, and services (collectively, the "Platform"). By accessing or using the Platform, you agree to be bound by these Terms.
             </p>
 
@@ -33,15 +37,15 @@ export default function TermsPage() {
               <li>A peer-to-peer marketplace connecting independent vendors, brokers, landlords, tenants, and other users ("Vendors" and "Users")</li>
             </ul>
             <p>
-              QuoteUs.ca is <strong>not</strong> an insurer, underwriter, broker (unless explicitly stated), or financial advisor. We do not guarantee the availability, accuracy, or suitability of any product or service offered through the Platform.
+              QuoteUs.ca is <strong>not</strong> an insurer, underwriter, broker (unless explicitly stated in writing), financial advisor, or fiduciary. We do not guarantee the availability, accuracy, completeness, legality, or suitability of any product or service offered through the Platform.
             </p>
 
             <h2>2. Peer-to-Peer Marketplace Disclaimer</h2>
             <p>The Platform may facilitate a peer-to-peer marketplace where Vendors offer products and services directly to Users.</p>
             <ul>
-              <li>QuoteUs.ca acts solely as a <strong>technology platform and intermediary</strong>.</li>
-              <li>All transactions are <strong>strictly between Users and Vendors</strong>.</li>
-              <li>QuoteUs.ca <strong>does not endorse, guarantee, or assume responsibility</strong> for any Vendor, product, service, or transaction.</li>
+              <li>QuoteUs.ca acts solely as a <strong>passive technology platform and intermediary</strong>. We do not control, supervise, or direct Vendors or Users.</li>
+              <li>All transactions are <strong>strictly between Users and Vendors</strong>. QuoteUs.ca is not a party to any agreement, contract, or transaction between Users and Vendors.</li>
+              <li>QuoteUs.ca <strong>does not endorse, verify, warrant, or assume responsibility</strong> for any Vendor, product, service, or transaction.</li>
             </ul>
 
             <h3>Vendor Responsibility</h3>
@@ -56,170 +60,163 @@ export default function TermsPage() {
             <h3>User Responsibility</h3>
             <p>Users acknowledge that:</p>
             <ul>
-              <li>They engage Vendors at their own risk</li>
-              <li>They must perform their own due diligence before entering into any agreement</li>
+              <li>They engage Vendors entirely at their own risk</li>
+              <li>They must perform independent due diligence before entering into any agreement</li>
             </ul>
 
-            <h2>3. No Liability</h2>
-            <p>To the fullest extent permitted by law, QuoteUs.ca shall not be liable for:</p>
+            <h2>3. No Liability (Enhanced Protection)</h2>
+            <p>
+              To the fullest extent permitted by applicable law, QuoteUs.ca, its parent company, affiliates, directors, officers, employees, agents, and contractors shall have <strong>no liability whatsoever</strong>, whether in contract, tort (including negligence), strict liability, or otherwise, for:
+            </p>
             <ul>
-              <li>Any direct, indirect, incidental, consequential, or punitive damages</li>
+              <li>Any direct, indirect, incidental, consequential, special, exemplary, or punitive damages</li>
+              <li>Loss of profits, revenue, business opportunities, data, goodwill, or anticipated savings</li>
+              <li>Personal injury, property damage, or economic loss</li>
               <li>Any loss arising from transactions between Users and Vendors</li>
-              <li>Errors, omissions, or inaccuracies in listings or content</li>
-              <li>Failure of any Vendor to perform or deliver services</li>
+              <li>Errors, omissions, delays, or inaccuracies in listings or content</li>
+              <li>Failure, misconduct, negligence, or non-performance by any Vendor or third party</li>
             </ul>
-            <p>QuoteUs.ca does not assume liability for:</p>
+            <p>QuoteUs.ca does not assume and expressly disclaims liability for:</p>
             <ul>
-              <li>Insurance coverage decisions</li>
-              <li>Rent Guarantee claims or denials</li>
-              <li>Financial losses incurred through use of the Platform</li>
+              <li>Insurance coverage decisions or outcomes</li>
+              <li>Rent Guarantee approvals, claims, or denials</li>
+              <li>Financial or investment-related decisions made by Users</li>
+              <li>Any reliance placed on information provided through the Platform</li>
             </ul>
-            <p>All liability is expressly <strong>transferred to the Vendor or third-party provider</strong>.</p>
+            <p>
+              All liability is expressly disclaimed and, where applicable, transferred solely to the Vendor or third-party provider.
+            </p>
 
             <h2>4. Rent Guarantee Products</h2>
-            <p>Rent Guarantee products offered on the Platform may be provided by third-party Vendors.</p>
+            <p>Rent Guarantee products offered on the Platform are provided exclusively by third-party Vendors.</p>
             <ul>
-              <li>QuoteUs.ca is <strong>not the guarantor or insurer</strong></li>
-              <li>All obligations related to Rent Guarantee products lie solely with the issuing Vendor</li>
-              <li>Terms, coverage, and claims are governed by the Vendor's agreement</li>
+              <li>QuoteUs.ca is <strong>not</strong> the guarantor, insurer, or underwriter</li>
+              <li>All obligations lie solely with the issuing Vendor</li>
+              <li>Terms, coverage, and claims are governed exclusively by the Vendor's agreement</li>
             </ul>
-            <p>Users must review Vendor-specific agreements carefully.</p>
+            <p>Users are solely responsible for reviewing Vendor-specific agreements before purchasing.</p>
 
             <h2>5. User Accounts</h2>
             <p>Users may be required to create an account. You agree to:</p>
             <ul>
               <li>Provide accurate and complete information</li>
-              <li>Maintain the confidentiality of your login credentials</li>
-              <li>Be responsible for all activity under your account</li>
+              <li>Maintain the confidentiality of login credentials</li>
+              <li>Be fully responsible for all activity under your account</li>
             </ul>
-            <p>QuoteUs.ca reserves the right to suspend or terminate accounts at its discretion.</p>
+            <p>
+              QuoteUs.ca reserves the right to suspend, restrict, or terminate accounts at its sole discretion without liability.
+            </p>
 
             <h2>6. Prohibited Uses</h2>
             <p>You agree not to:</p>
             <ul>
-              <li>Use the Platform for unlawful or fraudulent purposes</li>
-              <li>Misrepresent identity or authority</li>
+              <li>Use the Platform for unlawful, fraudulent, or deceptive purposes</li>
+              <li>Misrepresent identity, credentials, or authority</li>
               <li>Upload false, misleading, or harmful content</li>
-              <li>Interfere with the security or operation of the Platform</li>
+              <li>Interfere with or disrupt the Platform's security or operation</li>
             </ul>
 
             <h2>7. Intellectual Property</h2>
             <p>
-              All content on the Platform, including logos, text, graphics, and software, is owned by or licensed to QuoteUs.ca. You may not copy, distribute, or exploit any content without prior written consent.
+              All content on the Platform is owned by or licensed to QuoteUs.ca and is protected by applicable intellectual property laws. Unauthorized use is strictly prohibited.
             </p>
 
             <h2>8. Third-Party Services</h2>
-            <p>The Platform may include links or integrations with third-party services. QuoteUs.ca is not responsible for:</p>
+            <p>The Platform may include third-party links or integrations.</p>
+            <p>QuoteUs.ca has no control over and assumes no responsibility for:</p>
             <ul>
-              <li>Third-party content or policies</li>
-              <li>Data handling by third parties</li>
+              <li>Third-party content, policies, or practices</li>
+              <li>Data handling or security by third parties</li>
               <li>Any damages resulting from third-party interactions</li>
             </ul>
 
             <h2>9. Disclaimers</h2>
-            <p>The Platform is provided "as is" and "as available". QuoteUs.ca makes no warranties, including:</p>
+            <p>
+              The Platform is provided on an <strong>"as is"</strong> and <strong>"as available"</strong> basis, without warranties of any kind.
+            </p>
+            <p>QuoteUs.ca expressly disclaims all warranties, including:</p>
             <ul>
               <li>Merchantability</li>
               <li>Fitness for a particular purpose</li>
               <li>Non-infringement</li>
             </ul>
-            <p>We do not guarantee uninterrupted or error-free service.</p>
+            <p>We do not guarantee uninterrupted, secure, or error-free operation.</p>
 
-            <h2>10. Indemnification</h2>
+            <h2>10. Indemnification (Strengthened)</h2>
             <p>
-              You agree to indemnify and hold harmless QuoteUs.ca, its directors, officers, employees, and affiliates from any claims, damages, or liabilities arising from:
+              You agree to fully indemnify, defend, and hold harmless QuoteUs.ca and its parent company (1001569714 Ontario Inc.), affiliates, directors, officers, employees, and agents from and against any and all claims, demands, damages, losses, liabilities, costs, and expenses (including legal fees) arising from:
             </p>
             <ul>
-              <li>Your use of the Platform</li>
-              <li>Your interaction with Vendors</li>
-              <li>Your violation of these Terms</li>
+              <li>Your use or misuse of the Platform</li>
+              <li>Your interactions or transactions with Vendors</li>
+              <li>Your violation of these Terms or applicable laws</li>
             </ul>
             <p>
-              Vendors specifically agree to indemnify QuoteUs.ca against all claims related to their products, services, and transactions.
+              Vendors specifically agree to indemnify and hold harmless QuoteUs.ca from all claims related to their products, services, conduct, and transactions.
             </p>
 
             <h2>11. Limitation of Liability</h2>
             <p>To the maximum extent permitted by law:</p>
             <ul>
-              <li>QuoteUs.ca's total liability shall not exceed $100 CAD</li>
-              <li>We are not liable for indirect or consequential damages</li>
+              <li>QuoteUs.ca's total aggregate liability shall not exceed <strong>$100 CAD</strong></li>
+              <li>This limitation applies regardless of the cause of action and even if advised of potential damages</li>
+              <li>If applicable law does not allow full limitation, liability shall be limited to the minimum extent permitted</li>
             </ul>
 
             <h2>12. Termination</h2>
-            <p>We may suspend or terminate access to the Platform at any time without notice.</p>
+            <p>
+              We may suspend or terminate access to the Platform at any time, for any reason, without notice or liability.
+            </p>
 
             <h2>13. Governing Law</h2>
             <p>
-              These Terms shall be governed by the laws of the Province of Ontario and the laws of Canada applicable therein.
+              These Terms shall be governed by the laws of the Province of Ontario and the federal laws of Canada applicable therein.
             </p>
 
             <h2>14. Changes to Terms</h2>
             <p>
-              We may update these Terms at any time. Continued use of the Platform constitutes acceptance of the revised Terms.
+              We reserve the right to modify these Terms at any time. Continued use constitutes acceptance of updated Terms.
             </p>
 
             <h2>15. Contact</h2>
-            <p>For questions regarding these Terms, contact:</p>
             <p>
-              <strong>QuoteUs.ca</strong><br />
+              QuoteUs.ca<br />
               Email: <a href="mailto:info@quoteus.ca">info@quoteus.ca</a><br />
               Website: <a href="https://www.quoteus.ca" target="_blank" rel="noopener noreferrer">https://www.quoteus.ca</a>
             </p>
 
             <h2>16. Refunds, Processing Fees, and Payments</h2>
-            <p>
-              QuoteUs.ca is owned and operated by <strong>1001569714 Ontario Inc. o/a QuoteUs.ca</strong> ("QuoteUs.ca").
-            </p>
 
             <h3>Non-Refundable Fees</h3>
-            <p>
-              All fees charged by QuoteUs.ca for use of the Platform, including but not limited to processing fees, service fees, platform fees, and transaction fees, are <strong>strictly non-refundable under all circumstances</strong>, including but not limited to:
-            </p>
-            <ul>
-              <li>Completed or partially completed transactions</li>
-              <li>Cancelled services</li>
-              <li>Disputes between Users and Vendors</li>
-              <li>Dissatisfaction with Vendor services</li>
-            </ul>
+            <p>All fees are <strong>strictly non-refundable</strong> under all circumstances, including disputes, cancellations, or dissatisfaction.</p>
 
             <h3>Third-Party Payment Processor</h3>
-            <p>Payments on the Platform are processed through third-party payment processors, including but not limited to Stripe.</p>
-            <p>By using the Platform, you acknowledge and agree that:</p>
+            <p>Payments are processed through third parties (e.g., Stripe). QuoteUs.ca is not responsible for:</p>
             <ul>
-              <li>QuoteUs.ca does not store or control your full payment information</li>
-              <li>All payment processing is subject to the terms, conditions, and policies of the payment processor</li>
-              <li>QuoteUs.ca is not responsible for payment processing errors, delays, failures, or security breaches caused by third-party providers</li>
+              <li>Processing errors, delays, or failures</li>
+              <li>Security breaches or data issues</li>
             </ul>
 
             <h3>Refunds and Vendor Responsibility</h3>
-            <p>QuoteUs.ca does not issue refunds for any products or services purchased through the Platform.</p>
-            <p>To request a refund, Users must:</p>
             <ul>
-              <li>Contact the Vendor directly</li>
-              <li>Follow the Vendor's individual refund, cancellation, and dispute policies</li>
-            </ul>
-            <p>Users acknowledge and agree that:</p>
-            <ul>
-              <li>Each Vendor independently establishes their own refund policies</li>
-              <li>QuoteUs.ca has no authority or obligation to enforce refunds</li>
-              <li>All refund decisions are made solely by the Vendor</li>
+              <li>QuoteUs.ca does not issue refunds</li>
+              <li>Users must contact Vendors directly</li>
+              <li>Vendors independently determine refund policies</li>
             </ul>
 
-            <h3>Chargebacks and Payment Disputes</h3>
-            <p>Users agree not to initiate chargebacks or payment disputes without first attempting to resolve the issue directly with the Vendor.</p>
-            <p>In the event of a chargeback or payment dispute:</p>
+            <h3>Chargebacks and Disputes</h3>
+            <p>Users agree not to initiate chargebacks without first contacting the Vendor.</p>
+            <p>QuoteUs.ca reserves the right to:</p>
             <ul>
-              <li>QuoteUs.ca reserves the right to suspend or terminate the User's account</li>
-              <li>Any fees, penalties, or costs incurred by QuoteUs.ca as a result of the chargeback may be recovered from the User</li>
-              <li>QuoteUs.ca may provide transaction records, communications, and account information to the payment processor or financial institution to dispute the chargeback</li>
+              <li>Suspend accounts</li>
+              <li>Recover associated costs</li>
+              <li>Share transaction data to dispute chargebacks</li>
             </ul>
-            <p>
-              Vendors are solely responsible for handling all disputes, refunds, and chargeback claims related to their products or services and agree to indemnify and hold harmless QuoteUs.ca from any resulting claims, losses, or liabilities.
-            </p>
+            <p>Vendors assume full responsibility for disputes and agree to indemnify QuoteUs.ca.</p>
 
             <h2>17. Acknowledgement</h2>
             <p>
-              By using the Platform, you acknowledge that you have read, understood, and agree to these Terms of Service.
+              By using the Platform, you acknowledge that you have read, understood, and agree to these Terms.
             </p>
 
           </CardContent>
