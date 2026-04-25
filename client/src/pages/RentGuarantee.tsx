@@ -589,6 +589,9 @@ export default function RentGuaranteePage() {
                   <ul className="space-y-2">
                     <CheckItem sub>Proof of on-time payments for those months</CheckItem>
                     <CheckItem sub>No rent arrears greater than 5 days in current tenancy</CheckItem>
+                    <CheckItem sub>Executed lease</CheckItem>
+                    <CheckItem sub>Property insurance (Owner)</CheckItem>
+                    <CheckItem sub><em>Other terms may apply</em></CheckItem>
                   </ul>
                 </div>
               </CardContent>
