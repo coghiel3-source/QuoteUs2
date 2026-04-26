@@ -202,8 +202,30 @@ export async function registerRoutes(
         }
       }
 
-      // If user has 2FA enabled, generate + email a one-time code
-      if ((user as any).twoFactorEnabled) {
+      // Determine if OTP is required: per-user 2FA OR admin role-based OTP policy
+      let otpRequired = (user as any).twoFactorEnabled;
+
+      if (!otpRequired) {
+        // Check admin role-based OTP settings for this user's role
+        const allOtpSettings = await storage.getAllOtpSettings();
+        const roleSetting = allOtpSettings.find(s => s.role === user.role);
+        if (roleSetting?.enabled) {
+          const lastVerified: Date | null = (user as any).otpLastVerified ? new Date((user as any).otpLastVerified) : null;
+          const now = new Date();
+          if (!lastVerified) {
+            otpRequired = true;
+          } else {
+            const msSince = now.getTime() - lastVerified.getTime();
+            const hoursSince = msSince / (1000 * 60 * 60);
+            if (roleSetting.frequency === 'always') otpRequired = true;
+            else if (roleSetting.frequency === 'daily' && hoursSince >= 24) otpRequired = true;
+            else if (roleSetting.frequency === 'weekly' && hoursSince >= 168) otpRequired = true;
+            else if (roleSetting.frequency === 'monthly' && hoursSince >= 720) otpRequired = true;
+          }
+        }
+      }
+
+      if (otpRequired) {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
         await storage.updateUser(user.id, { twoFactorCode: otp, twoFactorCodeExpiry: expiry } as any);
@@ -256,14 +278,13 @@ export async function registerRoutes(
       if (!userId || !token) return res.status(400).json({ error: "userId and token required" });
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
-      if (!(user as any).twoFactorEnabled) return res.status(400).json({ error: "2FA not enabled for this account" });
       const stored = (user as any).twoFactorCode;
       const expiry = (user as any).twoFactorCodeExpiry;
       if (!stored) return res.status(400).json({ error: "No verification code found. Please log in again." });
       if (!expiry || new Date() > new Date(expiry)) return res.status(401).json({ error: "Verification code has expired. Please log in again." });
       if (token.trim() !== stored) return res.status(401).json({ error: "Invalid code. Please check your email and try again." });
-      // Clear the used code
-      await storage.updateUser(userId, { twoFactorCode: null, twoFactorCodeExpiry: null } as any);
+      // Clear the used code and record verification time
+      await storage.updateUser(userId, { twoFactorCode: null, twoFactorCodeExpiry: null, otpLastVerified: new Date() } as any);
       res.json(safeUser(user));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1629,6 +1650,41 @@ export async function registerRoutes(
       }
       
       await storage.setSetting(req.params.key, value, actorId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Get OTP login settings
+  app.get("/api/admin/otp-settings", async (req, res) => {
+    try {
+      const actorId = req.query.actorId as string;
+      if (!actorId) return res.status(401).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || actor.role !== "admin") return res.status(403).json({ error: "Admin only" });
+      const settings = await storage.getAllOtpSettings();
+      // Return defaults for any roles not yet in DB
+      const roles = ["broker", "manager", "partner", "rep", "customer"];
+      const result = roles.map(role => {
+        const found = settings.find(s => s.role === role);
+        return found || { role, enabled: false, frequency: "always" };
+      });
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Save OTP login settings
+  app.post("/api/admin/otp-settings", async (req, res) => {
+    try {
+      const { actorId, settings } = req.body;
+      if (!actorId) return res.status(401).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || actor.role !== "admin") return res.status(403).json({ error: "Admin only" });
+      if (!Array.isArray(settings)) return res.status(400).json({ error: "settings array required" });
+      await storage.upsertOtpSettings(settings);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

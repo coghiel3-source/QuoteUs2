@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
 
@@ -37,6 +37,10 @@ export interface IStorage {
   // System Settings operations
   getSetting(key: string): Promise<string | null>;
   setSetting(key: string, value: string, updatedBy?: string): Promise<SystemSetting>;
+
+  // OTP Settings operations
+  getAllOtpSettings(): Promise<OtpSettings[]>;
+  upsertOtpSettings(settings: { role: string; enabled: boolean; frequency: string }[]): Promise<void>;
   
   // Advertisement operations
   getAllAdvertisements(): Promise<Advertisement[]>;
@@ -346,6 +350,23 @@ export class DatabaseStorage implements IStorage {
         .values({ key, value, updatedBy })
         .returning();
       return created;
+    }
+  }
+
+  // OTP Settings operations
+  async getAllOtpSettings(): Promise<OtpSettings[]> {
+    return db.select().from(otpSettings);
+  }
+
+  async upsertOtpSettings(settings: { role: string; enabled: boolean; frequency: string }[]): Promise<void> {
+    for (const s of settings) {
+      await db
+        .insert(otpSettings)
+        .values({ role: s.role, enabled: s.enabled, frequency: s.frequency })
+        .onConflictDoUpdate({
+          target: otpSettings.role,
+          set: { enabled: s.enabled, frequency: s.frequency, updatedAt: new Date() },
+        });
     }
   }
 

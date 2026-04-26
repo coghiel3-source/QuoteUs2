@@ -53,6 +53,7 @@ export const users = pgTable("users", {
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   twoFactorCode: varchar("two_factor_code", { length: 6 }),
   twoFactorCodeExpiry: timestamp("two_factor_code_expiry", { withTimezone: true }),
+  otpLastVerified: timestamp("otp_last_verified", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -80,6 +81,19 @@ export const systemSettings = pgTable("system_settings", {
   updatedBy: varchar("updated_by").references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// OTP Settings Table — admin-configured role-based OTP requirements
+export const otpSettings = pgTable("otp_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  role: text("role").notNull().unique(), // broker | manager | partner | rep | customer
+  enabled: boolean("enabled").notNull().default(false),
+  frequency: text("frequency").notNull().default("always"), // always | daily | weekly | monthly
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOtpSettingsSchema = createInsertSchema(otpSettings).omit({ id: true, updatedAt: true });
+export type InsertOtpSettings = z.infer<typeof insertOtpSettingsSchema>;
+export type OtpSettings = typeof otpSettings.$inferSelect;
 
 // Quotes/Leads Table
 export const quotes = pgTable("quotes", {

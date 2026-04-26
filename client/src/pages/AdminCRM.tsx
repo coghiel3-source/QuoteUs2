@@ -263,6 +263,17 @@ export default function AdminCRMPage() {
   const [stripeHasSecret, setStripeHasSecret] = useState(false);
   const [stripeHasPublishable, setStripeHasPublishable] = useState(false);
 
+  // OTP Settings State
+  const [otpSettingsData, setOtpSettingsData] = useState<{role: string; enabled: boolean; frequency: string}[]>([
+    { role: "broker",   enabled: false, frequency: "always" },
+    { role: "manager",  enabled: false, frequency: "always" },
+    { role: "partner",  enabled: false, frequency: "always" },
+    { role: "rep",      enabled: false, frequency: "always" },
+    { role: "customer", enabled: false, frequency: "always" },
+  ]);
+  const [otpSettingsSaving, setOtpSettingsSaving] = useState(false);
+  const [otpSettingsSaved, setOtpSettingsSaved] = useState(false);
+
   // Notification Email State
   const [notificationEmail, setNotificationEmail] = useState("info@quoteus.ca");
   const [savingNotificationEmail, setSavingNotificationEmail] = useState(false);
@@ -795,6 +806,14 @@ export default function AdminCRMPage() {
       .then(r => r.json())
       .then(data => setReferralPartners(Array.isArray(data) ? data : []))
       .catch(console.error);
+
+    // Load OTP settings (admin only)
+    if (user?.role === 'admin') {
+      fetch(`/api/admin/otp-settings?actorId=${user.id}`)
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setOtpSettingsData(data); })
+        .catch(console.error);
+    }
 
   }, []);
 
@@ -5520,6 +5539,90 @@ export default function AdminCRMPage() {
         )}
 
         {/* SETTINGS TAB - Manager Permissions */}
+        {activeTab === 'settings' && user?.role === 'admin' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Login OTP (One-Time Password)
+              </CardTitle>
+              <CardDescription>Require agents to verify their identity with a one-time code emailed to them when logging in. Configure per role and how frequently the code is required.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-medium">Role</th>
+                      <th className="text-left px-4 py-3 font-medium">Require OTP</th>
+                      <th className="text-left px-4 py-3 font-medium">How Often</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {otpSettingsData.map((setting, idx) => (
+                      <tr key={setting.role} className="border-t">
+                        <td className="px-4 py-3 font-medium capitalize">{setting.role}</td>
+                        <td className="px-4 py-3">
+                          <Switch
+                            checked={setting.enabled}
+                            onCheckedChange={(checked) => {
+                              const next = [...otpSettingsData];
+                              next[idx] = { ...next[idx], enabled: checked };
+                              setOtpSettingsData(next);
+                            }}
+                            data-testid={`toggle-otp-${setting.role}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            className="border rounded px-2 py-1 text-sm bg-background disabled:opacity-40"
+                            value={setting.frequency}
+                            disabled={!setting.enabled}
+                            onChange={(e) => {
+                              const next = [...otpSettingsData];
+                              next[idx] = { ...next[idx], frequency: e.target.value };
+                              setOtpSettingsData(next);
+                            }}
+                            data-testid={`select-otp-freq-${setting.role}`}
+                          >
+                            <option value="always">Every login</option>
+                            <option value="daily">Once per day</option>
+                            <option value="weekly">Once per week</option>
+                            <option value="monthly">Once per month</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={async () => {
+                    setOtpSettingsSaving(true);
+                    setOtpSettingsSaved(false);
+                    try {
+                      const res = await fetch("/api/admin/otp-settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ actorId: user?.id, settings: otpSettingsData }),
+                      });
+                      if (res.ok) setOtpSettingsSaved(true);
+                    } finally {
+                      setOtpSettingsSaving(false);
+                    }
+                  }}
+                  disabled={otpSettingsSaving}
+                  data-testid="btn-save-otp-settings"
+                >
+                  {otpSettingsSaving ? "Saving…" : "Save OTP Settings"}
+                </Button>
+                {otpSettingsSaved && <span className="text-sm text-green-600 flex items-center gap-1"><CheckCircle className="h-4 w-4" /> Saved</span>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {activeTab === 'settings' && user?.role === 'admin' && (
           <Card>
             <CardHeader>
