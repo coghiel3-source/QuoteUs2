@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, Eye, EyeOff, Briefcase, ShieldCheck, ArrowLeft } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 
 import { useAuth } from "@/lib/AuthContext";
@@ -29,6 +29,13 @@ export default function LoginPage() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
   ];
+
+  // Auto-fill OTP digits when SMTP is not configured and preview code is available
+  useEffect(() => {
+    if (pendingTwoFactor?.previewCode) {
+      setOtpDigits(pendingTwoFactor.previewCode.split(""));
+    }
+  }, [pendingTwoFactor?.previewCode]);
 
   const { register, handleSubmit, formState: { errors } } = useForm();
 
@@ -148,8 +155,9 @@ export default function LoginPage() {
 
               {pendingTwoFactor.previewCode && (
                 <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 text-center">
-                  <p className="text-xs text-amber-700 font-medium mb-1">SMTP not configured — code for testing:</p>
+                  <p className="text-xs text-amber-700 font-medium mb-1">SMTP not configured — code auto-filled above:</p>
                   <p className="text-2xl font-bold font-mono tracking-widest text-amber-800">{pendingTwoFactor.previewCode}</p>
+                  <p className="text-xs text-amber-600 mt-1">Click "Verify &amp; Sign In" to continue</p>
                 </div>
               )}
 
