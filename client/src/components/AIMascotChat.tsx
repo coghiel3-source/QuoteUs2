@@ -20,6 +20,8 @@ const QUICK_REPLIES = [
   "Tenant Insurance",
   "Business Insurance",
   "Life Insurance",
+  "Travel Insurance",
+  "Rent Guarantee",
   "Get a Free Quote",
   "Book a Callback",
   "Email Me Info",
