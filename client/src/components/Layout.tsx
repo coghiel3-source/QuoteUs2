@@ -124,8 +124,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Menu size={24} />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <div className="flex flex-col gap-6 mt-10">
+            <SheetContent side="right" className="w-[300px] sm:w-[400px] flex flex-col">
+              <div className="flex flex-col gap-6 mt-10 overflow-y-auto flex-1 pb-6">
                 {navLinks.map((link) => (
                   <Link 
                       key={link.href} 
