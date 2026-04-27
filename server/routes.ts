@@ -4900,5 +4900,164 @@ export async function registerRoutes(
     }
   });
 
+  // ── AI Mascot Chat ────────────────────────────────────────────────────────────
+
+  // POST /api/chat/message — smart rule-based (+ optional OpenAI) chat handler
+  app.post("/api/chat/message", async (req, res) => {
+    try {
+      const { message, history } = req.body;
+      if (!message) return res.status(400).json({ error: "message required" });
+
+      // Try OpenAI if key is available
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (openaiKey) {
+        try {
+          const { OpenAI } = await import("openai");
+          const ai = new OpenAI({ apiKey: openaiKey });
+          const msgs: any[] = [
+            {
+              role: "system",
+              content: `You are a friendly insurance advisor for QuoteUs.ca, an Ontario insurance platform. 
+You help visitors understand insurance options and connect them with brokers.
+Insurance types offered: Auto, Home, Tenant, Business, Life, Travel, Pet, Mortgage, Rent Guarantee.
+Keep answers concise (2-4 sentences). Always be helpful and suggest booking a callback or getting a free quote.
+When someone wants to book a callback, tell them to click "Book a Callback" button.
+When someone wants more info by email, tell them to click "Email Me Info" button.
+Do not make up specific prices. Encourage them to fill out a free quote form.`
+            },
+            ...(Array.isArray(history) ? history : []),
+            { role: "user", content: message }
+          ];
+          const completion = await ai.chat.completions.create({ model: "gpt-4o-mini", messages: msgs, max_tokens: 300 });
+          const reply = completion.choices[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again.";
+          return res.json({ reply, source: "ai" });
+        } catch {
+          // Fall through to rule-based
+        }
+      }
+
+      // Rule-based system
+      const q = message.toLowerCase();
+      let reply = "";
+
+      if (/auto|car|vehicle|driving|driver|collision|liability/.test(q)) {
+        reply = "Auto insurance in Ontario is mandatory and covers liability, collision, and comprehensive protection. Rates depend on your driving history, vehicle type, and location. We work with top insurers to get you competitive quotes — would you like a free auto quote or to speak with a broker?";
+      } else if (/home|house|homeowner|property|dwelling/.test(q)) {
+        reply = "Home insurance protects your home's structure and your belongings against fire, theft, water damage, and more. In Ontario, rates vary by location, home age, and coverage level. Get a free home insurance quote through our site or book a callback to discuss your needs.";
+      } else if (/tenant|renter|apartment|condo|rental/.test(q)) {
+        reply = "Tenant insurance covers your personal belongings and provides liability protection — even in a rented apartment or condo. It's very affordable, often under $20/month. Want a free tenant insurance quote?";
+      } else if (/business|commercial|liability|professional/.test(q)) {
+        reply = "Business insurance protects your company from liability claims, property damage, and other risks. Coverage depends on your industry and business size. Our brokers specialize in Ontario small business coverage. Book a callback to discuss your specific needs.";
+      } else if (/life|death benefit|term life|whole life/.test(q)) {
+        reply = "Life insurance provides financial security for your loved ones. We offer term and whole life options through our licensed brokers. The right coverage depends on your age, health, and financial goals. Would you like a broker to contact you?";
+      } else if (/travel|trip|vacation|medical emergency|abroad/.test(q)) {
+        reply = "Travel insurance covers emergency medical expenses, trip cancellation, lost luggage, and more. We partner with TuGo for comprehensive travel coverage. Get a quote directly through our Travel page or book a callback.";
+      } else if (/pet|dog|cat|animal|vet/.test(q)) {
+        reply = "Pet insurance helps cover unexpected vet bills for accidents and illnesses. Plans can cover surgeries, medications, and routine care. Get a free pet insurance quote through QuoteUs.ca.";
+      } else if (/mortgage|lender|mortgage protection/.test(q)) {
+        reply = "Mortgage protection insurance ensures your mortgage is covered if you're unable to make payments due to disability, illness, or death. We can match you with the right policy through our broker network. Want to book a callback?";
+      } else if (/rent guarantee|landlord|tenant screening|rental income/.test(q)) {
+        reply = "Rent Guarantee insurance protects landlords from lost rental income if a tenant defaults. We offer specialized Rent Guarantee plans for Ontario landlords. Contact us for a custom quote.";
+      } else if (/price|cost|rate|how much|cheap|afford|premium/.test(q)) {
+        reply = "Insurance rates depend on many factors like your location, age, coverage needs, and history. The best way to find out is to fill out our free quote form — it takes just 2 minutes and we'll find you the most competitive rate.";
+      } else if (/claim|accident|incident|report/.test(q)) {
+        reply = "For a claims question, contact your insurance provider directly using the number on your policy documents. Your broker can also assist. Would you like to book a callback to speak with one of our brokers?";
+      } else if (/broker|agent|advisor|speak|talk|call/.test(q)) {
+        reply = "Our licensed Ontario insurance brokers are ready to help you find the best coverage. You can book a callback below and a broker will reach out at your preferred time, or call us at 1-877-253-2695.";
+      } else if (/quote|compare|get quote|free quote/.test(q)) {
+        reply = "Getting a quote is fast and free! Use our quote forms for Auto, Home, Tenant, Business, Life, Travel, Pet, Mortgage, or Rent Guarantee insurance. Just click the insurance type in the navigation menu to get started.";
+      } else if (/hello|hi|hey|good morning|good afternoon|greetings/.test(q)) {
+        reply = "Hello! I'm the QuoteUs.ca virtual assistant. I can help you understand your insurance options, answer questions, book a callback with a broker, or arrange to have information sent to your email. What can I help you with today?";
+      } else if (/who|what is quoteus|about you|about quoteus/.test(q)) {
+        reply = "QuoteUs.ca is an Ontario-based insurance comparison platform. We help residents find competitive quotes for Auto, Home, Tenant, Business, Life, Travel, Pet, Mortgage, and Rent Guarantee insurance. Our licensed brokers work hard to get you the best coverage at the best price.";
+      } else if (/email|information|send info|more info/.test(q)) {
+        reply = "I can arrange to have detailed information about any insurance type sent to your email. Click the \"Email Me Info\" button below and fill in your details — we'll get back to you within one business day.";
+      } else if (/appointment|book|callback|schedule|call me|call back/.test(q)) {
+        reply = "I can book you a callback with one of our licensed brokers. Click \"Book a Callback\" below, enter your name, phone number, and preferred time, and a broker will call you.";
+      } else if (/thank|thanks|great|awesome|helpful/.test(q)) {
+        reply = "You're very welcome! Is there anything else I can help you with? I'm here to answer any insurance questions or connect you with a broker.";
+      } else {
+        reply = "Thanks for your question! For specific insurance advice, our licensed brokers are the best resource. You can book a free callback below, or call us at 1-877-253-2695. I can also help answer questions about Auto, Home, Tenant, Business, Life, Travel, Pet, Mortgage, or Rent Guarantee insurance.";
+      }
+
+      res.json({ reply, source: "rules" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/chat/book-appointment — book a callback appointment
+  app.post("/api/chat/book-appointment", async (req, res) => {
+    try {
+      const { name, phone, preferredTime, topic } = req.body;
+      if (!name || !phone) return res.status(400).json({ error: "name and phone required" });
+
+      const emailHtml = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
+          <div style="background:#1e3a5f;color:white;padding:20px;border-radius:8px;margin-bottom:24px;text-align:center">
+            <h2 style="margin:0">📅 New Callback Request</h2>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:8px;font-weight:bold;color:#555">Name:</td><td style="padding:8px">${name}</td></tr>
+            <tr style="background:#f0f4ff"><td style="padding:8px;font-weight:bold;color:#555">Phone:</td><td style="padding:8px">${phone}</td></tr>
+            <tr><td style="padding:8px;font-weight:bold;color:#555">Preferred Time:</td><td style="padding:8px">${preferredTime || "Any time"}</td></tr>
+            <tr style="background:#f0f4ff"><td style="padding:8px;font-weight:bold;color:#555">Topic:</td><td style="padding:8px">${topic || "General inquiry"}</td></tr>
+          </table>
+          <p style="color:#888;font-size:13px;margin-top:24px">This request was submitted via the QuoteUs.ca AI Chat Assistant.</p>
+        </div>`;
+
+      await sendEmail({
+        to: "info@quoteus.ca",
+        subject: `📅 Callback Request: ${name} — ${phone}`,
+        html: emailHtml
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/chat/contact — send email for more information
+  app.post("/api/chat/contact", async (req, res) => {
+    try {
+      const { name, email, topic, message } = req.body;
+      if (!name || !email) return res.status(400).json({ error: "name and email required" });
+
+      const emailHtml = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
+          <div style="background:#1e3a5f;color:white;padding:20px;border-radius:8px;margin-bottom:24px;text-align:center">
+            <h2 style="margin:0">✉️ Info Request from Chat</h2>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:8px;font-weight:bold;color:#555">Name:</td><td style="padding:8px">${name}</td></tr>
+            <tr style="background:#f0f4ff"><td style="padding:8px;font-weight:bold;color:#555">Email:</td><td style="padding:8px">${email}</td></tr>
+            <tr><td style="padding:8px;font-weight:bold;color:#555">Topic:</td><td style="padding:8px">${topic || "General information"}</td></tr>
+            <tr style="background:#f0f4ff"><td style="padding:8px;font-weight:bold;color:#555">Message:</td><td style="padding:8px">${message || "(none)"}</td></tr>
+          </table>
+          <p style="color:#888;font-size:13px;margin-top:24px">This request was submitted via the QuoteUs.ca AI Chat Assistant.</p>
+        </div>`;
+
+      await sendEmail({
+        to: "info@quoteus.ca",
+        subject: `✉️ Info Request: ${name} (${topic || "General"})`,
+        html: emailHtml
+      });
+
+      // Confirm to visitor
+      const confirmHtml = `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+          <h2 style="color:#1e3a5f">Thank you, ${name}!</h2>
+          <p>We've received your request for more information about <strong>${topic || "insurance"}</strong>. One of our licensed brokers will email you at <strong>${email}</strong> within one business day.</p>
+          <p>In the meantime, you're welcome to explore our free quote tools at <a href="https://quoteus.ca">QuoteUs.ca</a>.</p>
+        </div>`;
+      sendEmail({ to: email, subject: "Your Information Request — QuoteUs.ca", html: confirmHtml });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }

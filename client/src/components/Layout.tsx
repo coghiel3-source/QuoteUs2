@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import logoImage from "@assets/FullLogo_Transparent_1769748805647.png";
-import mascotImage from "/mascot.png";
+import AIMascotChat from "./AIMascotChat";
 
 interface SocialMedia {
   facebook: string;
@@ -356,18 +356,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
 
-      {/* Floating Mascot */}
-      <div
-        className="fixed bottom-0 right-6 z-40 hidden md:block pointer-events-none select-none"
-        data-testid="mascot-float"
-      >
-        <img
-          src={mascotImage}
-          alt="QuoteUs.ca mascot"
-          className="h-40 w-auto drop-shadow-xl"
-          style={{ transform: "translateY(0)" }}
-        />
-      </div>
+      {/* AI Mascot Chat */}
+      <AIMascotChat />
     </div>
   );
 }
