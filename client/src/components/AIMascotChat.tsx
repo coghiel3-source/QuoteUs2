@@ -164,7 +164,7 @@ export default function AIMascotChat() {
     <>
       {/* Floating Mascot Button */}
       <div
-        className="fixed bottom-0 right-6 z-40 hidden md:block select-none cursor-pointer group"
+        className="fixed bottom-0 right-4 md:right-6 z-40 select-none cursor-pointer group"
         data-testid="mascot-float"
         onClick={() => setOpen((o) => !o)}
         title="Chat with QuoteUs Assistant"
@@ -172,7 +172,7 @@ export default function AIMascotChat() {
         <img
           src={mascotImage}
           alt="QuoteUs.ca mascot — click to chat"
-          className="h-44 w-auto drop-shadow-xl transition-transform duration-200 group-hover:scale-105 group-hover:-translate-y-1"
+          className="h-24 md:h-44 w-auto drop-shadow-xl transition-transform duration-200 group-hover:scale-105 group-hover:-translate-y-1"
         />
         {/* Pulse indicator when closed */}
         {!open && (
@@ -183,7 +183,7 @@ export default function AIMascotChat() {
       {/* Chat Panel */}
       {open && (
         <div
-          className="fixed bottom-0 right-52 z-50 w-96 max-w-[calc(100vw-2rem)] flex flex-col shadow-2xl rounded-t-2xl overflow-hidden border border-gray-200"
+          className="fixed bottom-0 right-0 md:right-36 z-50 w-full md:w-96 flex flex-col shadow-2xl rounded-t-2xl overflow-hidden border border-gray-200"
           style={{ height: "520px" }}
           data-testid="chat-panel"
         >
