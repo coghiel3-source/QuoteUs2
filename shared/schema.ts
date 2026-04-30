@@ -564,6 +564,30 @@ export type SignatureRequest = typeof signatureRequests.$inferSelect;
 export type RgPayment = typeof rgPayments.$inferSelect;
 export type RepPayout = typeof repPayouts.$inferSelect;
 
+// ── RG Invoices ────────────────────────────────────────────────────────────
+export const rgInvoices = pgTable("rg_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => rgLocations.id, { onDelete: "cascade" }),
+  invoiceNumber: varchar("invoice_number", { length: 30 }).unique().notNull(),
+  monthlyRentCents: integer("monthly_rent_cents").notNull(),
+  annualRatePct: varchar("annual_rate_pct", { length: 10 }).notNull(),
+  monthlyRatePct: varchar("monthly_rate_pct", { length: 10 }).notNull(),
+  annualAmountCents: integer("annual_amount_cents").notNull(),
+  monthlyAmountCents: integer("monthly_amount_cents").notNull(),
+  landlordName: text("landlord_name"),
+  landlordEmail: text("landlord_email"),
+  propertyAddress: text("property_address"),
+  notes: text("notes"),
+  status: varchar("status", { length: 20 }).default("generated"),
+  emailedAt: timestamp("emailed_at"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRgInvoiceSchema = createInsertSchema(rgInvoices).omit({ id: true, createdAt: true });
+export type RgInvoice = typeof rgInvoices.$inferSelect;
+export type InsertRgInvoice = z.infer<typeof insertRgInvoiceSchema>;
+
 // ── Customer Portal ────────────────────────────────────────────────────────
 
 export const customerAccounts = pgTable("customer_accounts", {

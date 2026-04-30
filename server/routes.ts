@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertQuoteSchema, insertActivitySchema } from "@shared/schema";
+import { insertUserSchema, insertQuoteSchema, insertActivitySchema, rgInvoices } from "@shared/schema";
+import { db } from "./db";
 import { z } from "zod";
 import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail, generateThankYouEmail, clearSmtpCache, generatePasswordResetEmail } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
@@ -4119,6 +4120,161 @@ export async function registerRoutes(
       });
 
       res.json({ sent, paymentCount: paid.length, totalCents });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── RG Invoices ─────────────────────────────────────────────────
+  // GET /api/rep/locations/:id/invoices — list invoices for a location
+  app.get("/api/rep/locations/:id/invoices", async (req, res) => {
+    try {
+      const actorId = (req.query as any).actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { eq } = await import("drizzle-orm");
+      const invoices = await db.select().from(rgInvoices).where(eq(rgInvoices.locationId, req.params.id));
+      invoices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json(invoices);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/rep/locations/:id/invoices — create & store a new invoice
+  app.post("/api/rep/locations/:id/invoices", async (req, res) => {
+    try {
+      const actorId = req.body?.actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+
+      const { monthlyRentCents, annualRatePct, monthlyRatePct, annualAmountCents, monthlyAmountCents, landlordName, landlordEmail, propertyAddress, notes } = req.body;
+
+      // Generate invoice number: INV-YYYY-XXXXXX
+      const year = new Date().getFullYear();
+      const suffix = Math.random().toString(36).toUpperCase().slice(2, 8);
+      const invoiceNumber = `INV-${year}-${suffix}`;
+
+      const [invoice] = await db.insert(rgInvoices).values({
+        locationId: req.params.id,
+        invoiceNumber,
+        monthlyRentCents: Number(monthlyRentCents) || 0,
+        annualRatePct: String(annualRatePct || "0"),
+        monthlyRatePct: String(monthlyRatePct || "0"),
+        annualAmountCents: Number(annualAmountCents) || 0,
+        monthlyAmountCents: Number(monthlyAmountCents) || 0,
+        landlordName: landlordName || location.landlordName,
+        landlordEmail: landlordEmail || location.landlordEmail,
+        propertyAddress: propertyAddress || location.propertyAddress,
+        notes: notes || null,
+        status: "generated",
+        createdBy: user.id,
+      }).returning();
+
+      res.json(invoice);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/rep/locations/:id/invoices/:invoiceId/email — email an invoice to landlord
+  app.post("/api/rep/locations/:id/invoices/:invoiceId/email", async (req, res) => {
+    try {
+      const actorId = req.body?.actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { eq } = await import("drizzle-orm");
+      const [invoice] = await db.select().from(rgInvoices).where(eq(rgInvoices.id, req.params.invoiceId));
+      if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+
+      const recipientEmail = req.body.email || invoice.landlordEmail;
+      if (!recipientEmail) return res.status(400).json({ error: "No recipient email" });
+
+      const fmtCAD = (cents: number) => `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CAD`;
+      const fmtPct = (pct: string) => `${parseFloat(pct).toFixed(2)}%`;
+
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;">
+          <div style="background:#1e3a5f;color:white;padding:28px 36px;display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+              <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-.5px;">INSURANCE QUOTE INVOICE</h1>
+              <p style="margin:6px 0 0;opacity:.8;font-size:14px;">Rent Guarantee Insurance — QuoteUs.ca</p>
+            </div>
+            <div style="text-align:right;font-size:13px;opacity:.85;">
+              <div style="font-weight:700;font-size:18px;">${invoice.invoiceNumber}</div>
+              <div>Date: ${new Date(invoice.createdAt).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}</div>
+            </div>
+          </div>
+          <div style="padding:28px 36px;">
+            <table style="width:100%;margin-bottom:24px;">
+              <tr>
+                <td style="width:50%;vertical-align:top;padding-right:16px;">
+                  <h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#888;">Prepared For</h3>
+                  <div style="font-weight:600;font-size:15px;color:#1a1a1a;">${invoice.landlordName || "—"}</div>
+                  <div style="color:#555;font-size:13px;">${invoice.landlordEmail || ""}</div>
+                </td>
+                <td style="width:50%;vertical-align:top;">
+                  <h3 style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#888;">Property</h3>
+                  <div style="font-weight:600;font-size:15px;color:#1a1a1a;">${invoice.propertyAddress || "—"}</div>
+                  <div style="color:#555;font-size:13px;">Monthly Rent: ${fmtCAD(invoice.monthlyRentCents)}</div>
+                </td>
+              </tr>
+            </table>
+            <h3 style="margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#888;">Plan Options</h3>
+            <table style="width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+              <thead>
+                <tr style="background:#f8fafc;">
+                  <th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Plan</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Rate</th>
+                  <th style="padding:12px 16px;text-align:right;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Amount</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Billing</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background:#eff6ff;">
+                  <td style="padding:14px 16px;font-weight:600;color:#1d4ed8;">Annual Plan</td>
+                  <td style="padding:14px 16px;color:#374151;">${fmtPct(invoice.annualRatePct)} of annual rent</td>
+                  <td style="padding:14px 16px;text-align:right;font-weight:700;font-size:16px;color:#1d4ed8;">${fmtCAD(invoice.annualAmountCents)}</td>
+                  <td style="padding:14px 16px;color:#6b7280;font-size:13px;">One-time annual payment<br/><span style="color:#16a34a;">(~${fmtCAD(Math.round(invoice.annualAmountCents / 12))}/mo)</span></td>
+                </tr>
+                <tr style="background:#f0fdf4;">
+                  <td style="padding:14px 16px;font-weight:600;color:#15803d;">Monthly Plan</td>
+                  <td style="padding:14px 16px;color:#374151;">${fmtPct(invoice.monthlyRatePct)} of monthly rent</td>
+                  <td style="padding:14px 16px;text-align:right;font-weight:700;font-size:16px;color:#15803d;">${fmtCAD(invoice.monthlyAmountCents)}/mo</td>
+                  <td style="padding:14px 16px;color:#6b7280;font-size:13px;">Paid each month<br/><span style="color:#6b7280;">(${fmtCAD(invoice.monthlyAmountCents * 12)}/yr total)</span></td>
+                </tr>
+              </tbody>
+            </table>
+            ${invoice.notes ? `<div style="margin-top:20px;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:16px;font-size:13px;color:#555;"><strong>Notes:</strong> ${invoice.notes}</div>` : ""}
+            <p style="margin-top:28px;font-size:12px;color:#9ca3af;">This quote is valid for 30 days. Subject to underwriting approval. For questions, contact <a href="mailto:info@quoteus.ca" style="color:#1e3a5f;">info@quoteus.ca</a> or call 1-877-253-2695.</p>
+          </div>
+          <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:16px 36px;text-align:center;">
+            <p style="margin:0;font-size:12px;color:#9ca3af;">QuoteUs.ca · Ontario's Insurance Platform · 1-877-253-2695 · info@quoteus.ca</p>
+          </div>
+        </div>`;
+
+      const sent = await sendEmail({
+        to: recipientEmail,
+        subject: `Rent Guarantee Insurance Quote — ${invoice.invoiceNumber}`,
+        html,
+        text: `Rent Guarantee Insurance Quote ${invoice.invoiceNumber}\nAnnual Plan: ${fmtCAD(invoice.annualAmountCents)}\nMonthly Plan: ${fmtCAD(invoice.monthlyAmountCents)}/mo`,
+      });
+
+      // Update status to emailed
+      await db.update(rgInvoices).set({ status: "emailed", emailedAt: new Date() }).where(eq(rgInvoices.id, invoice.id));
+
+      res.json({ sent });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

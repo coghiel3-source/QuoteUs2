@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
+import InvoiceGenerator from "@/components/InvoiceGenerator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -718,6 +719,22 @@ function PricingTab({
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Invoice Generator */}
+      {locationId && (
+        <InvoiceGenerator
+          locationId={locationId}
+          actorId={actorId}
+          monthlyRent={rent}
+          annualRatePct={totalAnnualNum}
+          monthlyRatePct={totalMonthlyNum}
+          annualAmountCents={Math.round(totalDeductionAnnual * 100)}
+          monthlyAmountCents={Math.round(totalDeductionMonthly * 100)}
+          landlordName={landlordName}
+          landlordEmail={landlordEmail}
+          propertyAddress={undefined}
+        />
       )}
 
       {/* Payment collection dialog */}
