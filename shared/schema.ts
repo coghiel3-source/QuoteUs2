@@ -205,7 +205,7 @@ export const referralPartners = pgTable("referral_partners", {
 });
 
 // RG Lead status enum
-export const rgLeadStatusEnum = pgEnum("rg_lead_status", ["New", "Contacted", "Documents Pending", "Documents Received", "Submitted", "Approved", "Declined", "Issued"]);
+export const rgLeadStatusEnum = pgEnum("rg_lead_status", ["New", "Contacted", "Documents Pending", "Documents Received", "Submitted", "Approved", "Declined", "Issued", "Cancelled"]);
 
 // Rent Guarantee Leads Table (managed by reps)
 // RG Locations Table (property + landlord details)
@@ -292,6 +292,9 @@ export const rgLeads = pgTable("rg_leads", {
   renewalContactedAt: timestamp("renewal_contacted_at"),
   renewalContactedBy: varchar("renewal_contacted_by").references(() => users.id),
   renewalNotes: text("renewal_notes"),
+  // Cancellation fields (used when status = "Cancelled")
+  cancellationDate: text("cancellation_date"),
+  cancellationReason: text("cancellation_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

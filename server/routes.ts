@@ -4201,6 +4201,31 @@ export async function registerRoutes(
     }
   });
 
+  // PATCH /api/rep/leads/:id/cancel — cancel an RG lead with date + reason
+  app.patch("/api/rep/leads/:id/cancel", async (req, res) => {
+    try {
+      const actorId = req.body?.actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { cancellationDate, cancellationReason } = req.body;
+      const { eq } = await import("drizzle-orm");
+      const { rgLeads } = await import("@shared/schema");
+      const [updated] = await db.update(rgLeads).set({
+        status: "Cancelled" as any,
+        cancellationDate: cancellationDate || null,
+        cancellationReason: cancellationReason || null,
+        updatedAt: new Date(),
+      }).where(eq(rgLeads.id, req.params.id)).returning();
+      if (!updated) return res.status(404).json({ error: "Lead not found" });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ── RG Invoices ─────────────────────────────────────────────────
   // GET /api/rep/locations/:id/invoices — list invoices for a location
   app.get("/api/rep/locations/:id/invoices", async (req, res) => {
@@ -4864,6 +4889,97 @@ export async function registerRoutes(
       } as any);
 
       res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============== ADMIN REPORTS OVERVIEW ==============
+
+  app.get("/api/admin/reports/overview", async (req, res) => {
+    try {
+      const actorId = req.query.actorId as string;
+      const actor = actorId ? await storage.getUser(actorId) : (req as any).user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const [allRgLeads, allRgPayments, allTransactions] = await Promise.all([
+        storage.getAllRgLeads(),
+        storage.getAllRgPayments(),
+        storage.getAllTransactions(),
+      ]);
+
+      // RG leads by status
+      const rgLeadsByStatus: Record<string, number> = {};
+      allRgLeads.forEach(l => {
+        rgLeadsByStatus[l.status] = (rgLeadsByStatus[l.status] || 0) + 1;
+      });
+
+      // RG leads over last 12 months
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const now = new Date();
+      const rgLeadsOverTime: { name: string; leads: number; month: number; year: number }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        rgLeadsOverTime.push({ name: `${months[d.getMonth()]} ${d.getFullYear()}`, leads: 0, month: d.getMonth(), year: d.getFullYear() });
+      }
+      allRgLeads.forEach(l => {
+        const d = new Date(l.createdAt);
+        const entry = rgLeadsOverTime.find(e => e.month === d.getMonth() && e.year === d.getFullYear());
+        if (entry) entry.leads++;
+      });
+
+      // RG revenue (paid only)
+      const paidRgPayments = allRgPayments.filter(p => p.status === "paid");
+      const totalRgRevenue = paidRgPayments.reduce((sum, p) => sum + p.amountCents, 0);
+      const rgRevenueOverTime: { name: string; revenue: number; month: number; year: number }[] = rgLeadsOverTime.map(e => ({ ...e, revenue: 0, leads: undefined as any }));
+      paidRgPayments.forEach(p => {
+        const d = new Date(p.paidAt || p.createdAt);
+        const entry = rgRevenueOverTime.find(e => e.month === d.getMonth() && e.year === d.getFullYear());
+        if (entry) entry.revenue += p.amountCents;
+      });
+      rgRevenueOverTime.forEach(e => { (e as any).revenue = e.revenue / 100; });
+
+      // Broker credit purchase revenue (transactions with positive amount)
+      const creditPurchases = allTransactions.filter(t => t.type === "credit" && parseFloat(t.amount) > 0);
+      const totalCreditRevenue = creditPurchases.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      const creditRevenueOverTime: { name: string; revenue: number; month: number; year: number }[] = rgLeadsOverTime.map(e => ({ ...e, revenue: 0, leads: undefined as any }));
+      creditPurchases.forEach(t => {
+        const d = new Date(t.createdAt);
+        const entry = creditRevenueOverTime.find(e => e.month === d.getMonth() && e.year === d.getFullYear());
+        if (entry) entry.revenue += parseFloat(t.amount);
+      });
+
+      // Issued/Cancelled trends
+      const issuedLeads = allRgLeads.filter(l => l.status === "Issued").length;
+      const cancelledLeads = allRgLeads.filter(l => l.status === "Cancelled").length;
+      const approvedLeads = allRgLeads.filter(l => l.status === "Approved").length;
+      const newLeads = allRgLeads.filter(l => l.status === "New").length;
+
+      // Monthly combined revenue (rg + credits)
+      const combinedRevenueOverTime = rgLeadsOverTime.map((e, i) => ({
+        name: e.name,
+        rgRevenue: rgRevenueOverTime[i].revenue,
+        creditRevenue: creditRevenueOverTime[i].revenue,
+        total: rgRevenueOverTime[i].revenue + creditRevenueOverTime[i].revenue,
+      }));
+
+      res.json({
+        rgLeadsByStatus: Object.entries(rgLeadsByStatus).map(([name, value]) => ({ name, value })),
+        rgLeadsOverTime: rgLeadsOverTime.map(e => ({ name: e.name, leads: e.leads })),
+        rgRevenueOverTime: rgRevenueOverTime.map(e => ({ name: e.name, revenue: (e as any).revenue })),
+        creditRevenueOverTime: creditRevenueOverTime.map(e => ({ name: e.name, revenue: e.revenue })),
+        combinedRevenueOverTime,
+        totalRgRevenue: totalRgRevenue / 100,
+        totalCreditRevenue,
+        totalRevenue: totalRgRevenue / 100 + totalCreditRevenue,
+        totalRgLeads: allRgLeads.length,
+        issuedLeads,
+        cancelledLeads,
+        approvedLeads,
+        newLeads,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,11 +7,11 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart
 } from "recharts";
 import {
   Printer, Download, Mail, TrendingUp, TrendingDown, Users, FileText,
-  BarChart3, MousePointerClick, Eye, Calendar, Filter
+  BarChart3, MousePointerClick, Eye, Calendar, Filter, DollarSign, Home, XCircle, CheckCircle
 } from "lucide-react";
 
 interface Quote {
@@ -60,6 +60,22 @@ const GRADIENT_COLORS = {
 
 type Period = "day" | "week" | "month" | "year";
 
+interface RgOverview {
+  rgLeadsByStatus: { name: string; value: number }[];
+  rgLeadsOverTime: { name: string; leads: number }[];
+  rgRevenueOverTime: { name: string; revenue: number }[];
+  creditRevenueOverTime: { name: string; revenue: number }[];
+  combinedRevenueOverTime: { name: string; rgRevenue: number; creditRevenue: number; total: number }[];
+  totalRgRevenue: number;
+  totalCreditRevenue: number;
+  totalRevenue: number;
+  totalRgLeads: number;
+  issuedLeads: number;
+  cancelledLeads: number;
+  approvedLeads: number;
+  newLeads: number;
+}
+
 export default function ReportsPanel({
   quotes,
   advertisements,
@@ -67,6 +83,7 @@ export default function ReportsPanel({
   smtpConfigured,
   userEmail,
   userId,
+  actorId,
 }: {
   quotes: Quote[];
   advertisements: Advertisement[];
@@ -74,11 +91,25 @@ export default function ReportsPanel({
   smtpConfigured: boolean;
   userEmail?: string;
   userId?: string;
+  actorId?: string;
 }) {
   const [period, setPeriod] = useState<Period>("month");
-  const [reportType, setReportType] = useState<"leads" | "ads">("leads");
+  const [reportType, setReportType] = useState<"leads" | "ads" | "rg" | "revenue">("leads");
   const reportRef = useRef<HTMLDivElement>(null);
   const [emailSending, setEmailSending] = useState(false);
+  const [rgOverview, setRgOverview] = useState<RgOverview | null>(null);
+  const [rgLoading, setRgLoading] = useState(false);
+
+  useEffect(() => {
+    if ((reportType === "rg" || reportType === "revenue") && !rgOverview && !rgLoading) {
+      setRgLoading(true);
+      fetch(`/api/admin/reports/overview?actorId=${actorId || userId || ""}`)
+        .then(r => r.json())
+        .then(data => { if (!data.error) setRgOverview(data); })
+        .catch(console.error)
+        .finally(() => setRgLoading(false));
+    }
+  }, [reportType]);
 
   const now = new Date();
 
@@ -312,13 +343,15 @@ export default function ReportsPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={reportType} onValueChange={(v: "leads" | "ads") => setReportType(v)}>
-            <SelectTrigger className="w-[160px]" data-testid="select-report-type">
+          <Select value={reportType} onValueChange={(v: "leads" | "ads" | "rg" | "revenue") => setReportType(v)}>
+            <SelectTrigger className="w-[180px]" data-testid="select-report-type">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="leads">Lead Reports</SelectItem>
               <SelectItem value="ads">Ad Analytics</SelectItem>
+              <SelectItem value="rg">Rent Guarantee</SelectItem>
+              <SelectItem value="revenue">Revenue & Sales</SelectItem>
             </SelectContent>
           </Select>
 
@@ -814,6 +847,292 @@ export default function ReportsPanel({
               </div>
             </CardContent>
           </Card>
+        </>
+      )}
+
+      {/* ── RENT GUARANTEE REPORT ── */}
+      {reportType === "rg" && (
+        <>
+          {rgLoading ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">Loading RG data...</div>
+          ) : !rgOverview ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">No RG data available or access denied.</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-none shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-teal-100 text-sm font-medium">Total RG Leads</p>
+                        <p className="text-3xl font-bold mt-1" data-testid="text-total-rg-leads">{rgOverview.totalRgLeads}</p>
+                      </div>
+                      <Home className="h-10 w-10 text-teal-200" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-none shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-100 text-sm font-medium">Issued / Active</p>
+                        <p className="text-3xl font-bold mt-1" data-testid="text-issued-rg-leads">{rgOverview.issuedLeads}</p>
+                      </div>
+                      <CheckCircle className="h-10 w-10 text-green-200" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm font-medium">New Leads</p>
+                        <p className="text-3xl font-bold mt-1" data-testid="text-new-rg-leads">{rgOverview.newLeads}</p>
+                      </div>
+                      <FileText className="h-10 w-10 text-blue-200" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-rose-500 to-rose-600 text-white border-none shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-rose-100 text-sm font-medium">Cancelled</p>
+                        <p className="text-3xl font-bold mt-1" data-testid="text-cancelled-rg-leads">{rgOverview.cancelledLeads}</p>
+                      </div>
+                      <XCircle className="h-10 w-10 text-rose-200" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="shadow-lg border-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-teal-500" /> RG Leads Over 12 Months
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={rgOverview.rgLeadsOverTime}>
+                        <defs>
+                          <linearGradient id="colorRgLeads" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-20} textAnchor="end" height={50} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                        <Tooltip contentStyle={{ borderRadius: "8px" }} />
+                        <Area type="monotone" dataKey="leads" stroke="#14b8a6" strokeWidth={3} fill="url(#colorRgLeads)" name="RG Leads" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-lg border-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Filter className="h-5 w-5 text-purple-500" /> Leads by Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={rgOverview.rgLeadsByStatus}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={100}
+                          innerRadius={50}
+                          paddingAngle={3}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {rgOverview.rgLeadsByStatus.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="shadow-lg border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">RG Lead Status Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border max-h-[300px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Count</TableHead>
+                          <TableHead className="text-right">% of Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rgOverview.rgLeadsByStatus.length === 0 ? (
+                          <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">No RG leads found</TableCell></TableRow>
+                        ) : (
+                          rgOverview.rgLeadsByStatus.sort((a, b) => b.value - a.value).map((s, i) => (
+                            <TableRow key={i}>
+                              <TableCell><Badge variant="outline">{s.name}</Badge></TableCell>
+                              <TableCell className="text-right font-mono font-bold">{s.value}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {rgOverview.totalRgLeads > 0 ? ((s.value / rgOverview.totalRgLeads) * 100).toFixed(1) : 0}%
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── REVENUE & SALES REPORT ── */}
+      {reportType === "revenue" && (
+        <>
+          {rgLoading ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">Loading revenue data...</div>
+          ) : !rgOverview ? (
+            <div className="flex items-center justify-center h-64 text-muted-foreground">No revenue data available or access denied.</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-emerald-100 text-sm font-medium">Total Revenue</p>
+                        <p className="text-3xl font-bold mt-1" data-testid="text-total-revenue">${rgOverview.totalRevenue.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-sm mt-1 text-emerald-100">All time combined</p>
+                      </div>
+                      <DollarSign className="h-10 w-10 text-emerald-200" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-none shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-teal-100 text-sm font-medium">RG Premium Revenue</p>
+                        <p className="text-3xl font-bold mt-1" data-testid="text-rg-revenue">${rgOverview.totalRgRevenue.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-sm mt-1 text-teal-100">From paid policies</p>
+                      </div>
+                      <Home className="h-10 w-10 text-teal-200" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-none shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm font-medium">Lead Credit Revenue</p>
+                        <p className="text-3xl font-bold mt-1" data-testid="text-credit-revenue">${rgOverview.totalCreditRevenue.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-sm mt-1 text-blue-100">Broker credit purchases</p>
+                      </div>
+                      <TrendingUp className="h-10 w-10 text-blue-200" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="shadow-lg border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-emerald-500" /> Combined Revenue Trend (12 Months)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={320}>
+                    <ComposedChart data={rgOverview.combinedRevenueOverTime}>
+                      <defs>
+                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-20} textAnchor="end" height={50} />
+                      <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${v}`} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: "8px" }}
+                        formatter={(value: any, name: string) => [`$${Number(value).toFixed(2)}`, name]}
+                      />
+                      <Legend />
+                      <Bar dataKey="rgRevenue" fill="#14b8a6" radius={[4, 4, 0, 0]} name="RG Premium" />
+                      <Bar dataKey="creditRevenue" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Lead Credits" />
+                      <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} dot={false} name="Total Revenue" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="shadow-lg border-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Home className="h-5 w-5 text-teal-500" /> RG Premium Revenue (12 Months)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <AreaChart data={rgOverview.rgRevenueOverTime}>
+                        <defs>
+                          <linearGradient id="colorRgRev" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-20} textAnchor="end" height={50} />
+                        <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${v}`} />
+                        <Tooltip formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "RG Revenue"]} contentStyle={{ borderRadius: "8px" }} />
+                        <Area type="monotone" dataKey="revenue" stroke="#14b8a6" strokeWidth={2} fill="url(#colorRgRev)" name="RG Revenue" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-lg border-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Users className="h-5 w-5 text-blue-500" /> Lead Credit Revenue (12 Months)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <AreaChart data={rgOverview.creditRevenueOverTime}>
+                        <defs>
+                          <linearGradient id="colorCreditRev" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-20} textAnchor="end" height={50} />
+                        <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${v}`} />
+                        <Tooltip formatter={(v: any) => [`$${Number(v).toFixed(2)}`, "Credit Revenue"]} contentStyle={{ borderRadius: "8px" }} />
+                        <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#colorCreditRev)" name="Credit Revenue" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

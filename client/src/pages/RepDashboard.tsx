@@ -18,9 +18,10 @@ import {
   BellRing, TrendingUp, AlarmClock, Pencil, MapPin, User, AlertTriangle,
   Building2, DollarSign, Calendar, Phone, Mail, UserPlus, ArrowRight,
   Calculator, CreditCard, Percent, BadgePercent, CheckCircle2, FileSignature,
+  XCircle,
 } from "lucide-react";
 
-type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined" | "Issued";
+type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined" | "Issued" | "Cancelled";
 type ActiveTab = "overview" | "locations" | "leads" | "reminders" | "commission";
 type LocationView = "list" | "detail";
 type LeadDetailTab = "info" | "docs" | "processing";
@@ -34,6 +35,7 @@ const STATUS_COLORS: Record<Status, string> = {
   "Approved": "bg-green-100 text-green-800",
   "Declined": "bg-red-100 text-red-800",
   "Issued": "bg-teal-100 text-teal-800",
+  "Cancelled": "bg-gray-100 text-gray-600",
 };
 
 const STATUS_DISPLAY_LABELS: Record<Status, string> = {
@@ -45,6 +47,7 @@ const STATUS_DISPLAY_LABELS: Record<Status, string> = {
   "Approved": "Bound / Issued",
   "Declined": "Declined",
   "Issued": "Issued",
+  "Cancelled": "Cancelled",
 };
 
 const IN_PROGRESS_STATUSES: Status[] = ["Contacted", "Documents Pending", "Documents Received", "Submitted"];
@@ -926,6 +929,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [claimForm, setClaimForm] = useState({ claimType: "", description: "", incidentDate: "", claimNotes: "" });
   const [submittingClaim, setSubmittingClaim] = useState(false);
 
+  // Cancel lead
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelForm, setCancelForm] = useState({ cancellationDate: "", cancellationReason: "" });
+  const [submittingCancel, setSubmittingCancel] = useState(false);
+
   // Renewal reminder
   const [renewalSaving, setRenewalSaving] = useState(false);
 
@@ -1745,6 +1753,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const statsInProgress = leads.filter(l => (IN_PROGRESS_STATUSES as string[]).includes(l.status)).length;
   const statsApproved = leads.filter(l => l.status === "Approved").length;
   const statsIssued = leads.filter(l => l.status === "Issued").length;
+  const statsCancelled = leads.filter(l => l.status === "Cancelled").length;
   const statsDeclined = leads.filter(l => l.status === "Declined").length;
   const totalClosed = statsApproved + statsDeclined;
   const winRate = totalClosed > 0 ? Math.round((statsApproved / totalClosed) * 100) : 0;
@@ -2873,13 +2882,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         {activeTab === "leads" && (
           <div>
             {/* Quick stat filter pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
               {[
                 { label: "All Leads", count: leads.length, value: "all", color: "bg-gray-50 border-gray-200 hover:border-gray-400", activeColor: "bg-gray-900 text-white border-gray-900", textColor: "text-gray-700" },
                 { label: "New", count: statsNew, value: "New", color: "bg-blue-50 border-blue-200 hover:border-blue-400", activeColor: "bg-blue-600 text-white border-blue-600", textColor: "text-blue-700" },
                 { label: "In Progress", count: statsInProgress, value: "__inprogress__", color: "bg-orange-50 border-orange-200 hover:border-orange-400", activeColor: "bg-orange-500 text-white border-orange-500", textColor: "text-orange-700" },
                 { label: "Approved", count: statsApproved, value: "Approved", color: "bg-green-50 border-green-200 hover:border-green-400", activeColor: "bg-green-600 text-white border-green-600", textColor: "text-green-700" },
                 { label: "Issued", count: statsIssued, value: "Issued", color: "bg-teal-50 border-teal-200 hover:border-teal-400", activeColor: "bg-teal-600 text-white border-teal-600", textColor: "text-teal-700" },
+                { label: "Cancelled", count: statsCancelled, value: "Cancelled", color: "bg-gray-50 border-gray-200 hover:border-gray-400", activeColor: "bg-gray-600 text-white border-gray-600", textColor: "text-gray-600" },
               ].map(pill => {
                 const isActive = pill.value === "__inprogress__"
                   ? (IN_PROGRESS_STATUSES as string[]).includes(statusFilter)
@@ -3434,6 +3444,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Submit Claim
                   </Button>
                 )}
+                {selectedLead.status !== "Cancelled" && (
+                  <Button size="sm" variant="outline" className="text-gray-600 hover:text-gray-800 border-gray-300" onClick={() => { setCancelForm({ cancellationDate: new Date().toISOString().split("T")[0], cancellationReason: "" }); setShowCancelDialog(true); }} data-testid="button-cancel-lead">
+                    <XCircle className="h-3.5 w-3.5 mr-1" /> Cancel
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => setDeleteLeadConfirm(selectedLead.id)} data-testid="button-delete-lead"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
@@ -3447,6 +3462,22 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   <button onClick={() => { const loc = locations.find(l => l.id === selectedLead.locationId); if (loc) { setSelectedLead(null); openAddTenant(loc); } }} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors" data-testid="button-add-new-tenant-from-declined">
                     <UserPlus className="h-3.5 w-3.5" /> Add New Tenant for This Property
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Cancelled — Info Banner */}
+            {selectedLead.status === "Cancelled" && (
+              <div className="mx-5 mt-4 bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-start gap-3">
+                <XCircle className="h-5 w-5 text-gray-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">This policy has been cancelled</p>
+                  {(selectedLead as any).cancellationDate && (
+                    <p className="text-xs text-gray-500 mt-0.5">Effective: {new Date((selectedLead as any).cancellationDate).toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric" })}</p>
+                  )}
+                  {(selectedLead as any).cancellationReason && (
+                    <p className="text-xs text-gray-600 mt-1"><span className="font-medium">Reason:</span> {(selectedLead as any).cancellationReason}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -4390,6 +4421,72 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       </Dialog>
 
       {/* Confirms */}
+      {/* Cancel Lead Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-gray-600" /> Cancel Rent Guarantee
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Cancellation Date</label>
+              <Input
+                type="date"
+                value={cancelForm.cancellationDate}
+                onChange={e => setCancelForm(f => ({ ...f, cancellationDate: e.target.value }))}
+                data-testid="input-cancellation-date"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Reason for Cancellation *</label>
+              <textarea
+                className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400"
+                rows={4}
+                placeholder="Describe why this policy is being cancelled..."
+                value={cancelForm.cancellationReason}
+                onChange={e => setCancelForm(f => ({ ...f, cancellationReason: e.target.value }))}
+                data-testid="textarea-cancellation-reason"
+              />
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+              <strong>Note:</strong> This will set the lead status to "Cancelled" and record the date and reason. This action can be reviewed by your admin.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>Keep Active</Button>
+            <Button
+              className="bg-gray-700 hover:bg-gray-800 text-white"
+              disabled={!cancelForm.cancellationReason.trim() || submittingCancel}
+              data-testid="button-confirm-cancel-lead"
+              onClick={async () => {
+                if (!user || !selectedLead) return;
+                setSubmittingCancel(true);
+                try {
+                  const res = await fetch(`/api/rep/leads/${selectedLead.id}/cancel`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ actorId: user.id, ...cancelForm }),
+                  });
+                  if (!res.ok) throw new Error("Failed");
+                  const updated = await res.json();
+                  setLeads(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+                  setSelectedLead((prev: any) => prev ? { ...prev, ...updated } : prev);
+                  setShowCancelDialog(false);
+                  toast({ title: "Policy cancelled", description: "The lead has been marked as Cancelled." });
+                } catch {
+                  toast({ title: "Failed to cancel", variant: "destructive" });
+                }
+                setSubmittingCancel(false);
+              }}
+            >
+              {submittingCancel ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Claim Submission Dialog */}
       <Dialog open={showClaimDialog} onOpenChange={setShowClaimDialog}>
         <DialogContent className="max-w-lg">

@@ -4753,7 +4753,7 @@ export default function AdminCRMPage() {
           </Card>
         )}
 
-        {activeTab === 'reports' && (
+        {activeTab === 'reports' && (user?.role === 'admin' || user?.role === 'manager') && (
           <ReportsPanel
             quotes={quotes}
             advertisements={reportAds}
@@ -4761,6 +4761,7 @@ export default function AdminCRMPage() {
             smtpConfigured={smtpConfigured}
             userEmail={user?.email}
             userId={user?.id}
+            actorId={user?.id}
           />
         )}
         
