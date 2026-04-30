@@ -81,7 +81,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
           <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "72px", width: "auto" }} />
           <div>
             <div style={{ fontSize: "22px", fontWeight: "700", letterSpacing: "-0.5px" }}>QuoteUs.ca</div>
-            <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "4px" }}>Rent Guarantee Insurance</div>
+            <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "4px" }}>Rent Guarantee</div>
             <div style={{ fontSize: "12px", opacity: 0.7, marginTop: "2px" }}>1-877-253-2695 · info@quoteus.ca</div>
           </div>
         </div>
@@ -94,7 +94,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
 
       {/* Sub-header */}
       <div style={{ background: "#2563eb", color: "white", padding: "10px 40px", fontSize: "13px", fontWeight: "500" }}>
-        Rent Guarantee Insurance — Quote &amp; Premium Summary
+        Rent Guarantee — Quote &amp; Premium Summary
       </div>
 
       {/* Body */}
@@ -191,7 +191,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
           <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "40px", width: "auto" }} />
           <div>
             <div style={{ fontWeight: "700", fontSize: "13px", color: "#1e3a5f" }}>QuoteUs.ca</div>
-            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Rent Guarantee Insurance</div>
+            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Rent Guarantee</div>
           </div>
         </div>
         <div style={{ fontSize: "11px", color: "#94a3b8", textAlign: "right" }}>
@@ -447,7 +447,7 @@ export default function InvoiceGenerator({
                   <img src="/mascot.png" alt="mascot" className="h-12 w-auto" />
                   <div>
                     <div className="font-bold text-base leading-tight">QuoteUs.ca</div>
-                    <div className="text-xs opacity-70">Ontario's Insurance Platform</div>
+                    <div className="text-xs opacity-70">Rent Guarantee</div>
                   </div>
                 </div>
                 <div className="text-right">

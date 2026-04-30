@@ -4208,8 +4208,8 @@ export async function registerRoutes(
         <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;">
           <div style="background:#1e3a5f;color:white;padding:28px 36px;display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
-              <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-.5px;">INSURANCE QUOTE INVOICE</h1>
-              <p style="margin:6px 0 0;opacity:.8;font-size:14px;">Rent Guarantee Insurance — QuoteUs.ca</p>
+              <h1 style="margin:0;font-size:24px;font-weight:700;letter-spacing:-.5px;">QUOTE INVOICE</h1>
+              <p style="margin:6px 0 0;opacity:.8;font-size:14px;">Rent Guarantee — QuoteUs.ca</p>
             </div>
             <div style="text-align:right;font-size:13px;opacity:.85;">
               <div style="font-weight:700;font-size:18px;">${invoice.invoiceNumber}</div>
@@ -4268,15 +4268,15 @@ export async function registerRoutes(
             <p style="margin-top:16px;font-size:12px;color:#9ca3af;">For questions, contact <a href="mailto:info@quoteus.ca" style="color:#1e3a5f;">info@quoteus.ca</a> or call 1-877-253-2695.</p>
           </div>
           <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:16px 36px;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;">QuoteUs.ca · Rent Guarantee Insurance · 1-877-253-2695 · info@quoteus.ca</p>
+            <p style="margin:0;font-size:12px;color:#9ca3af;">QuoteUs.ca · Rent Guarantee · 1-877-253-2695 · info@quoteus.ca</p>
           </div>
         </div>`;
 
       const sent = await sendEmail({
         to: recipientEmail,
-        subject: `Rent Guarantee Insurance Quote — ${invoice.invoiceNumber}`,
+        subject: `Rent Guarantee Quote — ${invoice.invoiceNumber}`,
         html,
-        text: `Rent Guarantee Insurance Quote ${invoice.invoiceNumber}\nAnnual Plan: ${fmtCAD(invoice.annualAmountCents)}\nMonthly Plan: ${fmtCAD(invoice.monthlyAmountCents)}/mo`,
+        text: `Rent Guarantee Quote ${invoice.invoiceNumber}\nAnnual Plan: ${fmtCAD(invoice.annualAmountCents)}\nMonthly Plan: ${fmtCAD(invoice.monthlyAmountCents)}/mo`,
       });
 
       // Update status to emailed
