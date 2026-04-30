@@ -116,6 +116,7 @@ export default function RentGuaranteePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
   const [submitted, setSubmitted] = useState<SubmittedInfo | null>(null);
   const [editing, setEditing] = useState(false);
   const [contactType, setContactType] = useState("");
@@ -451,8 +452,21 @@ export default function RentGuaranteePage() {
                     </div>
 
                     {/* ─ Submit ─ */}
+                    <div className="flex items-start gap-2.5 pt-2">
+                      <input
+                        type="checkbox"
+                        id="consent"
+                        checked={consentChecked}
+                        onChange={e => setConsentChecked(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent cursor-pointer shrink-0"
+                        data-testid="checkbox-consent"
+                      />
+                      <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
+                        By checking this box, I give QuoteUs.ca and its licensed insurance partners permission to contact me regarding this product or service.
+                      </label>
+                    </div>
                     <div className="flex gap-3 pt-2">
-                      <Button type="submit" className="flex-1 bg-accent hover:bg-accent/90 text-white text-base h-12 font-semibold shadow-sm" disabled={isSubmitting} data-testid="button-submit">
+                      <Button type="submit" className="flex-1 bg-accent hover:bg-accent/90 text-white text-base h-12 font-semibold shadow-sm" disabled={isSubmitting || !consentChecked} data-testid="button-submit">
                         {isSubmitting ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
                         ) : (

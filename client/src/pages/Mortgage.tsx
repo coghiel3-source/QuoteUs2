@@ -15,6 +15,7 @@ export default function MortgagePage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
   
   const [calcPrincipal, setCalcPrincipal] = useState(400000);
   const [calcRate, setCalcRate] = useState(5.5);
@@ -445,8 +446,21 @@ export default function MortgagePage() {
                 <p className="text-xs text-muted-foreground">If you were given a reference code, enter it here.</p>
               </div>
 
+              <div className="flex items-start gap-2.5 pt-2">
+                <input
+                  type="checkbox"
+                  id="consent"
+                  checked={consentChecked}
+                  onChange={e => setConsentChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent cursor-pointer shrink-0"
+                  data-testid="checkbox-consent"
+                />
+                <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
+                  By checking this box, I give QuoteUs.ca and its licensed insurance partners permission to contact me regarding this product or service.
+                </label>
+              </div>
               <div className="pt-4">
-                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-14" disabled={isSubmitting} data-testid="button-submit">
+                <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-14" disabled={isSubmitting || !consentChecked} data-testid="button-submit">
                   {isSubmitting ? "Submitting..." : "Get My Mortgage Quote"}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center mt-3">

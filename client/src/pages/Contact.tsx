@@ -15,6 +15,7 @@ export default function ContactPage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const { register, handleSubmit, reset } = useForm();
 
@@ -165,7 +166,20 @@ export default function ContactPage() {
                         <Textarea id="message" {...register("message")} placeholder="How can we help you?" className="min-h-[150px]" required />
                       </div>
 
-                      <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12 gap-2" disabled={isSubmitting}>
+                      <div className="flex items-start gap-2.5 pt-2">
+                        <input
+                          type="checkbox"
+                          id="consent"
+                          checked={consentChecked}
+                          onChange={e => setConsentChecked(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent cursor-pointer shrink-0"
+                          data-testid="checkbox-consent"
+                        />
+                        <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
+                          By checking this box, I give QuoteUs.ca and its licensed insurance partners permission to contact me regarding this product or service.
+                        </label>
+                      </div>
+                      <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12 gap-2" disabled={isSubmitting || !consentChecked}>
                         {isSubmitting ? "Sending..." : <><Send size={18} /> Send Message</>}
                       </Button>
                     </form>

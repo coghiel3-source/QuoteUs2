@@ -118,6 +118,7 @@ export default function AutoPage() {
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [wantHomeQuote, setWantHomeQuote] = useState(false);
   const [wantTenantQuote, setWantTenantQuote] = useState(false);
@@ -1096,7 +1097,20 @@ export default function AutoPage() {
 
             {/* Submit */}
             <div className="pt-6">
-              <Button type="submit" size="lg" className="w-full text-lg h-14 bg-accent hover:bg-accent/90 text-white shadow-xl" disabled={isSubmitting} data-testid="button-submit-quote">
+              <div className="flex items-start gap-2.5 pb-4">
+                <input
+                  type="checkbox"
+                  id="consent"
+                  checked={consentChecked}
+                  onChange={e => setConsentChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-accent cursor-pointer shrink-0"
+                  data-testid="checkbox-consent"
+                />
+                <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
+                  By checking this box, I give QuoteUs.ca and its licensed insurance partners permission to contact me regarding this product or service.
+                </label>
+              </div>
+              <Button type="submit" size="lg" className="w-full text-lg h-14 bg-accent hover:bg-accent/90 text-white shadow-xl" disabled={isSubmitting || !consentChecked} data-testid="button-submit-quote">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Calculating Premium...
