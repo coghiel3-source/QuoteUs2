@@ -456,7 +456,7 @@ export default function MortgagePage() {
                   data-testid="checkbox-consent"
                 />
                 <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
-                  By checking this box, I give QuoteUs.ca and its business / industry partners permission to contact me regarding this product or service.
+                  By checking this box, I give QuoteUs.ca and its business / industry partners permission to share details and contact me regarding this product or service.
                 </label>
               </div>
               <div className="pt-4">

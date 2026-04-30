@@ -1107,7 +1107,7 @@ export default function AutoPage() {
                   data-testid="checkbox-consent"
                 />
                 <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
-                  By checking this box, I give QuoteUs.ca and its business / industry partners permission to contact me regarding this product or service.
+                  By checking this box, I give QuoteUs.ca and its business / industry partners permission to share details and contact me regarding this product or service.
                 </label>
               </div>
               <Button type="submit" size="lg" className="w-full text-lg h-14 bg-accent hover:bg-accent/90 text-white shadow-xl" disabled={isSubmitting || !consentChecked} data-testid="button-submit-quote">

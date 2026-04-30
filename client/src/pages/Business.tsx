@@ -223,7 +223,7 @@ export default function BusinessPage() {
                   data-testid="checkbox-consent"
                 />
                 <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
-                  By checking this box, I give QuoteUs.ca and its business / industry partners permission to contact me regarding this product or service.
+                  By checking this box, I give QuoteUs.ca and its business / industry partners permission to share details and contact me regarding this product or service.
                 </label>
               </div>
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting || !consentChecked}>
