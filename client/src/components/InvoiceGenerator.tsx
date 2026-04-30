@@ -81,7 +81,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
           <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "72px", width: "auto" }} />
           <div>
             <div style={{ fontSize: "22px", fontWeight: "700", letterSpacing: "-0.5px" }}>QuoteUs.ca</div>
-            <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "4px" }}>Ontario's Insurance Platform</div>
+            <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "4px" }}>Rent Guarantee Insurance</div>
             <div style={{ fontSize: "12px", opacity: 0.7, marginTop: "2px" }}>1-877-253-2695 · info@quoteus.ca</div>
           </div>
         </div>
@@ -136,7 +136,6 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
                 </td>
                 <td style={{ padding: "18px 16px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
                   <div style={{ fontWeight: "700", fontSize: "20px", color: "#1d4ed8" }}>{fmtCAD(invoice.annualAmountCents)}</div>
-                  <div style={{ fontSize: "12px", color: "#16a34a", marginTop: "2px" }}>≈ {fmtCAD(annualMonthly)}/mo</div>
                 </td>
                 <td style={{ padding: "18px 16px", color: "#6b7280", fontSize: "13px", borderBottom: "1px solid #e2e8f0" }}>
                   One lump-sum payment per year
@@ -170,10 +169,17 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
           </div>
         )}
 
-        {/* Footer note */}
+        {/* Disclaimer */}
         <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
+          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "14px 18px", marginBottom: "16px" }}>
+            <div style={{ fontWeight: "700", fontSize: "12px", color: "#92400e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>Disclaimer</div>
+            <p style={{ fontSize: "12px", color: "#78350f", lineHeight: "1.7", margin: 0 }}>
+              The premiums shown above are estimates only. <strong>Applicable taxes and fees will be added at the time of payment</strong>, depending on the selected payment option.
+              Credit card payments may incur additional processing fees — the exact amount will be confirmed at the time of payment processing.
+              This quote is valid for 30 days from the date of issue and is subject to underwriting approval and final review.
+            </p>
+          </div>
           <p style={{ fontSize: "12px", color: "#9ca3af", lineHeight: "1.6", margin: 0 }}>
-            This quote is valid for 30 days from the date of issue. Subject to underwriting approval and final review.
             For questions, please contact <strong>info@quoteus.ca</strong> or call <strong>1-877-253-2695</strong>.
           </p>
         </div>
@@ -185,7 +191,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
           <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "40px", width: "auto" }} />
           <div>
             <div style={{ fontWeight: "700", fontSize: "13px", color: "#1e3a5f" }}>QuoteUs.ca</div>
-            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Ontario's Top Rated Insurance Platform</div>
+            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Rent Guarantee Insurance</div>
           </div>
         </div>
         <div style={{ fontSize: "11px", color: "#94a3b8", textAlign: "right" }}>
@@ -475,7 +481,6 @@ export default function InvoiceGenerator({
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-blue-700 text-xl">{fmtCAD(annualAmountCents)}</div>
-                    <div className="text-xs text-green-600">≈ {fmtCAD(Math.round(annualAmountCents / 12))}/mo</div>
                   </div>
                 </div>
                 {/* Monthly */}

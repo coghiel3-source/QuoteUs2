@@ -4173,7 +4173,7 @@ export async function registerRoutes(
         monthlyAmountCents: Number(monthlyAmountCents) || 0,
         landlordName: landlordName || location.landlordName,
         landlordEmail: landlordEmail || location.landlordEmail,
-        propertyAddress: propertyAddress || location.propertyAddress,
+        propertyAddress: propertyAddress || `${location.propertyAddress}${location.unit ? `, Unit ${location.unit}` : ""}`,
         notes: notes || null,
         status: "generated",
         createdBy: user.id,
@@ -4246,21 +4246,29 @@ export async function registerRoutes(
                   <td style="padding:14px 16px;font-weight:600;color:#1d4ed8;">Annual Plan</td>
                   <td style="padding:14px 16px;color:#374151;">${fmtPct(invoice.annualRatePct)} of annual rent</td>
                   <td style="padding:14px 16px;text-align:right;font-weight:700;font-size:16px;color:#1d4ed8;">${fmtCAD(invoice.annualAmountCents)}</td>
-                  <td style="padding:14px 16px;color:#6b7280;font-size:13px;">One-time annual payment<br/><span style="color:#16a34a;">(~${fmtCAD(Math.round(invoice.annualAmountCents / 12))}/mo)</span></td>
+                  <td style="padding:14px 16px;color:#6b7280;font-size:13px;">One-time annual payment</td>
                 </tr>
                 <tr style="background:#f0fdf4;">
                   <td style="padding:14px 16px;font-weight:600;color:#15803d;">Monthly Plan</td>
                   <td style="padding:14px 16px;color:#374151;">${fmtPct(invoice.monthlyRatePct)} of monthly rent</td>
                   <td style="padding:14px 16px;text-align:right;font-weight:700;font-size:16px;color:#15803d;">${fmtCAD(invoice.monthlyAmountCents)}/mo</td>
-                  <td style="padding:14px 16px;color:#6b7280;font-size:13px;">Paid each month<br/><span style="color:#6b7280;">(${fmtCAD(invoice.monthlyAmountCents * 12)}/yr total)</span></td>
+                  <td style="padding:14px 16px;color:#6b7280;font-size:13px;">Billed each month<br/><span style="color:#6b7280;">(${fmtCAD(invoice.monthlyAmountCents * 12)}/yr total)</span></td>
                 </tr>
               </tbody>
             </table>
             ${invoice.notes ? `<div style="margin-top:20px;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:16px;font-size:13px;color:#555;"><strong>Notes:</strong> ${invoice.notes}</div>` : ""}
-            <p style="margin-top:28px;font-size:12px;color:#9ca3af;">This quote is valid for 30 days. Subject to underwriting approval. For questions, contact <a href="mailto:info@quoteus.ca" style="color:#1e3a5f;">info@quoteus.ca</a> or call 1-877-253-2695.</p>
+            <div style="margin-top:24px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;">
+              <div style="font-weight:700;font-size:11px;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Disclaimer</div>
+              <p style="font-size:12px;color:#78350f;line-height:1.7;margin:0;">
+                The premiums shown above are estimates only. <strong>Applicable taxes and fees will be added at the time of payment</strong>, depending on the selected payment option.
+                Credit card payments may incur additional processing fees — the exact amount will be confirmed at the time of payment processing.
+                This quote is valid for 30 days from the date of issue and is subject to underwriting approval and final review.
+              </p>
+            </div>
+            <p style="margin-top:16px;font-size:12px;color:#9ca3af;">For questions, contact <a href="mailto:info@quoteus.ca" style="color:#1e3a5f;">info@quoteus.ca</a> or call 1-877-253-2695.</p>
           </div>
           <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:16px 36px;text-align:center;">
-            <p style="margin:0;font-size:12px;color:#9ca3af;">QuoteUs.ca · Ontario's Insurance Platform · 1-877-253-2695 · info@quoteus.ca</p>
+            <p style="margin:0;font-size:12px;color:#9ca3af;">QuoteUs.ca · Rent Guarantee Insurance · 1-877-253-2695 · info@quoteus.ca</p>
           </div>
         </div>`;
 

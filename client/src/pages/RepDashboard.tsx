@@ -139,7 +139,7 @@ function PricingTab({
   pricingNotes: pricingNotesProp,
   onSaveMarkup, onSaveRates, onSaveCommission, onSaveMonthlyCommission, onSavePricingNotes,
   paymentLink, onSavePaymentLink,
-  locationId, landlordEmail, landlordName, payments, onPaymentCreated, actorId,
+  locationId, landlordEmail, landlordName, propertyAddress, payments, onPaymentCreated, actorId,
   serviceFeeEnabled: serviceFeeEnabledProp, serviceFee: serviceFeeProp,
   stripeSubscriptionId, subscriptionStatus,
   onSaveServiceFee, onCancelSubscription, onSyncPayments,
@@ -161,6 +161,7 @@ function PricingTab({
   locationId?: string;
   landlordEmail?: string | null;
   landlordName?: string | null;
+  propertyAddress?: string | null;
   payments?: RgPaymentRecord[];
   onPaymentCreated?: () => void;
   actorId?: string;
@@ -733,7 +734,7 @@ function PricingTab({
           monthlyAmountCents={Math.round(totalDeductionMonthly * 100)}
           landlordName={landlordName}
           landlordEmail={landlordEmail}
-          propertyAddress={undefined}
+          propertyAddress={propertyAddress}
         />
       )}
 
@@ -2531,6 +2532,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       locationId={selectedLocation.id}
                       landlordEmail={selectedLocation.landlordEmail}
                       landlordName={selectedLocation.landlordName}
+                      propertyAddress={`${selectedLocation.propertyAddress || ""}${selectedLocation.unit ? `, Unit ${selectedLocation.unit}` : ""}`}
                       payments={locationPayments}
                       onPaymentCreated={() => loadLocationPayments(selectedLocation.id)}
                       actorId={user?.id}
