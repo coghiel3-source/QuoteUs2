@@ -44,6 +44,54 @@ export default function AIMascotChat() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Drag state — null means "use default CSS corner position"
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const mascotRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef<{
+    startMx: number; startMy: number;
+    startEx: number; startEy: number;
+    moved: boolean;
+  } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    // Don't drag on right-click
+    if (e.button !== 0) return;
+    const el = mascotRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    dragState.current = {
+      startMx: e.clientX, startMy: e.clientY,
+      startEx: rect.left, startEy: rect.top,
+      moved: false,
+    };
+    el.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragState.current) return;
+    const dx = e.clientX - dragState.current.startMx;
+    const dy = e.clientY - dragState.current.startMy;
+    if (!dragState.current.moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+    dragState.current.moved = true;
+    const el = mascotRef.current;
+    if (!el) return;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const nx = Math.max(0, Math.min(window.innerWidth - w, dragState.current.startEx + dx));
+    const ny = Math.max(0, Math.min(window.innerHeight - h, dragState.current.startEy + dy));
+    setDragPos({ x: nx, y: ny });
+  };
+
+  const onPointerUp = () => {
+    if (!dragState.current) return;
+    const wasDrag = dragState.current.moved;
+    dragState.current = null;
+    if (!wasDrag) {
+      setOpen((o) => !o);
+    }
+  };
+
   // Booking form
   const [bookName, setBookName] = useState("");
   const [bookPhone, setBookPhone] = useState("");
@@ -164,21 +212,30 @@ export default function AIMascotChat() {
 
   return (
     <>
-      {/* Floating Mascot Button */}
+      {/* Floating Mascot — draggable, click to toggle chat */}
       <div
-        className="fixed bottom-0 right-4 md:right-6 z-40 select-none cursor-pointer group"
+        ref={mascotRef}
+        className="fixed z-40 select-none group touch-none"
+        style={
+          dragPos
+            ? { left: dragPos.x, top: dragPos.y, cursor: "grab" }
+            : { bottom: 0, right: "1rem", cursor: "pointer" }
+        }
         data-testid="mascot-float"
-        onClick={() => setOpen((o) => !o)}
-        title="Chat with QuoteUs Assistant"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        title="Click to chat · Drag to move"
       >
         <img
           src={mascotImage}
           alt="QuoteUs.ca mascot — click to chat"
-          className="h-24 md:h-44 w-auto drop-shadow-xl transition-transform duration-200 group-hover:scale-105 group-hover:-translate-y-1"
+          className="h-24 md:h-44 w-auto drop-shadow-xl transition-transform duration-200 group-hover:scale-105"
+          draggable={false}
         />
         {/* Pulse indicator when closed */}
         {!open && (
-          <div className="absolute top-4 right-2 w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow animate-pulse" />
+          <div className="absolute top-3 right-2 w-4 h-4 md:w-5 md:h-5 bg-green-500 rounded-full border-2 border-white shadow animate-pulse" />
         )}
       </div>
 
