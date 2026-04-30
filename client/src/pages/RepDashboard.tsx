@@ -20,7 +20,7 @@ import {
   Calculator, CreditCard, Percent, BadgePercent, CheckCircle2, FileSignature,
 } from "lucide-react";
 
-type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined";
+type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined" | "Issued";
 type ActiveTab = "overview" | "locations" | "leads" | "reminders" | "commission";
 type LocationView = "list" | "detail";
 type LeadDetailTab = "info" | "docs" | "processing";
@@ -33,6 +33,7 @@ const STATUS_COLORS: Record<Status, string> = {
   "Submitted": "bg-indigo-100 text-indigo-800",
   "Approved": "bg-green-100 text-green-800",
   "Declined": "bg-red-100 text-red-800",
+  "Issued": "bg-teal-100 text-teal-800",
 };
 
 const STATUS_DISPLAY_LABELS: Record<Status, string> = {
@@ -43,9 +44,12 @@ const STATUS_DISPLAY_LABELS: Record<Status, string> = {
   "Submitted": "Quoted",
   "Approved": "Bound / Issued",
   "Declined": "Declined",
+  "Issued": "Issued",
 };
 
 const IN_PROGRESS_STATUSES: Status[] = ["Contacted", "Documents Pending", "Documents Received", "Submitted"];
+
+const CLAIM_TYPES = ["Non-Payment of Rent", "Property Damage", "Tenant Abandonment", "Lease Violation", "Other"];
 const EMPLOYMENT_STATUSES = ["Employed Full-Time", "Employed Part-Time", "Self-Employed", "Student", "Retired", "Unemployed", "Other"];
 const PAYMENT_METHODS = ["e-Transfer", "Cheque", "Cash", "Direct Deposit", "Pre-Authorized Debit", "Other"];
 const TENANT_DOC_TYPES = ["Pay Stubs (Last 3 Months)", "T4 / Notice of Assessment", "Bank Statements (3 Months)", "Credit Check Authorization", "Government ID", "Employment Letter", "Tenants' Insurance", "PAD Form", "Other"];
@@ -916,6 +920,15 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     id: string; type: string; label: string; required: boolean;
   }>>([]);
 
+  // Claims
+  const [leadClaims, setLeadClaims] = useState<any[]>([]);
+  const [showClaimDialog, setShowClaimDialog] = useState(false);
+  const [claimForm, setClaimForm] = useState({ claimType: "", description: "", incidentDate: "", claimNotes: "" });
+  const [submittingClaim, setSubmittingClaim] = useState(false);
+
+  // Renewal reminder
+  const [renewalSaving, setRenewalSaving] = useState(false);
+
   // Edit lead dialog
   const [showEditLead, setShowEditLead] = useState(false);
   const [editLeadForm, setEditLeadForm] = useState({
@@ -1278,6 +1291,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setCreatedLink(null);
     setSelectedBrokerId((lead as any).brokerId || "");
     setSelectedRepId((lead as any).repId || "");
+    setLeadClaims([]);
     if (!user) return;
     try {
       const [reqs, docs] = await Promise.all([
@@ -1287,6 +1301,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setDocRequests(reqs || []);
       setDocuments(docs || []);
     } catch {}
+    // Load claims for issued leads
+    if (lead.status === "Issued") {
+      try {
+        const claims = await apiRequest<any[]>(`/rep/leads/${lead.id}/claims?actorId=${user.id}`);
+        setLeadClaims(claims || []);
+      } catch {}
+    }
   }
 
   async function handleAssignBroker(brokerId: string | null) {
@@ -1723,6 +1744,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const statsNew = leads.filter(l => l.status === "New").length;
   const statsInProgress = leads.filter(l => (IN_PROGRESS_STATUSES as string[]).includes(l.status)).length;
   const statsApproved = leads.filter(l => l.status === "Approved").length;
+  const statsIssued = leads.filter(l => l.status === "Issued").length;
   const statsDeclined = leads.filter(l => l.status === "Declined").length;
   const totalClosed = statsApproved + statsDeclined;
   const winRate = totalClosed > 0 ? Math.round((statsApproved / totalClosed) * 100) : 0;
@@ -2851,12 +2873,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         {activeTab === "leads" && (
           <div>
             {/* Quick stat filter pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
               {[
                 { label: "All Leads", count: leads.length, value: "all", color: "bg-gray-50 border-gray-200 hover:border-gray-400", activeColor: "bg-gray-900 text-white border-gray-900", textColor: "text-gray-700" },
                 { label: "New", count: statsNew, value: "New", color: "bg-blue-50 border-blue-200 hover:border-blue-400", activeColor: "bg-blue-600 text-white border-blue-600", textColor: "text-blue-700" },
                 { label: "In Progress", count: statsInProgress, value: "__inprogress__", color: "bg-orange-50 border-orange-200 hover:border-orange-400", activeColor: "bg-orange-500 text-white border-orange-500", textColor: "text-orange-700" },
                 { label: "Approved", count: statsApproved, value: "Approved", color: "bg-green-50 border-green-200 hover:border-green-400", activeColor: "bg-green-600 text-white border-green-600", textColor: "text-green-700" },
+                { label: "Issued", count: statsIssued, value: "Issued", color: "bg-teal-50 border-teal-200 hover:border-teal-400", activeColor: "bg-teal-600 text-white border-teal-600", textColor: "text-teal-700" },
               ].map(pill => {
                 const isActive = pill.value === "__inprogress__"
                   ? (IN_PROGRESS_STATUSES as string[]).includes(statusFilter)
@@ -2923,8 +2946,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                               {lead.moveInDate && <p className="text-xs text-gray-400">Move-in: {new Date(lead.moveInDate).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>}
                               {lead.tenantPhone && <p className="text-xs text-gray-400">{lead.tenantPhone}</p>}
                             </div>
-                            {(assignedBroker || (isAdminOrManager && assignedRep)) && (
-                              <div className="flex items-center gap-1.5 mt-1.5">
+                            {(assignedBroker || (isAdminOrManager && assignedRep) || lead.status === "Issued") && (
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                 {assignedBroker && (
                                   <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
                                     Broker: {assignedBroker.name}
@@ -2933,6 +2956,12 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                 {isAdminOrManager && assignedRep && !isRep && (
                                   <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
                                     Rep: {assignedRep.name}
+                                  </span>
+                                )}
+                                {lead.status === "Issued" && (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${(lead as any).renewalContacted ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                                    {(lead as any).renewalContacted ? <CheckCircle2 className="h-3 w-3" /> : <Bell className="h-3 w-3" />}
+                                    {(lead as any).renewalContacted ? "Renewal Contacted" : "Renewal Pending"}
                                   </span>
                                 )}
                               </div>
@@ -3400,6 +3429,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 <Button size="sm" variant="outline" onClick={() => { setShowDocRequest(true); setDocReqForm({ recipientType: "tenant", recipientName: selectedLead.tenantName, recipientEmail: selectedLead.tenantEmail, requiredDocs: [], expiresInDays: 7 }); setCreatedLink(null); }} data-testid="button-send-doc-request">
                   <Send className="h-3.5 w-3.5 mr-1" /> Request Docs
                 </Button>
+                {selectedLead.status === "Issued" && (
+                  <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 border-rose-300" onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setShowClaimDialog(true); }} data-testid="button-submit-claim">
+                    <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Submit Claim
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => setDeleteLeadConfirm(selectedLead.id)} data-testid="button-delete-lead"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
@@ -3413,6 +3447,128 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   <button onClick={() => { const loc = locations.find(l => l.id === selectedLead.locationId); if (loc) { setSelectedLead(null); openAddTenant(loc); } }} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors" data-testid="button-add-new-tenant-from-declined">
                     <UserPlus className="h-3.5 w-3.5" /> Add New Tenant for This Property
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Issued — Renewal Reminder Banner */}
+            {selectedLead.status === "Issued" && (
+              <div className={`mx-5 mt-4 rounded-xl p-4 border ${(selectedLead as any).renewalContacted ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    {(selectedLead as any).renewalContacted
+                      ? <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      : <Bell className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    }
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-semibold ${(selectedLead as any).renewalContacted ? "text-green-800" : "text-amber-800"}`}>
+                        Renewal Reminder
+                      </p>
+                      {(selectedLead as any).renewalContacted ? (
+                        <p className="text-xs text-green-700 mt-0.5">
+                          Client contacted{(selectedLead as any).renewalContactedAt ? ` on ${new Date((selectedLead as any).renewalContactedAt).toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric" })}` : ""}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-amber-700 mt-0.5">Client has not been contacted for renewal yet</p>
+                      )}
+                      {/* Renewal notes */}
+                      <div className="mt-2">
+                        <textarea
+                          className="w-full text-xs border border-amber-200 rounded-lg p-2 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+                          rows={2}
+                          placeholder="Renewal notes (optional)..."
+                          defaultValue={(selectedLead as any).renewalNotes || ""}
+                          id={`renewal-notes-${selectedLead.id}`}
+                          data-testid="textarea-renewal-notes"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                    {!(selectedLead as any).renewalContacted ? (
+                      <Button
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                        disabled={renewalSaving}
+                        data-testid="button-mark-renewal-contacted"
+                        onClick={async () => {
+                          if (!user) return;
+                          const notesEl = document.getElementById(`renewal-notes-${selectedLead.id}`) as HTMLTextAreaElement;
+                          const notes = notesEl?.value || "";
+                          setRenewalSaving(true);
+                          try {
+                            const res = await fetch(`/api/rep/leads/${selectedLead.id}/renewal`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ actorId: user.id, renewalContacted: true, renewalNotes: notes }),
+                            });
+                            const updated = await res.json();
+                            setSelectedLead(updated);
+                            setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+                            toast({ title: "Marked as contacted" });
+                          } catch { toast({ title: "Failed to save", variant: "destructive" }); }
+                          setRenewalSaving(false);
+                        }}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Mark Contacted
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        disabled={renewalSaving}
+                        data-testid="button-unmark-renewal-contacted"
+                        onClick={async () => {
+                          if (!user) return;
+                          const notesEl = document.getElementById(`renewal-notes-${selectedLead.id}`) as HTMLTextAreaElement;
+                          const notes = notesEl?.value || "";
+                          setRenewalSaving(true);
+                          try {
+                            const res = await fetch(`/api/rep/leads/${selectedLead.id}/renewal`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ actorId: user.id, renewalContacted: false, renewalNotes: notes }),
+                            });
+                            const updated = await res.json();
+                            setSelectedLead(updated);
+                            setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+                            toast({ title: "Renewal status reset" });
+                          } catch { toast({ title: "Failed to save", variant: "destructive" }); }
+                          setRenewalSaving(false);
+                        }}
+                      >
+                        Undo
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs text-gray-500"
+                      disabled={renewalSaving}
+                      data-testid="button-save-renewal-notes"
+                      onClick={async () => {
+                        if (!user) return;
+                        const notesEl = document.getElementById(`renewal-notes-${selectedLead.id}`) as HTMLTextAreaElement;
+                        const notes = notesEl?.value || "";
+                        setRenewalSaving(true);
+                        try {
+                          const res = await fetch(`/api/rep/leads/${selectedLead.id}/renewal`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ actorId: user.id, renewalNotes: notes }),
+                          });
+                          const updated = await res.json();
+                          setSelectedLead(updated);
+                          setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+                          toast({ title: "Notes saved" });
+                        } catch { toast({ title: "Failed to save", variant: "destructive" }); }
+                        setRenewalSaving(false);
+                      }}
+                    >
+                      Save Notes
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -3653,6 +3809,49 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       </Card>
                     );
                   })()}
+
+                  {/* Claims — shown for Issued leads */}
+                  {selectedLead.status === "Issued" && (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm text-gray-600">Claims</CardTitle>
+                          <button
+                            onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setShowClaimDialog(true); }}
+                            className="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1"
+                            data-testid="button-submit-claim-card"
+                          >
+                            <AlertTriangle className="h-3 w-3" /> Submit Claim
+                          </button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {leadClaims.length === 0 ? (
+                          <p className="text-sm text-gray-400 text-center py-3">No claims submitted for this file</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {leadClaims.map((claim: any) => (
+                              <div key={claim.id} className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-semibold text-rose-800">{claim.claimType}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    claim.status === "Approved" ? "bg-green-100 text-green-700" :
+                                    claim.status === "Denied" ? "bg-red-100 text-red-700" :
+                                    claim.status === "In Review" ? "bg-blue-100 text-blue-700" :
+                                    "bg-amber-100 text-amber-700"
+                                  }`}>{claim.status}</span>
+                                </div>
+                                <p className="text-xs text-rose-700">{claim.description}</p>
+                                {claim.incidentDate && <p className="text-xs text-gray-500 mt-1">Incident: {claim.incidentDate}</p>}
+                                {claim.claimNotes && <p className="text-xs text-gray-500 mt-1 italic">{claim.claimNotes}</p>}
+                                <p className="text-xs text-gray-400 mt-1">{new Date(claim.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {docRequests.length > 0 && (
                     <Card>
@@ -4191,6 +4390,90 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       </Dialog>
 
       {/* Confirms */}
+      {/* Claim Submission Dialog */}
+      <Dialog open={showClaimDialog} onOpenChange={setShowClaimDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-rose-600" /> Submit a Claim
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Claim Type *</label>
+              <Select value={claimForm.claimType} onValueChange={v => setClaimForm(f => ({ ...f, claimType: v }))}>
+                <SelectTrigger data-testid="select-claim-type"><SelectValue placeholder="Select type..." /></SelectTrigger>
+                <SelectContent>
+                  {CLAIM_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Description *</label>
+              <textarea
+                className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
+                rows={4}
+                placeholder="Describe the claim in detail..."
+                value={claimForm.description}
+                onChange={e => setClaimForm(f => ({ ...f, description: e.target.value }))}
+                data-testid="textarea-claim-description"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Incident Date</label>
+              <Input
+                type="date"
+                value={claimForm.incidentDate}
+                onChange={e => setClaimForm(f => ({ ...f, incidentDate: e.target.value }))}
+                data-testid="input-claim-date"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Additional Notes</label>
+              <textarea
+                className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-gray-300"
+                rows={2}
+                placeholder="Any other details..."
+                value={claimForm.claimNotes}
+                onChange={e => setClaimForm(f => ({ ...f, claimNotes: e.target.value }))}
+                data-testid="textarea-claim-notes"
+              />
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+              <strong>Note:</strong> Submitting a claim will log it under this file with "Pending" status. Your admin will be notified to review it.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowClaimDialog(false)}>Cancel</Button>
+            <Button
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              disabled={!claimForm.claimType || !claimForm.description || submittingClaim}
+              data-testid="button-confirm-submit-claim"
+              onClick={async () => {
+                if (!user || !selectedLead) return;
+                setSubmittingClaim(true);
+                try {
+                  const res = await fetch(`/api/rep/leads/${selectedLead.id}/claims`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ actorId: user.id, ...claimForm }),
+                  });
+                  const newClaim = await res.json();
+                  setLeadClaims(prev => [...prev, newClaim]);
+                  setShowClaimDialog(false);
+                  toast({ title: "Claim submitted", description: "Your claim has been submitted with Pending status." });
+                } catch {
+                  toast({ title: "Failed to submit claim", variant: "destructive" });
+                }
+                setSubmittingClaim(false);
+              }}
+            >
+              {submittingClaim ? "Submitting..." : "Submit Claim"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!deleteLeadConfirm} onOpenChange={() => setDeleteLeadConfirm(null)}>
         <DialogContent className="max-w-sm"><DialogHeader><DialogTitle>Remove Tenant?</DialogTitle></DialogHeader><p className="text-sm text-gray-500 py-2">This will permanently remove the tenant application and all associated documents.</p><DialogFooter><Button variant="outline" onClick={() => setDeleteLeadConfirm(null)}>Cancel</Button><Button variant="destructive" onClick={handleDeleteLead} disabled={deleting} data-testid="button-confirm-delete-lead">{deleting ? "Removing..." : "Remove"}</Button></DialogFooter></DialogContent>
       </Dialog>

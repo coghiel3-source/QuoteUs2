@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertQuoteSchema, insertActivitySchema, rgInvoices } from "@shared/schema";
+import { insertUserSchema, insertQuoteSchema, insertActivitySchema, rgInvoices, rgClaims } from "@shared/schema";
 import { db } from "./db";
 import { z } from "zod";
 import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail, generateThankYouEmail, clearSmtpCache, generatePasswordResetEmail } from "./email";
@@ -4120,6 +4120,82 @@ export async function registerRoutes(
       });
 
       res.json({ sent, paymentCount: paid.length, totalCents });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── RG Claims ────────────────────────────────────────────────────
+  // GET /api/rep/leads/:id/claims — list claims for a lead
+  app.get("/api/rep/leads/:id/claims", async (req, res) => {
+    try {
+      const actorId = (req.query as any).actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { eq } = await import("drizzle-orm");
+      const claims = await db.select().from(rgClaims).where(eq(rgClaims.leadId, req.params.id));
+      res.json(claims);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/rep/leads/:id/claims — submit a new claim
+  app.post("/api/rep/leads/:id/claims", async (req, res) => {
+    try {
+      const actorId = req.body?.actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { claimType, description, incidentDate, claimNotes } = req.body;
+      if (!claimType || !description) return res.status(400).json({ error: "claimType and description are required" });
+      const [claim] = await db.insert(rgClaims).values({
+        leadId: req.params.id,
+        repId: user.id,
+        claimType,
+        description,
+        incidentDate: incidentDate || null,
+        claimNotes: claimNotes || null,
+        status: "Pending",
+      }).returning();
+      res.json(claim);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/rep/leads/:id/renewal — update renewal reminder status
+  app.patch("/api/rep/leads/:id/renewal", async (req, res) => {
+    try {
+      const actorId = req.body?.actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { renewalContacted, renewalNotes } = req.body;
+      const { eq } = await import("drizzle-orm");
+      const { rgLeads } = await import("@shared/schema");
+      const updateData: Record<string, any> = {
+        renewalNotes: renewalNotes ?? null,
+        updatedAt: new Date(),
+      };
+      if (renewalContacted === true) {
+        updateData.renewalContacted = true;
+        updateData.renewalContactedAt = new Date();
+        updateData.renewalContactedBy = user.id;
+      } else if (renewalContacted === false) {
+        updateData.renewalContacted = false;
+        updateData.renewalContactedAt = null;
+        updateData.renewalContactedBy = null;
+      }
+      const [updated] = await db.update(rgLeads).set(updateData).where(eq(rgLeads.id, req.params.id)).returning();
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

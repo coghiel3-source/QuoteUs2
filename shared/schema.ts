@@ -205,7 +205,7 @@ export const referralPartners = pgTable("referral_partners", {
 });
 
 // RG Lead status enum
-export const rgLeadStatusEnum = pgEnum("rg_lead_status", ["New", "Contacted", "Documents Pending", "Documents Received", "Submitted", "Approved", "Declined"]);
+export const rgLeadStatusEnum = pgEnum("rg_lead_status", ["New", "Contacted", "Documents Pending", "Documents Received", "Submitted", "Approved", "Declined", "Issued"]);
 
 // Rent Guarantee Leads Table (managed by reps)
 // RG Locations Table (property + landlord details)
@@ -287,9 +287,32 @@ export const rgLeads = pgTable("rg_leads", {
   noDefaultFirstSixtyDays: boolean("no_default_first_sixty_days").default(false),
   ongoingEmploymentNoTerminationRisk: boolean("ongoing_employment_no_termination_risk").default(false),
   documentsReceived: boolean("documents_received").default(false),
+  // Renewal reminder fields (used when status = "Issued")
+  renewalContacted: boolean("renewal_contacted").default(false),
+  renewalContactedAt: timestamp("renewal_contacted_at"),
+  renewalContactedBy: varchar("renewal_contacted_by").references(() => users.id),
+  renewalNotes: text("renewal_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// RG Claims Table
+export const rgClaims = pgTable("rg_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => rgLeads.id, { onDelete: "cascade" }),
+  repId: varchar("rep_id").notNull().references(() => users.id),
+  claimType: text("claim_type").notNull(), // e.g. "Non-Payment", "Property Damage", "Abandonment", "Other"
+  description: text("description").notNull(),
+  incidentDate: text("incident_date"),
+  status: text("status").notNull().default("Pending"), // "Pending" | "In Review" | "Approved" | "Denied"
+  claimNotes: text("claim_notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertRgClaimSchema = createInsertSchema(rgClaims).omit({ id: true, createdAt: true, updatedAt: true });
+export type RgClaim = typeof rgClaims.$inferSelect;
+export type InsertRgClaim = z.infer<typeof insertRgClaimSchema>;
 
 // Document Requests Table (tokenized links sent to tenant/landlord)
 export const documentRequests = pgTable("document_requests", {
