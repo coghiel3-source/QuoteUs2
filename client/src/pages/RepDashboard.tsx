@@ -936,6 +936,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [cancelForm, setCancelForm] = useState({ cancellationDate: "", cancellationReason: "" });
   const [submittingCancel, setSubmittingCancel] = useState(false);
 
+  // Cancel location account
+  const [showCancelLocationDialog, setShowCancelLocationDialog] = useState(false);
+  const [cancelLocationForm, setCancelLocationForm] = useState({ cancellationDate: "", cancellationReason: "" });
+  const [submittingCancelLocation, setSubmittingCancelLocation] = useState(false);
+
   // Renewal reminder
   const [renewalSaving, setRenewalSaving] = useState(false);
 
@@ -2245,6 +2250,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                       <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 border-rose-300" onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setClaimContext("location"); setShowClaimDialog(true); }} data-testid="button-submit-claim-location">
                         <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Submit Demand / Claim
                       </Button>
+                      {selectedLocation.status !== "Cancelled" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-gray-600 hover:text-gray-800 border-gray-300"
+                          onClick={() => { setCancelLocationForm({ cancellationDate: new Date().toISOString().split("T")[0], cancellationReason: "" }); setShowCancelLocationDialog(true); }}
+                          data-testid="button-cancel-location"
+                        >
+                          <XCircle className="h-3.5 w-3.5 mr-1" /> Close / Cancel Account
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -4482,6 +4498,72 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               }}
             >
               {submittingCancel ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Close / Cancel Location Account Dialog */}
+      <Dialog open={showCancelLocationDialog} onOpenChange={setShowCancelLocationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-gray-600" /> Close / Cancel Account
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Cancellation Date</label>
+              <Input
+                type="date"
+                value={cancelLocationForm.cancellationDate}
+                onChange={e => setCancelLocationForm(f => ({ ...f, cancellationDate: e.target.value }))}
+                data-testid="input-cancel-location-date"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Reason for Cancellation *</label>
+              <textarea
+                className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-400"
+                rows={4}
+                placeholder="Describe why this account is being closed or cancelled..."
+                value={cancelLocationForm.cancellationReason}
+                onChange={e => setCancelLocationForm(f => ({ ...f, cancellationReason: e.target.value }))}
+                data-testid="textarea-cancel-location-reason"
+              />
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+              <strong>Note:</strong> This will set the location status to "Cancelled" and record the date and reason. This action can be reviewed by your admin.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelLocationDialog(false)}>Keep Active</Button>
+            <Button
+              className="bg-gray-700 hover:bg-gray-800 text-white"
+              disabled={!cancelLocationForm.cancellationReason.trim() || submittingCancelLocation}
+              data-testid="button-confirm-cancel-location"
+              onClick={async () => {
+                if (!user || !selectedLocation) return;
+                setSubmittingCancelLocation(true);
+                try {
+                  const res = await fetch(`/api/rep/locations/${selectedLocation.id}/cancel`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ actorId: user.id, ...cancelLocationForm }),
+                  });
+                  if (!res.ok) throw new Error("Failed");
+                  const updated = await res.json();
+                  setLocations(prev => prev.map(l => l.id === updated.id ? { ...l, ...updated } : l));
+                  setSelectedLocation((prev: any) => prev ? { ...prev, ...updated } : prev);
+                  setShowCancelLocationDialog(false);
+                  toast({ title: "Account closed", description: "The location has been marked as Cancelled." });
+                } catch {
+                  toast({ title: "Failed to cancel account", variant: "destructive" });
+                }
+                setSubmittingCancelLocation(false);
+              }}
+            >
+              {submittingCancelLocation ? "Cancelling..." : "Confirm Cancellation"}
             </Button>
           </DialogFooter>
         </DialogContent>

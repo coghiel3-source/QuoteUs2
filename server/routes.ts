@@ -4225,6 +4225,29 @@ export async function registerRoutes(
     }
   });
 
+  // PATCH /api/rep/locations/:id/cancel — close / cancel a rent guarantee location account
+  app.patch("/api/rep/locations/:id/cancel", async (req, res) => {
+    try {
+      const { actorId, cancellationDate, cancellationReason } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      if (!cancellationReason?.trim()) return res.status(400).json({ error: "cancellationReason is required" });
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+      const cancelNote = `\n\n--- CANCELLED ${cancellationDate || new Date().toISOString().split("T")[0]} ---\nReason: ${cancellationReason.trim()}`;
+      const updated = await storage.updateLocation(req.params.id, {
+        status: "Cancelled",
+        notes: (location.notes || "") + cancelNote,
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // PATCH /api/rep/leads/:id/renewal — update renewal reminder status
   app.patch("/api/rep/leads/:id/renewal", async (req, res) => {
     try {
