@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "gOfUuMfFUZsUIgNeXoBKg"
+uri = "file://QuoteUs_Deploy.zip"
+type = "unspecified"
+title = "QuoteUs.ca — Deployment Package (17 MB)"
