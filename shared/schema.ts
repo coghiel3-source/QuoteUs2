@@ -656,3 +656,32 @@ export type CustomerAccount = typeof customerAccounts.$inferSelect;
 export type InsertCustomerAccount = z.infer<typeof insertCustomerAccountSchema>;
 export type CustomerPayment = typeof customerPayments.$inferSelect;
 export type InsertCustomerPayment = z.infer<typeof insertCustomerPaymentSchema>;
+
+// ── RG Organizations ────────────────────────────────────────────────────────
+
+export const rgOrganizations = pgTable("rg_organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  address: text("address"),
+  notes: text("notes"),
+  status: text("status").default("Active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const rgOrgMembers = pgTable("rg_org_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id").notNull().references(() => rgOrganizations.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").default("member"), // "principal" | "member"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRgOrganizationSchema = createInsertSchema(rgOrganizations).omit({ id: true, createdAt: true });
+export const insertRgOrgMemberSchema = createInsertSchema(rgOrgMembers).omit({ id: true, createdAt: true });
+
+export type RgOrganization = typeof rgOrganizations.$inferSelect;
+export type InsertRgOrganization = z.infer<typeof insertRgOrganizationSchema>;
+export type RgOrgMember = typeof rgOrgMembers.$inferSelect;

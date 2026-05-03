@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/api";
-import type { RgLocation, RgLead, DocumentRequest, RepDocument, RepReminder } from "@shared/schema";
+import type { RgLocation, RgLead, DocumentRequest, RepDocument, RepReminder, RgOrganization } from "@shared/schema";
 import {
   Home, Plus, Search, FileText, Send, Eye, Trash2, ChevronRight,
   X, RefreshCw, Check, Clock, ExternalLink, Copy, BarChart3, Bell,
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined" | "Issued" | "Cancelled";
-type ActiveTab = "overview" | "locations" | "leads" | "reminders" | "commission";
+type ActiveTab = "overview" | "locations" | "leads" | "reminders" | "commission" | "organizations";
 type LocationView = "list" | "detail";
 type LeadDetailTab = "info" | "docs" | "processing";
 
@@ -941,6 +941,23 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [cancelLocationForm, setCancelLocationForm] = useState({ cancellationDate: "", cancellationReason: "" });
   const [submittingCancelLocation, setSubmittingCancelLocation] = useState(false);
 
+  // Organizations (admin/manager)
+  const [orgView, setOrgView] = useState<"list" | "detail">("list");
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<any | null>(null);
+  const [orgMembers, setOrgMembers] = useState<any[]>([]);
+  const [allRepUsers, setAllRepUsers] = useState<any[]>([]);
+  const [showNewOrgDialog, setShowNewOrgDialog] = useState(false);
+  const [newOrgForm, setNewOrgForm] = useState({ name: "", contactName: "", contactEmail: "", contactPhone: "", address: "", notes: "", status: "Active" });
+  const [orgEditMode, setOrgEditMode] = useState(false);
+  const [orgEditForm, setOrgEditForm] = useState<any>({ name: "", contactName: "", contactEmail: "", contactPhone: "", address: "", notes: "", status: "Active" });
+  const [addMemberUserId, setAddMemberUserId] = useState("");
+  const [addMemberRole, setAddMemberRole] = useState("member");
+  const [savingOrg, setSavingOrg] = useState(false);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+  // My org (for rep principals / members)
+  const [myOrg, setMyOrg] = useState<any | null>(null);
+
   // Renewal reminder
   const [renewalSaving, setRenewalSaving] = useState(false);
 
@@ -1063,7 +1080,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     if (!user) return;
     setLoading(true);
     try {
-      const [locs, leadsData, remindersData, rgRatesData, earningsData, payoutsData, allPaymentsData] = await Promise.all([
+      const [locs, leadsData, remindersData, rgRatesData, earningsData, payoutsData, allPaymentsData, myOrgData] = await Promise.all([
         apiRequest<RgLocation[]>(`/rep/locations?actorId=${user.id}`),
         apiRequest<RgLead[]>(`/rep/leads?actorId=${user.id}`),
         isRep ? apiRequest<RepReminder[]>(`/rep/reminders?actorId=${user.id}`) : Promise.resolve([]),
@@ -1071,6 +1088,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         fetch(`/api/rep/earnings?actorId=${user.id}`).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(`/api/rep/payouts?actorId=${user.id}`).then(r => r.ok ? r.json() : []).catch(() => []),
         fetch(`/api/rep/all-payments?actorId=${user.id}`).then(r => r.ok ? r.json() : []).catch(() => []),
+        isRep ? fetch(`/api/rep/my-organization?actorId=${user.id}`).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
       ]);
       setLocations(locs || []);
       setLeads(leadsData || []);
@@ -1081,11 +1099,46 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       if (earningsData) setEarnings(earningsData);
       setPayouts(payoutsData || []);
       setAllPayments(allPaymentsData || []);
+      if (myOrgData) setMyOrg(myOrgData);
     } catch {
       toast({ title: "Failed to load data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadOrganizations() {
+    if (!user) return;
+    setLoadingOrgs(true);
+    try {
+      const data = await fetch(`/api/admin/rg-organizations?actorId=${user.id}`).then(r => r.ok ? r.json() : []);
+      setOrganizations(data || []);
+    } catch { setOrganizations([]); }
+    setLoadingOrgs(false);
+  }
+
+  async function loadOrgMembers(orgId: string) {
+    if (!user) return;
+    try {
+      const data = await fetch(`/api/admin/rg-organizations/${orgId}/members?actorId=${user.id}`).then(r => r.ok ? r.json() : []);
+      setOrgMembers(data || []);
+    } catch { setOrgMembers([]); }
+  }
+
+  async function loadAllRepUsers() {
+    if (!user || allRepUsers.length > 0) return;
+    try {
+      const all = await fetch(`/api/users?actorId=${user.id}`).then(r => r.ok ? r.json() : []);
+      setAllRepUsers((all || []).filter((u: any) => u.role === "rep"));
+    } catch { setAllRepUsers([]); }
+  }
+
+  async function loadMyOrg() {
+    if (!user || !isRep) return;
+    try {
+      const data = await fetch(`/api/rep/my-organization?actorId=${user.id}`).then(r => r.ok ? r.json() : null);
+      setMyOrg(data);
+    } catch { setMyOrg(null); }
   }
 
   async function loadLocationPayments(locationId: string) {
@@ -1844,8 +1897,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
             { id: "leads", icon: null, label: `All Leads (${leads.length})` },
             ...((isAdminOrManager || user?.permissions?.viewCommission === true) ? [{ id: "commission", icon: <DollarSign className="h-3.5 w-3.5" />, label: "Commission" }] : []),
             ...((isRep && rgPerm("canManageReminders")) || isAdminOrManager ? [{ id: "reminders", icon: <Bell className="h-3.5 w-3.5" />, label: `Reminders${pendingReminders > 0 ? ` (${pendingReminders})` : ""}` }] : []),
+            ...(isAdminOrManager ? [{ id: "organizations", icon: <Building2 className="h-3.5 w-3.5" />, label: "Organizations" }] : []),
+            ...(isRep && myOrg ? [{ id: "organizations", icon: <Building2 className="h-3.5 w-3.5" />, label: "My Organization" }] : []),
           ] as { id: ActiveTab; icon: React.ReactNode; label: string }[]).map(tab => (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); }} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`} data-testid={`tab-${tab.id}`}>
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id === "locations") setLocationView("list"); if (tab.id === "organizations" && isAdminOrManager) { loadOrganizations(); loadAllRepUsers(); } }} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${activeTab === tab.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`} data-testid={`tab-${tab.id}`}>
               {tab.icon}{tab.label}
             </button>
           ))}
@@ -3465,6 +3520,264 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         })()}
       </div>
 
+      {/* ===== ORGANIZATIONS TAB — Admin/Manager ===== */}
+      {activeTab === "organizations" && isAdminOrManager && (
+        <div>
+          {orgView === "list" && (
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold text-gray-800">Organizations</h2>
+                <Button size="sm" onClick={() => { setNewOrgForm({ name: "", contactName: "", contactEmail: "", contactPhone: "", address: "", notes: "", status: "Active" }); setShowNewOrgDialog(true); }} data-testid="button-new-org">
+                  <Plus className="h-4 w-4 mr-1" /> New Organization
+                </Button>
+              </div>
+              {loadingOrgs ? (
+                <div className="text-center py-16 text-gray-400">Loading...</div>
+              ) : organizations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <Building2 className="h-12 w-12 text-gray-200 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-1">No Organizations Yet</h3>
+                  <p className="text-sm text-gray-400 max-w-xs">Create organizations to group reps and give them a principal login to manage their team.</p>
+                  <Button className="mt-4" size="sm" onClick={() => { setNewOrgForm({ name: "", contactName: "", contactEmail: "", contactPhone: "", address: "", notes: "", status: "Active" }); setShowNewOrgDialog(true); }}>
+                    <Plus className="h-4 w-4 mr-1" /> Create First Organization
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {organizations.map(org => (
+                    <div key={org.id} className="bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setSelectedOrg(org); setOrgEditForm({ name: org.name, contactName: org.contactName || "", contactEmail: org.contactEmail || "", contactPhone: org.contactPhone || "", address: org.address || "", notes: org.notes || "", status: org.status || "Active" }); setOrgEditMode(false); setAddMemberUserId(""); setAddMemberRole("member"); loadOrgMembers(org.id); setOrgView("detail"); }} data-testid={`card-org-${org.id}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="bg-blue-100 p-2 rounded-lg"><Building2 className="h-4 w-4 text-blue-600" /></div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900 text-sm">{org.name}</h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${org.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>{org.status}</span>
+                          </div>
+                        </div>
+                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">{org.memberCount || 0} members</span>
+                      </div>
+                      {org.contactName && <p className="text-xs text-gray-500 flex items-center gap-1 mb-1"><User className="h-3 w-3" />{org.contactName}</p>}
+                      {org.contactEmail && <p className="text-xs text-gray-500 flex items-center gap-1 mb-1"><Mail className="h-3 w-3" />{org.contactEmail}</p>}
+                      {org.contactPhone && <p className="text-xs text-gray-500 flex items-center gap-1"><Phone className="h-3 w-3" />{org.contactPhone}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {orgView === "detail" && selectedOrg && (
+            <div>
+              {/* Back + Header */}
+              <div className="flex items-center gap-3 mb-5">
+                <Button size="sm" variant="outline" onClick={() => { setOrgView("list"); setSelectedOrg(null); setOrgEditMode(false); }} data-testid="button-back-org-list">
+                  <ChevronRight className="h-4 w-4 rotate-180 mr-1" /> Back
+                </Button>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-gray-800">{selectedOrg.name}</h2>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedOrg.status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>{selectedOrg.status}</span>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setOrgEditMode(!orgEditMode)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" /> {orgEditMode ? "Cancel Edit" : "Edit"}
+                </Button>
+                <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={async () => {
+                  if (!confirm(`Delete "${selectedOrg.name}"? This will remove all member assignments.`)) return;
+                  await fetch(`/api/admin/rg-organizations/${selectedOrg.id}?actorId=${user!.id}`, { method: "DELETE" });
+                  setOrgView("list"); setSelectedOrg(null); loadOrganizations();
+                  toast({ title: "Organization deleted" });
+                }} data-testid="button-delete-org">
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                </Button>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-5">
+                {/* Org Info */}
+                <div className="md:col-span-1 bg-white border rounded-xl p-5 shadow-sm">
+                  <h3 className="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide">Organization Info</h3>
+                  {orgEditMode ? (
+                    <div className="space-y-3">
+                      <div><label className="text-xs text-gray-500 font-medium block mb-1">Name *</label><Input value={orgEditForm.name} onChange={e => setOrgEditForm((f: any) => ({ ...f, name: e.target.value }))} data-testid="input-org-name" /></div>
+                      <div><label className="text-xs text-gray-500 font-medium block mb-1">Contact Name</label><Input value={orgEditForm.contactName} onChange={e => setOrgEditForm((f: any) => ({ ...f, contactName: e.target.value }))} /></div>
+                      <div><label className="text-xs text-gray-500 font-medium block mb-1">Contact Email</label><Input type="email" value={orgEditForm.contactEmail} onChange={e => setOrgEditForm((f: any) => ({ ...f, contactEmail: e.target.value }))} /></div>
+                      <div><label className="text-xs text-gray-500 font-medium block mb-1">Contact Phone</label><Input value={orgEditForm.contactPhone} onChange={e => setOrgEditForm((f: any) => ({ ...f, contactPhone: e.target.value }))} /></div>
+                      <div><label className="text-xs text-gray-500 font-medium block mb-1">Address</label><Input value={orgEditForm.address} onChange={e => setOrgEditForm((f: any) => ({ ...f, address: e.target.value }))} /></div>
+                      <div><label className="text-xs text-gray-500 font-medium block mb-1">Status</label>
+                        <Select value={orgEditForm.status} onValueChange={v => setOrgEditForm((f: any) => ({ ...f, status: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="Active">Active</SelectItem><SelectItem value="Inactive">Inactive</SelectItem></SelectContent>
+                        </Select>
+                      </div>
+                      <div><label className="text-xs text-gray-500 font-medium block mb-1">Notes</label><Textarea value={orgEditForm.notes} onChange={e => setOrgEditForm((f: any) => ({ ...f, notes: e.target.value }))} rows={3} /></div>
+                      <Button className="w-full" size="sm" disabled={savingOrg || !orgEditForm.name.trim()} onClick={async () => {
+                        setSavingOrg(true);
+                        try {
+                          const updated = await fetch(`/api/admin/rg-organizations/${selectedOrg.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actorId: user!.id, ...orgEditForm }) }).then(r => r.json());
+                          setSelectedOrg((prev: any) => ({ ...prev, ...updated }));
+                          setOrganizations(prev => prev.map(o => o.id === updated.id ? { ...o, ...updated } : o));
+                          setOrgEditMode(false);
+                          toast({ title: "Organization updated" });
+                        } catch { toast({ title: "Failed to update", variant: "destructive" }); }
+                        setSavingOrg(false);
+                      }} data-testid="button-save-org">{savingOrg ? "Saving..." : "Save Changes"}</Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 text-sm">
+                      {selectedOrg.contactName && <div className="flex items-center gap-2 text-gray-600"><User className="h-4 w-4 text-gray-400" />{selectedOrg.contactName}</div>}
+                      {selectedOrg.contactEmail && <div className="flex items-center gap-2 text-gray-600"><Mail className="h-4 w-4 text-gray-400" />{selectedOrg.contactEmail}</div>}
+                      {selectedOrg.contactPhone && <div className="flex items-center gap-2 text-gray-600"><Phone className="h-4 w-4 text-gray-400" />{selectedOrg.contactPhone}</div>}
+                      {selectedOrg.address && <div className="flex items-center gap-2 text-gray-600"><MapPin className="h-4 w-4 text-gray-400" />{selectedOrg.address}</div>}
+                      {selectedOrg.notes && <div className="mt-3 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 whitespace-pre-wrap">{selectedOrg.notes}</div>}
+                      {!selectedOrg.contactName && !selectedOrg.contactEmail && !selectedOrg.address && <p className="text-gray-400 text-xs">No contact info. Click Edit to add details.</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Members */}
+                <div className="md:col-span-2 bg-white border rounded-xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Members ({orgMembers.length})</h3>
+                  </div>
+
+                  {/* Add Member */}
+                  <div className="flex gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                    <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+                      <SelectTrigger className="flex-1 text-sm" data-testid="select-add-member-user">
+                        <SelectValue placeholder="Select a rep to add..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allRepUsers.filter(u => !orgMembers.find(m => m.userId === u.id)).map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={addMemberRole} onValueChange={setAddMemberRole}>
+                      <SelectTrigger className="w-32 text-sm" data-testid="select-add-member-role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="principal">Principal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" disabled={!addMemberUserId || savingOrg} onClick={async () => {
+                      setSavingOrg(true);
+                      try {
+                        await fetch(`/api/admin/rg-organizations/${selectedOrg.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actorId: user!.id, userId: addMemberUserId, role: addMemberRole }) });
+                        setAddMemberUserId(""); setAddMemberRole("member");
+                        await loadOrgMembers(selectedOrg.id);
+                        await loadOrganizations();
+                        toast({ title: "Member added" });
+                      } catch { toast({ title: "Failed to add member", variant: "destructive" }); }
+                      setSavingOrg(false);
+                    }} data-testid="button-add-member"><UserPlus className="h-4 w-4" /></Button>
+                  </div>
+
+                  {orgMembers.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6">No members yet. Add reps above.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {orgMembers.map(member => (
+                        <div key={member.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors" data-testid={`row-org-member-${member.id}`}>
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white border rounded-full p-1.5"><User className="h-3.5 w-3.5 text-gray-500" /></div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">{member.userName}</p>
+                              <p className="text-xs text-gray-400">{member.userEmail}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Select value={member.role} onValueChange={async (newRole) => {
+                              await fetch(`/api/admin/rg-organizations/${selectedOrg.id}/members/${member.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actorId: user!.id, role: newRole }) });
+                              setOrgMembers(prev => prev.map(m => m.id === member.id ? { ...m, role: newRole } : m));
+                              toast({ title: "Role updated" });
+                            }}>
+                              <SelectTrigger className="h-7 text-xs w-28 border-none bg-white">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${member.role === "principal" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}>{member.role === "principal" ? "Principal" : "Member"}</span>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="member">Member</SelectItem>
+                                <SelectItem value="principal">Principal</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700 h-7 w-7 p-0" onClick={async () => {
+                              await fetch(`/api/admin/rg-organizations/${selectedOrg.id}/members/${member.userId}?actorId=${user!.id}`, { method: "DELETE" });
+                              await loadOrgMembers(selectedOrg.id);
+                              await loadOrganizations();
+                              toast({ title: "Member removed" });
+                            }} data-testid={`button-remove-member-${member.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+                    <strong>Principal</strong> — can view all members' locations and leads, acting as the org admin.<br />
+                    <strong>Member</strong> — can only see their own leads and accounts.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== ORGANIZATIONS TAB — Rep (My Organization) ===== */}
+      {activeTab === "organizations" && isRep && myOrg && (
+        <div>
+          <div className="mb-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="bg-blue-100 p-2 rounded-lg"><Building2 className="h-5 w-5 text-blue-600" /></div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">{myOrg.org.name}</h2>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${myOrg.myRole === "principal" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}>
+                  {myOrg.myRole === "principal" ? "Principal (Org Admin)" : "Member"}
+                </span>
+              </div>
+            </div>
+            {myOrg.org.contactEmail && <p className="text-sm text-gray-500 mt-2 flex items-center gap-1 ml-12"><Mail className="h-3.5 w-3.5" />{myOrg.org.contactEmail}</p>}
+            {myOrg.org.contactPhone && <p className="text-sm text-gray-500 flex items-center gap-1 ml-12"><Phone className="h-3.5 w-3.5" />{myOrg.org.contactPhone}</p>}
+          </div>
+
+          {myOrg.myRole === "principal" ? (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Organization Members</h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {myOrg.members.map((member: any) => (
+                  <div key={member.id} className="bg-white border rounded-xl p-4 shadow-sm" data-testid={`card-my-org-member-${member.id}`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="bg-gray-100 p-2 rounded-full"><User className="h-4 w-4 text-gray-500" /></div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{member.userName}</p>
+                        <p className="text-xs text-gray-400 truncate">{member.userEmail}</p>
+                      </div>
+                      <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${member.role === "principal" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}>{member.role === "principal" ? "Principal" : "Member"}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-blue-50 rounded-lg p-2 text-center">
+                        <p className="text-lg font-bold text-blue-700">{member.locationCount}</p>
+                        <p className="text-xs text-blue-500">Locations</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-2 text-center">
+                        <p className="text-lg font-bold text-green-700">{member.leadCount}</p>
+                        <p className="text-xs text-green-500">Tenants</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-4">As the principal, your Locations and All Leads tabs show data for all organization members.</p>
+            </div>
+          ) : (
+            <div className="bg-white border rounded-xl p-6 text-center">
+              <User className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+              <p className="text-sm text-gray-600">You are a member of <strong>{myOrg.org.name}</strong>.</p>
+              <p className="text-xs text-gray-400 mt-1">You can view and manage your own leads and locations normally. Contact the principal for organization-wide reports.</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ===== LEAD DETAIL PANEL ===== */}
       <Dialog open={!!selectedLead} onOpenChange={(o) => { if (!o) setSelectedLead(null); }}>
         <DialogContent className="max-w-2xl p-0 overflow-hidden [&>button.absolute]:text-white [&>button.absolute]:top-3 [&>button.absolute]:right-3">
@@ -4564,6 +4877,71 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               }}
             >
               {submittingCancelLocation ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Organization Dialog */}
+      <Dialog open={showNewOrgDialog} onOpenChange={setShowNewOrgDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-blue-600" /> New Organization
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Organization Name *</label>
+              <Input value={newOrgForm.name} onChange={e => setNewOrgForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Sunrise Property Group" data-testid="input-new-org-name" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Contact Name</label>
+              <Input value={newOrgForm.contactName} onChange={e => setNewOrgForm(f => ({ ...f, contactName: e.target.value }))} placeholder="Primary contact person" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Contact Email</label>
+                <Input type="email" value={newOrgForm.contactEmail} onChange={e => setNewOrgForm(f => ({ ...f, contactEmail: e.target.value }))} placeholder="email@example.com" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Contact Phone</label>
+                <Input value={newOrgForm.contactPhone} onChange={e => setNewOrgForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="(416) 555-0100" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Address</label>
+              <Input value={newOrgForm.address} onChange={e => setNewOrgForm(f => ({ ...f, address: e.target.value }))} placeholder="123 Main St, Toronto, ON" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Notes</label>
+              <Textarea value={newOrgForm.notes} onChange={e => setNewOrgForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Any additional notes..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewOrgDialog(false)}>Cancel</Button>
+            <Button
+              disabled={!newOrgForm.name.trim() || savingOrg}
+              data-testid="button-create-org"
+              onClick={async () => {
+                if (!user) return;
+                setSavingOrg(true);
+                try {
+                  await fetch("/api/admin/rg-organizations", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ actorId: user.id, ...newOrgForm }),
+                  });
+                  setShowNewOrgDialog(false);
+                  await loadOrganizations();
+                  toast({ title: "Organization created" });
+                } catch {
+                  toast({ title: "Failed to create organization", variant: "destructive" });
+                }
+                setSavingOrg(false);
+              }}
+            >
+              {savingOrg ? "Creating..." : "Create Organization"}
             </Button>
           </DialogFooter>
         </DialogContent>

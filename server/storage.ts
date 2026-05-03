@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, rgOrganizations, rgOrgMembers, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate, type RgOrganization, type InsertRgOrganization, type RgOrgMember } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
 
@@ -164,6 +164,20 @@ export interface IStorage {
   updateCustomerPayment(id: string, data: any): Promise<CustomerPayment | undefined>;
   getCustomerPaymentsByAccount(accountNumber: string): Promise<CustomerPayment[]>;
   getQuotesByEmail(email: string): Promise<Quote[]>;
+
+  // RG Organization operations
+  getAllOrganizations(): Promise<RgOrganization[]>;
+  getOrganization(id: string): Promise<RgOrganization | undefined>;
+  createOrganization(data: InsertRgOrganization): Promise<RgOrganization>;
+  updateOrganization(id: string, data: Partial<InsertRgOrganization>): Promise<RgOrganization | undefined>;
+  deleteOrganization(id: string): Promise<boolean>;
+  getOrgMembers(orgId: string): Promise<RgOrgMember[]>;
+  getOrgMembership(userId: string): Promise<{ org: RgOrganization; member: RgOrgMember } | null>;
+  addOrgMember(orgId: string, userId: string, role: string): Promise<RgOrgMember>;
+  updateOrgMember(id: string, role: string): Promise<RgOrgMember | undefined>;
+  removeOrgMember(orgId: string, userId: string): Promise<boolean>;
+  getLocationsForUsers(userIds: string[]): Promise<RgLocation[]>;
+  getLeadsForUsers(userIds: string[]): Promise<RgLead[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -991,6 +1005,71 @@ export class DatabaseStorage implements IStorage {
 
   async getQuotesByEmail(email: string): Promise<Quote[]> {
     return db.select().from(quotes).where(eq(quotes.email, email)).orderBy(desc(quotes.createdAt));
+  }
+
+  // ── RG Organization operations ─────────────────────────────────────────────
+
+  async getAllOrganizations(): Promise<RgOrganization[]> {
+    return db.select().from(rgOrganizations).orderBy(desc(rgOrganizations.createdAt));
+  }
+
+  async getOrganization(id: string): Promise<RgOrganization | undefined> {
+    const [org] = await db.select().from(rgOrganizations).where(eq(rgOrganizations.id, id));
+    return org || undefined;
+  }
+
+  async createOrganization(data: InsertRgOrganization): Promise<RgOrganization> {
+    const [created] = await db.insert(rgOrganizations).values(data).returning();
+    return created;
+  }
+
+  async updateOrganization(id: string, data: Partial<InsertRgOrganization>): Promise<RgOrganization | undefined> {
+    const [updated] = await db.update(rgOrganizations).set(data).where(eq(rgOrganizations.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteOrganization(id: string): Promise<boolean> {
+    const result = await db.delete(rgOrganizations).where(eq(rgOrganizations.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getOrgMembers(orgId: string): Promise<RgOrgMember[]> {
+    return db.select().from(rgOrgMembers).where(eq(rgOrgMembers.orgId, orgId)).orderBy(rgOrgMembers.createdAt);
+  }
+
+  async getOrgMembership(userId: string): Promise<{ org: RgOrganization; member: RgOrgMember } | null> {
+    const [member] = await db.select().from(rgOrgMembers).where(eq(rgOrgMembers.userId, userId));
+    if (!member) return null;
+    const org = await this.getOrganization(member.orgId);
+    if (!org) return null;
+    return { org, member };
+  }
+
+  async addOrgMember(orgId: string, userId: string, role: string): Promise<RgOrgMember> {
+    const [created] = await db.insert(rgOrgMembers).values({ orgId, userId, role }).returning();
+    return created;
+  }
+
+  async updateOrgMember(id: string, role: string): Promise<RgOrgMember | undefined> {
+    const [updated] = await db.update(rgOrgMembers).set({ role }).where(eq(rgOrgMembers.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async removeOrgMember(orgId: string, userId: string): Promise<boolean> {
+    const result = await db.delete(rgOrgMembers)
+      .where(and(eq(rgOrgMembers.orgId, orgId), eq(rgOrgMembers.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getLocationsForUsers(userIds: string[]): Promise<RgLocation[]> {
+    if (userIds.length === 0) return [];
+    return db.select().from(rgLocations).where(inArray(rgLocations.repId, userIds)).orderBy(desc(rgLocations.createdAt));
+  }
+
+  async getLeadsForUsers(userIds: string[]): Promise<RgLead[]> {
+    if (userIds.length === 0) return [];
+    return db.select().from(rgLeads).where(inArray(rgLeads.repId, userIds)).orderBy(desc(rgLeads.createdAt));
   }
 }
 

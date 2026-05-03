@@ -1285,6 +1285,138 @@ export async function registerRoutes(
     res.json({ annualRate: 6.5, monthlyRate: 7 });
   });
 
+  // ── RG Organization routes (admin/manager) ────────────────────────────────
+
+  app.get("/api/admin/rg-organizations", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      const actor = actorId ? await storage.getUser(actorId as string) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const orgs = await storage.getAllOrganizations();
+      // attach member counts
+      const withCounts = await Promise.all(orgs.map(async org => {
+        const members = await storage.getOrgMembers(org.id);
+        return { ...org, memberCount: members.length, members };
+      }));
+      res.json(withCounts);
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  app.post("/api/admin/rg-organizations", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      if (!data.name?.trim()) return res.status(400).json({ error: "name is required" });
+      const org = await storage.createOrganization(data);
+      res.json(org);
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  app.patch("/api/admin/rg-organizations/:id", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const updated = await storage.updateOrganization(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Not found" });
+      res.json(updated);
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  app.delete("/api/admin/rg-organizations/:id", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      const actor = actorId ? await storage.getUser(actorId as string) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const ok = await storage.deleteOrganization(req.params.id);
+      if (!ok) return res.status(404).json({ error: "Not found" });
+      res.json({ success: true });
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  // Members
+  app.get("/api/admin/rg-organizations/:id/members", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      const actor = actorId ? await storage.getUser(actorId as string) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const members = await storage.getOrgMembers(req.params.id);
+      const allUsers = await storage.getAllUsers();
+      const withNames = members.map(m => {
+        const u = allUsers.find(u => u.id === m.userId);
+        return { ...m, userName: u?.name || "Unknown", userEmail: u?.email || "" };
+      });
+      res.json(withNames);
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  app.post("/api/admin/rg-organizations/:id/members", async (req, res) => {
+    try {
+      const { actorId, userId, role = "member" } = req.body;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      if (!userId) return res.status(400).json({ error: "userId required" });
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser || targetUser.role !== "rep") return res.status(400).json({ error: "Only rep users can be added" });
+      // Remove from any existing org first
+      const existing = await storage.getOrgMembership(userId);
+      if (existing) await storage.removeOrgMember(existing.org.id, userId);
+      const member = await storage.addOrgMember(req.params.id, userId, role);
+      res.json({ ...member, userName: targetUser.name, userEmail: targetUser.email });
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  app.patch("/api/admin/rg-organizations/:id/members/:memberId", async (req, res) => {
+    try {
+      const { actorId, role } = req.body;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const updated = await storage.updateOrgMember(req.params.memberId, role);
+      if (!updated) return res.status(404).json({ error: "Member not found" });
+      res.json(updated);
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  app.delete("/api/admin/rg-organizations/:id/members/:userId", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      const actor = actorId ? await storage.getUser(actorId as string) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      await storage.removeOrgMember(req.params.id, req.params.userId);
+      res.json({ success: true });
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
+  // GET /api/rep/my-organization — for reps to get their org membership info + org member summary
+  app.get("/api/rep/my-organization", async (req, res) => {
+    try {
+      const { actorId } = req.query;
+      const actor = actorId ? await storage.getUser(actorId as string) : (req.session as any)?.user;
+      if (!actor || actor.role !== "rep") return res.status(403).json({ error: "Access denied" });
+      const membership = await storage.getOrgMembership(actor.id);
+      if (!membership) return res.json(null);
+      const members = await storage.getOrgMembers(membership.org.id);
+      const allUsers = await storage.getAllUsers();
+      const memberUserIds = members.map(m => m.userId);
+      const [orgLocations, orgLeads] = await Promise.all([
+        storage.getLocationsForUsers(memberUserIds),
+        storage.getLeadsForUsers(memberUserIds),
+      ]);
+      const membersWithStats = members.map(m => {
+        const u = allUsers.find(u => u.id === m.userId);
+        return {
+          ...m,
+          userName: u?.name || "Unknown",
+          userEmail: u?.email || "",
+          locationCount: orgLocations.filter(l => l.repId === m.userId).length,
+          leadCount: orgLeads.filter(l => l.repId === m.userId).length,
+        };
+      });
+      res.json({ org: membership.org, myRole: membership.member.role, members: membersWithStats });
+    } catch (error: any) { res.status(500).json({ error: error.message }); }
+  });
+
   // Admin: Get province-specific RG rates
   app.get("/api/admin/rg-province-rates", async (req, res) => {
     try {
@@ -3134,7 +3266,13 @@ export async function registerRoutes(
       if (actor.role === "admin" || actor.role === "manager") {
         leads = await storage.getAllRgLeads();
       } else if (actor.role === "rep") {
-        leads = await storage.getRgLeadsForRep(actor.id);
+        const membership = await storage.getOrgMembership(actor.id);
+        if (membership && membership.member.role === "principal") {
+          const members = await storage.getOrgMembers(membership.org.id);
+          leads = await storage.getLeadsForUsers(members.map(m => m.userId));
+        } else {
+          leads = await storage.getRgLeadsForRep(actor.id);
+        }
       } else {
         return res.status(403).json({ error: "Insufficient permissions" });
       }
@@ -3277,16 +3415,25 @@ export async function registerRoutes(
 
   // ===== RG LOCATION ROUTES =====
 
-  // Get locations for rep (or all for admin/manager)
+  // Get locations for rep (or all for admin/manager; or all org members for principal)
   app.get("/api/rep/locations", async (req, res) => {
     try {
       const { actorId } = req.query;
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId as string);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
-      const locations = actor.role === "rep"
-        ? await storage.getLocationsForRep(actorId as string)
-        : await storage.getAllLocations();
+      let locations;
+      if (actor.role !== "rep") {
+        locations = await storage.getAllLocations();
+      } else {
+        const membership = await storage.getOrgMembership(actor.id);
+        if (membership && membership.member.role === "principal") {
+          const members = await storage.getOrgMembers(membership.org.id);
+          locations = await storage.getLocationsForUsers(members.map(m => m.userId));
+        } else {
+          locations = await storage.getLocationsForRep(actorId as string);
+        }
+      }
       res.json(locations);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
