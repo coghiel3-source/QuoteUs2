@@ -955,6 +955,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [addMemberRole, setAddMemberRole] = useState("member");
   const [savingOrg, setSavingOrg] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [showCreateRepDialog, setShowCreateRepDialog] = useState(false);
+  const [newRepForm, setNewRepForm] = useState({ name: "", email: "", phone: "", password: "", orgRole: "member" });
+  const [creatingRep, setCreatingRep] = useState(false);
   // My org (for rep principals / members)
   const [myOrg, setMyOrg] = useState<any | null>(null);
 
@@ -3639,37 +3642,47 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   </div>
 
                   {/* Add Member */}
-                  <div className="flex gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
-                    <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
-                      <SelectTrigger className="flex-1 text-sm" data-testid="select-add-member-user">
-                        <SelectValue placeholder="Select a rep to add..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allRepUsers.filter(u => !orgMembers.find(m => m.userId === u.id)).map(u => (
-                          <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={addMemberRole} onValueChange={setAddMemberRole}>
-                      <SelectTrigger className="w-32 text-sm" data-testid="select-add-member-role">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="principal">Principal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" disabled={!addMemberUserId || savingOrg} onClick={async () => {
-                      setSavingOrg(true);
-                      try {
-                        await fetch(`/api/admin/rg-organizations/${selectedOrg.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actorId: user!.id, userId: addMemberUserId, role: addMemberRole }) });
-                        setAddMemberUserId(""); setAddMemberRole("member");
-                        await loadOrgMembers(selectedOrg.id);
-                        await loadOrganizations();
-                        toast({ title: "Member added" });
-                      } catch { toast({ title: "Failed to add member", variant: "destructive" }); }
-                      setSavingOrg(false);
-                    }} data-testid="button-add-member"><UserPlus className="h-4 w-4" /></Button>
+                  <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex gap-2">
+                      <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+                        <SelectTrigger className="flex-1 text-sm" data-testid="select-add-member-user">
+                          <SelectValue placeholder="Select an existing rep..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allRepUsers.filter(u => !orgMembers.find(m => m.userId === u.id)).map(u => (
+                            <SelectItem key={u.id} value={u.id}>{u.name} ({u.email})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={addMemberRole} onValueChange={setAddMemberRole}>
+                        <SelectTrigger className="w-32 text-sm" data-testid="select-add-member-role">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="principal">Principal</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" disabled={!addMemberUserId || savingOrg} onClick={async () => {
+                        setSavingOrg(true);
+                        try {
+                          await fetch(`/api/admin/rg-organizations/${selectedOrg.id}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ actorId: user!.id, userId: addMemberUserId, role: addMemberRole }) });
+                          setAddMemberUserId(""); setAddMemberRole("member");
+                          await loadOrgMembers(selectedOrg.id);
+                          await loadOrganizations();
+                          toast({ title: "Member added" });
+                        } catch { toast({ title: "Failed to add member", variant: "destructive" }); }
+                        setSavingOrg(false);
+                      }} data-testid="button-add-member"><UserPlus className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 border-t border-gray-200" />
+                      <span className="text-xs text-gray-400">or</span>
+                      <div className="flex-1 border-t border-gray-200" />
+                    </div>
+                    <Button size="sm" variant="outline" className="w-full text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setNewRepForm({ name: "", email: "", phone: "", password: "", orgRole: "member" }); setShowCreateRepDialog(true); }} data-testid="button-create-new-rep">
+                      <Plus className="h-3.5 w-3.5 mr-1.5" /> Create New Rep &amp; Add to Org
+                    </Button>
                   </div>
 
                   {orgMembers.length === 0 ? (
@@ -4877,6 +4890,89 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               }}
             >
               {submittingCancelLocation ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create New Rep Dialog */}
+      <Dialog open={showCreateRepDialog} onOpenChange={setShowCreateRepDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-blue-600" /> Create New Rep
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-xs text-gray-500 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              A new Rep (Rent Guarantee) account will be created and immediately added to <strong>{selectedOrg?.name}</strong>.
+            </p>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Full Name *</label>
+              <Input value={newRepForm.name} onChange={e => setNewRepForm(f => ({ ...f, name: e.target.value }))} placeholder="Jane Smith" data-testid="input-new-rep-name" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Email Address *</label>
+              <Input type="email" value={newRepForm.email} onChange={e => setNewRepForm(f => ({ ...f, email: e.target.value }))} placeholder="jane@example.com" data-testid="input-new-rep-email" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Phone Number</label>
+              <Input type="tel" value={newRepForm.phone} onChange={e => setNewRepForm(f => ({ ...f, phone: e.target.value }))} placeholder="416-555-0123" data-testid="input-new-rep-phone" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Password *</label>
+              <Input type="password" value={newRepForm.password} onChange={e => setNewRepForm(f => ({ ...f, password: e.target.value }))} placeholder="Temporary password" data-testid="input-new-rep-password" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Org Role</label>
+              <Select value={newRepForm.orgRole} onValueChange={v => setNewRepForm(f => ({ ...f, orgRole: v }))}>
+                <SelectTrigger data-testid="select-new-rep-org-role"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Member</SelectItem>
+                  <SelectItem value="principal">Principal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateRepDialog(false)}>Cancel</Button>
+            <Button
+              disabled={!newRepForm.name.trim() || !newRepForm.email.trim() || !newRepForm.password.trim() || creatingRep}
+              data-testid="button-confirm-create-rep"
+              onClick={async () => {
+                if (!user || !selectedOrg) return;
+                setCreatingRep(true);
+                try {
+                  const created = await fetch("/api/users", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      name: newRepForm.name.trim(),
+                      email: newRepForm.email.trim(),
+                      phone: newRepForm.phone.trim() || undefined,
+                      password: newRepForm.password,
+                      role: "rep",
+                      status: "active",
+                    }),
+                  }).then(r => r.json());
+                  if (created.error) throw new Error(created.error);
+                  await fetch(`/api/admin/rg-organizations/${selectedOrg.id}/members`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ actorId: user.id, userId: created.id, role: newRepForm.orgRole }),
+                  });
+                  setAllRepUsers(prev => [...prev, created]);
+                  await loadOrgMembers(selectedOrg.id);
+                  await loadOrganizations();
+                  setShowCreateRepDialog(false);
+                  toast({ title: "Rep created and added", description: `${created.name} has been created and added to ${selectedOrg.name}.` });
+                } catch (err: any) {
+                  toast({ title: "Failed to create rep", description: err.message || "Unknown error", variant: "destructive" });
+                }
+                setCreatingRep(false);
+              }}
+            >
+              {creatingRep ? "Creating..." : "Create & Add to Org"}
             </Button>
           </DialogFooter>
         </DialogContent>
