@@ -925,7 +925,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   // Claims
   const [leadClaims, setLeadClaims] = useState<any[]>([]);
+  const [locationClaims, setLocationClaims] = useState<any[]>([]);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
+  const [claimContext, setClaimContext] = useState<"location">("location");
   const [claimForm, setClaimForm] = useState({ claimType: "", description: "", incidentDate: "", claimNotes: "" });
   const [submittingClaim, setSubmittingClaim] = useState(false);
 
@@ -1117,20 +1119,23 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setDocSignFields([]);
     setDocSignLandlordName(loc.landlordName || "");
     setDocSignLandlordEmail(loc.landlordEmail || "");
+    setLocationClaims([]);
     await loadTenantsForLocation(loc.id);
     loadLocationPayments(loc.id);
     if (user) {
       try {
-        const [reqs, docs, sig, docSigs] = await Promise.all([
+        const [reqs, docs, sig, docSigs, claims] = await Promise.all([
           apiRequest<DocumentRequest[]>(`/rep/locations/${loc.id}/doc-requests?actorId=${user.id}`),
           apiRequest<RepDocument[]>(`/rep/locations/${loc.id}/documents?actorId=${user.id}`),
           apiRequest<any>(`/rep/locations/${loc.id}/signature-status?actorId=${user.id}`),
           apiRequest<any[]>(`/rep/locations/${loc.id}/doc-signatures?actorId=${user.id}`),
+          apiRequest<any[]>(`/rep/locations/${loc.id}/claims?actorId=${user.id}`),
         ]);
         setLocationDocRequests(reqs || []);
         setLocationDocs(docs || []);
         setLocationSignature(sig || null);
         setLocationDocSigs(docSigs || []);
+        setLocationClaims(claims || []);
       } catch {}
     }
   }
@@ -2237,6 +2242,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                         <FileSignature className="h-3.5 w-3.5 mr-1" />
                         {locationSignature?.status === "signed" ? "Signed ✓" : locationSignature ? "Resend Agreement" : "Send Agreement"}
                       </Button>
+                      <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 border-rose-300" onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setClaimContext("location"); setShowClaimDialog(true); }} data-testid="button-submit-claim-location">
+                        <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Submit Demand / Claim
+                      </Button>
                     </div>
                   </div>
 
@@ -2456,6 +2464,47 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           </CardContent>
                         </Card>
                       )}
+
+                      {/* Demands / Claims */}
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm text-gray-600">Demands / Claims</CardTitle>
+                            <button
+                              onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setClaimContext("location"); setShowClaimDialog(true); }}
+                              className="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1"
+                              data-testid="button-submit-claim-location-card"
+                            >
+                              <AlertTriangle className="h-3 w-3" /> Submit Demand / Claim
+                            </button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {locationClaims.length === 0 ? (
+                            <p className="text-sm text-gray-400 text-center py-3">No demands or claims submitted for this location</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {locationClaims.map((claim: any) => (
+                                <div key={claim.id} className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-semibold text-rose-800">{claim.claimType}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                      claim.status === "Approved" ? "bg-green-100 text-green-700" :
+                                      claim.status === "Denied" ? "bg-red-100 text-red-700" :
+                                      claim.status === "In Review" ? "bg-blue-100 text-blue-700" :
+                                      "bg-amber-100 text-amber-700"
+                                    }`}>{claim.status}</span>
+                                  </div>
+                                  <p className="text-xs text-rose-700">{claim.description}</p>
+                                  {claim.incidentDate && <p className="text-xs text-gray-500 mt-1">Date: {claim.incidentDate}</p>}
+                                  {claim.claimNotes && <p className="text-xs text-gray-500 mt-1 italic">{claim.claimNotes}</p>}
+                                  <p className="text-xs text-gray-400 mt-1">{new Date(claim.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
 
                       {/* Doc requests summary in info tab */}
                       {locationDocRequests.length > 0 && (
@@ -3438,11 +3487,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   <Send className="h-3.5 w-3.5 mr-1" /> Request Docs
                 </Button>
                 {selectedLead.status !== "Cancelled" && (
-                  <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 border-rose-300" onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setShowClaimDialog(true); }} data-testid="button-submit-claim">
-                    <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Submit Demand / Claim
-                  </Button>
-                )}
-                {selectedLead.status !== "Cancelled" && (
                   <Button size="sm" variant="outline" className="text-gray-600 hover:text-gray-800 border-gray-300" onClick={() => { setCancelForm({ cancellationDate: new Date().toISOString().split("T")[0], cancellationReason: "" }); setShowCancelDialog(true); }} data-testid="button-cancel-lead">
                     <XCircle className="h-3.5 w-3.5 mr-1" /> Cancel
                   </Button>
@@ -3839,48 +3883,6 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     );
                   })()}
 
-                  {/* Demands / Claims — shown for all active leads */}
-                  {selectedLead.status !== "Cancelled" && (
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm text-gray-600">Demands / Claims</CardTitle>
-                          <button
-                            onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setShowClaimDialog(true); }}
-                            className="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1"
-                            data-testid="button-submit-claim-card"
-                          >
-                            <AlertTriangle className="h-3 w-3" /> Submit Demand / Claim
-                          </button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {leadClaims.length === 0 ? (
-                          <p className="text-sm text-gray-400 text-center py-3">No demands or claims submitted for this file</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {leadClaims.map((claim: any) => (
-                              <div key={claim.id} className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-semibold text-rose-800">{claim.claimType}</span>
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                    claim.status === "Approved" ? "bg-green-100 text-green-700" :
-                                    claim.status === "Denied" ? "bg-red-100 text-red-700" :
-                                    claim.status === "In Review" ? "bg-blue-100 text-blue-700" :
-                                    "bg-amber-100 text-amber-700"
-                                  }`}>{claim.status}</span>
-                                </div>
-                                <p className="text-xs text-rose-700">{claim.description}</p>
-                                {claim.incidentDate && <p className="text-xs text-gray-500 mt-1">Incident: {claim.incidentDate}</p>}
-                                {claim.claimNotes && <p className="text-xs text-gray-500 mt-1 italic">{claim.claimNotes}</p>}
-                                <p className="text-xs text-gray-400 mt-1">{new Date(claim.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
 
                   {docRequests.length > 0 && (
                     <Card>
@@ -4545,20 +4547,24 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               disabled={!claimForm.claimType || !claimForm.description || submittingClaim}
               data-testid="button-confirm-submit-claim"
               onClick={async () => {
-                if (!user || !selectedLead) return;
+                if (!user || !selectedLocation) return;
                 setSubmittingClaim(true);
                 try {
-                  const res = await fetch(`/api/rep/leads/${selectedLead.id}/claims`, {
+                  const res = await fetch(`/api/rep/locations/${selectedLocation.id}/claims`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ actorId: user.id, ...claimForm }),
                   });
+                  if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || "Failed");
+                  }
                   const newClaim = await res.json();
-                  setLeadClaims(prev => [...prev, newClaim]);
+                  setLocationClaims(prev => [...prev, newClaim]);
                   setShowClaimDialog(false);
                   toast({ title: "Demand / Claim submitted", description: "Logged with Pending status. Your admin has been notified." });
-                } catch {
-                  toast({ title: "Failed to submit", variant: "destructive" });
+                } catch (e: any) {
+                  toast({ title: "Failed to submit", description: e.message, variant: "destructive" });
                 }
                 setSubmittingClaim(false);
               }}

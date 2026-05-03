@@ -4169,6 +4169,62 @@ export async function registerRoutes(
     }
   });
 
+  // GET /api/rep/locations/:id/claims — list all claims for all leads at a location
+  app.get("/api/rep/locations/:id/claims", async (req, res) => {
+    try {
+      const actorId = (req.query as any).actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { eq, inArray } = await import("drizzle-orm");
+      const { rgLeads } = await import("@shared/schema");
+      const leads = await db.select({ id: rgLeads.id }).from(rgLeads).where(eq(rgLeads.locationId, req.params.id));
+      if (leads.length === 0) return res.json([]);
+      const leadIds = leads.map(l => l.id);
+      const claims = await db.select().from(rgClaims).where(inArray(rgClaims.leadId, leadIds));
+      res.json(claims);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/rep/locations/:id/claims — submit a claim against a location (attaches to active lead)
+  app.post("/api/rep/locations/:id/claims", async (req, res) => {
+    try {
+      const actorId = req.body?.actorId;
+      const sessionUser = (req.session as any)?.user;
+      const user = actorId ? await storage.getUser(actorId) : sessionUser;
+      if (!user || !["admin", "manager", "rep"].includes(user.role)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const { claimType, description, incidentDate, claimNotes, leadId } = req.body;
+      if (!claimType || !description) return res.status(400).json({ error: "claimType and description are required" });
+      const { eq, and, notInArray } = await import("drizzle-orm");
+      const { rgLeads } = await import("@shared/schema");
+      let targetLeadId = leadId;
+      if (!targetLeadId) {
+        const leads = await db.select({ id: rgLeads.id }).from(rgLeads)
+          .where(and(eq(rgLeads.locationId, req.params.id), notInArray(rgLeads.status, ["Cancelled", "Declined"])));
+        if (leads.length === 0) return res.status(400).json({ error: "No active tenants at this location" });
+        targetLeadId = leads[0].id;
+      }
+      const [claim] = await db.insert(rgClaims).values({
+        leadId: targetLeadId,
+        repId: user.id,
+        claimType,
+        description,
+        incidentDate: incidentDate || null,
+        claimNotes: claimNotes || null,
+        status: "Pending",
+      }).returning();
+      res.json(claim);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // PATCH /api/rep/leads/:id/renewal — update renewal reminder status
   app.patch("/api/rep/leads/:id/renewal", async (req, res) => {
     try {
