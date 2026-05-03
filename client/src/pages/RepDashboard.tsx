@@ -1890,7 +1890,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-white border rounded-lg p-1 w-fit">
+        <div className="flex gap-1 mb-6 bg-white border rounded-lg p-1 overflow-x-auto max-w-full">
           {([
             { id: "overview", icon: <BarChart3 className="h-3.5 w-3.5" />, label: "Overview" },
             { id: "locations", icon: <MapPin className="h-3.5 w-3.5" />, label: `Locations (${locations.length})` },
