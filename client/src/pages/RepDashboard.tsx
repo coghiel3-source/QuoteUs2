@@ -1309,13 +1309,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setDocRequests(reqs || []);
       setDocuments(docs || []);
     } catch {}
-    // Load claims for issued leads
-    if (lead.status === "Issued") {
-      try {
-        const claims = await apiRequest<any[]>(`/rep/leads/${lead.id}/claims?actorId=${user.id}`);
-        setLeadClaims(claims || []);
-      } catch {}
-    }
+    // Load claims / demands for all leads
+    try {
+      const claims = await apiRequest<any[]>(`/rep/leads/${lead.id}/claims?actorId=${user.id}`);
+      setLeadClaims(claims || []);
+    } catch {}
   }
 
   async function handleAssignBroker(brokerId: string | null) {
@@ -3439,9 +3437,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                 <Button size="sm" variant="outline" onClick={() => { setShowDocRequest(true); setDocReqForm({ recipientType: "tenant", recipientName: selectedLead.tenantName, recipientEmail: selectedLead.tenantEmail, requiredDocs: [], expiresInDays: 7 }); setCreatedLink(null); }} data-testid="button-send-doc-request">
                   <Send className="h-3.5 w-3.5 mr-1" /> Request Docs
                 </Button>
-                {selectedLead.status === "Issued" && (
+                {selectedLead.status !== "Cancelled" && (
                   <Button size="sm" variant="outline" className="text-rose-600 hover:text-rose-700 border-rose-300" onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setShowClaimDialog(true); }} data-testid="button-submit-claim">
-                    <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Submit Claim
+                    <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Submit Demand / Claim
                   </Button>
                 )}
                 {selectedLead.status !== "Cancelled" && (
@@ -3841,24 +3839,24 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                     );
                   })()}
 
-                  {/* Claims — shown for Issued leads */}
-                  {selectedLead.status === "Issued" && (
+                  {/* Demands / Claims — shown for all active leads */}
+                  {selectedLead.status !== "Cancelled" && (
                     <Card>
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm text-gray-600">Claims</CardTitle>
+                          <CardTitle className="text-sm text-gray-600">Demands / Claims</CardTitle>
                           <button
                             onClick={() => { setClaimForm({ claimType: "", description: "", incidentDate: "", claimNotes: "" }); setShowClaimDialog(true); }}
                             className="text-xs text-rose-600 hover:text-rose-700 font-medium flex items-center gap-1"
                             data-testid="button-submit-claim-card"
                           >
-                            <AlertTriangle className="h-3 w-3" /> Submit Claim
+                            <AlertTriangle className="h-3 w-3" /> Submit Demand / Claim
                           </button>
                         </div>
                       </CardHeader>
                       <CardContent>
                         {leadClaims.length === 0 ? (
-                          <p className="text-sm text-gray-400 text-center py-3">No claims submitted for this file</p>
+                          <p className="text-sm text-gray-400 text-center py-3">No demands or claims submitted for this file</p>
                         ) : (
                           <div className="space-y-2">
                             {leadClaims.map((claim: any) => (
@@ -4487,17 +4485,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Claim Submission Dialog */}
+      {/* Demand / Claim Submission Dialog */}
       <Dialog open={showClaimDialog} onOpenChange={setShowClaimDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-rose-600" /> Submit a Claim
+              <AlertTriangle className="h-5 w-5 text-rose-600" /> Submit Demand / Claim
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-1">
             <div>
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Claim Type *</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Type *</label>
               <Select value={claimForm.claimType} onValueChange={v => setClaimForm(f => ({ ...f, claimType: v }))}>
                 <SelectTrigger data-testid="select-claim-type"><SelectValue placeholder="Select type..." /></SelectTrigger>
                 <SelectContent>
@@ -4510,14 +4508,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               <textarea
                 className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-rose-400"
                 rows={4}
-                placeholder="Describe the claim in detail..."
+                placeholder="Describe the demand or claim in detail..."
                 value={claimForm.description}
                 onChange={e => setClaimForm(f => ({ ...f, description: e.target.value }))}
                 data-testid="textarea-claim-description"
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Incident Date</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Date</label>
               <Input
                 type="date"
                 value={claimForm.incidentDate}
@@ -4526,18 +4524,18 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Additional Notes</label>
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1 block">Notes</label>
               <textarea
                 className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-gray-300"
-                rows={2}
-                placeholder="Any other details..."
+                rows={3}
+                placeholder="Add any additional notes here..."
                 value={claimForm.claimNotes}
                 onChange={e => setClaimForm(f => ({ ...f, claimNotes: e.target.value }))}
                 data-testid="textarea-claim-notes"
               />
             </div>
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
-              <strong>Note:</strong> Submitting a claim will log it under this file with "Pending" status. Your admin will be notified to review it.
+              <strong>Note:</strong> This will be logged under this file with "Pending" status and your admin will be notified to review it.
             </div>
           </div>
           <DialogFooter>
@@ -4558,14 +4556,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   const newClaim = await res.json();
                   setLeadClaims(prev => [...prev, newClaim]);
                   setShowClaimDialog(false);
-                  toast({ title: "Claim submitted", description: "Your claim has been submitted with Pending status." });
+                  toast({ title: "Demand / Claim submitted", description: "Logged with Pending status. Your admin has been notified." });
                 } catch {
-                  toast({ title: "Failed to submit claim", variant: "destructive" });
+                  toast({ title: "Failed to submit", variant: "destructive" });
                 }
                 setSubmittingClaim(false);
               }}
             >
-              {submittingClaim ? "Submitting..." : "Submit Claim"}
+              {submittingClaim ? "Submitting..." : "Submit Demand / Claim"}
             </Button>
           </DialogFooter>
         </DialogContent>
