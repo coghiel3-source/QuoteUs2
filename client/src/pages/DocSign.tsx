@@ -168,6 +168,7 @@ export default function DocSign() {
   }, [token]);
 
   const isPdf = (f: any) => f?.mimeType === "application/pdf" || f?.filePath?.endsWith(".pdf");
+  const isHtml = (f: any) => f?.mimeType === "text/html" || f?.filePath?.endsWith(".html");
 
   const allFields = fields;
   const hasSignatureField = allFields.some(f => f.type === "signature" || f.type === "initials");
@@ -266,6 +267,7 @@ export default function DocSign() {
   const currentFile = files[activeDoc];
   const currentPage = getDocPage(activeDoc);
   const isPdfFile = isPdf(currentFile);
+  const isHtmlFile = isHtml(currentFile);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -381,6 +383,15 @@ export default function DocSign() {
                 className="w-full"
                 style={{ height: 560, border: "none", display: "block" }}
                 title={currentFile.fileName}
+              />
+            ) : isHtmlFile ? (
+              <iframe
+                key={`${activeDoc}-html`}
+                src={currentFile.filePath}
+                className="w-full"
+                style={{ height: 620, border: "none", display: "block" }}
+                title={currentFile.fileName}
+                sandbox="allow-same-origin"
               />
             ) : (
               <div className="flex items-center justify-center p-6 bg-gray-100" style={{ minHeight: 300 }}>

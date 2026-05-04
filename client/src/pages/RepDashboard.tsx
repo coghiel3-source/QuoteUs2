@@ -1314,6 +1314,118 @@ ${notesBlock}${signedBlock}
     };
   }
 
+  function generateFilledLeaseHtml(d: NonNullable<typeof docSignTemplateData>): string {
+    const fmtDate = (s: string) => { try { return new Date(s + "T00:00:00").toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }); } catch { return s; } };
+    const eff = d.effectiveDate ? fmtDate(d.effectiveDate) : "_______________";
+    const fill = (v: string, fallback = "_______________") => v && v.trim() ? `<span class="filled">${v.trim()}</span>` : `<span class="blank">${fallback}</span>`;
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
+<title>Lease Co-Guarantee Agreement — ${d.landlordName || "Client"}</title>
+<style>
+  body{font-family:Georgia,serif;font-size:12pt;line-height:1.7;color:#111;max-width:820px;margin:0 auto;padding:40px 48px;background:#fff}
+  h1{font-size:16pt;text-align:center;margin-bottom:4px}
+  h2{font-size:13pt;margin-top:28px;margin-bottom:6px;border-bottom:1px solid #ccc;padding-bottom:4px}
+  h3{font-size:12pt;margin-top:20px;margin-bottom:4px}
+  .centre{text-align:center}
+  .header-block{text-align:center;margin-bottom:28px}
+  .header-block p{margin:2px 0;font-size:11pt}
+  .section{margin-top:20px}
+  .declarations table{border-collapse:collapse;width:100%;margin-top:8px}
+  .declarations td{padding:6px 10px;border:1px solid #bbb;vertical-align:top;font-size:11pt}
+  .declarations td:first-child{font-weight:bold;width:52%;color:#333}
+  .filled{color:#1a56db;font-weight:600;border-bottom:1.5px solid #1a56db;padding:0 2px}
+  .blank{color:#999;font-style:italic}
+  .party-block{margin:16px 0;padding:14px 18px;border-left:3px solid #2563eb;background:#f8faff}
+  .party-block p{margin:3px 0;font-size:11pt}
+  .legal{font-size:10.5pt;color:#333;margin-top:8px}
+  .sig-block{margin-top:40px;display:flex;gap:60px;flex-wrap:wrap}
+  .sig-col{flex:1;min-width:200px}
+  .sig-line{border-top:1px solid #555;margin-top:40px;margin-bottom:4px}
+  .sig-label{font-size:10pt;color:#555}
+  @media print{body{padding:24px 32px}}
+</style></head><body>
+
+<div class="header-block">
+  <h1>Lease Co-Guarantee Agreement</h1>
+  <p><strong>"Agreement"</strong></p>
+  <p style="margin-top:14px"><strong>Pensio Risk Management Group Inc.</strong> "Product Manager"</p>
+  <p>80 Carlauren Rd, Unit 23, Woodbridge, ON, L4L 7Z5</p>
+  <p>Product Manager's Email: info@pensioglobal.com</p>
+</div>
+
+<div class="party-block">
+  <p><strong>Rentatee "Landlord"</strong></p>
+  <p><strong>Name:</strong> ${fill(d.landlordName)}</p>
+  <p><strong>Address:</strong> ${fill(d.landlordAddress)}</p>
+  <p><strong>Contact Number:</strong> ${fill(d.landlordPhone)}</p>
+  <p><strong>Email:</strong> ${fill(d.landlordEmail)}</p>
+</div>
+
+<h2>Declarations</h2>
+<div class="declarations">
+  <table>
+    <tr><td>Residential Rental Property Address</td><td>${fill(d.propertyAddress)}</td></tr>
+    <tr><td>Qualified Tenants Residing in a Rental Unit</td><td>${fill(d.qualifiedTenants)}</td></tr>
+    <tr><td>Lease Co-Guarantee Agreement Contract Control Number</td><td>Pensio00001</td></tr>
+    <tr><td>Lease Co-Guarantee Effective Date</td><td>${fill(eff)}</td></tr>
+  </table>
+</div>
+
+<h2>Reimbursements and Product Fee</h2>
+<p class="legal"><strong>Rent Guarantee Reimbursement</strong> provided under this Agreement covers a maximum rent loss for each registered residential rental Unit in the Property. The maximum amount for the rent loss reimbursement is capped at sixty thousand Canadian Dollars CDN $60,000 for each twelve (12) month period for any one (1) habitable rentable Unit in the Property for the Term.</p>
+<p class="legal"><strong>Malicious Tenant Damage Reimbursement</strong> provided under this Agreement covers a maximum malicious tenant damage loss for each registered residential rental Unit in the Property. The maximum amount for the malicious tenant damage loss reimbursement is capped at ten thousand Canadian Dollars CDN $10,000 for each twelve (12) month period for any one (1) habitable and rentable Unit in the Property for the Term.</p>
+<p class="legal"><strong>Eviction Expense Reimbursement</strong> provided under this Agreement covers a maximum loss for each registered residential rental Unit in the Property. The maximum amount for the eviction expense loss reimbursement is capped at one thousand five hundred Canadian Dollars CDN $1,500 for each twelve (12) month period for any one (1) habitable and rentable Unit in the Property for the Term.</p>
+<p class="legal"><strong>Product Fee</strong> payable to Rentatee Technologies Inc. ("Rentatee") shall be five percent (5.0%) of the declared monthly rent if paid monthly, or four and one-half percent (4.5%) of the declared annual rent if paid annually, paid by the Landlord for the Qualifying Tenant(s) listed above to rent a Unit in the Property under a Lease Agreement. The Product Fee payment must be made to Rentatee on or before the 15th calendar day of each month commencing on the Effective Date, for the Term and any Extension thereof.</p>
+
+<h2>Reimbursement Loss Payee</h2>
+<div class="party-block">
+  <p><strong>Landlord:</strong> ${fill(d.landlordName)}</p>
+  <p><strong>Product Manager Agent:</strong> Rentatee Technologies Inc.</p>
+  <p>1610 Swainson Road, Kelowna, BC, V1P 1C5</p>
+  <p>Agent's Email: sales@rentatee.com</p>
+</div>
+
+<h2>Important Notice Disclaimer</h2>
+<p class="legal">The Tenant Management Services and Reimbursements provided by the Product Manager to the Landlord, as stated in this Agreement, are explicitly clarified to not constitute insurance. It is strongly recommended that Landlord carefully review this Agreement, seek professional advice, or consult the Product Manager or Product Manager's Agent before entering into this Agreement.</p>
+<p class="legal">The Product Manager directly self-procured a surety in the form of a Performance Bond from a Surety with an insurance or reinsurance rating of A.M. Best A (excellent) or better to secure the Product Manager's services and performance for the client.</p>
+
+<h2>Lease Co-Guarantee</h2>
+<p class="legal">This Lease Co-Guarantee Agreement (the "Agreement") made on the ${fill(eff, "_____________")} (the "Effective Date") between Rentatee (or with the Landlord's authorized Property Manager) (the "Landlord" or "Property Manager") and Pensio Risk Management Group Inc., located at 80 Carlauren Rd, Unit 23, Woodbridge, ON, L4L 7Z5 ("Product Manager").</p>
+
+<h2>Recitals</h2>
+<p class="legal">Whereas the Landlord and Product Manager may be referred to herein each as (a "Party") and collectively as (the "Parties") to this Agreement;</p>
+<p class="legal">Whereas the Landlord, being the owner, operator, and manager of the registered rental Unit, situated at the address of the property (the "Property");</p>
+<p class="legal">Whereas in consideration of the terms and conditions outlined in this Agreement, the Product Manager agrees to provide the Landlord with the following Tenant Management Services and reimbursements for losses in the event of a Tenant violation of an enforceable Lease Agreement: (i) Rent Guarantee Reimbursement for defaulted rent loss; (ii) Malicious Tenant Damage Reimbursement for malicious tenant damage; and (iii) Eviction Expense Reimbursement, for eviction and legal expenses.</p>
+<p class="legal">Whereas the initial term (the "Lease Term") for any Qualified Tenant listed above who meets the qualifications to enter into a Lease Agreement is for a minimum occupancy period of twelve (12) months.</p>
+<p class="legal">And Whereas the Parties have mutually agreed to enter into this Agreement and are bound by the terms and conditions specified within this Agreement.</p>
+
+<div class="sig-block">
+  <div class="sig-col">
+    <div class="sig-line"></div>
+    <p class="sig-label"><strong>Landlord Signature</strong></p>
+    <p class="sig-label">Name: ${fill(d.landlordName)}</p>
+    <p class="sig-label">Date: ${fill(eff)}</p>
+  </div>
+  <div class="sig-col">
+    <div class="sig-line"></div>
+    <p class="sig-label"><strong>Product Manager</strong></p>
+    <p class="sig-label">Pensio Risk Management Group Inc.</p>
+    <p class="sig-label">By: Jim Milankov, President</p>
+  </div>
+</div>
+
+<p style="margin-top:48px;font-size:9pt;color:#888;text-align:center">Generated by QuoteUs.ca &mdash; ${new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}</p>
+</body></html>`;
+  }
+
+  function addGeneratedLeaseAgreement() {
+    if (!docSignTemplateData) return;
+    const html = generateFilledLeaseHtml(docSignTemplateData);
+    const name = `LeaseCoGuarantee-${(docSignTemplateData.landlordName || "Client").replace(/\s+/g, "_")}.html`;
+    const file = new File([html], name, { type: "text/html" });
+    setDocSignFiles(prev => [file, ...prev.filter(f => !f.name.startsWith("LeaseCoGuarantee-"))]);
+    toast({ title: "Pre-filled agreement added", description: "It appears at the top of the Documents list." });
+  }
+
   function openDocSignDialog() {
     setDocSignLinks([]);
     setDocSignFiles([]);
@@ -3433,7 +3545,7 @@ ${notesBlock}${signedBlock}
                                   <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Document Pre-fill Fields</p>
                                   <button onClick={() => setDocSignTemplateData(null)} className="text-xs text-amber-600 hover:text-amber-800 font-medium">Remove</button>
                                 </div>
-                                <p className="text-xs text-amber-700">These values will be shown to the signer alongside the document. Edit as needed before sending.</p>
+                                <p className="text-xs text-amber-700">Edit the values below, then click "Generate Pre-filled Agreement" to produce a complete filled document for the signer.</p>
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
                                     <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Name</label>
@@ -3484,6 +3596,14 @@ ${notesBlock}${signedBlock}
                                       onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, effectiveDate: e.target.value } : prev)} />
                                   </div>
                                 </div>
+                                <button
+                                  onClick={addGeneratedLeaseAgreement}
+                                  className="w-full mt-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                                  data-testid="button-generate-filled-agreement"
+                                >
+                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                  Generate Pre-filled Agreement Document
+                                </button>
                               </div>
                             )}
 
