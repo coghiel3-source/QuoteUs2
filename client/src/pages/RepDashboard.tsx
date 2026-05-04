@@ -961,6 +961,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   // My org (for rep principals / members)
   const [myOrg, setMyOrg] = useState<any | null>(null);
 
+  // Service Agreements
+  const [serviceAgreements, setServiceAgreements] = useState<any[]>([]);
+  const [showSAForm, setShowSAForm] = useState(false);
+  const [editingSA, setEditingSA] = useState<any | null>(null);
+  const [saForm, setSaForm] = useState({ landlordName: "", landlordEmail: "", propertyAddress: "", serviceStartDate: "", tenantType: "new", serviceFee: "", notes: "" });
+  const [savingSA, setSavingSA] = useState(false);
+  const [sendingSA, setSendingSA] = useState<string | null>(null);
+
   // Renewal reminder
   const [renewalSaving, setRenewalSaving] = useState(false);
 
@@ -1185,18 +1193,22 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     loadLocationPayments(loc.id);
     if (user) {
       try {
-        const [reqs, docs, sig, docSigs, claims] = await Promise.all([
+        const [reqs, docs, sig, docSigs, claims, sas] = await Promise.all([
           apiRequest<DocumentRequest[]>(`/rep/locations/${loc.id}/doc-requests?actorId=${user.id}`),
           apiRequest<RepDocument[]>(`/rep/locations/${loc.id}/documents?actorId=${user.id}`),
           apiRequest<any>(`/rep/locations/${loc.id}/signature-status?actorId=${user.id}`),
           apiRequest<any[]>(`/rep/locations/${loc.id}/doc-signatures?actorId=${user.id}`),
           apiRequest<any[]>(`/rep/locations/${loc.id}/claims?actorId=${user.id}`),
+          apiRequest<any[]>(`/rep/locations/${loc.id}/service-agreements?actorId=${user.id}`),
         ]);
         setLocationDocRequests(reqs || []);
         setLocationDocs(docs || []);
         setLocationSignature(sig || null);
         setLocationDocSigs(docSigs || []);
         setLocationClaims(claims || []);
+        setServiceAgreements(sas || []);
+        setShowSAForm(false);
+        setEditingSA(null);
       } catch {}
     }
   }
@@ -2701,6 +2713,206 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                   {/* DOCUMENTS TAB */}
                   {locationDetailTab === "docs" && (
                     <div className="space-y-5">
+
+                      {/* ── Service Agreement Section ── */}
+                      <div className="border rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border-b border-blue-100">
+                          <div className="flex items-center gap-2">
+                            <FileSignature className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-semibold text-gray-800">Service Agreement</span>
+                            {serviceAgreements.length > 0 && (
+                              <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 font-medium">{serviceAgreements.length}</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (showSAForm && !editingSA) { setShowSAForm(false); return; }
+                              setEditingSA(null);
+                              setSaForm({
+                                landlordName: selectedLocation?.landlordName || "",
+                                landlordEmail: selectedLocation?.landlordEmail || "",
+                                propertyAddress: selectedLocation?.propertyAddress || "",
+                                serviceStartDate: "",
+                                tenantType: "new",
+                                serviceFee: "",
+                                notes: "",
+                              });
+                              setShowSAForm(true);
+                            }}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                            data-testid="button-new-service-agreement"
+                          >
+                            {showSAForm && !editingSA ? <><X className="h-3.5 w-3.5" /> Cancel</> : <><Plus className="h-3.5 w-3.5" /> New Agreement</>}
+                          </button>
+                        </div>
+
+                        {/* Create / Edit Form */}
+                        {showSAForm && (
+                          <div className="bg-white border-b px-4 py-4 space-y-3">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{editingSA ? "Edit Agreement" : "New Service Agreement"}</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-xs text-gray-500 font-medium">Landlord Name</label>
+                                <input className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={saForm.landlordName} onChange={e => setSaForm(f => ({ ...f, landlordName: e.target.value }))} placeholder="Full name" data-testid="input-sa-landlord-name" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs text-gray-500 font-medium">Landlord Email</label>
+                                <input type="email" className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={saForm.landlordEmail} onChange={e => setSaForm(f => ({ ...f, landlordEmail: e.target.value }))} placeholder="email@example.com" data-testid="input-sa-landlord-email" />
+                              </div>
+                              <div className="col-span-2 space-y-1">
+                                <label className="text-xs text-gray-500 font-medium">Property Address</label>
+                                <input className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={saForm.propertyAddress} onChange={e => setSaForm(f => ({ ...f, propertyAddress: e.target.value }))} placeholder="Full property address" data-testid="input-sa-property-address" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs text-gray-500 font-medium">Service Start Date</label>
+                                <input type="date" className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={saForm.serviceStartDate} onChange={e => setSaForm(f => ({ ...f, serviceStartDate: e.target.value }))} data-testid="input-sa-start-date" />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs text-gray-500 font-medium">Service Fee ($)</label>
+                                <input type="number" className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={saForm.serviceFee} onChange={e => setSaForm(f => ({ ...f, serviceFee: e.target.value }))} placeholder="0.00" data-testid="input-sa-service-fee" />
+                              </div>
+                              <div className="col-span-2 space-y-1">
+                                <label className="text-xs text-gray-500 font-medium">Tenant Type</label>
+                                <div className="flex gap-4 mt-1">
+                                  {[{ value: "new", label: "New Tenants" }, { value: "existing", label: "Existing Tenants" }].map(opt => (
+                                    <label key={opt.value} className="flex items-center gap-2 cursor-pointer text-sm">
+                                      <input type="radio" name="sa-tenant-type" value={opt.value} checked={saForm.tenantType === opt.value} onChange={() => setSaForm(f => ({ ...f, tenantType: opt.value }))} className="text-blue-600" />
+                                      {opt.label}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="col-span-2 space-y-1">
+                                <label className="text-xs text-gray-500 font-medium">Notes (optional)</label>
+                                <textarea className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={2} value={saForm.notes} onChange={e => setSaForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any additional notes..." data-testid="input-sa-notes" />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <button
+                                disabled={savingSA || !saForm.landlordName || !saForm.serviceFee}
+                                onClick={async () => {
+                                  if (!selectedLocation || !user) return;
+                                  setSavingSA(true);
+                                  try {
+                                    if (editingSA) {
+                                      const updated = await fetch(`/api/rep/service-agreements/${editingSA.id}`, {
+                                        method: "PATCH",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ actorId: user.id, ...saForm }),
+                                      }).then(r => r.json());
+                                      setServiceAgreements(prev => prev.map(sa => sa.id === updated.id ? updated : sa));
+                                    } else {
+                                      const created = await fetch(`/api/rep/locations/${selectedLocation.id}/service-agreements`, {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ actorId: user.id, ...saForm }),
+                                      }).then(r => r.json());
+                                      setServiceAgreements(prev => [created, ...prev]);
+                                    }
+                                    setShowSAForm(false);
+                                    setEditingSA(null);
+                                    toast({ title: editingSA ? "Agreement updated" : "Agreement created" });
+                                  } catch { toast({ title: "Failed to save agreement", variant: "destructive" }); }
+                                  setSavingSA(false);
+                                }}
+                                className="flex-1 bg-blue-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                data-testid="button-save-sa"
+                              >
+                                {savingSA ? "Saving..." : editingSA ? "Save Changes" : "Create Agreement"}
+                              </button>
+                              <button onClick={() => { setShowSAForm(false); setEditingSA(null); }} className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50 transition-colors">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Agreements List */}
+                        {serviceAgreements.length === 0 && !showSAForm ? (
+                          <div className="px-4 py-8 text-center">
+                            <FileSignature className="h-8 w-8 text-gray-200 mx-auto mb-2" />
+                            <p className="text-sm text-gray-400">No service agreements yet.</p>
+                            <p className="text-xs text-gray-300 mt-1">Create one to email to the client for e-signing.</p>
+                          </div>
+                        ) : (
+                          <div className="divide-y">
+                            {serviceAgreements.map(sa => (
+                              <div key={sa.id} className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50" data-testid={`row-sa-${sa.id}`}>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <span className="text-sm font-medium text-gray-900 truncate">{sa.landlordName || "Unnamed"}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
+                                      sa.status === "signed" ? "bg-green-100 text-green-700" :
+                                      sa.status === "sent" ? "bg-yellow-100 text-yellow-700" :
+                                      "bg-gray-100 text-gray-600"
+                                    }`}>
+                                      {sa.status === "signed" ? "✓ Signed" : sa.status === "sent" ? "Sent" : "Draft"}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 truncate">{sa.propertyAddress} · ${sa.serviceFee} · {sa.tenantType === "new" ? "New" : "Existing"} Tenants</p>
+                                  {sa.status === "signed" && sa.signedAt && (
+                                    <p className="text-xs text-green-600 mt-0.5">Signed by {sa.signerName} on {new Date(sa.signedAt).toLocaleDateString("en-CA")}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {sa.status !== "signed" && (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setEditingSA(sa);
+                                          setSaForm({ landlordName: sa.landlordName || "", landlordEmail: sa.landlordEmail || "", propertyAddress: sa.propertyAddress || "", serviceStartDate: sa.serviceStartDate || "", tenantType: sa.tenantType || "new", serviceFee: sa.serviceFee || "", notes: sa.notes || "" });
+                                          setShowSAForm(true);
+                                        }}
+                                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                                        title="Edit"
+                                        data-testid={`button-edit-sa-${sa.id}`}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        disabled={sendingSA === sa.id || !sa.landlordEmail}
+                                        onClick={async () => {
+                                          if (!user) return;
+                                          setSendingSA(sa.id);
+                                          try {
+                                            const result = await fetch(`/api/rep/service-agreements/${sa.id}/send`, {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ actorId: user.id }),
+                                            }).then(r => r.json());
+                                            if (result.error) throw new Error(result.error);
+                                            setServiceAgreements(prev => prev.map(a => a.id === sa.id ? { ...a, status: "sent" } : a));
+                                            toast({ title: "Agreement emailed for signing", description: `Sent to ${sa.landlordEmail}` });
+                                          } catch (e: any) { toast({ title: e.message || "Failed to send", variant: "destructive" }); }
+                                          setSendingSA(null);
+                                        }}
+                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                        title={!sa.landlordEmail ? "Add landlord email first" : "Email signing link"}
+                                        data-testid={`button-send-sa-${sa.id}`}
+                                      >
+                                        {sendingSA === sa.id ? <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</> : <><Mail className="h-3 w-3" /> Send</>}
+                                      </button>
+                                    </>
+                                  )}
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm("Delete this service agreement?")) return;
+                                      await fetch(`/api/rep/service-agreements/${sa.id}?actorId=${user?.id}`, { method: "DELETE" });
+                                      setServiceAgreements(prev => prev.filter(a => a.id !== sa.id));
+                                      toast({ title: "Agreement deleted" });
+                                    }}
+                                    className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
+                                    title="Delete"
+                                    data-testid={`button-delete-sa-${sa.id}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
                       {/* ── Document Signing Section ── */}
                       <div className="border rounded-xl overflow-hidden">

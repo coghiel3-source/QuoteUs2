@@ -178,6 +178,14 @@ export interface IStorage {
   removeOrgMember(orgId: string, userId: string): Promise<boolean>;
   getLocationsForUsers(userIds: string[]): Promise<RgLocation[]>;
   getLeadsForUsers(userIds: string[]): Promise<RgLead[]>;
+
+  // Service Agreement operations
+  getServiceAgreement(id: string): Promise<ServiceAgreement | undefined>;
+  getServiceAgreementsByLocation(locationId: string): Promise<ServiceAgreement[]>;
+  getServiceAgreementByToken(token: string): Promise<ServiceAgreement | undefined>;
+  createServiceAgreement(data: Partial<InsertServiceAgreement> & { locationId: string }): Promise<ServiceAgreement>;
+  updateServiceAgreement(id: string, data: Partial<ServiceAgreement>): Promise<ServiceAgreement | undefined>;
+  deleteServiceAgreement(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1070,6 +1078,35 @@ export class DatabaseStorage implements IStorage {
   async getLeadsForUsers(userIds: string[]): Promise<RgLead[]> {
     if (userIds.length === 0) return [];
     return db.select().from(rgLeads).where(inArray(rgLeads.repId, userIds)).orderBy(desc(rgLeads.createdAt));
+  }
+
+  async getServiceAgreement(id: string): Promise<ServiceAgreement | undefined> {
+    const rows = await db.select().from(serviceAgreements).where(eq(serviceAgreements.id, id)).limit(1);
+    return rows[0];
+  }
+
+  async getServiceAgreementsByLocation(locationId: string): Promise<ServiceAgreement[]> {
+    return db.select().from(serviceAgreements).where(eq(serviceAgreements.locationId, locationId)).orderBy(desc(serviceAgreements.createdAt));
+  }
+
+  async getServiceAgreementByToken(token: string): Promise<ServiceAgreement | undefined> {
+    const rows = await db.select().from(serviceAgreements).where(eq(serviceAgreements.token, token)).limit(1);
+    return rows[0];
+  }
+
+  async createServiceAgreement(data: Partial<InsertServiceAgreement> & { locationId: string }): Promise<ServiceAgreement> {
+    const rows = await db.insert(serviceAgreements).values(data as any).returning();
+    return rows[0];
+  }
+
+  async updateServiceAgreement(id: string, data: Partial<ServiceAgreement>): Promise<ServiceAgreement | undefined> {
+    const rows = await db.update(serviceAgreements).set(data as any).where(eq(serviceAgreements.id, id)).returning();
+    return rows[0];
+  }
+
+  async deleteServiceAgreement(id: string): Promise<boolean> {
+    const result = await db.delete(serviceAgreements).where(eq(serviceAgreements.id, id)).returning();
+    return result.length > 0;
   }
 }
 

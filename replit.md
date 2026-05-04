@@ -27,6 +27,7 @@ The system uses email-based authentication and a robust role-based access contro
 - **Broker Profile Management**: Internal profiles for brokers include reference IDs, notes, tier categorization, performance stats, and preferences.
 - **Lead Response Timer**: Configurable timers for lead actioning by brokers, with automatic expiry and re-assignment.
 - **Digital Agreement/Signature System**: Allows reps to send customizable, e-signable agreements (e.g., landlord agreements, document signing) with public signing pages and email notifications.
+- **Service Agreement System**: Reps can create QuoteUs.ca Service Agreements (based on the official template) linked to a location. The form captures landlord name, email, property address, service start date, tenant type (new/existing), and service fee. Agreements appear in the location Documents tab, can be edited, emailed to the client for e-signing at `/service-sign/:token`, and track draft/sent/signed status. DB table: `service_agreements`.
 - **Rent Guarantee (RG) System**: A dedicated workflow for reps to manage RG leads, locations, tenants, and document requests. Includes an RG Payment System with Stripe integration for collecting premiums (annual/monthly) and an RG Invoice Generator for PDF quote invoices.
 - **Binder / Confirmation of Insurance**: Admins/managers can require brokers to upload insurance binders for leads.
 - **Billing Central**: A dedicated section for admins/managers to oversee all financial activities, including Rent Secure payments, lead transactions, and ad analytics.

@@ -4944,6 +4944,118 @@ export async function registerRoutes(
     }
   });
 
+  // ── Service Agreements ────────────────────────────────────────────
+  // GET /api/rep/locations/:id/service-agreements
+  app.get("/api/rep/locations/:id/service-agreements", async (req, res) => {
+    try {
+      const actorId = (req.query as any).actorId;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const agreements = await storage.getServiceAgreementsByLocation(req.params.id);
+      res.json(agreements);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST /api/rep/locations/:id/service-agreements
+  app.post("/api/rep/locations/:id/service-agreements", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const agreement = await storage.createServiceAgreement({ ...data, locationId: req.params.id });
+      res.json(agreement);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // PATCH /api/rep/service-agreements/:id
+  app.patch("/api/rep/service-agreements/:id", async (req, res) => {
+    try {
+      const { actorId, ...data } = req.body;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const updated = await storage.updateServiceAgreement(req.params.id, data);
+      if (!updated) return res.status(404).json({ error: "Not found" });
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // DELETE /api/rep/service-agreements/:id
+  app.delete("/api/rep/service-agreements/:id", async (req, res) => {
+    try {
+      const actorId = (req.query as any).actorId;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      await storage.deleteServiceAgreement(req.params.id);
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST /api/rep/service-agreements/:id/send — email signing link to client
+  app.post("/api/rep/service-agreements/:id/send", async (req, res) => {
+    try {
+      const { actorId } = req.body;
+      const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
+      if (!actor || !["admin", "manager", "rep"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      const sa = await storage.getServiceAgreement(req.params.id);
+      if (!sa) return res.status(404).json({ error: "Agreement not found" });
+      if (!sa.landlordEmail) return res.status(400).json({ error: "Landlord email is required before sending" });
+
+      const proto = req.headers["x-forwarded-proto"] || "https";
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const signingUrl = `${proto}://${host}/service-sign/${sa.token}`;
+
+      const html = `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px">
+          <div style="background:#1a56db;border-radius:8px;padding:20px 24px;margin-bottom:20px">
+            <h1 style="color:#fff;margin:0;font-size:20px">QuoteUs.ca Service Agreement</h1>
+          </div>
+          <p style="color:#374151;font-size:15px">Hello <strong>${sa.landlordName || "there"}</strong>,</p>
+          <p style="color:#374151;font-size:15px">Your service agreement for <strong>${sa.propertyAddress}</strong> is ready for your review and signature.</p>
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:20px 0">
+            <p style="margin:0 0 8px;color:#6b7280;font-size:13px">Service Details</p>
+            <p style="margin:0 0 4px;color:#111827;font-size:14px"><strong>Tenant Type:</strong> ${sa.tenantType === "new" ? "New Tenants" : "Existing Tenants"}</p>
+            <p style="margin:0 0 4px;color:#111827;font-size:14px"><strong>Service Fee:</strong> $${sa.serviceFee}</p>
+            ${sa.serviceStartDate ? `<p style="margin:0;color:#111827;font-size:14px"><strong>Start Date:</strong> ${sa.serviceStartDate}</p>` : ""}
+          </div>
+          <a href="${signingUrl}" style="display:inline-block;background:#1a56db;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;margin:8px 0">
+            Review &amp; Sign Agreement →
+          </a>
+          <p style="color:#9ca3af;font-size:12px;margin-top:24px">If you did not expect this email, please ignore it. This link is unique to your agreement.</p>
+        </div>`;
+
+      await sendEmail({ to: sa.landlordEmail, subject: "Your QuoteUs.ca Service Agreement — Signature Required", html });
+      await storage.updateServiceAgreement(sa.id, { status: "sent" });
+      res.json({ success: true, signingUrl });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // GET /api/service-sign/:token — public signing page data
+  app.get("/api/service-sign/:token", async (req, res) => {
+    try {
+      const sa = await storage.getServiceAgreementByToken(req.params.token);
+      if (!sa) return res.status(404).json({ error: "Agreement not found" });
+      res.json(sa);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST /api/service-sign/:token — public: submit signature
+  app.post("/api/service-sign/:token", async (req, res) => {
+    try {
+      const sa = await storage.getServiceAgreementByToken(req.params.token);
+      if (!sa) return res.status(404).json({ error: "Agreement not found" });
+      if (sa.status === "signed") return res.status(400).json({ error: "This agreement has already been signed" });
+      const { signatureData, signerName } = req.body;
+      if (!signerName?.trim()) return res.status(400).json({ error: "Signer name is required" });
+      const updated = await storage.updateServiceAgreement(sa.id, {
+        status: "signed",
+        signatureData,
+        signerName,
+        signedAt: new Date(),
+      });
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   // ── Admin Document Template Library ──────────────────────────────
   app.post("/api/admin/doc-templates", docSignUpload.single("document"), async (req, res) => {
     try {
