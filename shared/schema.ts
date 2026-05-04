@@ -685,3 +685,26 @@ export const insertRgOrgMemberSchema = createInsertSchema(rgOrgMembers).omit({ i
 export type RgOrganization = typeof rgOrganizations.$inferSelect;
 export type InsertRgOrganization = z.infer<typeof insertRgOrganizationSchema>;
 export type RgOrgMember = typeof rgOrgMembers.$inferSelect;
+
+// ── Service Agreements ──────────────────────────────────────────────────────
+export const serviceAgreements = pgTable("service_agreements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => rgLocations.id, { onDelete: "cascade" }),
+  landlordName: text("landlord_name").notNull().default(""),
+  landlordEmail: text("landlord_email").notNull().default(""),
+  propertyAddress: text("property_address").notNull().default(""),
+  serviceStartDate: text("service_start_date").default(""),
+  tenantType: text("tenant_type").notNull().default("new"),
+  serviceFee: text("service_fee").notNull().default(""),
+  notes: text("notes").default(""),
+  status: text("status").notNull().default("draft"),
+  token: varchar("token").unique().default(sql`gen_random_uuid()`),
+  signatureData: text("signature_data"),
+  signerName: text("signer_name"),
+  signedAt: timestamp("signed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertServiceAgreementSchema = createInsertSchema(serviceAgreements).omit({ id: true, token: true, signatureData: true, signerName: true, signedAt: true, createdAt: true });
+export type ServiceAgreement = typeof serviceAgreements.$inferSelect;
+export type InsertServiceAgreement = z.infer<typeof insertServiceAgreementSchema>;
