@@ -121,9 +121,9 @@ const docSignUpload = multer({
   storage: docSignUploadStorage,
   limits: { fileSize: 30 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|heic|webp/;
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|heic|webp|html/;
     if (allowedTypes.test(path.extname(file.originalname).toLowerCase())) return cb(null, true);
-    cb(new Error("Only PDF, Word, and image files are allowed"));
+    cb(new Error("Only PDF, Word, image, and HTML files are allowed"));
   },
 });
 
