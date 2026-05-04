@@ -4483,12 +4483,16 @@ export async function registerRoutes(
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
 
-      const { monthlyRentCents, annualRatePct, monthlyRatePct, annualAmountCents, monthlyAmountCents, landlordName, landlordEmail, propertyAddress, notes } = req.body;
+      const { monthlyRentCents, annualRatePct, monthlyRatePct, annualAmountCents, monthlyAmountCents, landlordName, landlordEmail, propertyAddress, notes, requiresSignature } = req.body;
 
       // Generate invoice number: INV-YYYY-XXXXXX
       const year = new Date().getFullYear();
       const suffix = Math.random().toString(36).toUpperCase().slice(2, 8);
       const invoiceNumber = `INV-${year}-${suffix}`;
+
+      // Generate sign token if signature required
+      const needsSig = !!requiresSignature;
+      const signToken = needsSig ? Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) : null;
 
       const [invoice] = await db.insert(rgInvoices).values({
         locationId: req.params.id,
@@ -4503,6 +4507,8 @@ export async function registerRoutes(
         propertyAddress: propertyAddress || `${location.propertyAddress}${location.unit ? `, Unit ${location.unit}` : ""}`,
         notes: notes || null,
         status: "generated",
+        requiresSignature: needsSig,
+        signToken,
         createdBy: user.id,
       }).returning();
 
@@ -4599,17 +4605,72 @@ export async function registerRoutes(
           </div>
         </div>`;
 
+      // Build signing section if required
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const signingBlock = invoice.signToken
+        ? `<div style="margin-top:28px;background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:20px 24px;text-align:center;">
+             <div style="font-weight:700;font-size:15px;color:#1d4ed8;margin-bottom:8px;">Action Required: Accept Your Quote</div>
+             <p style="font-size:13px;color:#374151;margin:0 0 16px;">Please click the button below to review and accept your Rent Guarantee quote. You will be able to choose your preferred plan (Annual or Monthly) and confirm with your name.</p>
+             <a href="${baseUrl}/invoice-sign/${invoice.signToken}"
+                style="display:inline-block;background:#1d4ed8;color:white;font-weight:700;font-size:14px;padding:12px 32px;border-radius:8px;text-decoration:none;letter-spacing:-.2px;">
+               Review &amp; Accept Quote →
+             </a>
+             <p style="margin:12px 0 0;font-size:11px;color:#6b7280;">Or copy this link: ${baseUrl}/invoice-sign/${invoice.signToken}</p>
+           </div>`
+        : "";
+
+      const htmlWithSig = html.replace(
+        `<p style="margin-top:16px;font-size:12px;color:#9ca3af;">For questions, contact`,
+        `${signingBlock}<p style="margin-top:16px;font-size:12px;color:#9ca3af;">For questions, contact`
+      );
+
       const sent = await sendEmail({
         to: recipientEmail,
-        subject: `Rent Guarantee Quote — ${invoice.invoiceNumber}`,
-        html,
-        text: `Rent Guarantee Quote ${invoice.invoiceNumber}\nAnnual Plan: ${fmtCAD(invoice.annualAmountCents)}\nMonthly Plan: ${fmtCAD(invoice.monthlyAmountCents)}/mo`,
+        subject: invoice.signToken ? `Action Required: Accept Your Rent Guarantee Quote — ${invoice.invoiceNumber}` : `Rent Guarantee Quote — ${invoice.invoiceNumber}`,
+        html: htmlWithSig,
+        text: `Rent Guarantee Quote ${invoice.invoiceNumber}\nAnnual Plan: ${fmtCAD(invoice.annualAmountCents)}\nMonthly Plan: ${fmtCAD(invoice.monthlyAmountCents)}/mo${invoice.signToken ? `\n\nAccept your quote at: ${baseUrl}/invoice-sign/${invoice.signToken}` : ""}`,
       });
 
       // Update status to emailed
       await db.update(rgInvoices).set({ status: "emailed", emailedAt: new Date() }).where(eq(rgInvoices.id, invoice.id));
 
       res.json({ sent });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ── Invoice Sign (public) ────────────────────────────────────────
+  // GET /api/invoice-sign/:token — fetch invoice for signing
+  app.get("/api/invoice-sign/:token", async (req, res) => {
+    try {
+      const { eq } = await import("drizzle-orm");
+      const [invoice] = await db.select().from(rgInvoices).where(eq(rgInvoices.signToken, req.params.token));
+      if (!invoice) return res.status(404).json({ error: "Invoice not found or link is invalid." });
+      res.json(invoice);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/invoice-sign/:token/accept — client accepts a plan
+  app.post("/api/invoice-sign/:token/accept", async (req, res) => {
+    try {
+      const { eq } = await import("drizzle-orm");
+      const [invoice] = await db.select().from(rgInvoices).where(eq(rgInvoices.signToken, req.params.token));
+      if (!invoice) return res.status(404).json({ error: "Invoice not found or link is invalid." });
+      if (invoice.signedAt) return res.status(409).json({ error: "This invoice has already been accepted." });
+
+      const { plan, signerName } = req.body;
+      if (!["annual", "monthly"].includes(plan)) return res.status(400).json({ error: "Invalid plan selection." });
+      if (!signerName?.trim()) return res.status(400).json({ error: "Signer name is required." });
+
+      const [updated] = await db.update(rgInvoices)
+        .set({ signedAt: new Date(), signedBy: signerName.trim(), signedPlan: plan, status: "accepted" })
+        .where(eq(rgInvoices.id, invoice.id))
+        .returning();
+
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

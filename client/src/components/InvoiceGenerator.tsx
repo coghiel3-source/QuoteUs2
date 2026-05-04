@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, forwardRef } from "react";
-import { FileText, Download, Send, Mail, Plus, ChevronDown, ChevronUp, CheckCircle2, Loader2, X } from "lucide-react";
+import { FileText, Download, Send, Mail, Plus, ChevronDown, ChevronUp, CheckCircle2, Loader2, X, PenLine, Link, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,11 @@ interface RgInvoice {
   notes: string | null;
   status: string | null;
   emailedAt: string | null;
+  requiresSignature: boolean;
+  signToken: string | null;
+  signedAt: string | null;
+  signedBy: string | null;
+  signedPlan: string | null;
   createdAt: string;
 }
 
@@ -220,6 +225,7 @@ export default function InvoiceGenerator({
   // Form state
   const [notes, setNotes] = useState("");
   const [emailTo, setEmailTo] = useState(landlordEmail || "");
+  const [requiresSignature, setRequiresSignature] = useState(false);
 
   // Action states
   const [saving, setSaving] = useState(false);
@@ -266,6 +272,7 @@ export default function InvoiceGenerator({
           landlordEmail: landlordEmail || "",
           propertyAddress: propertyAddress || "",
           notes: notes || null,
+          requiresSignature,
         }),
       });
       const inv = await res.json();
@@ -397,29 +404,59 @@ export default function InvoiceGenerator({
               <p className="text-xs text-gray-400 py-3 text-center">No invoices generated yet</p>
             ) : (
               invoices.map(inv => (
-                <div key={inv.id} className="flex items-center justify-between gap-2 py-2 border-b last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono text-xs font-bold text-blue-700">{inv.invoiceNumber}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${inv.status === "emailed" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                        {inv.status === "emailed" ? "Emailed" : "Generated"}
-                      </span>
+                <div key={inv.id} className="py-2 border-b last:border-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-blue-700">{inv.invoiceNumber}</span>
+                        {inv.status === "accepted" || inv.signedAt ? (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" /> Accepted
+                          </span>
+                        ) : inv.status === "emailed" ? (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-green-100 text-green-700">Emailed</span>
+                        ) : (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">Generated</span>
+                        )}
+                        {inv.requiresSignature && !inv.signedAt && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 flex items-center gap-1">
+                            <PenLine className="h-3 w-3" /> Awaiting Signature
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {new Date(inv.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}
+                        {" · "}Annual {fmtCAD(inv.annualAmountCents)} · Monthly {fmtCAD(inv.monthlyAmountCents)}/mo
+                      </p>
+                      {inv.signedAt && (
+                        <p className="text-xs text-emerald-600 mt-0.5 font-medium">
+                          {inv.signedPlan === "annual" ? "Annual" : "Monthly"} plan accepted by {inv.signedBy} · {new Date(inv.signedAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(inv.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}
-                      {" · "}Annual {fmtCAD(inv.annualAmountCents)} · Monthly {fmtCAD(inv.monthlyAmountCents)}/mo
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
-                      onClick={() => { setEmailDialogInvoice(inv); setEmailDialogAddr(inv.landlordEmail || ""); }}
-                      data-testid={`button-email-invoice-${inv.id}`}
-                    >
-                      <Mail className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {inv.signToken && !inv.signedAt && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/invoice-sign/${inv.signToken}`); toast({ title: "Signing link copied!" }); }}
+                          data-testid={`button-copy-sign-link-${inv.id}`}
+                          title="Copy signing link"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
+                        onClick={() => { setEmailDialogInvoice(inv); setEmailDialogAddr(inv.landlordEmail || ""); }}
+                        data-testid={`button-email-invoice-${inv.id}`}
+                      >
+                        <Mail className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -521,6 +558,47 @@ export default function InvoiceGenerator({
                 data-testid="input-invoice-email"
               />
             </div>
+
+            {/* Require signature toggle */}
+            <div
+              className={`flex items-start gap-3 rounded-xl border-2 p-3.5 cursor-pointer transition-all ${requiresSignature ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}
+              onClick={() => setRequiresSignature(v => !v)}
+              data-testid="toggle-require-signature"
+            >
+              <div className={`mt-0.5 h-4 w-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${requiresSignature ? "bg-blue-600 border-blue-600" : "border-gray-400 bg-white"}`}>
+                {requiresSignature && <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5">
+                  <PenLine className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-semibold text-gray-800">Require client signature to accept quote</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                  A unique signing link will be generated. When emailed, the client can review the invoice, choose Annual or Monthly plan, and confirm with their name. You'll see the acceptance in Saved Invoices.
+                </p>
+              </div>
+            </div>
+
+            {/* Signing link preview (after invoice saved with signature) */}
+            {savedInvoice?.signToken && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Link className="h-3.5 w-3.5 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-800">Client Signing Link</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs bg-white border border-blue-200 rounded px-2 py-1 text-blue-700 font-mono truncate">
+                    {window.location.origin}/invoice-sign/{savedInvoice.signToken}
+                  </code>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/invoice-sign/${savedInvoice.signToken}`); toast({ title: "Link copied!" }); }}
+                    className="flex-shrink-0 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center gap-1"
+                  >
+                    <Copy className="h-3 w-3" /> Copy
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex flex-col gap-2 pt-1">

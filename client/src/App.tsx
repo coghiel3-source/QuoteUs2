@@ -34,6 +34,7 @@ import DocSignPage from "@/pages/DocSign";
 import ServiceSignPage from "@/pages/ServiceSign";
 import RgPaymentSuccessPage from "@/pages/RgPaymentSuccess";
 import CustomerPortalPage from "@/pages/CustomerPortal";
+import InvoiceSignPage from "@/pages/InvoiceSign";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/rg-payment/success" component={RgPaymentSuccessPage} />
       <Route path="/customer-portal/success" component={CustomerPortalPage} />
       <Route path="/customer-portal" component={CustomerPortalPage} />
+      <Route path="/invoice-sign/:token" component={InvoiceSignPage} />
       {/* Main app with layout */}
       <Route>
         <Layout>

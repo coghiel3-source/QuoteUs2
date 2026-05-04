@@ -608,6 +608,11 @@ export const rgInvoices = pgTable("rg_invoices", {
   notes: text("notes"),
   status: varchar("status", { length: 20 }).default("generated"),
   emailedAt: timestamp("emailed_at"),
+  requiresSignature: boolean("requires_signature").notNull().default(false),
+  signToken: varchar("sign_token", { length: 64 }),
+  signedAt: timestamp("signed_at"),
+  signedBy: text("signed_by"),
+  signedPlan: varchar("signed_plan", { length: 10 }),
   createdBy: varchar("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
