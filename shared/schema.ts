@@ -435,6 +435,7 @@ export const locationDocSignatures = pgTable("location_doc_signatures", {
   createdBy: varchar("created_by"),
   signatureFields: text("signature_fields"),
   signers: text("signers"),
+  templateData: text("template_data"),
 });
 export type LocationDocSignature = typeof locationDocSignatures.$inferSelect;
 

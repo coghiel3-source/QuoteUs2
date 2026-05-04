@@ -924,6 +924,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     id: string; type: string; label: string; required: boolean;
     signerId?: string; page?: number; hint?: string;
   }>>([]);
+  const [docSignTemplateData, setDocSignTemplateData] = useState<{
+    landlordName: string; landlordAddress: string; landlordPhone: string; landlordEmail: string;
+    propertyAddress: string; qualifiedTenants: string; effectiveDate: string;
+  } | null>(null);
 
   // Claims
   const [leadClaims, setLeadClaims] = useState<any[]>([]);
@@ -1297,12 +1301,26 @@ ${notesBlock}${signedBlock}
     } catch {}
   }
 
+  function buildDocSignTemplateData(loc: typeof selectedLocation, tenants: typeof currentLocationTenants) {
+    if (!loc) return null;
+    return {
+      landlordName: loc.landlordName || "",
+      landlordAddress: "",
+      landlordPhone: loc.landlordPhone || "",
+      landlordEmail: loc.landlordEmail || "",
+      propertyAddress: `${loc.propertyAddress}${loc.unit ? ", Unit " + loc.unit : ""}`,
+      qualifiedTenants: (tenants || []).filter(t => t.status !== "Declined").map(t => t.tenantName).join(", "),
+      effectiveDate: loc.moveInDate || new Date().toISOString().slice(0, 10),
+    };
+  }
+
   function openDocSignDialog() {
     setDocSignLinks([]);
     setDocSignFiles([]);
     setDocSignSelectedTemplates([]);
     setDocSignFields([]);
     setDocSignSigners([{ id: "s1", name: docSignLandlordName, email: docSignLandlordEmail }]);
+    setDocSignTemplateData(null);
     setShowDocSignDialog(true);
     setLocationDetailTab("docs");
     loadAdminDocTemplates();
@@ -1334,6 +1352,7 @@ ${notesBlock}${signedBlock}
       formData.append("actorId", user.id);
       formData.append("signers", JSON.stringify(docSignSigners.filter(s => s.email.trim())));
       if (docSignFields.length > 0) formData.append("signatureFields", JSON.stringify(docSignFields));
+      if (docSignTemplateData) formData.append("templateData", JSON.stringify(docSignTemplateData));
       docSignSelectedTemplates.forEach(id => formData.append("templateIds", id));
       docSignFiles.forEach(f => formData.append("documents", f));
       const res = await fetch(`/api/rep/locations/${selectedLocation.id}/doc-signatures`, {
@@ -3356,13 +3375,13 @@ ${notesBlock}${signedBlock}
                               <div
                                 onDragOver={e => { e.preventDefault(); setDocSignDragOver(true); }}
                                 onDragLeave={() => setDocSignDragOver(false)}
-                                onDrop={e => { e.preventDefault(); setDocSignDragOver(false); setDocSignFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]); }}
+                                onDrop={e => { e.preventDefault(); setDocSignDragOver(false); const added = Array.from(e.dataTransfer.files); setDocSignFiles(prev => [...prev, ...added]); if (!docSignTemplateData) setDocSignTemplateData(buildDocSignTemplateData(selectedLocation, currentLocationTenants)); }}
                                 onClick={() => document.getElementById("ds-file-input")?.click()}
                                 className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${docSignDragOver ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}
                                 data-testid="dropzone-doc-signature"
                               >
                                 <input id="ds-file-input" type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.heic,.webp" className="sr-only"
-                                  onChange={e => setDocSignFiles(prev => [...prev, ...Array.from(e.target.files || [])])} />
+                                  onChange={e => { const added = Array.from(e.target.files || []); setDocSignFiles(prev => [...prev, ...added]); if (!docSignTemplateData) setDocSignTemplateData(buildDocSignTemplateData(selectedLocation, currentLocationTenants)); }} />
                                 <FileText className="h-6 w-6 text-gray-400 mx-auto mb-1" />
                                 <p className="text-xs text-gray-500">Drag & drop or <span className="text-blue-600 font-medium">browse</span> — PDF, Word, images</p>
                               </div>
@@ -3406,6 +3425,67 @@ ${notesBlock}${signedBlock}
                                 </div>
                               )}
                             </div>
+
+                            {/* ── Document Pre-fill Fields ── */}
+                            {docSignTemplateData && (
+                              <div className="px-4 py-3 border-b space-y-3 bg-amber-50">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Document Pre-fill Fields</p>
+                                  <button onClick={() => setDocSignTemplateData(null)} className="text-xs text-amber-600 hover:text-amber-800 font-medium">Remove</button>
+                                </div>
+                                <p className="text-xs text-amber-700">These values will be shown to the signer alongside the document. Edit as needed before sending.</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Name</label>
+                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                      value={docSignTemplateData.landlordName}
+                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordName: e.target.value } : prev)}
+                                      placeholder="Landlord's full name" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Address</label>
+                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                      value={docSignTemplateData.landlordAddress}
+                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordAddress: e.target.value } : prev)}
+                                      placeholder="Landlord's mailing address" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Phone</label>
+                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                      value={docSignTemplateData.landlordPhone}
+                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordPhone: e.target.value } : prev)}
+                                      placeholder="Contact number" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Email</label>
+                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                      value={docSignTemplateData.landlordEmail}
+                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordEmail: e.target.value } : prev)}
+                                      placeholder="Landlord's email" />
+                                  </div>
+                                  <div className="col-span-2">
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Residential Rental Property Address</label>
+                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                      value={docSignTemplateData.propertyAddress}
+                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, propertyAddress: e.target.value } : prev)}
+                                      placeholder="Full property address" />
+                                  </div>
+                                  <div className="col-span-2">
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Qualified Tenants</label>
+                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                      value={docSignTemplateData.qualifiedTenants}
+                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, qualifiedTenants: e.target.value } : prev)}
+                                      placeholder="Tenant name(s) residing in the unit" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs font-medium text-gray-600 block mb-1">Effective Date</label>
+                                    <input type="date" className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                                      value={docSignTemplateData.effectiveDate}
+                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, effectiveDate: e.target.value } : prev)} />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
                             {/* ── Required Fields ── */}
                             <div className="px-4 py-3 border-b space-y-3">

@@ -306,6 +306,39 @@ export default function DocSign() {
           </div>
         )}
 
+        {/* Pre-filled Document Fields Panel */}
+        {(() => {
+          let td: Record<string, string> | null = null;
+          try { if (record?.templateData) td = JSON.parse(record.templateData); } catch {}
+          if (!td) return null;
+          const rows = [
+            { label: "Landlord (Rentatee)", value: td.landlordName },
+            { label: "Landlord's Address", value: td.landlordAddress },
+            { label: "Landlord's Contact Number", value: td.landlordPhone },
+            { label: "Landlord's Email", value: td.landlordEmail },
+            { label: "Residential Rental Property Address", value: td.propertyAddress },
+            { label: "Qualified Tenants Residing in Unit", value: td.qualifiedTenants },
+            { label: "Lease Co-Guarantee Effective Date", value: td.effectiveDate ? new Date(td.effectiveDate + "T00:00:00").toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }) : "" },
+          ].filter(r => r.value);
+          if (rows.length === 0) return null;
+          return (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-amber-200 bg-amber-100/70">
+                <h2 className="text-sm font-bold text-amber-900">Agreement Details</h2>
+                <p className="text-xs text-amber-700 mt-0.5">The following details apply to this Lease Co-Guarantee Agreement.</p>
+              </div>
+              <div className="divide-y divide-amber-100">
+                {rows.map((r, i) => (
+                  <div key={i} className="px-5 py-2.5 flex gap-3">
+                    <span className="text-xs font-semibold text-amber-800 w-52 shrink-0">{r.label}</span>
+                    <span className="text-xs text-gray-800 flex-1">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Document Viewer */}
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
 

@@ -4784,7 +4784,7 @@ export async function registerRoutes(
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
 
-      const { landlordName, landlordEmail, signatureFields, templateIds, signers: signersRaw } = req.body;
+      const { landlordName, landlordEmail, signatureFields, templateIds, signers: signersRaw, templateData } = req.body;
 
       const uploadedFiles = (req.files as Express.Multer.File[]) || [];
       const masterToken = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
@@ -4826,6 +4826,7 @@ export async function registerRoutes(
         createdBy: actor.id,
         signatureFields: signatureFields || null,
         signers: JSON.stringify(signersList),
+        templateData: templateData || null,
       });
 
       // Save each uploaded file to location_doc_signature_files
