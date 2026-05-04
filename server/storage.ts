@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, rgOrganizations, rgOrgMembers, serviceAgreements, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate, type RgOrganization, type InsertRgOrganization, type RgOrgMember, type ServiceAgreement, type InsertServiceAgreement } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, rgOrganizations, rgOrgMembers, serviceAgreements, serviceAgreementAttachments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate, type RgOrganization, type InsertRgOrganization, type RgOrgMember, type ServiceAgreement, type InsertServiceAgreement, type SaAttachment, type InsertSaAttachment } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
 
@@ -186,6 +186,9 @@ export interface IStorage {
   createServiceAgreement(data: Partial<InsertServiceAgreement> & { locationId: string }): Promise<ServiceAgreement>;
   updateServiceAgreement(id: string, data: Partial<ServiceAgreement>): Promise<ServiceAgreement | undefined>;
   deleteServiceAgreement(id: string): Promise<boolean>;
+  getSaAttachments(saId: string): Promise<SaAttachment[]>;
+  addSaAttachment(data: InsertSaAttachment): Promise<SaAttachment>;
+  removeSaAttachment(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1106,6 +1109,20 @@ export class DatabaseStorage implements IStorage {
 
   async deleteServiceAgreement(id: string): Promise<boolean> {
     const result = await db.delete(serviceAgreements).where(eq(serviceAgreements.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getSaAttachments(saId: string): Promise<SaAttachment[]> {
+    return db.select().from(serviceAgreementAttachments).where(eq(serviceAgreementAttachments.saId, saId)).orderBy(serviceAgreementAttachments.createdAt);
+  }
+
+  async addSaAttachment(data: InsertSaAttachment): Promise<SaAttachment> {
+    const [row] = await db.insert(serviceAgreementAttachments).values(data).returning();
+    return row;
+  }
+
+  async removeSaAttachment(id: string): Promise<boolean> {
+    const result = await db.delete(serviceAgreementAttachments).where(eq(serviceAgreementAttachments.id, id)).returning();
     return result.length > 0;
   }
 }

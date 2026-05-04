@@ -5029,12 +5029,39 @@ export async function registerRoutes(
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
+  // GET /api/rep/service-agreements/:id/attachments
+  app.get("/api/rep/service-agreements/:id/attachments", async (req, res) => {
+    try {
+      const attachments = await storage.getSaAttachments(req.params.id);
+      res.json(attachments);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST /api/rep/service-agreements/:id/attachments
+  app.post("/api/rep/service-agreements/:id/attachments", async (req, res) => {
+    try {
+      const { fileName, fileData, fileType } = req.body;
+      if (!fileName || !fileData) return res.status(400).json({ error: "fileName and fileData are required" });
+      const attachment = await storage.addSaAttachment({ saId: req.params.id, fileName, fileData, fileType: fileType || "application/octet-stream" });
+      res.json(attachment);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // DELETE /api/rep/service-agreements/:id/attachments/:attachId
+  app.delete("/api/rep/service-agreements/:id/attachments/:attachId", async (req, res) => {
+    try {
+      await storage.removeSaAttachment(req.params.attachId);
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   // GET /api/service-sign/:token — public signing page data
   app.get("/api/service-sign/:token", async (req, res) => {
     try {
       const sa = await storage.getServiceAgreementByToken(req.params.token);
       if (!sa) return res.status(404).json({ error: "Agreement not found" });
-      res.json(sa);
+      const attachments = await storage.getSaAttachments(sa.id);
+      res.json({ ...sa, attachments });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 

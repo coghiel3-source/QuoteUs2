@@ -708,3 +708,17 @@ export const serviceAgreements = pgTable("service_agreements", {
 export const insertServiceAgreementSchema = createInsertSchema(serviceAgreements).omit({ id: true, token: true, signatureData: true, signerName: true, signedAt: true, createdAt: true });
 export type ServiceAgreement = typeof serviceAgreements.$inferSelect;
 export type InsertServiceAgreement = z.infer<typeof insertServiceAgreementSchema>;
+
+// ── Service Agreement Attachments ────────────────────────────────────────────
+export const serviceAgreementAttachments = pgTable("service_agreement_attachments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  saId: varchar("sa_id").notNull().references(() => serviceAgreements.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  fileData: text("file_data").notNull(),
+  fileType: text("file_type").notNull().default("application/octet-stream"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertSaAttachmentSchema = createInsertSchema(serviceAgreementAttachments).omit({ id: true, createdAt: true });
+export type SaAttachment = typeof serviceAgreementAttachments.$inferSelect;
+export type InsertSaAttachment = z.infer<typeof insertSaAttachmentSchema>;

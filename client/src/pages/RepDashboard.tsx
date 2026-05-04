@@ -18,7 +18,7 @@ import {
   BellRing, TrendingUp, AlarmClock, Pencil, MapPin, User, AlertTriangle,
   Building2, DollarSign, Calendar, Phone, Mail, UserPlus, ArrowRight,
   Calculator, CreditCard, Percent, BadgePercent, CheckCircle2, FileSignature,
-  XCircle,
+  XCircle, Paperclip, Download,
 } from "lucide-react";
 
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined" | "Issued" | "Cancelled";
@@ -968,6 +968,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [saForm, setSaForm] = useState({ landlordName: "", landlordEmail: "", propertyAddress: "", serviceStartDate: "", tenantType: "new", serviceFee: "", notes: "" });
   const [savingSA, setSavingSA] = useState(false);
   const [sendingSA, setSendingSA] = useState<string | null>(null);
+  const [previewSaId, setPreviewSaId] = useState<string | null>(null);
+  const [saAttachmentsMap, setSaAttachmentsMap] = useState<Record<string, any[]>>({});
+  const [uploadingAttachSaId, setUploadingAttachSaId] = useState<string | null>(null);
 
   // Renewal reminder
   const [renewalSaving, setRenewalSaving] = useState(false);
@@ -1209,8 +1212,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         setServiceAgreements(sas || []);
         setShowSAForm(false);
         setEditingSA(null);
+        setPreviewSaId(null);
+        setSaAttachmentsMap({});
       } catch {}
     }
+  }
+
+  async function loadSaAttachments(saId: string) {
+    try {
+      const data = await fetch(`/api/rep/service-agreements/${saId}/attachments?actorId=${user?.id}`).then(r => r.ok ? r.json() : []);
+      setSaAttachmentsMap(prev => ({ ...prev, [saId]: data || [] }));
+    } catch {}
   }
 
   async function loadAdminDocTemplates() {
@@ -2837,77 +2849,263 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                         ) : (
                           <div className="divide-y">
                             {serviceAgreements.map(sa => (
-                              <div key={sa.id} className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50" data-testid={`row-sa-${sa.id}`}>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <span className="text-sm font-medium text-gray-900 truncate">{sa.landlordName || "Unnamed"}</span>
-                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-                                      sa.status === "signed" ? "bg-green-100 text-green-700" :
-                                      sa.status === "sent" ? "bg-yellow-100 text-yellow-700" :
-                                      "bg-gray-100 text-gray-600"
-                                    }`}>
-                                      {sa.status === "signed" ? "✓ Signed" : sa.status === "sent" ? "Sent" : "Draft"}
-                                    </span>
+                              <div key={sa.id} data-testid={`row-sa-${sa.id}`}>
+                                {/* Row */}
+                                <div className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                      <span className="text-sm font-medium text-gray-900 truncate">{sa.landlordName || "Unnamed"}</span>
+                                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
+                                        sa.status === "signed" ? "bg-green-100 text-green-700" :
+                                        sa.status === "sent" ? "bg-yellow-100 text-yellow-700" :
+                                        "bg-gray-100 text-gray-600"
+                                      }`}>
+                                        {sa.status === "signed" ? "✓ Signed" : sa.status === "sent" ? "Sent" : "Draft"}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 truncate">{sa.propertyAddress} · ${sa.serviceFee} · {sa.tenantType === "new" ? "New" : "Existing"} Tenants</p>
+                                    {sa.status === "signed" && sa.signedAt && (
+                                      <p className="text-xs text-green-600 mt-0.5">Signed by {sa.signerName} on {new Date(sa.signedAt).toLocaleDateString("en-CA")}</p>
+                                    )}
                                   </div>
-                                  <p className="text-xs text-gray-500 truncate">{sa.propertyAddress} · ${sa.serviceFee} · {sa.tenantType === "new" ? "New" : "Existing"} Tenants</p>
-                                  {sa.status === "signed" && sa.signedAt && (
-                                    <p className="text-xs text-green-600 mt-0.5">Signed by {sa.signerName} on {new Date(sa.signedAt).toLocaleDateString("en-CA")}</p>
-                                  )}
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {/* Preview toggle */}
+                                    <button
+                                      onClick={() => {
+                                        const isOpen = previewSaId === sa.id;
+                                        setPreviewSaId(isOpen ? null : sa.id);
+                                        if (!isOpen && !saAttachmentsMap[sa.id]) loadSaAttachments(sa.id);
+                                      }}
+                                      className={`p-1.5 rounded transition-colors ${previewSaId === sa.id ? "bg-blue-100 text-blue-600" : "text-gray-400 hover:text-blue-600"}`}
+                                      title="Preview agreement"
+                                      data-testid={`button-preview-sa-${sa.id}`}
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                    </button>
+                                    {sa.status !== "signed" && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            setEditingSA(sa);
+                                            setSaForm({ landlordName: sa.landlordName || "", landlordEmail: sa.landlordEmail || "", propertyAddress: sa.propertyAddress || "", serviceStartDate: sa.serviceStartDate || "", tenantType: sa.tenantType || "new", serviceFee: sa.serviceFee || "", notes: sa.notes || "" });
+                                            setShowSAForm(true);
+                                            setPreviewSaId(null);
+                                          }}
+                                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                                          title="Edit"
+                                          data-testid={`button-edit-sa-${sa.id}`}
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          disabled={sendingSA === sa.id || !sa.landlordEmail}
+                                          onClick={async () => {
+                                            if (!user) return;
+                                            setSendingSA(sa.id);
+                                            try {
+                                              const result = await fetch(`/api/rep/service-agreements/${sa.id}/send`, {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ actorId: user.id }),
+                                              }).then(r => r.json());
+                                              if (result.error) throw new Error(result.error);
+                                              setServiceAgreements(prev => prev.map(a => a.id === sa.id ? { ...a, status: "sent" } : a));
+                                              toast({ title: "Agreement emailed for signing", description: `Sent to ${sa.landlordEmail}` });
+                                            } catch (e: any) { toast({ title: e.message || "Failed to send", variant: "destructive" }); }
+                                            setSendingSA(null);
+                                          }}
+                                          className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                          title={!sa.landlordEmail ? "Add landlord email first" : "Email signing link"}
+                                          data-testid={`button-send-sa-${sa.id}`}
+                                        >
+                                          {sendingSA === sa.id ? <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</> : <><Mail className="h-3 w-3" /> Send</>}
+                                        </button>
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={async () => {
+                                        if (!confirm("Delete this service agreement?")) return;
+                                        await fetch(`/api/rep/service-agreements/${sa.id}?actorId=${user?.id}`, { method: "DELETE" });
+                                        setServiceAgreements(prev => prev.filter(a => a.id !== sa.id));
+                                        if (previewSaId === sa.id) setPreviewSaId(null);
+                                        toast({ title: "Agreement deleted" });
+                                      }}
+                                      className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
+                                      title="Delete"
+                                      data-testid={`button-delete-sa-${sa.id}`}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  {sa.status !== "signed" && (
-                                    <>
-                                      <button
-                                        onClick={() => {
-                                          setEditingSA(sa);
-                                          setSaForm({ landlordName: sa.landlordName || "", landlordEmail: sa.landlordEmail || "", propertyAddress: sa.propertyAddress || "", serviceStartDate: sa.serviceStartDate || "", tenantType: sa.tenantType || "new", serviceFee: sa.serviceFee || "", notes: sa.notes || "" });
-                                          setShowSAForm(true);
-                                        }}
-                                        className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition-colors"
-                                        title="Edit"
-                                        data-testid={`button-edit-sa-${sa.id}`}
-                                      >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        disabled={sendingSA === sa.id || !sa.landlordEmail}
-                                        onClick={async () => {
-                                          if (!user) return;
-                                          setSendingSA(sa.id);
-                                          try {
-                                            const result = await fetch(`/api/rep/service-agreements/${sa.id}/send`, {
-                                              method: "POST",
-                                              headers: { "Content-Type": "application/json" },
-                                              body: JSON.stringify({ actorId: user.id }),
-                                            }).then(r => r.json());
-                                            if (result.error) throw new Error(result.error);
-                                            setServiceAgreements(prev => prev.map(a => a.id === sa.id ? { ...a, status: "sent" } : a));
-                                            toast({ title: "Agreement emailed for signing", description: `Sent to ${sa.landlordEmail}` });
-                                          } catch (e: any) { toast({ title: e.message || "Failed to send", variant: "destructive" }); }
-                                          setSendingSA(null);
-                                        }}
-                                        className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                                        title={!sa.landlordEmail ? "Add landlord email first" : "Email signing link"}
-                                        data-testid={`button-send-sa-${sa.id}`}
-                                      >
-                                        {sendingSA === sa.id ? <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending...</> : <><Mail className="h-3 w-3" /> Send</>}
-                                      </button>
-                                    </>
-                                  )}
-                                  <button
-                                    onClick={async () => {
-                                      if (!confirm("Delete this service agreement?")) return;
-                                      await fetch(`/api/rep/service-agreements/${sa.id}?actorId=${user?.id}`, { method: "DELETE" });
-                                      setServiceAgreements(prev => prev.filter(a => a.id !== sa.id));
-                                      toast({ title: "Agreement deleted" });
-                                    }}
-                                    className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
-                                    title="Delete"
-                                    data-testid={`button-delete-sa-${sa.id}`}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
+
+                                {/* ── Preview + Attachments Panel ── */}
+                                {previewSaId === sa.id && (
+                                  <div className="border-t bg-gray-50 px-4 py-4 space-y-5">
+
+                                    {/* Agreement Document Preview */}
+                                    <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                                      <div className="bg-blue-700 px-5 py-3 flex items-center gap-3">
+                                        <div>
+                                          <p className="text-white font-bold text-sm">QuoteUs.ca</p>
+                                          <p className="text-blue-200 text-xs">Service Agreement Preview</p>
+                                        </div>
+                                      </div>
+                                      <div className="px-5 py-5 text-sm text-gray-800 space-y-4 leading-relaxed">
+                                        <div className="text-center border-b pb-3">
+                                          <h3 className="text-base font-bold text-gray-900 tracking-wide uppercase">QuoteUs.ca Service Agreement</h3>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div><p className="text-xs font-semibold text-gray-400 uppercase mb-1">Landlord Name</p><p className="font-semibold text-gray-900">{sa.landlordName || "—"}</p></div>
+                                          <div><p className="text-xs font-semibold text-gray-400 uppercase mb-1">Property Address</p><p className="font-semibold text-gray-900">{sa.propertyAddress || "—"}</p></div>
+                                          <div><p className="text-xs font-semibold text-gray-400 uppercase mb-1">Service Start Date</p><p className="font-semibold text-gray-900">{sa.serviceStartDate || "—"}</p></div>
+                                          <div>
+                                            <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Tenant Type</p>
+                                            <div className="flex gap-3 mt-1">
+                                              {["new", "existing"].map(t => (
+                                                <label key={t} className="flex items-center gap-1.5 text-xs">
+                                                  <div className={`w-3.5 h-3.5 border-2 rounded flex items-center justify-center ${sa.tenantType === t ? "border-blue-600 bg-blue-600" : "border-gray-300"}`}>
+                                                    {sa.tenantType === t && <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                                                  </div>
+                                                  {t === "new" ? "New Tenants" : "Existing Tenants"}
+                                                </label>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        {sa.tenantType === "new" ? (
+                                          <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                                            <p className="font-semibold text-blue-800 mb-1.5 text-xs">For New Tenants — Required Criteria</p>
+                                            <ul className="space-y-0.5 text-xs text-blue-700">
+                                              {["Ongoing Employment", "Government-Issued ID (legally valid ID)", "Minimum 11-Month Lease Signed", "Rent <45% of household income", "No evictions, Bankruptcies, or Judgments (within a 3-year lookback period)"].map(item => (
+                                                <li key={item} className="flex items-start gap-1.5"><span className="text-blue-400 mt-0.5">•</span>{item}</li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        ) : (
+                                          <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+                                            <p className="font-semibold text-indigo-800 mb-1.5 text-xs">For Existing Tenants — Required Criteria</p>
+                                            <ul className="space-y-0.5 text-xs text-indigo-700">
+                                              {["Ongoing employment", "Government-issued ID (Legally valid ID)", "No current lease violations", "Must have completed initial lease term (12 months)", "No rent arrears > 5 days within the last 12 months"].map(item => (
+                                                <li key={item} className="flex items-start gap-1.5"><span className="text-indigo-400 mt-0.5">•</span>{item}</li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                        <div>
+                                          <p className="font-bold text-gray-900 mb-1.5 text-xs uppercase tracking-wide">Service Details</p>
+                                          <p className="text-gray-700 text-xs leading-relaxed">
+                                            This document serves as confirmation that a non-refundable service fee in the amount of <strong>${sa.serviceFee}</strong> has been paid to QuoteUs.ca. This fee is charged for the facilitation and administrative services provided by QuoteUs.ca in connecting clients with third-party underwriting partners. All fees paid to QuoteUs.ca are strictly non-refundable, including but not limited to situations where the client chooses not to proceed, cancels, or is deemed ineligible by the underwriting provider.
+                                          </p>
+                                          <p className="text-gray-700 text-xs leading-relaxed mt-2">
+                                            QuoteUs.ca operates solely as an intermediary platform, connecting clients with the underwriting company <strong>Pensio</strong>, which is solely responsible for underwriting of this performance service bond agreement, and the payment of any claims and or demands of damages. The client, <strong>{sa.landlordName}</strong>, acknowledges and understands that QuoteUs.ca does not assume any liability related to coverage decisions, claims handling, or payouts.
+                                          </p>
+                                          <p className="text-gray-700 text-xs leading-relaxed mt-2">
+                                            All agreements facilitated through QuoteUs.ca are annual in nature. Payment options may be offered on a monthly or annual basis; however, the client remains responsible for maintaining active coverage. It is the client's responsibility to proactively connect with QuoteUs.ca prior to each renewal period to confirm continuation year-over-year and ensure there is no lapse in service or coverage.
+                                          </p>
+                                        </div>
+                                        {sa.notes && (
+                                          <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-3">
+                                            <p className="text-xs font-semibold text-yellow-700 uppercase mb-1">Additional Notes</p>
+                                            <p className="text-xs text-yellow-800">{sa.notes}</p>
+                                          </div>
+                                        )}
+                                        {sa.status === "signed" && (
+                                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                                            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                                            <div>
+                                              <p className="text-xs font-semibold text-green-800">Signed by {sa.signerName}</p>
+                                              <p className="text-xs text-green-600">{sa.signedAt ? new Date(sa.signedAt).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }) : ""}</p>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Attachments Section */}
+                                    <div className="bg-white border rounded-xl overflow-hidden">
+                                      <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
+                                        <div className="flex items-center gap-2">
+                                          <Paperclip className="h-4 w-4 text-gray-500" />
+                                          <span className="text-sm font-semibold text-gray-700">Additional Documents</span>
+                                          {(saAttachmentsMap[sa.id] || []).length > 0 && (
+                                            <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2 py-0.5 font-medium">{(saAttachmentsMap[sa.id] || []).length}</span>
+                                          )}
+                                        </div>
+                                        <label className={`flex items-center gap-1.5 text-xs font-semibold cursor-pointer ${uploadingAttachSaId === sa.id ? "text-gray-400" : "text-blue-600 hover:text-blue-800"} transition-colors`} data-testid={`button-upload-attach-${sa.id}`}>
+                                          <Plus className="h-3.5 w-3.5" />
+                                          {uploadingAttachSaId === sa.id ? "Uploading..." : "Add File"}
+                                          <input
+                                            type="file"
+                                            className="hidden"
+                                            disabled={uploadingAttachSaId === sa.id}
+                                            accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                            onChange={async e => {
+                                              const file = e.target.files?.[0];
+                                              if (!file || !user) return;
+                                              if (file.size > 8 * 1024 * 1024) { toast({ title: "File too large (max 8 MB)", variant: "destructive" }); return; }
+                                              setUploadingAttachSaId(sa.id);
+                                              try {
+                                                const reader = new FileReader();
+                                                reader.onload = async ev => {
+                                                  const fileData = ev.target?.result as string;
+                                                  const result = await fetch(`/api/rep/service-agreements/${sa.id}/attachments`, {
+                                                    method: "POST",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({ actorId: user.id, fileName: file.name, fileData, fileType: file.type }),
+                                                  }).then(r => r.json());
+                                                  if (result.error) throw new Error(result.error);
+                                                  setSaAttachmentsMap(prev => ({ ...prev, [sa.id]: [...(prev[sa.id] || []), result] }));
+                                                  toast({ title: "File attached", description: file.name });
+                                                  setUploadingAttachSaId(null);
+                                                };
+                                                reader.readAsDataURL(file);
+                                              } catch (err: any) { toast({ title: err.message || "Upload failed", variant: "destructive" }); setUploadingAttachSaId(null); }
+                                              e.target.value = "";
+                                            }}
+                                          />
+                                        </label>
+                                      </div>
+                                      {(saAttachmentsMap[sa.id] || []).length === 0 ? (
+                                        <div className="px-4 py-6 text-center">
+                                          <Paperclip className="h-6 w-6 text-gray-200 mx-auto mb-1.5" />
+                                          <p className="text-xs text-gray-400">No additional documents. Click "Add File" to attach PDFs or images.</p>
+                                        </div>
+                                      ) : (
+                                        <div className="divide-y">
+                                          {(saAttachmentsMap[sa.id] || []).map((att: any) => (
+                                            <div key={att.id} className="flex items-center gap-3 px-4 py-2.5">
+                                              <Paperclip className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                              <span className="flex-1 text-sm text-gray-700 truncate">{att.fileName}</span>
+                                              <a
+                                                href={att.fileData}
+                                                download={att.fileName}
+                                                className="p-1.5 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                                                title="Download"
+                                                data-testid={`button-download-attach-${att.id}`}
+                                              >
+                                                <Download className="h-3.5 w-3.5" />
+                                              </a>
+                                              <button
+                                                onClick={async () => {
+                                                  if (!confirm(`Remove "${att.fileName}"?`)) return;
+                                                  await fetch(`/api/rep/service-agreements/${sa.id}/attachments/${att.id}?actorId=${user?.id}`, { method: "DELETE" });
+                                                  setSaAttachmentsMap(prev => ({ ...prev, [sa.id]: (prev[sa.id] || []).filter((a: any) => a.id !== att.id) }));
+                                                  toast({ title: "Attachment removed" });
+                                                }}
+                                                className="p-1.5 text-gray-300 hover:text-red-500 rounded transition-colors"
+                                                title="Remove"
+                                                data-testid={`button-remove-attach-${att.id}`}
+                                              >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
