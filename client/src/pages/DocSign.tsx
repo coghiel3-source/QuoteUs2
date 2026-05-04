@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type FieldType = "signature" | "initials" | "date" | "text";
+type FieldType = "signature" | "initials" | "date" | "text" | "notes";
 
 interface SignatureField {
   id: string;
@@ -12,15 +12,11 @@ interface SignatureField {
   label: string;
   required: boolean;
   defaultValue?: string;
-  x?: number;
-  y?: number;
+  signerId?: string;
   page?: number;
-  pageNum?: number;
-  width?: number;
-  height?: number;
+  hint?: string;
 }
 
-// ── Signature / Initials Pad ──────────────────────────────────────────────────
 function SignaturePad({
   id,
   height = 140,
@@ -120,12 +116,12 @@ function SignaturePad({
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
 export default function DocSign() {
   const [, params] = useRoute("/doc-sign/:token");
   const token = params?.token;
 
   const [record, setRecord] = useState<any>(null);
+  const [signer, setSigner] = useState<any>(null);
   const [files, setFiles] = useState<any[]>([]);
   const [fields, setFields] = useState<SignatureField[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,17 +129,22 @@ export default function DocSign() {
   const [activeDoc, setActiveDoc] = useState(0);
   const [docPages, setDocPages] = useState<Record<number, number>>({});
 
-  // Signer info + field responses
   const [signerName, setSignerName] = useState("");
   const [mainSigData, setMainSigData] = useState<string | null>(null);
   const [fieldResponses, setFieldResponses] = useState<Record<string, string>>({});
 
-  // Submission
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const getDocPage = (i: number) => docPages[i] ?? 1;
   const setDocPage = (i: number, p: number) => setDocPages(prev => ({ ...prev, [i]: Math.max(1, p) }));
+
+  // Jump to the page a field lives on when the user focuses it
+  const focusField = (field: SignatureField) => {
+    if (field.page && field.page >= 1) {
+      setDocPage(activeDoc, field.page);
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -152,13 +153,15 @@ export default function DocSign() {
       .then(data => {
         if (data.error) { setError(data.error); setLoading(false); return; }
         setRecord(data);
+        setSigner(data.signer || null);
         setFiles(data.files || []);
         const rawFields: SignatureField[] = data.fields || [];
-        // Pre-fill defaultValues
         const initialResponses: Record<string, string> = {};
         rawFields.forEach(f => { if (f.defaultValue) initialResponses[f.id] = f.defaultValue; });
         setFields(rawFields);
         setFieldResponses(initialResponses);
+        // Pre-fill name if the signer object has a name
+        if (data.signer?.name) setSignerName(data.signer.name);
         setLoading(false);
       })
       .catch(() => { setError("Failed to load document."); setLoading(false); });
@@ -166,7 +169,6 @@ export default function DocSign() {
 
   const isPdf = (f: any) => f?.mimeType === "application/pdf" || f?.filePath?.endsWith(".pdf");
 
-  // All fields (position doesn't matter in the new simpler model — all are form fields)
   const allFields = fields;
   const hasSignatureField = allFields.some(f => f.type === "signature" || f.type === "initials");
 
@@ -206,7 +208,6 @@ export default function DocSign() {
   const filled = allFields.filter(f => f.required && fieldResponses[f.id]).length + (hasSignatureField ? 0 : mainSigData ? 1 : 0);
   const pct = totalRequired > 0 ? Math.round((filled / totalRequired) * 100) : 100;
 
-  // ── Loading / error / already-signed ─────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
@@ -254,7 +255,9 @@ export default function DocSign() {
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-gray-800 mb-2">Already Signed</h2>
-        <p className="text-gray-500 text-sm">Signed by <strong>{record.signerName}</strong>.</p>
+        <p className="text-gray-500 text-sm">
+          {record.signerName ? <>Signed by <strong>{record.signerName}</strong>.</> : "This document has already been signed."}
+        </p>
         {record.signedAt && <p className="text-gray-400 text-xs mt-1">{new Date(record.signedAt).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}</p>}
       </div>
     </div>
@@ -267,7 +270,7 @@ export default function DocSign() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="bg-blue-700 text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-20">
         <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -290,10 +293,22 @@ export default function DocSign() {
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
 
-        {/* ── Document Viewer ── */}
+        {/* Signer context banner */}
+        {signer && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
+              <span className="text-white text-xs font-bold">{(signer.name || signer.email || "?").charAt(0).toUpperCase()}</span>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-blue-900">Signing as: {signer.name || signer.email}</p>
+              <p className="text-xs text-blue-600">Please review the document and complete your assigned fields below.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Document Viewer */}
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
 
-          {/* Doc tabs for multiple documents */}
           {files.length > 1 && (
             <div className="flex overflow-x-auto border-b bg-gray-50">
               {files.map((f, i) => (
@@ -305,7 +320,6 @@ export default function DocSign() {
             </div>
           )}
 
-          {/* Doc toolbar */}
           {currentFile && (
             <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
               <p className="text-xs font-medium text-gray-600 truncate flex-1">{currentFile.fileName}</p>
@@ -326,7 +340,6 @@ export default function DocSign() {
             </div>
           )}
 
-          {/* Document display */}
           {currentFile ? (
             isPdfFile ? (
               <iframe
@@ -346,7 +359,7 @@ export default function DocSign() {
           )}
         </div>
 
-        {/* ── Signing Form ── */}
+        {/* Signing Form */}
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b bg-gray-50">
             <h2 className="text-sm font-bold text-gray-800">Complete &amp; Sign</h2>
@@ -383,24 +396,56 @@ export default function DocSign() {
             {/* All required fields */}
             {allFields.map(field => (
               <div key={field.id} className="space-y-1.5">
-                <Label className="text-sm font-semibold text-gray-700">
-                  {field.label}
-                  {field.required && <span className="text-red-500 ml-1">*</span>}
-                  <span className="ml-2 text-xs font-normal text-gray-400 capitalize">({field.type})</span>
-                </Label>
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <Label className="text-sm font-semibold text-gray-700">
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                      <span className="ml-2 text-xs font-normal text-gray-400 capitalize">({field.type})</span>
+                    </Label>
+                    {/* Page + location hint */}
+                    {(field.page || field.hint) && (
+                      <p className="text-xs text-blue-600 mt-0.5 flex items-center gap-1">
+                        {field.page && (
+                          <button
+                            onClick={() => { setDocPage(activeDoc, field.page!); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                            className="underline hover:text-blue-800 font-medium"
+                          >
+                            Page {field.page}
+                          </button>
+                        )}
+                        {field.page && field.hint && <span className="text-gray-300">·</span>}
+                        {field.hint && <span className="text-gray-500">{field.hint}</span>}
+                      </p>
+                    )}
+                  </div>
+                </div>
                 {(field.type === "signature" || field.type === "initials") ? (
-                  <SignaturePad
-                    id={`pad-${field.id}`}
-                    height={field.type === "initials" ? 90 : 150}
-                    onCapture={data => setFieldResponses(prev => ({ ...prev, [field.id]: data || "" }))}
-                  />
+                  <div onFocus={() => focusField(field)}>
+                    <SignaturePad
+                      id={`pad-${field.id}`}
+                      height={field.type === "initials" ? 90 : 150}
+                      onCapture={data => setFieldResponses(prev => ({ ...prev, [field.id]: data || "" }))}
+                    />
+                  </div>
                 ) : field.type === "date" ? (
                   <Input type="date" className="text-sm max-w-xs"
+                    onFocus={() => focusField(field)}
                     value={fieldResponses[field.id] || ""}
                     onChange={e => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))} />
+                ) : field.type === "notes" ? (
+                  <textarea
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={4}
+                    placeholder={field.defaultValue || `Enter ${field.label.toLowerCase()}`}
+                    onFocus={() => focusField(field)}
+                    value={fieldResponses[field.id] || ""}
+                    onChange={e => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                  />
                 ) : (
                   <Input className="text-sm"
                     placeholder={field.defaultValue || `Enter ${field.label.toLowerCase()}`}
+                    onFocus={() => focusField(field)}
                     value={fieldResponses[field.id] || ""}
                     onChange={e => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))} />
                 )}

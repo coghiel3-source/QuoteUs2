@@ -140,6 +140,7 @@ export interface IStorage {
   createDocSignature(data: any): Promise<LocationDocSignature>;
   getDocSignaturesByLocation(locationId: string): Promise<LocationDocSignature[]>;
   getDocSignatureByToken(token: string): Promise<LocationDocSignature | null>;
+  getDocSignatureBySignerToken(signerToken: string): Promise<LocationDocSignature | null>;
   updateDocSignature(id: string, data: any): Promise<LocationDocSignature | null>;
   createDocSigFile(data: { sigRequestId: string; filePath: string; fileName?: string; mimeType?: string; sortOrder?: number }): Promise<LocationDocSignatureFile>;
   getFilesForDocSig(sigRequestId: string): Promise<LocationDocSignatureFile[]>;
@@ -919,6 +920,12 @@ export class DatabaseStorage implements IStorage {
   async getDocSignatureByToken(token: string): Promise<LocationDocSignature | null> {
     const [row] = await db.select().from(locationDocSignatures)
       .where(eq(locationDocSignatures.token, token));
+    return row || null;
+  }
+
+  async getDocSignatureBySignerToken(signerToken: string): Promise<LocationDocSignature | null> {
+    const [row] = await db.select().from(locationDocSignatures)
+      .where(sql`${locationDocSignatures.signers} LIKE ${'%"token":"' + signerToken + '"%'}`);
     return row || null;
   }
 

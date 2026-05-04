@@ -916,11 +916,13 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [docSignLandlordName, setDocSignLandlordName] = useState("");
   const [docSignLandlordEmail, setDocSignLandlordEmail] = useState("");
   const [sendingDocSig, setSendingDocSig] = useState(false);
-  const [docSignLink, setDocSignLink] = useState<string | null>(null);
+  const [docSignLinks, setDocSignLinks] = useState<Array<{ name: string; email: string; url: string }>>([]);
   const [adminDocTemplates, setAdminDocTemplates] = useState<any[]>([]);
   const [docSignSelectedTemplates, setDocSignSelectedTemplates] = useState<string[]>([]);
+  const [docSignSigners, setDocSignSigners] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [docSignFields, setDocSignFields] = useState<Array<{
     id: string; type: string; label: string; required: boolean;
+    signerId?: string; page?: number; hint?: string;
   }>>([]);
 
   // Claims
@@ -1186,9 +1188,10 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     setLocationPayments([]);
     setLocationDocSigs([]);
     setDocSignFiles([]);
-    setDocSignLink(null);
+    setDocSignLinks([]);
     setDocSignSelectedTemplates([]);
     setDocSignFields([]);
+    setDocSignSigners([]);
     setDocSignLandlordName(loc.landlordName || "");
     setDocSignLandlordEmail(loc.landlordEmail || "");
     setLocationClaims([]);
@@ -1234,10 +1237,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   }
 
   function openDocSignDialog() {
-    setDocSignLink(null);
+    setDocSignLinks([]);
     setDocSignFiles([]);
     setDocSignSelectedTemplates([]);
     setDocSignFields([]);
+    setDocSignSigners([{ id: "s1", name: docSignLandlordName, email: docSignLandlordEmail }]);
     setShowDocSignDialog(true);
     setLocationDetailTab("docs");
     loadAdminDocTemplates();
@@ -1245,7 +1249,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   function addDocSignField(type: string) {
     const labels: Record<string, string> = {
-      signature: "Signature", initials: "Initials", date: "Date", text: "Text Field"
+      signature: "Signature", initials: "Initials", date: "Date", text: "Text Field", notes: "Notes",
     };
     setDocSignFields(prev => [...prev, {
       id: Math.random().toString(36).slice(2),
@@ -1257,17 +1261,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
   async function handleSendDocSignature() {
     if (!selectedLocation || !user) return;
-    if (!docSignLandlordEmail.trim()) { toast({ title: "Landlord email is required", variant: "destructive" }); return; }
+    const validSigners = docSignSigners.filter(s => s.email.trim());
+    if (validSigners.length === 0) { toast({ title: "At least one signer email is required", variant: "destructive" }); return; }
     if (docSignFiles.length === 0 && docSignSelectedTemplates.length === 0) {
       toast({ title: "Please add at least one document", variant: "destructive" }); return;
     }
     setSendingDocSig(true);
-    setDocSignLink(null);
+    setDocSignLinks([]);
     try {
       const formData = new FormData();
       formData.append("actorId", user.id);
-      formData.append("landlordName", docSignLandlordName.trim());
-      formData.append("landlordEmail", docSignLandlordEmail.trim());
+      formData.append("signers", JSON.stringify(docSignSigners.filter(s => s.email.trim())));
       if (docSignFields.length > 0) formData.append("signatureFields", JSON.stringify(docSignFields));
       docSignSelectedTemplates.forEach(id => formData.append("templateIds", id));
       docSignFiles.forEach(f => formData.append("documents", f));
@@ -1282,11 +1286,11 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       setDocSignSelectedTemplates([]);
       setDocSignFields([]);
       if (result.emailSent) {
-        toast({ title: "Signature request sent!", description: `Email sent to ${docSignLandlordEmail}` });
+        toast({ title: "Signature request sent!", description: `Email${validSigners.length > 1 ? "s" : ""} sent to ${validSigners.map(s => s.email).join(", ")}` });
         setShowDocSignDialog(false);
       } else {
-        setDocSignLink(result.signingUrl);
-        toast({ title: "Request created", description: "SMTP not configured — copy the link below to share with the landlord.", duration: 8000 });
+        setDocSignLinks(result.signerLinks || (result.signingUrl ? [{ name: "", email: "", url: result.signingUrl }] : []));
+        toast({ title: "Request created", description: `SMTP not configured — copy the link${validSigners.length > 1 ? "s" : ""} below to share.`, duration: 8000 });
       }
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -3140,18 +3144,44 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                         {showDocSignDialog && (
                           <div className="bg-white border-b">
 
-                            {/* ── Recipient ── */}
+                            {/* ── Signers ── */}
                             <div className="px-4 pt-4 pb-3 border-b">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Recipient</p>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <Label htmlFor="ds-landlord-name" className="text-xs">Name</Label>
-                                  <Input id="ds-landlord-name" placeholder="Full name" value={docSignLandlordName} onChange={e => setDocSignLandlordName(e.target.value)} data-testid="input-ds-landlord-name" />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label htmlFor="ds-landlord-email" className="text-xs">Email <span className="text-red-500">*</span></Label>
-                                  <Input id="ds-landlord-email" type="email" placeholder="landlord@email.com" value={docSignLandlordEmail} onChange={e => setDocSignLandlordEmail(e.target.value)} data-testid="input-ds-landlord-email" />
-                                </div>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Signers</p>
+                                <button
+                                  onClick={() => setDocSignSigners(prev => [...prev, { id: `s${Date.now()}`, name: "", email: "" }])}
+                                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+                                  data-testid="button-add-signer"
+                                >
+                                  <Plus className="h-3 w-3" /> Add Signer
+                                </button>
+                              </div>
+                              <div className="space-y-2">
+                                {docSignSigners.map((signer, idx) => (
+                                  <div key={signer.id} className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-400 shrink-0 w-14">Signer {idx + 1}</span>
+                                    <Input
+                                      placeholder="Full name"
+                                      value={signer.name}
+                                      onChange={e => setDocSignSigners(prev => prev.map((s, i) => i === idx ? { ...s, name: e.target.value } : s))}
+                                      className="text-xs h-8 flex-1"
+                                      data-testid={`input-signer-name-${idx}`}
+                                    />
+                                    <Input
+                                      type="email"
+                                      placeholder="Email *"
+                                      value={signer.email}
+                                      onChange={e => setDocSignSigners(prev => prev.map((s, i) => i === idx ? { ...s, email: e.target.value } : s))}
+                                      className="text-xs h-8 flex-1"
+                                      data-testid={`input-signer-email-${idx}`}
+                                    />
+                                    {docSignSigners.length > 1 && (
+                                      <button onClick={() => setDocSignSigners(prev => prev.filter((_, i) => i !== idx))} className="text-gray-300 hover:text-red-500 shrink-0">
+                                        <X className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             </div>
 
@@ -3214,16 +3244,17 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                               )}
                             </div>
 
-                            {/* ── Signature Fields ── */}
+                            {/* ── Required Fields ── */}
                             <div className="px-4 py-3 border-b space-y-3">
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Required Fields</p>
-                                <div className="flex gap-1.5">
+                                <div className="flex flex-wrap gap-1.5">
                                   {[
                                     { type: "signature", label: "Signature", color: "bg-blue-600 hover:bg-blue-700" },
                                     { type: "initials", label: "Initials", color: "bg-purple-600 hover:bg-purple-700" },
                                     { type: "date", label: "Date", color: "bg-emerald-600 hover:bg-emerald-700" },
                                     { type: "text", label: "Text", color: "bg-gray-600 hover:bg-gray-700" },
+                                    { type: "notes", label: "Notes", color: "bg-amber-600 hover:bg-amber-700" },
                                   ].map(({ type, label, color }) => (
                                     <button key={type} onClick={() => addDocSignField(type)}
                                       className={`${color} text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors`}>
@@ -3234,72 +3265,108 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                               </div>
 
                               {docSignFields.length === 0 ? (
-                                <p className="text-xs text-gray-400 italic">No fields added yet. Click a button above to add a required field for the signer.</p>
+                                <p className="text-xs text-gray-400 italic">No fields added yet. Use the buttons above to mark required areas — specify which signer, which page, and where on the document.</p>
                               ) : (
-                                <div className="space-y-1.5">
+                                <div className="space-y-2">
                                   {docSignFields.map((f, idx) => (
-                                    <div key={f.id} className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2">
-                                      {/* Move up/down */}
-                                      <div className="flex flex-col gap-0.5 shrink-0">
-                                        <button
-                                          onClick={() => setDocSignFields(prev => { if (idx === 0) return prev; const a = [...prev]; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; return a; })}
-                                          disabled={idx === 0}
-                                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
-                                          title="Move up"
-                                        >▴</button>
-                                        <button
-                                          onClick={() => setDocSignFields(prev => { if (idx === prev.length - 1) return prev; const a = [...prev]; [a[idx], a[idx + 1]] = [a[idx + 1], a[idx]]; return a; })}
-                                          disabled={idx === docSignFields.length - 1}
-                                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
-                                          title="Move down"
-                                        >▾</button>
+                                    <div key={f.id} className="bg-gray-50 border rounded-lg px-3 py-2 space-y-2">
+                                      {/* Row 1: order, badge, label, required, remove */}
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex flex-col gap-0.5 shrink-0">
+                                          <button
+                                            onClick={() => setDocSignFields(prev => { if (idx === 0) return prev; const a = [...prev]; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; return a; })}
+                                            disabled={idx === 0}
+                                            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                                          >▴</button>
+                                          <button
+                                            onClick={() => setDocSignFields(prev => { if (idx === prev.length - 1) return prev; const a = [...prev]; [a[idx], a[idx + 1]] = [a[idx + 1], a[idx]]; return a; })}
+                                            disabled={idx === docSignFields.length - 1}
+                                            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none"
+                                          >▾</button>
+                                        </div>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded text-white shrink-0 ${f.type === "signature" ? "bg-blue-600" : f.type === "initials" ? "bg-purple-600" : f.type === "date" ? "bg-emerald-600" : f.type === "notes" ? "bg-amber-600" : "bg-gray-600"}`}>
+                                          {f.type === "signature" ? "SIG" : f.type === "initials" ? "INI" : f.type === "date" ? "DATE" : f.type === "notes" ? "NOTE" : "TXT"}
+                                        </span>
+                                        <input
+                                          className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0"
+                                          value={f.label}
+                                          placeholder="Field label"
+                                          onChange={e => setDocSignFields(prev => prev.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
+                                        />
+                                        <label className="flex items-center gap-1 text-xs text-gray-500 shrink-0 cursor-pointer">
+                                          <input type="checkbox" checked={f.required}
+                                            onChange={e => setDocSignFields(prev => prev.map((x, i) => i === idx ? { ...x, required: e.target.checked } : x))} />
+                                          Req
+                                        </label>
+                                        <button onClick={() => setDocSignFields(prev => prev.filter((_, i) => i !== idx))} className="text-gray-300 hover:text-red-500 shrink-0">
+                                          <X className="h-3.5 w-3.5" />
+                                        </button>
                                       </div>
-                                      <span className={`text-xs font-bold px-2 py-0.5 rounded text-white shrink-0 ${f.type === "signature" ? "bg-blue-600" : f.type === "initials" ? "bg-purple-600" : f.type === "date" ? "bg-emerald-600" : "bg-gray-600"}`}>
-                                        {f.type === "signature" ? "SIG" : f.type === "initials" ? "INI" : f.type === "date" ? "DATE" : "TXT"}
-                                      </span>
-                                      <input
-                                        className="flex-1 text-sm bg-transparent border-none outline-none text-gray-800 min-w-0"
-                                        value={f.label}
-                                        placeholder="Field label"
-                                        onChange={e => setDocSignFields(prev => prev.map((x, i) => i === idx ? { ...x, label: e.target.value } : x))}
-                                      />
-                                      <label className="flex items-center gap-1 text-xs text-gray-500 shrink-0 cursor-pointer">
-                                        <input type="checkbox" checked={f.required}
-                                          onChange={e => setDocSignFields(prev => prev.map((x, i) => i === idx ? { ...x, required: e.target.checked } : x))} />
-                                        Required
-                                      </label>
-                                      <button onClick={() => setDocSignFields(prev => prev.filter((_, i) => i !== idx))} className="text-gray-300 hover:text-red-500 shrink-0">
-                                        <X className="h-3.5 w-3.5" />
-                                      </button>
+                                      {/* Row 2: signer assignment, page, location hint */}
+                                      <div className="flex items-center gap-2 pl-6">
+                                        {docSignSigners.length > 1 && (
+                                          <select
+                                            className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-white text-gray-700 shrink-0"
+                                            value={f.signerId || ""}
+                                            onChange={e => setDocSignFields(prev => prev.map((x, i) => i === idx ? { ...x, signerId: e.target.value || undefined } : x))}
+                                          >
+                                            <option value="">Any signer</option>
+                                            {docSignSigners.map((s, si) => (
+                                              <option key={s.id} value={s.id}>Signer {si + 1}{s.name ? ` — ${s.name}` : ""}</option>
+                                            ))}
+                                          </select>
+                                        )}
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <span className="text-xs text-gray-400">Pg</span>
+                                          <input
+                                            type="number" min={1}
+                                            className="w-12 text-xs border border-gray-200 rounded px-1.5 py-1 bg-white"
+                                            placeholder="—"
+                                            value={f.page || ""}
+                                            onChange={e => setDocSignFields(prev => prev.map((x, i) => i === idx ? { ...x, page: e.target.value ? parseInt(e.target.value) : undefined } : x))}
+                                          />
+                                        </div>
+                                        <input
+                                          className="flex-1 text-xs border border-gray-200 rounded px-1.5 py-1 bg-white min-w-0"
+                                          placeholder="Location hint (e.g. bottom of page, after clause 3)"
+                                          value={f.hint || ""}
+                                          onChange={e => setDocSignFields(prev => prev.map((x, i) => i === idx ? { ...x, hint: e.target.value || undefined } : x))}
+                                        />
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
                               )}
                             </div>
 
-                            {/* ── Signing link (if SMTP not configured) ── */}
-                            {docSignLink && (
+                            {/* ── Signing links (if SMTP not configured) ── */}
+                            {docSignLinks.length > 0 && (
                               <div className="mx-4 mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-                                <p className="text-xs font-semibold text-amber-800">Email not sent — share this link with the signer:</p>
-                                <div className="flex items-center gap-2 bg-white border rounded-lg px-2.5 py-2">
-                                  <p className="text-xs text-gray-700 flex-1 truncate">{docSignLink}</p>
-                                  <button onClick={() => { navigator.clipboard.writeText(docSignLink!); toast({ title: "Link copied!" }); }} className="shrink-0 text-blue-600 hover:text-blue-800">
-                                    <Copy className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
+                                <p className="text-xs font-semibold text-amber-800">Email not sent — share these signing links with each signer:</p>
+                                {docSignLinks.map((link, li) => (
+                                  <div key={li} className="space-y-0.5">
+                                    {link.name && <p className="text-xs text-amber-700 font-medium">{link.name} {link.email ? `(${link.email})` : ""}</p>}
+                                    <div className="flex items-center gap-2 bg-white border rounded-lg px-2.5 py-2">
+                                      <p className="text-xs text-gray-700 flex-1 truncate">{link.url}</p>
+                                      <button onClick={() => { navigator.clipboard.writeText(link.url); toast({ title: "Link copied!" }); }} className="shrink-0 text-blue-600 hover:text-blue-800">
+                                        <Copy className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             )}
 
                             {/* ── Actions ── */}
                             <div className="flex items-center gap-2 px-4 py-3">
-                              <Button variant="outline" size="sm" onClick={() => { setShowDocSignDialog(false); setDocSignLink(null); }}>
-                                {docSignLink ? "Done" : "Cancel"}
+                              <Button variant="outline" size="sm" onClick={() => { setShowDocSignDialog(false); setDocSignLinks([]); }}>
+                                {docSignLinks.length > 0 ? "Done" : "Cancel"}
                               </Button>
-                              {!docSignLink && (
+                              {docSignLinks.length === 0 && (
                                 <Button size="sm" onClick={handleSendDocSignature}
-                                  disabled={sendingDocSig || !docSignLandlordEmail.trim() || (docSignFiles.length === 0 && docSignSelectedTemplates.length === 0)}
+                                  disabled={sendingDocSig || docSignSigners.filter(s => s.email.trim()).length === 0 || (docSignFiles.length === 0 && docSignSelectedTemplates.length === 0)}
                                   className="bg-blue-700 hover:bg-blue-800" data-testid="button-send-doc-signature">
-                                  {sendingDocSig ? "Sending…" : `Send for Signature${docSignFiles.length + docSignSelectedTemplates.length > 1 ? ` (${docSignFiles.length + docSignSelectedTemplates.length} docs)` : ""}`}
+                                  {sendingDocSig ? "Sending…" : `Send for Signature${docSignSigners.filter(s => s.email.trim()).length > 1 ? ` (${docSignSigners.filter(s => s.email.trim()).length} signers)` : ""}`}
                                 </Button>
                               )}
                             </div>
@@ -3311,19 +3378,34 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                           <div className="divide-y">
                             {locationDocSigs.map((sig: any) => {
                               const docFiles: any[] = sig.files || (sig.documentPath ? [{ filePath: sig.documentPath, fileName: sig.documentName || "Document" }] : []);
+                              const signers: any[] = sig.signers ? (() => { try { return JSON.parse(sig.signers); } catch { return []; } })() : [];
+                              const hasMultipleSigners = signers.length > 1;
+                              const signedCount = signers.filter((s: any) => s.status === "signed").length;
+                              const overallSigned = sig.status === "signed" || (hasMultipleSigners && signedCount === signers.length);
+                              const overallPartial = hasMultipleSigners && signedCount > 0 && signedCount < signers.length;
                               return (
                                 <div key={sig.id} className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50/60 transition-colors">
-                                  <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${sig.status === "signed" ? "bg-green-500" : "bg-yellow-400"}`} />
+                                  <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${overallSigned ? "bg-green-500" : overallPartial ? "bg-blue-400" : "bg-yellow-400"}`} />
                                   <div className="flex-1 min-w-0 space-y-1">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="text-xs font-semibold text-gray-800">
-                                        {docFiles.length} doc{docFiles.length !== 1 ? "s" : ""} — {sig.landlordName || sig.landlordEmail}
+                                        {docFiles.length} doc{docFiles.length !== 1 ? "s" : ""}
+                                        {hasMultipleSigners ? ` — ${signers.length} signers` : sig.landlordName ? ` — ${sig.landlordName}` : sig.landlordEmail ? ` — ${sig.landlordEmail}` : ""}
                                       </p>
-                                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${sig.status === "signed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                                        {sig.status === "signed" ? "Signed" : "Pending"}
+                                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${overallSigned ? "bg-green-100 text-green-700" : overallPartial ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"}`}>
+                                        {overallSigned ? "All Signed" : overallPartial ? `${signedCount}/${signers.length} Signed` : "Pending"}
                                       </span>
                                     </div>
-                                    {sig.status === "signed" ? (
+                                    {hasMultipleSigners ? (
+                                      <div className="space-y-0.5">
+                                        {signers.map((s: any, si: number) => (
+                                          <p key={si} className={`text-xs flex items-center gap-1 ${s.status === "signed" ? "text-green-600" : "text-gray-400"}`}>
+                                            {s.status === "signed" ? "✓" : "○"} {s.name || s.email}
+                                            {s.status === "signed" && s.signedAt && <span className="text-gray-400">· {new Date(s.signedAt).toLocaleDateString("en-CA")}</span>}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    ) : overallSigned ? (
                                       <p className="text-xs text-green-600">✓ Signed by {sig.signerName} · {sig.signedAt ? new Date(sig.signedAt).toLocaleDateString("en-CA") : "—"}</p>
                                     ) : (
                                       <p className="text-xs text-gray-400">Awaiting signature</p>
@@ -3338,7 +3420,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                       </div>
                                     )}
                                   </div>
-                                  {sig.status === "signed" && sig.signatureData && (
+                                  {overallSigned && sig.signatureData && (
                                     <a href={sig.signatureData} download={`signature-${sig.id}.png`} className="text-xs text-blue-500 hover:underline shrink-0">Sig ↓</a>
                                   )}
                                 </div>

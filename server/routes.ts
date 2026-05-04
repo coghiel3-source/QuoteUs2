@@ -4784,11 +4784,33 @@ export async function registerRoutes(
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
 
-      const { landlordName, landlordEmail, signatureFields, templateIds } = req.body;
-      if (!landlordEmail) return res.status(400).json({ error: "Landlord email is required" });
+      const { landlordName, landlordEmail, signatureFields, templateIds, signers: signersRaw } = req.body;
 
       const uploadedFiles = (req.files as Express.Multer.File[]) || [];
-      const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      const masterToken = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+      // Build signers list — supports multi-signer (new) or single signer (legacy)
+      let signersList: Array<{ id: string; name: string; email: string; token: string; status: string }> = [];
+      if (signersRaw) {
+        try {
+          const parsed: Array<{ id: string; name: string; email: string }> = JSON.parse(signersRaw);
+          signersList = parsed
+            .filter(s => s.email?.trim())
+            .map(s => ({
+              id: s.id,
+              name: s.name || "",
+              email: s.email.trim(),
+              token: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
+              status: "pending",
+            }));
+        } catch { /* fall through to legacy */ }
+      }
+      if (signersList.length === 0) {
+        if (!landlordEmail) return res.status(400).json({ error: "At least one signer email is required" });
+        signersList = [{ id: "s1", name: landlordName || location.landlordName || "", email: landlordEmail, token: masterToken, status: "pending" }];
+      }
+
+      const primarySigner = signersList[0];
 
       // Create the signature request record
       const record = await storage.createDocSignature({
@@ -4796,13 +4818,14 @@ export async function registerRoutes(
         documentPath: uploadedFiles[0] ? `/uploads/doc-signatures/${uploadedFiles[0].filename}` : null,
         documentName: uploadedFiles[0] ? uploadedFiles[0].originalname : null,
         documentMimeType: uploadedFiles[0] ? uploadedFiles[0].mimetype : null,
-        landlordName: landlordName || location.landlordName || "",
-        landlordEmail,
+        landlordName: primarySigner.name || location.landlordName || "",
+        landlordEmail: primarySigner.email,
         propertyAddress: `${location.address}${location.unit ? ", Unit " + location.unit : ""}`,
-        token,
+        token: masterToken,
         status: "pending",
         createdBy: actor.id,
         signatureFields: signatureFields || null,
+        signers: JSON.stringify(signersList),
       });
 
       // Save each uploaded file to location_doc_signature_files
@@ -4836,31 +4859,40 @@ export async function registerRoutes(
 
       const proto = req.headers["x-forwarded-proto"] || req.protocol;
       const host = req.headers["x-forwarded-host"] || req.get("host");
-      const signingUrl = `${proto}://${host}/doc-sign/${token}`;
-
       const allFileNames = uploadedFiles.map(f => f.originalname).join(", ");
-      const emailSent = await sendEmail({
-        to: landlordEmail,
-        subject: `Document Ready for Your Signature — ${location.address}`,
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-            <h2 style="color:#1a56db;">Document Ready for Your Signature</h2>
-            <p>Dear ${landlordName || location.landlordName || "Landlord"},</p>
-            <p>A document has been sent to you for review and signature for the property:</p>
-            <p><strong>${location.address}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
-            ${allFileNames ? `<p>Documents: <strong>${allFileNames}</strong></p>` : ""}
-            <div style="margin:24px 0;">
-              <a href="${signingUrl}" style="background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
-                Review &amp; Sign Document
-              </a>
-            </div>
-            <p style="color:#666;font-size:13px;">If you did not expect this email, please ignore it.</p>
-          </div>`,
-        text: `Please review and sign the document at: ${signingUrl}`,
-      });
+
+      // Send individual emails to each signer with their unique token link
+      const signerLinks: Array<{ name: string; email: string; url: string }> = [];
+      let anyEmailSent = false;
+      for (const signer of signersList) {
+        const signerUrl = `${proto}://${host}/doc-sign/${signer.token}`;
+        signerLinks.push({ name: signer.name, email: signer.email, url: signerUrl });
+        const sent = await sendEmail({
+          to: signer.email,
+          subject: `Document Ready for Your Signature — ${location.address}`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+              <h2 style="color:#1a56db;">Document Ready for Your Signature</h2>
+              <p>Dear ${signer.name || "Signer"},</p>
+              <p>A document has been sent to you for review and signature for the property:</p>
+              <p><strong>${location.address}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
+              ${allFileNames ? `<p>Documents: <strong>${allFileNames}</strong></p>` : ""}
+              <div style="margin:24px 0;">
+                <a href="${signerUrl}" style="background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
+                  Review &amp; Sign Document
+                </a>
+              </div>
+              <p style="color:#666;font-size:13px;">If you did not expect this email, please ignore it.</p>
+            </div>`,
+          text: `Please review and sign the document at: ${signerUrl}`,
+        });
+        if (sent) anyEmailSent = true;
+      }
 
       const files = await storage.getFilesForDocSig(record.id);
-      res.json({ record: { ...record, files }, signingUrl, emailSent });
+      // Backward-compat: include signingUrl for single-signer flow
+      const signingUrl = signerLinks[0]?.url || `${proto}://${host}/doc-sign/${masterToken}`;
+      res.json({ record: { ...record, files }, signingUrl, signerLinks, emailSent: anyEmailSent });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -4887,55 +4919,126 @@ export async function registerRoutes(
     }
   });
 
-  // GET /api/doc-sign/:token  (public — returns record + files + fields)
+  // GET /api/doc-sign/:token  (public — returns record + files + fields; supports signer tokens)
   app.get("/api/doc-sign/:token", async (req, res) => {
     try {
-      const record = await storage.getDocSignatureByToken(req.params.token);
+      const { token } = req.params;
+      // Try master token first (backward compat), then search signer tokens
+      let record = await storage.getDocSignatureByToken(token);
+      let signerEntry: any = null;
+      if (!record) {
+        record = await storage.getDocSignatureBySignerToken(token);
+        if (record?.signers) {
+          const signers = JSON.parse(record.signers);
+          signerEntry = signers.find((s: any) => s.token === token) || null;
+        }
+      }
       if (!record) return res.status(404).json({ error: "Signing request not found" });
+
       const files = await storage.getFilesForDocSig(record.id);
-      const fields = record.signatureFields ? JSON.parse(record.signatureFields) : [];
-      res.json({ ...record, files, fields });
+      const allFields: any[] = record.signatureFields ? JSON.parse(record.signatureFields) : [];
+
+      // If accessed by a signer token, return only that signer's fields
+      const fields = signerEntry
+        ? allFields.filter((f: any) => !f.signerId || f.signerId === signerEntry.id)
+        : allFields;
+
+      const effectiveStatus = signerEntry ? signerEntry.status : record.status;
+      const effectiveSignedAt = signerEntry?.signedAt || record.signedAt;
+      const effectiveSignerName = signerEntry?.signerName || record.signerName;
+
+      res.json({
+        ...record,
+        status: effectiveStatus,
+        signedAt: effectiveSignedAt,
+        signerName: effectiveSignerName,
+        signer: signerEntry,
+        files,
+        fields,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // POST /api/doc-sign/:token  (public — submit; auto-attaches to rep_documents)
+  // POST /api/doc-sign/:token  (public — submit; supports multi-signer)
   app.post("/api/doc-sign/:token", async (req, res) => {
     try {
-      const record = await storage.getDocSignatureByToken(req.params.token);
+      const { token } = req.params;
+      let record = await storage.getDocSignatureByToken(token);
+      let signerEntry: any = null;
+      let signerIdx = -1;
+
+      if (!record) {
+        record = await storage.getDocSignatureBySignerToken(token);
+        if (record?.signers) {
+          const signers = JSON.parse(record.signers);
+          signerIdx = signers.findIndex((s: any) => s.token === token);
+          signerEntry = signerIdx >= 0 ? signers[signerIdx] : null;
+        }
+      }
+
       if (!record) return res.status(404).json({ error: "Signing request not found" });
-      if (record.status === "signed") return res.status(400).json({ error: "This document has already been signed" });
+
+      const isAlreadySigned = signerEntry ? signerEntry.status === "signed" : record.status === "signed";
+      if (isAlreadySigned) return res.status(400).json({ error: "This document has already been signed" });
+
       const { signatureData, signerName, fieldResponses } = req.body;
       if (!signerName) return res.status(400).json({ error: "Signer name is required" });
-      // signatureData may come from a form field response (initials/sig field) — just require signerName
-      const updated = await storage.updateDocSignature(record.id, {
-        status: "signed",
-        signatureData,
-        signerName,
-        signedAt: new Date(),
-        signatureFields: fieldResponses ? JSON.stringify(fieldResponses) : record.signatureFields,
-      });
 
-      // Auto-attach document files to rep_documents via the location's active lead (for processing)
-      try {
-        const leads = await storage.getLeadsForLocation(record.locationId);
-        const activeLead = leads.find(l => l.status !== "Declined") || leads[0];
-        if (activeLead) {
-          const files = await storage.getFilesForDocSig(record.id);
-          for (const f of files) {
-            await storage.createRepDocument({
-              rgLeadId: activeLead.id,
-              documentRequestId: null,
-              docType: "signed-document",
-              fileName: f.fileName || "Signed Document",
-              fileUrl: f.filePath,
-              fileSize: null,
-            });
+      let updateData: any = {};
+      if (signerEntry !== null && signerIdx >= 0 && record.signers) {
+        // Update the specific signer entry inside the signers JSON
+        const signers = JSON.parse(record.signers);
+        signers[signerIdx] = {
+          ...signers[signerIdx],
+          status: "signed",
+          signedAt: new Date().toISOString(),
+          signatureData: signatureData || null,
+          signerName,
+        };
+        const allSigned = signers.every((s: any) => s.status === "signed");
+        updateData = {
+          signers: JSON.stringify(signers),
+          status: allSigned ? "signed" : "partial",
+          // Update top-level for backward compat when all are done
+          ...(allSigned ? { signatureData, signerName, signedAt: new Date() } : {}),
+          signatureFields: fieldResponses ? JSON.stringify(fieldResponses) : record.signatureFields,
+        };
+      } else {
+        // Legacy single-signer flow
+        updateData = {
+          status: "signed",
+          signatureData,
+          signerName,
+          signedAt: new Date(),
+          signatureFields: fieldResponses ? JSON.stringify(fieldResponses) : record.signatureFields,
+        };
+      }
+
+      const updated = await storage.updateDocSignature(record.id, updateData);
+
+      // Auto-attach document files to rep_documents via the location's active lead (only when fully signed)
+      if (updateData.status === "signed") {
+        try {
+          const leads = await storage.getLeadsForLocation(record.locationId);
+          const activeLead = leads.find(l => l.status !== "Declined") || leads[0];
+          if (activeLead) {
+            const files = await storage.getFilesForDocSig(record.id);
+            for (const f of files) {
+              await storage.createRepDocument({
+                rgLeadId: activeLead.id,
+                documentRequestId: null,
+                docType: "signed-document",
+                fileName: f.fileName || "Signed Document",
+                fileUrl: f.filePath,
+                fileSize: null,
+              });
+            }
           }
+        } catch (e) {
+          console.error("[doc-sign] Failed to attach signed docs:", e);
         }
-      } catch (e) {
-        console.error("[doc-sign] Failed to attach signed docs:", e);
       }
 
       res.json(updated);
