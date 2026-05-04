@@ -967,6 +967,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   const [serviceAgreements, setServiceAgreements] = useState<any[]>([]);
   const [showSAForm, setShowSAForm] = useState(false);
   const [editingSA, setEditingSA] = useState<any | null>(null);
+  const [inlineEditSaId, setInlineEditSaId] = useState<string | null>(null);
+  const [inlineEditForm, setInlineEditForm] = useState<any>({});
+  const [savingInlineEdit, setSavingInlineEdit] = useState(false);
   const [saForm, setSaForm] = useState({ landlordName: "", landlordEmail: "", propertyAddress: "", serviceStartDate: "", tenantType: "new", serviceFee: "", notes: "" });
   const [savingSA, setSavingSA] = useState(false);
   const [sendingSA, setSendingSA] = useState<string | null>(null);
@@ -1226,6 +1229,64 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
       const data = await fetch(`/api/rep/service-agreements/${saId}/attachments?actorId=${user?.id}`).then(r => r.ok ? r.json() : []);
       setSaAttachmentsMap(prev => ({ ...prev, [saId]: data || [] }));
     } catch {}
+  }
+
+  function downloadSA(sa: any) {
+    const newCriteria = ["Ongoing Employment", "Government-Issued ID (legally valid ID)", "Minimum 11-Month Lease Signed", "Rent &lt;45% of household income", "No evictions, Bankruptcies, or Judgments (within a 3-year lookback period)"];
+    const existingCriteria = ["Ongoing employment", "Government-issued ID (Legally valid ID)", "No current lease violations", "Must have completed initial lease term (12 months)", "No rent arrears &gt; 5 days within the last 12 months"];
+    const criteria = sa.tenantType === "new" ? newCriteria : existingCriteria;
+    const criteriaColor = sa.tenantType === "new" ? "#1d4ed8" : "#4338ca";
+    const criteriaLabel = sa.tenantType === "new" ? "For New Tenants — Required Criteria" : "For Existing Tenants — Required Criteria";
+    const signedBlock = sa.status === "signed" && sa.signerName ? `
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;margin-top:16px;">
+        <span style="color:#16a34a;font-size:18px;">✓</span>
+        <div><p style="margin:0;font-weight:600;color:#15803d;font-size:12px;">Signed by ${sa.signerName}</p>
+        ${sa.signedAt ? `<p style="margin:2px 0 0;color:#16a34a;font-size:11px;">${new Date(sa.signedAt).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}</p>` : ""}</div>
+      </div>` : "";
+    const notesBlock = sa.notes ? `
+      <div style="background:#fffbeb;border:1px solid #fef08a;border-radius:8px;padding:12px;margin-top:12px;">
+        <p style="margin:0 0 4px;font-weight:600;color:#a16207;font-size:11px;text-transform:uppercase;">Additional Notes</p>
+        <p style="margin:0;color:#92400e;font-size:12px;">${sa.notes}</p>
+      </div>` : "";
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>QuoteUs.ca Service Agreement — ${sa.landlordName || ""}</title>
+<style>body{font-family:Georgia,serif;margin:0;padding:40px;color:#1f2937;max-width:720px;margin:0 auto;}
+h1{font-size:18px;text-align:center;text-transform:uppercase;letter-spacing:2px;border-bottom:2px solid #1d4ed8;padding-bottom:12px;margin-bottom:24px;}
+.header{background:#1d4ed8;color:#fff;padding:16px 24px;border-radius:8px 8px 0 0;margin-bottom:0;}
+.header h2{margin:0;font-size:16px;} .header p{margin:4px 0 0;font-size:12px;opacity:.8;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.field label{font-size:10px;font-weight:700;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:4px;}
+.field p{margin:0;font-weight:600;font-size:14px;}
+.criteria{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:16px;}
+.criteria h4{margin:0 0 8px;font-size:12px;font-weight:700;color:${criteriaColor};}
+.criteria ul{margin:0;padding-left:18px;} .criteria li{font-size:12px;color:${criteriaColor};margin-bottom:4px;}
+.body-text{font-size:12px;line-height:1.7;color:#374151;margin-bottom:10px;}
+@media print{body{padding:20px;}}</style></head>
+<body>
+<div class="header"><h2>QuoteUs.ca</h2><p>Service Agreement</p></div>
+<div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:24px;">
+<h1>QuoteUs.ca Service Agreement</h1>
+<div class="grid">
+  <div class="field"><label>Landlord Name</label><p>${sa.landlordName || "—"}</p></div>
+  <div class="field"><label>Property Address</label><p>${sa.propertyAddress || "—"}</p></div>
+  <div class="field"><label>Service Start Date</label><p>${sa.serviceStartDate || "—"}</p></div>
+  <div class="field"><label>Tenant Type</label><p>${sa.tenantType === "new" ? "New Tenants" : "Existing Tenants"}</p></div>
+  <div class="field"><label>Service Fee</label><p>$${sa.serviceFee || "—"}</p></div>
+</div>
+<div class="criteria"><h4>${criteriaLabel}</h4><ul>${criteria.map(c => `<li>${c}</li>`).join("")}</ul></div>
+<p class="body-text">This document serves as confirmation that a non-refundable service fee in the amount of <strong>$${sa.serviceFee}</strong> has been paid to QuoteUs.ca. This fee is charged for the facilitation and administrative services provided by QuoteUs.ca in connecting clients with third-party underwriting partners. All fees paid to QuoteUs.ca are strictly non-refundable, including but not limited to situations where the client chooses not to proceed, cancels, or is deemed ineligible by the underwriting provider.</p>
+<p class="body-text">QuoteUs.ca operates solely as an intermediary platform, connecting clients with the underwriting company <strong>Pensio</strong>, which is solely responsible for underwriting of this performance service bond agreement, and the payment of any claims and or demands of damages. The client, <strong>${sa.landlordName}</strong>, acknowledges and understands that QuoteUs.ca does not assume any liability related to coverage decisions, claims handling, or payouts.</p>
+<p class="body-text">All agreements facilitated through QuoteUs.ca are annual in nature. Payment options may be offered on a monthly or annual basis; however, the client remains responsible for maintaining active coverage. It is the client's responsibility to proactively connect with QuoteUs.ca prior to each renewal period to confirm continuation year-over-year and ensure there is no lapse in service or coverage.</p>
+${notesBlock}${signedBlock}
+</div></body></html>`;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ServiceAgreement-${(sa.landlordName || "QuoteUs").replace(/\s+/g, "_")}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   async function loadAdminDocTemplates() {
@@ -2949,10 +3010,32 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
 
                                     {/* Agreement Document Preview */}
                                     <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-                                      <div className="bg-blue-700 px-5 py-3 flex items-center gap-3">
+                                      <div className="bg-blue-700 px-5 py-3 flex items-center justify-between">
                                         <div>
                                           <p className="text-white font-bold text-sm">QuoteUs.ca</p>
                                           <p className="text-blue-200 text-xs">Service Agreement Preview</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          {sa.status !== "signed" && (
+                                            <button
+                                              onClick={() => {
+                                                if (inlineEditSaId === sa.id) { setInlineEditSaId(null); return; }
+                                                setInlineEditForm({ landlordName: sa.landlordName || "", landlordEmail: sa.landlordEmail || "", propertyAddress: sa.propertyAddress || "", serviceStartDate: sa.serviceStartDate || "", tenantType: sa.tenantType || "new", serviceFee: sa.serviceFee || "", notes: sa.notes || "" });
+                                                setInlineEditSaId(sa.id);
+                                              }}
+                                              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${inlineEditSaId === sa.id ? "bg-white text-blue-700" : "bg-white/20 hover:bg-white/30 text-white"}`}
+                                              data-testid={`button-inline-edit-sa-${sa.id}`}
+                                            >
+                                              <Pencil className="h-3 w-3" /> {inlineEditSaId === sa.id ? "Cancel Edit" : "Edit"}
+                                            </button>
+                                          )}
+                                          <button
+                                            onClick={() => downloadSA(sa)}
+                                            className="flex items-center gap-1.5 text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+                                            data-testid={`button-download-sa-${sa.id}`}
+                                          >
+                                            <Download className="h-3 w-3" /> Download
+                                          </button>
                                         </div>
                                       </div>
                                       <div className="px-5 py-5 text-sm text-gray-800 space-y-4 leading-relaxed">
@@ -3025,6 +3108,86 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
                                         )}
                                       </div>
                                     </div>
+
+                                    {/* ── Inline Edit Form ── */}
+                                    {inlineEditSaId === sa.id && (
+                                      <div className="bg-white border-2 border-blue-200 rounded-xl overflow-hidden shadow-sm">
+                                        <div className="bg-blue-50 px-5 py-3 border-b border-blue-100 flex items-center gap-2">
+                                          <Pencil className="h-3.5 w-3.5 text-blue-600" />
+                                          <p className="text-sm font-semibold text-blue-800">Edit Agreement Details</p>
+                                        </div>
+                                        <div className="px-5 py-4 space-y-3">
+                                          <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Landlord Name *</label>
+                                              <input className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={inlineEditForm.landlordName || ""} onChange={e => setInlineEditForm((f: any) => ({ ...f, landlordName: e.target.value }))} placeholder="Full name" />
+                                            </div>
+                                            <div>
+                                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Landlord Email</label>
+                                              <input type="email" className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={inlineEditForm.landlordEmail || ""} onChange={e => setInlineEditForm((f: any) => ({ ...f, landlordEmail: e.target.value }))} placeholder="email@example.com" />
+                                            </div>
+                                            <div>
+                                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Property Address *</label>
+                                              <input className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={inlineEditForm.propertyAddress || ""} onChange={e => setInlineEditForm((f: any) => ({ ...f, propertyAddress: e.target.value }))} placeholder="Full property address" />
+                                            </div>
+                                            <div>
+                                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Service Start Date</label>
+                                              <input type="date" className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={inlineEditForm.serviceStartDate || ""} onChange={e => setInlineEditForm((f: any) => ({ ...f, serviceStartDate: e.target.value }))} />
+                                            </div>
+                                            <div>
+                                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Service Fee ($) *</label>
+                                              <input type="number" className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={inlineEditForm.serviceFee || ""} onChange={e => setInlineEditForm((f: any) => ({ ...f, serviceFee: e.target.value }))} placeholder="0.00" />
+                                            </div>
+                                            <div>
+                                              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Tenant Type</label>
+                                              <div className="flex gap-4 mt-1.5">
+                                                {[{ value: "new", label: "New Tenants" }, { value: "existing", label: "Existing Tenants" }].map(opt => (
+                                                  <label key={opt.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                                    <input type="radio" name={`inline-tenant-type-${sa.id}`} value={opt.value} checked={inlineEditForm.tenantType === opt.value} onChange={() => setInlineEditForm((f: any) => ({ ...f, tenantType: opt.value }))} className="text-blue-600" />
+                                                    {opt.label}
+                                                  </label>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Additional Notes</label>
+                                            <textarea className="w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={2} value={inlineEditForm.notes || ""} onChange={e => setInlineEditForm((f: any) => ({ ...f, notes: e.target.value }))} placeholder="Any additional notes..." />
+                                          </div>
+                                          <div className="flex items-center gap-2 pt-1">
+                                            <button
+                                              disabled={savingInlineEdit || !inlineEditForm.landlordName?.trim() || !inlineEditForm.serviceFee}
+                                              onClick={async () => {
+                                                if (!user) return;
+                                                setSavingInlineEdit(true);
+                                                try {
+                                                  const updated = await fetch(`/api/rep/service-agreements/${sa.id}`, {
+                                                    method: "PATCH",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({ actorId: user.id, ...inlineEditForm }),
+                                                  }).then(r => r.json());
+                                                  if (updated.error) throw new Error(updated.error);
+                                                  setServiceAgreements(prev => prev.map(a => a.id === updated.id ? updated : a));
+                                                  setInlineEditSaId(null);
+                                                  toast({ title: "Agreement updated" });
+                                                } catch (e: any) { toast({ title: e.message || "Failed to save", variant: "destructive" }); }
+                                                setSavingInlineEdit(false);
+                                              }}
+                                              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                              data-testid={`button-save-inline-edit-${sa.id}`}
+                                            >
+                                              {savingInlineEdit ? "Saving..." : "Save Changes"}
+                                            </button>
+                                            <button
+                                              onClick={() => setInlineEditSaId(null)}
+                                              className="px-4 py-2 text-sm text-gray-600 border rounded-lg hover:bg-gray-50 transition-colors"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {/* Attachments Section */}
                                     <div className="bg-white border rounded-xl overflow-hidden">
