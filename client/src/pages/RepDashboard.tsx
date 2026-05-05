@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
 import InvoiceGenerator from "@/components/InvoiceGenerator";
-import LeaseTemplatePrint from "@/components/LeaseTemplatePrint";
+import LeaseDocumentEditor, { type LeaseFields } from "@/components/LeaseDocumentEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -929,9 +929,7 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     landlordName: string; landlordAddress: string; landlordPhone: string; landlordEmail: string;
     propertyAddress: string; qualifiedTenants: string; effectiveDate: string;
   } | null>(null);
-  const leaseTemplateRef = useRef<HTMLDivElement>(null);
-  const [showLeasePreview, setShowLeasePreview] = useState(false);
-  const [leasePreviewGenerating, setLeasePreviewGenerating] = useState(false);
+  const [showLeaseEditor, setShowLeaseEditor] = useState(false);
 
   // Claims
   const [leadClaims, setLeadClaims] = useState<any[]>([]);
@@ -1316,155 +1314,6 @@ ${notesBlock}${signedBlock}
       qualifiedTenants: (tenants || []).filter(t => t.status !== "Declined").map(t => t.tenantName).join(", "),
       effectiveDate: loc.moveInDate || new Date().toISOString().slice(0, 10),
     };
-  }
-
-  function generateFilledLeaseHtml(d: NonNullable<typeof docSignTemplateData>): string {
-    const fmtDate = (s: string) => { try { return new Date(s + "T00:00:00").toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }); } catch { return s; } };
-    const eff = d.effectiveDate ? fmtDate(d.effectiveDate) : "_______________";
-    const fill = (v: string, fallback = "_______________") => v && v.trim() ? `<span class="filled">${v.trim()}</span>` : `<span class="blank">${fallback}</span>`;
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/>
-<title>Lease Co-Guarantee Agreement — ${d.landlordName || "Client"}</title>
-<style>
-  body{font-family:Georgia,serif;font-size:12pt;line-height:1.7;color:#111;max-width:820px;margin:0 auto;padding:40px 48px;background:#fff}
-  h1{font-size:16pt;text-align:center;margin-bottom:4px}
-  h2{font-size:13pt;margin-top:28px;margin-bottom:6px;border-bottom:1px solid #ccc;padding-bottom:4px}
-  h3{font-size:12pt;margin-top:20px;margin-bottom:4px}
-  .centre{text-align:center}
-  .header-block{text-align:center;margin-bottom:28px}
-  .header-block p{margin:2px 0;font-size:11pt}
-  .section{margin-top:20px}
-  .declarations table{border-collapse:collapse;width:100%;margin-top:8px}
-  .declarations td{padding:6px 10px;border:1px solid #bbb;vertical-align:top;font-size:11pt}
-  .declarations td:first-child{font-weight:bold;width:52%;color:#333}
-  .filled{color:#1a56db;font-weight:600;border-bottom:1.5px solid #1a56db;padding:0 2px}
-  .blank{color:#999;font-style:italic}
-  .party-block{margin:16px 0;padding:14px 18px;border-left:3px solid #2563eb;background:#f8faff}
-  .party-block p{margin:3px 0;font-size:11pt}
-  .legal{font-size:10.5pt;color:#333;margin-top:8px}
-  .sig-block{margin-top:40px;display:flex;gap:60px;flex-wrap:wrap}
-  .sig-col{flex:1;min-width:200px}
-  .sig-line{border-top:1px solid #555;margin-top:40px;margin-bottom:4px}
-  .sig-label{font-size:10pt;color:#555}
-  @media print{body{padding:24px 32px}}
-</style></head><body>
-
-<div class="header-block">
-  <h1>Lease Co-Guarantee Agreement</h1>
-  <p><strong>"Agreement"</strong></p>
-  <p style="margin-top:14px"><strong>Pensio Risk Management Group Inc.</strong> "Product Manager"</p>
-  <p>80 Carlauren Rd, Unit 23, Woodbridge, ON, L4L 7Z5</p>
-  <p>Product Manager's Email: info@pensioglobal.com</p>
-</div>
-
-<div class="party-block">
-  <p><strong>Rentatee "Landlord"</strong></p>
-  <p><strong>Name:</strong> ${fill(d.landlordName)}</p>
-  <p><strong>Address:</strong> ${fill(d.landlordAddress)}</p>
-  <p><strong>Contact Number:</strong> ${fill(d.landlordPhone)}</p>
-  <p><strong>Email:</strong> ${fill(d.landlordEmail)}</p>
-</div>
-
-<h2>Declarations</h2>
-<div class="declarations">
-  <table>
-    <tr><td>Residential Rental Property Address</td><td>${fill(d.propertyAddress)}</td></tr>
-    <tr><td>Qualified Tenants Residing in a Rental Unit</td><td>${fill(d.qualifiedTenants)}</td></tr>
-    <tr><td>Lease Co-Guarantee Agreement Contract Control Number</td><td>Pensio00001</td></tr>
-    <tr><td>Lease Co-Guarantee Effective Date</td><td>${fill(eff)}</td></tr>
-  </table>
-</div>
-
-<h2>Reimbursements and Product Fee</h2>
-<p class="legal"><strong>Rent Guarantee Reimbursement</strong> provided under this Agreement covers a maximum rent loss for each registered residential rental Unit in the Property. The maximum amount for the rent loss reimbursement is capped at sixty thousand Canadian Dollars CDN $60,000 for each twelve (12) month period for any one (1) habitable rentable Unit in the Property for the Term.</p>
-<p class="legal"><strong>Malicious Tenant Damage Reimbursement</strong> provided under this Agreement covers a maximum malicious tenant damage loss for each registered residential rental Unit in the Property. The maximum amount for the malicious tenant damage loss reimbursement is capped at ten thousand Canadian Dollars CDN $10,000 for each twelve (12) month period for any one (1) habitable and rentable Unit in the Property for the Term.</p>
-<p class="legal"><strong>Eviction Expense Reimbursement</strong> provided under this Agreement covers a maximum loss for each registered residential rental Unit in the Property. The maximum amount for the eviction expense loss reimbursement is capped at one thousand five hundred Canadian Dollars CDN $1,500 for each twelve (12) month period for any one (1) habitable and rentable Unit in the Property for the Term.</p>
-<p class="legal"><strong>Product Fee</strong> payable to Rentatee Technologies Inc. ("Rentatee") shall be five percent (5.0%) of the declared monthly rent if paid monthly, or four and one-half percent (4.5%) of the declared annual rent if paid annually, paid by the Landlord for the Qualifying Tenant(s) listed above to rent a Unit in the Property under a Lease Agreement. The Product Fee payment must be made to Rentatee on or before the 15th calendar day of each month commencing on the Effective Date, for the Term and any Extension thereof.</p>
-
-<h2>Reimbursement Loss Payee</h2>
-<div class="party-block">
-  <p><strong>Landlord:</strong> ${fill(d.landlordName)}</p>
-  <p><strong>Product Manager Agent:</strong> Rentatee Technologies Inc.</p>
-  <p>1610 Swainson Road, Kelowna, BC, V1P 1C5</p>
-  <p>Agent's Email: sales@rentatee.com</p>
-</div>
-
-<h2>Important Notice Disclaimer</h2>
-<p class="legal">The Tenant Management Services and Reimbursements provided by the Product Manager to the Landlord, as stated in this Agreement, are explicitly clarified to not constitute insurance. It is strongly recommended that Landlord carefully review this Agreement, seek professional advice, or consult the Product Manager or Product Manager's Agent before entering into this Agreement.</p>
-<p class="legal">The Product Manager directly self-procured a surety in the form of a Performance Bond from a Surety with an insurance or reinsurance rating of A.M. Best A (excellent) or better to secure the Product Manager's services and performance for the client.</p>
-
-<h2>Lease Co-Guarantee</h2>
-<p class="legal">This Lease Co-Guarantee Agreement (the "Agreement") made on the ${fill(eff, "_____________")} (the "Effective Date") between Rentatee (or with the Landlord's authorized Property Manager) (the "Landlord" or "Property Manager") and Pensio Risk Management Group Inc., located at 80 Carlauren Rd, Unit 23, Woodbridge, ON, L4L 7Z5 ("Product Manager").</p>
-
-<h2>Recitals</h2>
-<p class="legal">Whereas the Landlord and Product Manager may be referred to herein each as (a "Party") and collectively as (the "Parties") to this Agreement;</p>
-<p class="legal">Whereas the Landlord, being the owner, operator, and manager of the registered rental Unit, situated at the address of the property (the "Property");</p>
-<p class="legal">Whereas in consideration of the terms and conditions outlined in this Agreement, the Product Manager agrees to provide the Landlord with the following Tenant Management Services and reimbursements for losses in the event of a Tenant violation of an enforceable Lease Agreement: (i) Rent Guarantee Reimbursement for defaulted rent loss; (ii) Malicious Tenant Damage Reimbursement for malicious tenant damage; and (iii) Eviction Expense Reimbursement, for eviction and legal expenses.</p>
-<p class="legal">Whereas the initial term (the "Lease Term") for any Qualified Tenant listed above who meets the qualifications to enter into a Lease Agreement is for a minimum occupancy period of twelve (12) months.</p>
-<p class="legal">And Whereas the Parties have mutually agreed to enter into this Agreement and are bound by the terms and conditions specified within this Agreement.</p>
-
-<div class="sig-block">
-  <div class="sig-col">
-    <div class="sig-line"></div>
-    <p class="sig-label"><strong>Landlord Signature</strong></p>
-    <p class="sig-label">Name: ${fill(d.landlordName)}</p>
-    <p class="sig-label">Date: ${fill(eff)}</p>
-  </div>
-  <div class="sig-col">
-    <div class="sig-line"></div>
-    <p class="sig-label"><strong>Product Manager</strong></p>
-    <p class="sig-label">Pensio Risk Management Group Inc.</p>
-    <p class="sig-label">By: Jim Milankov, President</p>
-  </div>
-</div>
-
-<p style="margin-top:48px;font-size:9pt;color:#888;text-align:center">Generated by QuoteUs.ca &mdash; ${new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}</p>
-</body></html>`;
-  }
-
-  function openLeasePreview() {
-    if (!docSignTemplateData) return;
-    setShowLeasePreview(true);
-  }
-
-  async function confirmGenerateLeasePdf() {
-    if (!docSignTemplateData || !leaseTemplateRef.current) return;
-    setLeasePreviewGenerating(true);
-    try {
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
-      const el = leaseTemplateRef.current;
-      const canvas = await (html2canvas as any)(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        width: 794,
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new (jsPDF as any)({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-      let remaining = imgHeight;
-      let pos = 0;
-      while (remaining > 0) {
-        pdf.addImage(imgData, "PNG", 0, pos, pdfWidth, imgHeight);
-        remaining -= pdfHeight;
-        if (remaining > 0) { pos -= pdfHeight; pdf.addPage(); }
-      }
-      const pdfBlob = pdf.output("blob");
-      const name = `LeaseCoGuarantee-${(docSignTemplateData.landlordName || "Client").replace(/\s+/g, "_")}.pdf`;
-      const file = new File([pdfBlob], name, { type: "application/pdf" });
-      setDocSignFiles(prev => [file, ...prev.filter(f => !f.name.startsWith("LeaseCoGuarantee-"))]);
-      setShowLeasePreview(false);
-      toast({ title: "PDF agreement added", description: `${name} is at the top of the Documents list.` });
-    } catch (err: any) {
-      toast({ title: "PDF generation failed", description: err?.message || "Unknown error", variant: "destructive" });
-    } finally {
-      setLeasePreviewGenerating(false);
-    }
   }
 
   function openDocSignDialog() {
@@ -2118,11 +1967,30 @@ ${notesBlock}${signedBlock}
 
   return (
     <div className={embedded ? "" : "min-h-screen bg-gray-50"}>
-      {/* Off-screen lease template for PDF capture */}
-      {docSignTemplateData && (
-        <div style={{ position: "fixed", left: "-9999px", top: 0, pointerEvents: "none", zIndex: -1 }}>
-          <LeaseTemplatePrint ref={leaseTemplateRef} data={docSignTemplateData} />
-        </div>
+      {/* Lease document editor (floating window portal) */}
+      {selectedLocation && user && (
+        <LeaseDocumentEditor
+          open={showLeaseEditor}
+          onClose={() => setShowLeaseEditor(false)}
+          locationId={selectedLocation.id}
+          actorId={user.id}
+          initialFields={{
+            landlordName: selectedLocation.landlordName || "",
+            landlordAddress: "",
+            landlordPhone: selectedLocation.landlordPhone || "",
+            landlordEmail: selectedLocation.landlordEmail || "",
+            propertyAddress: `${selectedLocation.propertyAddress}${selectedLocation.unit ? ", Unit " + selectedLocation.unit : ""}`,
+            qualifiedTenants: (currentLocationTenants || []).filter(t => t.status !== "Declined").map(t => t.tenantName).join(", "),
+            effectiveDate: selectedLocation.moveInDate || new Date().toISOString().slice(0, 10),
+          }}
+          onSent={() => {
+            setShowLeaseEditor(false);
+            if (selectedLocation) {
+              fetch(`/api/rep/locations/${selectedLocation.id}/doc-signatures?actorId=${user.id}`)
+                .then(r => r.json()).then(data => { if (Array.isArray(data)) setLocationDocSigs(data); });
+            }
+          }}
+        />
       )}
       <div className={embedded ? "" : "max-w-7xl mx-auto px-4 py-8"}>
         {/* Header */}
@@ -2969,6 +2837,53 @@ ${notesBlock}${signedBlock}
                   {locationDetailTab === "docs" && (
                     <div className="space-y-5">
 
+                      {/* ── Document Templates ── */}
+                      <div className="border rounded-xl overflow-hidden">
+                        <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50 border-b border-indigo-100">
+                          <FileText className="h-4 w-4 text-indigo-600" />
+                          <span className="text-sm font-semibold text-gray-800">Document Templates</span>
+                          <span className="text-xs text-gray-400 ml-1">· Click a template to open the editor</span>
+                        </div>
+                        <div className="p-4">
+                          {/* Lease Co-Guarantee Agreement card */}
+                          {(() => {
+                            const leaseSig = locationDocSigs.find(sig => {
+                              try { const td = sig.templateData ? JSON.parse(sig.templateData) : null; return td && td.landlordName !== undefined; } catch { return false; }
+                            });
+                            const status = leaseSig ? (leaseSig.status === "signed" ? "Signed" : "Sent") : "Draft";
+                            const statusColor = status === "Signed" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : status === "Sent" ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-amber-100 text-amber-700 border-amber-200";
+                            const statusIcon = status === "Signed" ? "✓ Signed" : status === "Sent" ? "⏳ Awaiting Signatures" : "✎ Draft";
+                            return (
+                              <div className="flex items-center justify-between p-4 border rounded-xl bg-white hover:shadow-md transition-shadow group">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0 group-hover:bg-indigo-200 transition-colors">
+                                    <FileText className="h-5 w-5 text-indigo-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-800">Lease Co-Guarantee Agreement</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">Auto-fills landlord, property &amp; tenant info · E-sign ready</p>
+                                    {leaseSig && (
+                                      <p className="text-xs text-gray-400 mt-1">Last sent: {new Date(leaseSig.sentAt || "").toLocaleDateString("en-CA")}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className={`text-xs border px-2.5 py-1 rounded-full font-medium ${statusColor}`}>{statusIcon}</span>
+                                  <button
+                                    onClick={() => { setLocationDetailTab("docs"); setShowLeaseEditor(true); }}
+                                    className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg font-semibold transition-colors"
+                                    data-testid="button-open-lease-editor"
+                                  >
+                                    <FileText className="h-3.5 w-3.5" />
+                                    {status === "Draft" ? "Generate & Send" : "Open Editor"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
                       {/* ── Service Agreement Section ── */}
                       <div className="border rounded-xl overflow-hidden">
                         <div className="flex items-center justify-between px-4 py-3 bg-blue-50 border-b border-blue-100">
@@ -3585,74 +3500,6 @@ ${notesBlock}${signedBlock}
                               )}
                             </div>
 
-                            {/* ── Document Pre-fill Fields ── */}
-                            {docSignTemplateData && (
-                              <div className="px-4 py-3 border-b space-y-3 bg-amber-50">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Document Pre-fill Fields</p>
-                                  <button onClick={() => setDocSignTemplateData(null)} className="text-xs text-amber-600 hover:text-amber-800 font-medium">Remove</button>
-                                </div>
-                                <p className="text-xs text-amber-700">Edit the values below, then click "Generate Pre-filled Agreement" to produce a complete filled document for the signer.</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Name</label>
-                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                      value={docSignTemplateData.landlordName}
-                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordName: e.target.value } : prev)}
-                                      placeholder="Landlord's full name" />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Address</label>
-                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                      value={docSignTemplateData.landlordAddress}
-                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordAddress: e.target.value } : prev)}
-                                      placeholder="Landlord's mailing address" />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Phone</label>
-                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                      value={docSignTemplateData.landlordPhone}
-                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordPhone: e.target.value } : prev)}
-                                      placeholder="Contact number" />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Landlord Email</label>
-                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                      value={docSignTemplateData.landlordEmail}
-                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, landlordEmail: e.target.value } : prev)}
-                                      placeholder="Landlord's email" />
-                                  </div>
-                                  <div className="col-span-2">
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Residential Rental Property Address</label>
-                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                      value={docSignTemplateData.propertyAddress}
-                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, propertyAddress: e.target.value } : prev)}
-                                      placeholder="Full property address" />
-                                  </div>
-                                  <div className="col-span-2">
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Qualified Tenants</label>
-                                    <input className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                      value={docSignTemplateData.qualifiedTenants}
-                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, qualifiedTenants: e.target.value } : prev)}
-                                      placeholder="Tenant name(s) residing in the unit" />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs font-medium text-gray-600 block mb-1">Effective Date</label>
-                                    <input type="date" className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-                                      value={docSignTemplateData.effectiveDate}
-                                      onChange={e => setDocSignTemplateData(prev => prev ? { ...prev, effectiveDate: e.target.value } : prev)} />
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={openLeasePreview}
-                                  className="w-full mt-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
-                                  data-testid="button-generate-filled-agreement"
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                  Preview &amp; Generate PDF Agreement
-                                </button>
-                              </div>
-                            )}
 
                             {/* ── Required Fields ── */}
                             <div className="px-4 py-3 border-b space-y-3">
@@ -6126,47 +5973,6 @@ ${notesBlock}${signedBlock}
         </DialogContent>
       </Dialog>
 
-      {/* ===== LEASE AGREEMENT PREVIEW DIALOG ===== */}
-      <Dialog open={showLeasePreview} onOpenChange={setShowLeasePreview}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col" style={{ maxHeight: "92vh" }}>
-          <DialogHeader className="px-6 pt-5 pb-3 border-b flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-amber-600" />
-              Preview — Lease Co-Guarantee Agreement
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-            {docSignTemplateData && (
-              <iframe
-                srcDoc={generateFilledLeaseHtml(docSignTemplateData)}
-                className="w-full"
-                style={{ height: 600, border: "none", display: "block" }}
-                title="Lease Agreement Preview"
-                sandbox="allow-same-origin"
-              />
-            )}
-          </div>
-          <div className="px-6 py-4 border-t flex-shrink-0 bg-gray-50 flex items-center justify-between gap-3">
-            <p className="text-xs text-gray-500 max-w-sm">Review all client details carefully. Click confirm to generate the PDF and attach it to the signing request.</p>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Button variant="outline" size="sm" onClick={() => setShowLeasePreview(false)}>
-                Close
-              </Button>
-              <Button
-                className="bg-amber-600 hover:bg-amber-700 text-white"
-                size="sm"
-                onClick={confirmGenerateLeasePdf}
-                disabled={leasePreviewGenerating}
-                data-testid="button-confirm-generate-lease-pdf"
-              >
-                {leasePreviewGenerating
-                  ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Generating PDF…</>
-                  : <><Download className="h-4 w-4 mr-1.5" />Confirm — Generate PDF &amp; Add</>}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

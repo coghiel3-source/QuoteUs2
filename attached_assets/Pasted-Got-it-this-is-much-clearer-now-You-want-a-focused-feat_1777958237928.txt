@@ -1,0 +1,186 @@
+Got it — this is much clearer now. You want a **focused feature just for the “Documents” section**, using this specific agreement and not a full system overhaul.
+
+Here’s a **tight, production-ready prompt for Replit** based on your *Lease Co-Guarantee Agreement*:
+
+---
+
+## **Feature: Documents Section – Auto-Fill + Editable + E-Sign (Single Module)**
+
+### **Context**
+
+Add a **Documents section** to the CRM where users can generate and send prebuilt agreements like:
+
+👉  (Lease Co-Guarantee Agreement)
+
+This is a **single feature module**, not a full document management system.
+
+---
+
+## **What This Feature Should Do**
+
+### **1. Add “Documents” Section (UI)**
+
+* Add a new tab: **Documents**
+* Inside:
+
+  * List of available templates (starting with Lease Co-Guarantee Agreement)
+  * Button: **“Generate Document”**
+
+---
+
+### **2. Template Selection + Auto-Fill**
+
+When user selects:
+**Lease Co-Guarantee Agreement**
+
+Auto-fill key fields from client file:
+
+From the document (example fields from page 1):
+
+* Property address
+* Landlord name
+* Landlord contact info
+* Email
+* Effective date
+* Tenant names 
+
+👉 These fields must map to CRM data:
+
+* `client.name`
+* `client.email`
+* `property.address`
+* `deal.effective_date`
+* etc.
+
+---
+
+### **3. Open in Editable Floating Window**
+
+* When generated → open document in a **new movable window/modal**
+* Must support:
+
+  * Drag (move anywhere)
+  * Resize
+  * Full screen toggle
+* Show **live PDF preview**
+
+---
+
+### **4. Editable Before Sending**
+
+* All fields must be:
+
+  * Editable inline
+  * Click → type → update
+* Highlight auto-filled fields
+* Allow:
+
+  * Manual override
+  * Add missing info
+
+---
+
+### **5. Signature Placement**
+
+From the document (last page):
+
+* Landlord signature
+* Product Manager signature
+* Date fields 
+
+Add ability to:
+
+* Place signature fields dynamically
+* Assign signer to each field
+
+---
+
+### **6. Send for E-Signature**
+
+Button: **“Send for Signing”**
+
+Popup:
+
+* Add multiple signers:
+
+  * Name
+  * Email
+  * Role (Landlord / Manager / Other)
+* Assign signature fields per signer
+
+Support:
+
+* Sequential signing OR
+* All-at-once signing
+
+---
+
+### **7. Status Tracking (Simple)**
+
+For this module only:
+
+* Draft
+* Sent
+* Signed
+
+---
+
+### **8. Final Output**
+
+* Save final signed PDF
+* Lock document after signing
+* Store under client profile
+
+---
+
+## **User Flow**
+
+1. Go to **Documents tab**
+2. Click **Generate Document**
+3. Select **Lease Co-Guarantee Agreement**
+4. Document opens → auto-filled
+5. User edits in floating window
+6. Click **Send for Signing**
+7. Add multiple signers
+8. Send + track status
+
+---
+
+## **Technical Notes (Keep It Simple)**
+
+* PDF viewer/editor: PDF.js or similar
+* Store field mappings as JSON:
+
+```json
+{
+  "landlord_name": "client.name",
+  "property_address": "property.address",
+  "email": "client.email"
+}
+```
+
+* E-sign:
+
+  * Use API (DocuSign / Dropbox Sign) OR basic internal signing
+
+---
+
+## **Important Constraints**
+
+* This is **ONLY inside the Documents section**
+* Do NOT overbuild (no full template builder yet)
+* Focus on:
+
+  * 1 document
+  * Auto-fill
+  * Edit
+  * Send for signing
+
+---
+
+If you want next step, I can:
+
+* map **exact fields from this PDF → your CRM schema**
+* or write the **actual backend + frontend code structure for Replit** (React + DB + API)
+
+That would make this plug-and-play instead of just a prompt.
