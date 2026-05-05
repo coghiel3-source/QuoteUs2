@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
 import InvoiceGenerator from "@/components/InvoiceGenerator";
+import LeaseTemplatePrint from "@/components/LeaseTemplatePrint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,7 @@ import {
   BellRing, TrendingUp, AlarmClock, Pencil, MapPin, User, AlertTriangle,
   Building2, DollarSign, Calendar, Phone, Mail, UserPlus, ArrowRight,
   Calculator, CreditCard, Percent, BadgePercent, CheckCircle2, FileSignature,
-  XCircle, Paperclip, Download,
+  XCircle, Paperclip, Download, Loader2,
 } from "lucide-react";
 
 type Status = "New" | "Contacted" | "Documents Pending" | "Documents Received" | "Submitted" | "Approved" | "Declined" | "Issued" | "Cancelled";
@@ -928,6 +929,9 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
     landlordName: string; landlordAddress: string; landlordPhone: string; landlordEmail: string;
     propertyAddress: string; qualifiedTenants: string; effectiveDate: string;
   } | null>(null);
+  const leaseTemplateRef = useRef<HTMLDivElement>(null);
+  const [showLeasePreview, setShowLeasePreview] = useState(false);
+  const [leasePreviewGenerating, setLeasePreviewGenerating] = useState(false);
 
   // Claims
   const [leadClaims, setLeadClaims] = useState<any[]>([]);
@@ -1417,13 +1421,50 @@ ${notesBlock}${signedBlock}
 </body></html>`;
   }
 
-  function addGeneratedLeaseAgreement() {
+  function openLeasePreview() {
     if (!docSignTemplateData) return;
-    const html = generateFilledLeaseHtml(docSignTemplateData);
-    const name = `LeaseCoGuarantee-${(docSignTemplateData.landlordName || "Client").replace(/\s+/g, "_")}.html`;
-    const file = new File([html], name, { type: "text/html" });
-    setDocSignFiles(prev => [file, ...prev.filter(f => !f.name.startsWith("LeaseCoGuarantee-"))]);
-    toast({ title: "Pre-filled agreement added", description: "It appears at the top of the Documents list." });
+    setShowLeasePreview(true);
+  }
+
+  async function confirmGenerateLeasePdf() {
+    if (!docSignTemplateData || !leaseTemplateRef.current) return;
+    setLeasePreviewGenerating(true);
+    try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      const el = leaseTemplateRef.current;
+      const canvas = await (html2canvas as any)(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: 794,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new (jsPDF as any)({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      let remaining = imgHeight;
+      let pos = 0;
+      while (remaining > 0) {
+        pdf.addImage(imgData, "PNG", 0, pos, pdfWidth, imgHeight);
+        remaining -= pdfHeight;
+        if (remaining > 0) { pos -= pdfHeight; pdf.addPage(); }
+      }
+      const pdfBlob = pdf.output("blob");
+      const name = `LeaseCoGuarantee-${(docSignTemplateData.landlordName || "Client").replace(/\s+/g, "_")}.pdf`;
+      const file = new File([pdfBlob], name, { type: "application/pdf" });
+      setDocSignFiles(prev => [file, ...prev.filter(f => !f.name.startsWith("LeaseCoGuarantee-"))]);
+      setShowLeasePreview(false);
+      toast({ title: "PDF agreement added", description: `${name} is at the top of the Documents list.` });
+    } catch (err: any) {
+      toast({ title: "PDF generation failed", description: err?.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setLeasePreviewGenerating(false);
+    }
   }
 
   function openDocSignDialog() {
@@ -2077,6 +2118,12 @@ ${notesBlock}${signedBlock}
 
   return (
     <div className={embedded ? "" : "min-h-screen bg-gray-50"}>
+      {/* Off-screen lease template for PDF capture */}
+      {docSignTemplateData && (
+        <div style={{ position: "fixed", left: "-9999px", top: 0, pointerEvents: "none", zIndex: -1 }}>
+          <LeaseTemplatePrint ref={leaseTemplateRef} data={docSignTemplateData} />
+        </div>
+      )}
       <div className={embedded ? "" : "max-w-7xl mx-auto px-4 py-8"}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -3597,12 +3644,12 @@ ${notesBlock}${signedBlock}
                                   </div>
                                 </div>
                                 <button
-                                  onClick={addGeneratedLeaseAgreement}
+                                  onClick={openLeasePreview}
                                   className="w-full mt-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
                                   data-testid="button-generate-filled-agreement"
                                 >
-                                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                  Generate Pre-filled Agreement Document
+                                  <Eye className="h-3.5 w-3.5" />
+                                  Preview &amp; Generate PDF Agreement
                                 </button>
                               </div>
                             )}
@@ -6076,6 +6123,48 @@ ${notesBlock}${signedBlock}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowFundAccount(false)}>Close</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== LEASE AGREEMENT PREVIEW DIALOG ===== */}
+      <Dialog open={showLeasePreview} onOpenChange={setShowLeasePreview}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col" style={{ maxHeight: "92vh" }}>
+          <DialogHeader className="px-6 pt-5 pb-3 border-b flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-amber-600" />
+              Preview — Lease Co-Guarantee Agreement
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+            {docSignTemplateData && (
+              <iframe
+                srcDoc={generateFilledLeaseHtml(docSignTemplateData)}
+                className="w-full"
+                style={{ height: 600, border: "none", display: "block" }}
+                title="Lease Agreement Preview"
+                sandbox="allow-same-origin"
+              />
+            )}
+          </div>
+          <div className="px-6 py-4 border-t flex-shrink-0 bg-gray-50 flex items-center justify-between gap-3">
+            <p className="text-xs text-gray-500 max-w-sm">Review all client details carefully. Click confirm to generate the PDF and attach it to the signing request.</p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button variant="outline" size="sm" onClick={() => setShowLeasePreview(false)}>
+                Close
+              </Button>
+              <Button
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                size="sm"
+                onClick={confirmGenerateLeasePdf}
+                disabled={leasePreviewGenerating}
+                data-testid="button-confirm-generate-lease-pdf"
+              >
+                {leasePreviewGenerating
+                  ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Generating PDF…</>
+                  : <><Download className="h-4 w-4 mr-1.5" />Confirm — Generate PDF &amp; Add</>}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
