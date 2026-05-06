@@ -601,55 +601,11 @@ export default function LeaseDocumentEditor({ open, onClose, locationId, initial
                   <div style={{ marginBottom: 16 }}>Accepted, Acknowledged and Agreed:</div>
                   <div><strong>By: Pensio Risk Management Group Inc.</strong></div>
                   <div style={{ marginTop: 8, marginBottom: 2 }}>
-                    {/* Jim Milankov signature */}
-                    <svg viewBox="0 0 240 60" width="240" height="60" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-                      <path d="
-                        M 10,42
-                        C 12,30 14,22 18,20
-                        C 22,18 22,30 20,38
-                        C 19,42 20,44 22,43
-                        C 25,41 27,35 29,30
-                        C 31,25 32,24 34,26
-                        C 36,28 35,36 34,42
-                        C 33,46 35,47 37,44
-                        C 40,40 43,30 46,28
-                        C 49,26 50,28 50,32
-                        C 50,38 48,44 47,48
-                        C 46,51 48,51 50,49
-                        M 54,30
-                        C 56,26 58,24 60,26
-                        C 63,29 62,36 60,42
-                        C 59,46 60,48 62,46
-                        C 65,43 68,36 70,32
-                        C 72,28 74,28 75,31
-                        C 76,35 75,41 74,45
-                        C 73,48 74,49 76,47
-                        C 79,44 82,38 85,34
-                        C 87,31 89,30 91,32
-                        C 94,35 93,42 91,47
-                        C 90,50 91,52 93,50
-                        M 97,38
-                        C 100,30 104,22 108,20
-                        C 112,18 113,24 112,32
-                        C 111,39 109,45 107,48
-                        C 105,51 105,53 107,52
-                        C 112,49 118,42 122,38
-                        C 126,34 128,32 130,34
-                        C 133,37 132,44 130,48
-                        C 129,51 130,52 133,50
-                        C 138,47 143,40 146,36
-                        C 149,32 152,30 155,32
-                        C 158,35 158,42 156,47
-                        C 155,50 156,51 158,49
-                        C 162,46 166,40 170,37
-                        C 174,34 178,33 182,36
-                        C 186,39 188,45 190,50
-                        C 192,54 195,56 200,54
-                        C 205,52 210,47 215,43
-                        C 218,41 220,40 222,41
-                        C 225,43 226,46 225,49
-                      " fill="none" stroke="#1a1a6e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <img
+                      src="/jim-milankov-signature.png"
+                      alt="Jim Milankov signature"
+                      style={{ width: 240, height: "auto", display: "block", mixBlendMode: "multiply" }}
+                    />
                   </div>
                   <div style={{ borderBottom: "1px solid #000", width: 240, marginBottom: 4 }} />
                   <div>Jim Milankov</div>
