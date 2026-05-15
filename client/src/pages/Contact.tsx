@@ -74,7 +74,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">Phone</h3>
-                  <p className="text-muted-foreground mt-1">1-877-253-2695</p>
+                  <a href="tel:+18772532695" className="text-muted-foreground mt-1 hover:text-accent transition-colors block">1-877-253-2695</a>
                   <p className="text-xs text-muted-foreground mt-2">Mon-Fri, 9am - 5pm EST</p>
                 </div>
               </CardContent>

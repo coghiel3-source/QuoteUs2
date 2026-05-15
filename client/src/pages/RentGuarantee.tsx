@@ -225,7 +225,7 @@ export default function RentGuaranteePage() {
                     Get a Free Quote <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </a>
-                <a href="tel:+14165550100">
+                <a href="tel:+18772532695">
                   <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 bg-white/5">
                     <Phone className="mr-2 h-4 w-4" /> Speak to an Expert
                   </Button>
