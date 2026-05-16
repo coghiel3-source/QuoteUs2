@@ -199,7 +199,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div>
               <h4 className="font-serif font-bold text-lg mb-4 text-white">Contact</h4>
               <ul className="space-y-2 text-sm text-primary-foreground/70">
-                <li className="flex items-center gap-2"><Phone size={14} /><a href="tel:+18772532695" className="hover:text-white transition-colors">1-877-253-2695</a></li>
+                <li><a href="tel:+18772532695" className="flex items-center gap-2 hover:text-white transition-colors">
+                  <Phone size={14} /> 1-877-253-2695
+                </a></li>
                 <li>Toronto, Ontario</li>
                 <li>info@quoteus.ca</li>
               </ul>
