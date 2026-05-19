@@ -4,6 +4,8 @@ import {
   X, Maximize2, Minimize2, Send, Plus, Trash2,
   GripHorizontal, CheckCircle2, Loader2, Copy, ExternalLink, Clock,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 export interface LeaseFields {
   landlordName: string;
@@ -168,10 +170,6 @@ export default function LeaseDocumentEditor({ open, onClose, locationId, initial
     setError("");
     setSending(true);
     try {
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
       const el = docRef.current!;
       const canvas = await (html2canvas as any)(el, {
         scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false,
