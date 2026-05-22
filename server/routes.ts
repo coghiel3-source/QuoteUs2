@@ -2446,8 +2446,8 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Access denied" });
       }
       const allQuotes = await storage.getAllQuotes();
-      const allUsers = await storage.getUsers();
-      const repIds = new Set(allUsers.filter(u => u.role === "rep").map(u => u.id));
+      const allUsers = await storage.getAllUsers();
+      const repIds = new Set(allUsers.filter((u) => u.role === "rep").map((u) => u.id));
       const referred = allQuotes.filter(q => q.assignedTo && repIds.has(q.assignedTo));
       res.json(referred);
     } catch (error: any) {
@@ -3948,7 +3948,7 @@ export async function registerRoutes(
         trackingCode = generateTrackingCode(planType);
       }
 
-      const desc = description || `${planType === "annual" ? "Annual" : "Monthly"} RG Premium – ${location.propertyAddress || location.address}`;
+      const desc = description || `${planType === "annual" ? "Annual" : "Monthly"} RG Premium – ${location.propertyAddress}`;
 
       // Create pending payment record (amountCents = recurring monthly amount)
       const payment = await storage.createRgPayment({
@@ -3972,7 +3972,7 @@ export async function registerRoutes(
           {
             price_data: {
               currency: "cad",
-              product_data: { name: `Monthly RG Premium – ${location.propertyAddress || location.address}` },
+              product_data: { name: `Monthly RG Premium – ${location.propertyAddress}` },
               recurring: { interval: "month" },
               unit_amount: amountCents,
             },
@@ -4110,7 +4110,7 @@ export async function registerRoutes(
       let synced = 0;
       for (const inv of invoices.data) {
         // Skip if already recorded
-        const existing = await storage.getRgPaymentByStripePaymentIntent(inv.payment_intent as string);
+        const existing = await storage.getRgPaymentByStripePaymentIntent((inv as any).payment_intent as string);
         if (existing) continue;
 
         const periodStart = inv.period_start ? new Date(inv.period_start * 1000) : new Date();
@@ -4133,7 +4133,7 @@ export async function registerRoutes(
           createdBy: user.id,
           status: "paid",
           stripeSubscriptionId: location.stripeSubscriptionId,
-          stripePaymentIntentId: inv.payment_intent as string,
+          stripePaymentIntentId: (inv as any).payment_intent as string,
           paidAt: new Date(inv.status_transitions?.paid_at ? inv.status_transitions.paid_at * 1000 : Date.now()),
         } as any);
         synced++;
@@ -4234,11 +4234,11 @@ export async function registerRoutes(
         <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#fff;">
           <div style="background:#1a56db;color:white;padding:24px 32px;border-radius:8px 8px 0 0;">
             <h1 style="margin:0;font-size:22px;">Payment ${type === "annual" ? "Annual Summary" : "Receipt"}</h1>
-            <p style="margin:6px 0 0;opacity:.85;">${filterYear} — ${location.address}${location.unit ? `, Unit ${location.unit}` : ""}</p>
+            <p style="margin:6px 0 0;opacity:.85;">${filterYear} — ${location.propertyAddress}${location.unit ? `, Unit ${location.unit}` : ""}</p>
           </div>
           <div style="padding:24px 32px;">
             <p style="color:#555;">Dear ${location.landlordName || "Valued Client"},</p>
-            <p style="color:#555;">Please find below your payment summary for the property at <strong>${location.address}</strong>.</p>
+            <p style="color:#555;">Please find below your payment summary for the property at <strong>${location.propertyAddress}</strong>.</p>
             <table style="width:100%;border-collapse:collapse;margin:20px 0;">
               <thead>
                 <tr style="background:#f8f9fa;">
@@ -4261,7 +4261,7 @@ export async function registerRoutes(
 
       const sent = await sendEmail({
         to: recipientEmail || location.landlordEmail || "",
-        subject: `Payment ${type === "annual" ? "Annual Summary" : "Receipt"} – ${filterYear} – ${location.address}`,
+        subject: `Payment ${type === "annual" ? "Annual Summary" : "Receipt"} – ${filterYear} – ${location.propertyAddress}`,
         html,
         text: `Payment summary for ${filterYear}: ${paid.length} payment(s), total $${(totalCents / 100).toFixed(2)} CAD`,
       });
@@ -4704,7 +4704,7 @@ export async function registerRoutes(
       if (!title || !content) {
         return res.status(400).json({ error: "Title and content are required" });
       }
-      const template = await storage.upsertSignatureTemplate({ title, content, updatedBy: user.id });
+      const template = await storage.upsertSignatureTemplate({ title, content, updatedBy: actor.id });
       res.json(template);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -4731,7 +4731,7 @@ export async function registerRoutes(
         locationId: location.id,
         landlordName: location.landlordName || "",
         landlordEmail,
-        propertyAddress: `${location.address}${location.unit ? ", Unit " + location.unit : ""}`,
+        propertyAddress: `${location.propertyAddress}${location.unit ? ", Unit " + location.unit : ""}`,
         token,
         status: "pending",
         createdBy: user.id,
@@ -4752,7 +4752,7 @@ export async function registerRoutes(
             <h2 style="color:#1a56db;">Agreement Ready for Your Signature</h2>
             <p>Dear ${location.landlordName || "Landlord"},</p>
             <p>Please review and sign the agreement for the following property:</p>
-            <p><strong>${location.address}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
+            <p><strong>${location.propertyAddress}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
             <div style="margin:24px 0;">
               <a href="${signingUrl}" style="background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
                 Sign Agreement
@@ -4881,7 +4881,7 @@ export async function registerRoutes(
         documentMimeType: uploadedFiles[0] ? uploadedFiles[0].mimetype : null,
         landlordName: primarySigner.name || location.landlordName || "",
         landlordEmail: primarySigner.email,
-        propertyAddress: `${location.address}${location.unit ? ", Unit " + location.unit : ""}`,
+        propertyAddress: `${location.propertyAddress}${location.unit ? ", Unit " + location.unit : ""}`,
         token: masterToken,
         status: "pending",
         createdBy: actor.id,
@@ -4931,13 +4931,13 @@ export async function registerRoutes(
         signerLinks.push({ name: signer.name, email: signer.email, url: signerUrl });
         const sent = await sendEmail({
           to: signer.email,
-          subject: `Document Ready for Your Signature — ${location.address}`,
+          subject: `Document Ready for Your Signature — ${location.propertyAddress}`,
           html: `
             <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
               <h2 style="color:#1a56db;">Document Ready for Your Signature</h2>
               <p>Dear ${signer.name || "Signer"},</p>
               <p>A document has been sent to you for review and signature for the property:</p>
-              <p><strong>${location.address}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
+              <p><strong>${location.propertyAddress}${location.unit ? ", Unit " + location.unit : ""}</strong></p>
               ${allFileNames ? `<p>Documents: <strong>${allFileNames}</strong></p>` : ""}
               <div style="margin:24px 0;">
                 <a href="${signerUrl}" style="background:#1a56db;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:bold;">
@@ -5377,7 +5377,7 @@ export async function registerRoutes(
       // Get the processing email from settings or fallback to admin email
       const processingEmailSetting = await storage.getSetting("processing_email");
       const adminEmail = "info@quoteus.ca";
-      const toEmail = processingEmailSetting?.value || adminEmail;
+      const toEmail = processingEmailSetting || adminEmail;
 
       const sent = await sendEmail({
         to: toEmail,
@@ -5472,7 +5472,7 @@ export async function registerRoutes(
       rgRevenueOverTime.forEach(e => { (e as any).revenue = e.revenue / 100; });
 
       // Broker credit purchase revenue (transactions with positive amount)
-      const creditPurchases = allTransactions.filter(t => t.type === "credit" && parseFloat(t.amount) > 0);
+      const creditPurchases = allTransactions.filter(t => t.type === "credit_purchase" && parseFloat(t.amount) > 0);
       const totalCreditRevenue = creditPurchases.reduce((sum, t) => sum + parseFloat(t.amount), 0);
       const creditRevenueOverTime: { name: string; revenue: number; month: number; year: number }[] = rgLeadsOverTime.map(e => ({ ...e, revenue: 0, leads: undefined as any }));
       creditPurchases.forEach(t => {
