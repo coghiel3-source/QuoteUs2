@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Maximize2, Minimize2, Send, Plus, Trash2,
-  GripHorizontal, CheckCircle2, Loader2, Copy, ExternalLink, Clock,
+  GripHorizontal, CheckCircle2, Loader2, Copy, ExternalLink, Clock, Printer,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -164,42 +164,114 @@ export default function LeaseDocumentEditor({ open, onClose, locationId, initial
     window.removeEventListener("mouseup", onMouseUp);
   }, [onMouseMove, onMouseUp]);
 
+  async function buildPdfBlob(): Promise<Blob> {
+    const el = docRef.current!;
+    const canvas = await (html2canvas as any)(el, {
+      scale: 1.5, useCORS: true, backgroundColor: "#ffffff", logging: false,
+    });
+    const imgData = canvas.toDataURL("image/jpeg", 0.92);
+    const pdf = new (jsPDF as any)({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pW = pdf.internal.pageSize.getWidth();
+    const pH = pdf.internal.pageSize.getHeight();
+    const iH = (canvas.height * pW) / canvas.width;
+    let rem = iH, yOff = 0;
+    while (rem > 0) {
+      pdf.addImage(imgData, "JPEG", 0, yOff, pW, iH);
+      rem -= pH;
+      if (rem > 0) { yOff -= pH; pdf.addPage(); }
+    }
+    return pdf.output("blob");
+  }
+
+  function buildPrintableHtml(): string {
+    const el = docRef.current;
+    if (!el) return "";
+    const clone = el.cloneNode(true) as HTMLElement;
+    // Replace every live input with a static span containing its current value
+    const srcInputs = el.querySelectorAll("input");
+    const cloneInputs = clone.querySelectorAll("input");
+    srcInputs.forEach((src, i) => {
+      const dst = cloneInputs[i];
+      if (!dst) return;
+      const raw = (src as HTMLInputElement).value || "";
+      const value = (src as HTMLInputElement).type === "date" && raw
+        ? new Date(raw + "T00:00:00").toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })
+        : raw;
+      const span = document.createElement("span");
+      span.textContent = value || "_______________";
+      span.style.cssText = `display:inline;border-bottom:1px solid #555;color:${value ? "#1a56db" : "#555"};font-weight:${value ? "600" : "normal"};padding:0 3px;`;
+      dst.replaceWith(span);
+    });
+    return clone.innerHTML;
+  }
+
+  function handlePrint() {
+    if (!docRef.current) return;
+    setError("");
+    const html = buildPrintableHtml();
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if (!w) { setError("Pop-up blocked — please allow pop-ups to print."); return; }
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(n => n.outerHTML).join("\n");
+    w.document.write(`<!doctype html><html><head><title>Lease Co-Guarantee Agreement</title>${styles}
+<style>
+  @page { size: A4; margin: 12mm; }
+  body { margin: 0; background: #fff; font-family: 'Times New Roman', Times, Georgia, serif; font-size: 11pt; line-height: 1.65; color: #000; }
+  .print-doc { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+  ul { list-style-type: disc !important; }
+</style></head><body><div class="print-doc">${html}</div>
+<script>window.addEventListener('load', () => { setTimeout(() => { window.focus(); window.print(); }, 250); });<\/script>
+</body></html>`);
+    w.document.close();
+  }
+
+  async function handleDownloadPdf() {
+    setError("");
+    try {
+      const blob = await buildPdfBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = (fields.landlordName || "Client").replace(/\s+/g, "_");
+      a.href = url; a.download = `LeaseCoGuarantee-${safeName}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err: any) {
+      setError("Could not build PDF — try Print instead. " + (err?.message || ""));
+    }
+  }
+
   async function handleSend() {
     const valid = signers.filter(s => s.email.trim());
     if (valid.length === 0) { setError("Add at least one signer email."); return; }
     setError("");
     setSending(true);
     try {
-      const el = docRef.current!;
-      const canvas = await (html2canvas as any)(el, {
-        scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false,
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new (jsPDF as any)({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pW = pdf.internal.pageSize.getWidth();
-      const pH = pdf.internal.pageSize.getHeight();
-      const iH = (canvas.height * pW) / canvas.width;
-      let rem = iH, yOff = 0;
-      while (rem > 0) {
-        pdf.addImage(imgData, "PNG", 0, yOff, pW, iH);
-        rem -= pH;
-        if (rem > 0) { yOff -= pH; pdf.addPage(); }
+      let file: File;
+      try {
+        const pdfBlob = await buildPdfBlob();
+        const safeName = (fields.landlordName || "Client").replace(/\s+/g, "_");
+        file = new File([pdfBlob], `LeaseCoGuarantee-${safeName}.pdf`, { type: "application/pdf" });
+      } catch (pdfErr: any) {
+        throw new Error("Could not generate PDF: " + (pdfErr?.message || "render failed") + ". Try Print → Save as PDF, then attach manually.");
       }
-      const pdfBlob = pdf.output("blob");
-      const safeName = (fields.landlordName || "Client").replace(/\s+/g, "_");
-      const file = new File([pdfBlob], `LeaseCoGuarantee-${safeName}.pdf`, { type: "application/pdf" });
 
       const formData = new FormData();
       formData.append("actorId", actorId);
       formData.append("signers", JSON.stringify(valid));
       formData.append("templateData", JSON.stringify(fields));
+      formData.append("landlordName", fields.landlordName || "");
+      formData.append("landlordEmail", fields.landlordEmail || valid[0].email);
       formData.append("documents", file);
       const res = await fetch(`/api/rep/locations/${locationId}/doc-signatures`, { method: "POST", body: formData });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Send failed");
-      setSentLinks(result.links || []);
+      const text = await res.text();
+      let result: any = {};
+      try { result = text ? JSON.parse(text) : {}; } catch { result = { error: text.slice(0, 200) }; }
+      if (!res.ok) throw new Error(result.error || `Server returned ${res.status}`);
+      const links = result.signerLinks || result.links || [];
+      setSentLinks(links);
       onSent();
     } catch (err: any) {
+      console.error("[LeaseEditor] send failed:", err);
       setError(err.message || "Failed to send — please try again.");
     } finally {
       setSending(false);
@@ -253,6 +325,14 @@ export default function LeaseDocumentEditor({ open, onClose, locationId, initial
               <Clock className="h-3 w-3" /> Draft
             </span>
           )}
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white transition-colors"
+            title="Print or Save as PDF"
+            data-testid="button-lease-print"
+          >
+            <Printer className="h-3.5 w-3.5" /> Print / PDF
+          </button>
           <button onClick={() => setIsMaximized(m => !m)} className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
@@ -858,20 +938,42 @@ export default function LeaseDocumentEditor({ open, onClose, locationId, initial
                 </div>
               ))}
             </div>
-            <button onClick={onClose} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg font-semibold transition-colors">Done</button>
+            {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+            <div className="flex items-center gap-2">
+              <button onClick={handlePrint} className="flex items-center gap-1.5 text-xs bg-white hover:bg-gray-50 border border-emerald-300 text-emerald-700 px-3 py-1.5 rounded-lg font-semibold transition-colors" data-testid="button-lease-print-sent">
+                <Printer className="h-3.5 w-3.5" /> Print / Save as PDF
+              </button>
+              <button onClick={handleDownloadPdf} className="flex items-center gap-1.5 text-xs bg-white hover:bg-gray-50 border border-emerald-300 text-emerald-700 px-3 py-1.5 rounded-lg font-semibold transition-colors" data-testid="button-lease-download-sent">
+                Download PDF
+              </button>
+              <div className="flex-1" />
+              <button onClick={onClose} className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg font-semibold transition-colors">Done</button>
+            </div>
           </div>
         ) : !showSigners ? (
-          <div className="flex-shrink-0 border-t bg-white px-5 py-3 flex items-center justify-between gap-4">
+          <div className="flex-shrink-0 border-t bg-white px-5 py-3 space-y-2">
+            {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+            <div className="flex items-center justify-between gap-4">
             <p className="text-xs text-gray-400 hidden sm:block">
-              Fill in the highlighted fields, then click Send for Signing to collect signatures.
+              Fill in the highlighted fields, then Print / Save as PDF, or send for e-signing.
             </p>
-            <button
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors shrink-0"
-              onClick={() => setShowSigners(true)}
-              data-testid="button-lease-send-for-signing"
-            >
-              <Send className="h-4 w-4" /> Send for Signing
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                onClick={handlePrint}
+                data-testid="button-lease-print-draft"
+              >
+                <Printer className="h-4 w-4" /> Print / PDF
+              </button>
+              <button
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors shrink-0"
+                onClick={() => setShowSigners(true)}
+                data-testid="button-lease-send-for-signing"
+              >
+                <Send className="h-4 w-4" /> Send for Signing
+              </button>
+            </div>
+            </div>
           </div>
         ) : (
           <div className="flex-shrink-0 border-t bg-white px-5 py-4 space-y-3" style={{ maxHeight: 260, overflowY: "auto" }}>
