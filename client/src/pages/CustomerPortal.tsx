@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { redirectToStripeCheckout } from "@/lib/stripeRedirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,7 +147,7 @@ function PaymentForm({ account }: { account: any | null }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Payment failed.");
-      window.location.href = data.url;
+      redirectToStripeCheckout(data.url);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {

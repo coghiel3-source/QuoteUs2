@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
+import { redirectToStripeCheckout } from "@/lib/stripeRedirect";
 import InvoiceGenerator from "@/components/InvoiceGenerator";
 import LeaseDocumentEditor, { type LeaseFields } from "@/components/LeaseDocumentEditor";
 import { Button } from "@/components/ui/button";
@@ -285,7 +286,7 @@ function PricingTab({
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      if (data.url) window.location.href = data.url;
+      if (data.url) redirectToStripeCheckout(data.url);
       setPayDialog({ open: false, planType: null });
       onPaymentCreated?.();
     } catch (err: any) {
@@ -1911,7 +1912,7 @@ ${notesBlock}${signedBlock}
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        redirectToStripeCheckout(data.url);
       } else {
         toast({ title: data.error || "Failed to start checkout", variant: "destructive" });
       }

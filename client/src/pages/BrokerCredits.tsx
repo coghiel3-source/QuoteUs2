@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
+import { redirectToStripeCheckout } from "@/lib/stripeRedirect";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +75,7 @@ export default function BrokerCredits() {
       
       const data = await response.json();
       if (data.url) {
-        window.location.href = data.url;
+        redirectToStripeCheckout(data.url);
       } else {
         alert(data.error || "Failed to create checkout session");
       }

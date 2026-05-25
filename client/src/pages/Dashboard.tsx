@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { redirectToStripeCheckout } from "@/lib/stripeRedirect";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -95,7 +96,7 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.url) {
-          window.location.href = data.url;
+          redirectToStripeCheckout(data.url);
         }
       } else {
         const err = await res.json();
