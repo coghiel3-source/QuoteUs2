@@ -11,6 +11,110 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import bcrypt from "bcryptjs";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+
+/**
+ * Stamps the captured landlord signature onto a PDF by appending a clean
+ * "Landlord Signature" page containing the signature image placed on a labeled
+ * signature line, signer name, and date.
+ * Returns the path (under /uploads/doc-signatures/) of the new signed PDF, or null on failure.
+ */
+async function stampSignatureOnPdf(
+  originalPath: string,
+  signatureDataUrl: string,
+  signerName: string,
+): Promise<string | null> {
+  try {
+    if (!signatureDataUrl || !signatureDataUrl.startsWith("data:image/")) return null;
+    const absoluteOriginal = path.join(process.cwd(), "client", "public", originalPath.replace(/^\//, ""));
+    if (!fs.existsSync(absoluteOriginal)) return null;
+    const pdfBytes = fs.readFileSync(absoluteOriginal);
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+
+    // Decode the signature image (png or jpeg)
+    const base64 = signatureDataUrl.split(",")[1] || "";
+    const imgBytes = Buffer.from(base64, "base64");
+    const isPng = signatureDataUrl.includes("image/png");
+    const sigImage = isPng ? await pdfDoc.embedPng(imgBytes) : await pdfDoc.embedJpg(imgBytes);
+
+    // Append a clean signature page (A4)
+    const page = pdfDoc.addPage([595, 842]);
+    const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+
+    // Header
+    page.drawText("LANDLORD SIGNATURE", {
+      x: 50, y: 780, size: 16, font: fontBold, color: rgb(0, 0, 0),
+    });
+    page.drawText("Signed electronically per the Lease Co-Guarantee Agreement above.", {
+      x: 50, y: 760, size: 10, font, color: rgb(0.3, 0.3, 0.3),
+    });
+
+    // "Accepted, Acknowledged and Agreed:" block + "By: Landlord" — matches the document layout
+    page.drawText("Accepted, Acknowledged and Agreed:", {
+      x: 50, y: 700, size: 12, font, color: rgb(0, 0, 0),
+    });
+    page.drawText("By: Landlord", {
+      x: 50, y: 675, size: 12, font, color: rgb(0, 0, 0),
+    });
+
+    // Signature line (matches the visual in the editor — 220pt wide line)
+    const lineY = 580;
+    const lineX = 50;
+    const lineW = 320;
+    // Place the signature image so its baseline sits on the line
+    const sigDims = sigImage.scale(1);
+    const sigMaxW = 280;
+    const sigMaxH = 80;
+    const sigScale = Math.min(sigMaxW / sigDims.width, sigMaxH / sigDims.height);
+    const sigW = sigDims.width * sigScale;
+    const sigH = sigDims.height * sigScale;
+    page.drawImage(sigImage, {
+      x: lineX + 10,
+      y: lineY + 2,
+      width: sigW,
+      height: sigH,
+    });
+    // Draw the signature line
+    page.drawLine({
+      start: { x: lineX, y: lineY },
+      end: { x: lineX + lineW, y: lineY },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+
+    // Signer name + date below the line
+    page.drawText(signerName, {
+      x: lineX, y: lineY - 18, size: 11, font: fontBold, color: rgb(0, 0, 0),
+    });
+    const dateStr = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+    page.drawText(`Signed on ${dateStr}`, {
+      x: lineX, y: lineY - 34, size: 10, font, color: rgb(0.4, 0.4, 0.4),
+    });
+    page.drawText("Landlord (or Landlord's Property Manager, if authorized)", {
+      x: lineX, y: lineY - 50, size: 10, font, color: rgb(0.3, 0.3, 0.3),
+    });
+
+    // Footer disclaimer
+    page.drawText(
+      "Electronic Signature Disclaimer: The use of electronic signatures in connection with this",
+      { x: 50, y: 80, size: 9, font, color: rgb(0.4, 0.4, 0.4) },
+    );
+    page.drawText(
+      "Agreement is permitted and has the same legal effect and enforceability as a handwritten signature.",
+      { x: 50, y: 68, size: 9, font, color: rgb(0.4, 0.4, 0.4) },
+    );
+
+    const signedBytes = await pdfDoc.save();
+    const signedFilename = `signed-${Date.now()}-${path.basename(originalPath)}`;
+    const signedAbsolute = path.join(process.cwd(), "client", "public", "uploads", "doc-signatures", signedFilename);
+    fs.writeFileSync(signedAbsolute, signedBytes);
+    return `/uploads/doc-signatures/${signedFilename}`;
+  } catch (e) {
+    console.error("[stampSignatureOnPdf] failed:", e);
+    return null;
+  }
+}
 
 function safeUser(user: any): any {
   if (!user) return user;
@@ -5080,20 +5184,46 @@ export async function registerRoutes(
 
       const updated = await storage.updateDocSignature(record.id, updateData);
 
-      // Auto-attach document files to rep_documents via the location's active lead (only when fully signed)
+      // Auto-attach document files to rep_documents via the location's active lead (only when fully signed).
+      // For PDFs, stamp the captured signature onto a clean appended landlord signature page
+      // and attach the SIGNED PDF (not the original) to documents.
       if (updateData.status === "signed") {
         try {
           const leads = await storage.getLeadsForLocation(record.locationId);
           const activeLead = leads.find(l => l.status !== "Declined") || leads[0];
           if (activeLead) {
             const files = await storage.getFilesForDocSig(record.id);
+            // Determine the signature data to stamp (use top-level or last signer's data)
+            let sigDataToStamp: string | null = signatureData || null;
+            let stampSignerName: string = signerName || "";
+            if (!sigDataToStamp && record.signers) {
+              try {
+                const ss = JSON.parse(record.signers);
+                const signed = ss.filter((s: any) => s.signatureData);
+                if (signed.length > 0) {
+                  sigDataToStamp = signed[signed.length - 1].signatureData;
+                  stampSignerName = signed[signed.length - 1].signerName || stampSignerName;
+                }
+              } catch {}
+            }
+
             for (const f of files) {
+              let attachPath = f.filePath;
+              let attachName = f.fileName || "Signed Document";
+              const isPdf = f.mimeType === "application/pdf" || (f.filePath || "").toLowerCase().endsWith(".pdf");
+              if (isPdf && sigDataToStamp && stampSignerName) {
+                const signedPath = await stampSignatureOnPdf(f.filePath, sigDataToStamp, stampSignerName);
+                if (signedPath) {
+                  attachPath = signedPath;
+                  attachName = `Signed - ${attachName}`;
+                }
+              }
               await storage.createRepDocument({
                 rgLeadId: activeLead.id,
                 documentRequestId: null,
                 docType: "signed-document",
-                fileName: f.fileName || "Signed Document",
-                fileUrl: f.filePath,
+                fileName: attachName,
+                fileUrl: attachPath,
                 fileSize: null,
               });
             }

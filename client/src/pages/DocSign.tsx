@@ -135,6 +135,43 @@ export default function DocSign() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [scrolledToBottom, setScrolledToBottom] = useState(false);
+  const docViewerRef = useRef<HTMLDivElement>(null);
+  const hasUserScrolledRef = useRef(false);
+
+  // Scroll gate — must genuinely scroll past the document viewer before signing is allowed.
+  // We require BOTH: (a) the user has performed a scroll interaction, AND (b) the viewer's
+  // bottom is at/above the viewport bottom. Edge case: if the page is not scrollable at all
+  // (document already fits in viewport), unlock automatically after mount.
+  useEffect(() => {
+    // Reset on document set change so a fresh document always gates again
+    setScrolledToBottom(false);
+    hasUserScrolledRef.current = false;
+
+    const check = () => {
+      const viewer = docViewerRef.current;
+      if (!viewer) return;
+      const viewerBottom = viewer.getBoundingClientRect().bottom;
+      if (viewerBottom <= window.innerHeight + 20) setScrolledToBottom(true);
+    };
+    const onScroll = () => {
+      hasUserScrolledRef.current = true;
+      check();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // After layout settles, if there is nothing to scroll, unlock automatically.
+    const t = setTimeout(() => {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight > 10;
+      if (!scrollable) setScrolledToBottom(true);
+      else if (hasUserScrolledRef.current) check();
+    }, 400);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(t);
+    };
+  }, [files.length, loading]);
 
   const getDocPage = (i: number) => docPages[i] ?? 1;
   const setDocPage = (i: number, p: number) => setDocPages(prev => ({ ...prev, [i]: Math.max(1, p) }));
@@ -342,7 +379,7 @@ export default function DocSign() {
         })()}
 
         {/* Document Viewer */}
-        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+        <div ref={docViewerRef} className="bg-white rounded-2xl border shadow-sm overflow-hidden">
 
           {files.length > 1 && (
             <div className="flex overflow-x-auto border-b bg-gray-50">
@@ -498,10 +535,31 @@ export default function DocSign() {
 
             {/* Submit */}
             <div className="pt-2 border-t space-y-3">
+              {!scrolledToBottom && (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-start gap-3" data-testid="banner-scroll-required">
+                  <svg className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-amber-900">Please scroll to the bottom of the agreement</p>
+                    <p className="text-xs text-amber-700 mt-0.5">You must review the entire document before you can sign.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const v = docViewerRef.current;
+                      if (v) window.scrollTo({ top: v.offsetTop + v.offsetHeight - window.innerHeight + 40, behavior: "smooth" });
+                    }}
+                    className="text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg shrink-0"
+                    data-testid="button-scroll-to-bottom"
+                  >
+                    Scroll down
+                  </button>
+                </div>
+              )}
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !signerName.trim() || (!hasSignatureField && !mainSigData)}
-                className="bg-blue-700 hover:bg-blue-800 text-white w-full h-11 text-sm font-semibold"
+                disabled={submitting || !signerName.trim() || (!hasSignatureField && !mainSigData) || !scrolledToBottom}
+                className="bg-blue-700 hover:bg-blue-800 text-white w-full h-11 text-sm font-semibold disabled:opacity-50"
                 data-testid="button-submit-signature"
               >
                 {submitting ? (
@@ -509,7 +567,7 @@ export default function DocSign() {
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Submitting…
                   </span>
-                ) : `Submit Signed Document${files.length > 1 ? "s" : ""}`}
+                ) : !scrolledToBottom ? "Scroll to bottom to sign" : `Submit Signed Document${files.length > 1 ? "s" : ""}`}
               </Button>
               <p className="text-xs text-gray-400 text-center">
                 By submitting, you confirm you have read and agree to all documents above.
