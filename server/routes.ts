@@ -16,10 +16,54 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { persistLocalFileToStorage, persistBufferToStorage, readFileFromAnyPath } from "./objectStorageHelper";
 
 /**
- * Stamps the captured landlord signature onto a PDF by appending a clean
- * "Landlord Signature" page containing the signature image placed on a labeled
- * signature line, signer name, and date.
- * Returns the path (under /uploads/doc-signatures/) of the new signed PDF, or null on failure.
+ * Locate a text anchor in the PDF using pdfjs-dist and return its
+ * { pageIndex, x, y, height } in PDF user-space coords (origin bottom-left).
+ * Tries each anchor phrase in order and returns the first match.
+ */
+async function findTextAnchorInPdf(
+  pdfBytes: Uint8Array | Buffer,
+  anchors: string[],
+): Promise<{ pageIndex: number; x: number; y: number; height: number; pageWidth: number; pageHeight: number } | null> {
+  try {
+    const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const data = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
+    const doc = await pdfjs.getDocument({ data, useSystemFonts: true, isEvalSupported: false }).promise;
+    for (let pi = 0; pi < doc.numPages; pi++) {
+      const page = await doc.getPage(pi + 1);
+      const viewport = page.getViewport({ scale: 1 });
+      const tc = await page.getTextContent();
+      // Build a flat string of items with their positions to support multi-item phrases.
+      const items: { str: string; x: number; y: number; h: number }[] = [];
+      for (const it of tc.items as any[]) {
+        const s = (it.str || "").trim();
+        if (!s) continue;
+        items.push({ str: s, x: it.transform[4], y: it.transform[5], h: it.height || 10 });
+      }
+      for (const anchor of anchors) {
+        const a = anchor.toLowerCase();
+        // direct single-item match
+        const hit = items.find(i => i.str.toLowerCase().includes(a));
+        if (hit) {
+          await doc.destroy();
+          return { pageIndex: pi, x: hit.x, y: hit.y, height: hit.h, pageWidth: viewport.width, pageHeight: viewport.height };
+        }
+      }
+    }
+    await doc.destroy();
+    return null;
+  } catch (e) {
+    console.error("[findTextAnchorInPdf] failed:", e);
+    return null;
+  }
+}
+
+/**
+ * Stamps the captured landlord signature onto a PDF. First tries to locate
+ * the existing landlord signature placeholder in the document (the line above
+ * the "(signature)" / "Signature will appear here after signing" text) and
+ * draws the signature image directly on that line on the SAME page. Falls
+ * back to appending a clean signature page only if no anchor is found.
+ * Returns the persisted object-storage URL of the signed PDF, or null on failure.
  */
 async function stampSignatureOnPdf(
   originalPath: string,
@@ -38,7 +82,64 @@ async function stampSignatureOnPdf(
     const isPng = signatureDataUrl.includes("image/png");
     const sigImage = isPng ? await pdfDoc.embedPng(imgBytes) : await pdfDoc.embedJpg(imgBytes);
 
-    // Append a clean signature page (A4)
+    // ── Try in-place stamping on the existing signature line ──
+    const anchor = await findTextAnchorInPdf(pdfBytes, [
+      "Signature will appear here after signing",
+      "(signature)",
+    ]);
+    if (anchor) {
+      const targetPage = pdfDoc.getPage(anchor.pageIndex);
+      const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      const fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+
+      // The signature line in the template sits just above the "(signature)" /
+      // "Signature will appear here after signing" placeholder. Place the
+      // signature image so its baseline sits on (or slightly above) that line.
+      // anchor.y is the baseline of the anchor text (PDF coords: origin bottom-left).
+      const lineY = anchor.y + anchor.height + 2; // a hair above the placeholder text
+      const lineX = anchor.x;                     // align with the column
+      const lineW = 220;                           // matches template's 220pt-wide line
+
+      // Cover up the "(signature)" + "Signature will appear here after signing"
+      // placeholder text with a white rectangle, then draw the signature on top.
+      targetPage.drawRectangle({
+        x: lineX - 1,
+        y: anchor.y - anchor.height,
+        width: lineW + 2,
+        height: anchor.height * 3.2,
+        color: rgb(1, 1, 1),
+      });
+
+      const sigDims = sigImage.scale(1);
+      const sigMaxW = lineW - 10;
+      const sigMaxH = 40;
+      const sigScale = Math.min(sigMaxW / sigDims.width, sigMaxH / sigDims.height);
+      const sigW = sigDims.width * sigScale;
+      const sigH = sigDims.height * sigScale;
+      // Place image centered horizontally on the line, baseline ~ on the line.
+      targetPage.drawImage(sigImage, {
+        x: lineX + Math.max(0, (lineW - sigW) / 2),
+        y: lineY + 1,
+        width: sigW,
+        height: sigH,
+      });
+
+      // Print signer name + date just below where the placeholder used to be.
+      const dateStr = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+      targetPage.drawText(`${signerName}`, {
+        x: lineX, y: anchor.y, size: 10, font: fontBold, color: rgb(0, 0, 0),
+      });
+      targetPage.drawText(`Signed on ${dateStr}`, {
+        x: lineX, y: anchor.y - 12, size: 9, font, color: rgb(0.4, 0.4, 0.4),
+      });
+
+      const signedBytes = await pdfDoc.save();
+      const baseName = path.basename(originalPath);
+      const signedName = `signed-${Date.now()}-${baseName}`;
+      return await persistBufferToStorage(Buffer.from(signedBytes), signedName, "application/pdf");
+    }
+
+    // ── Fallback: append a clean signature page (A4) ──
     const page = pdfDoc.addPage([595, 842]);
     const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
