@@ -138,6 +138,8 @@ export default function DocSign() {
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const docViewerRef = useRef<HTMLDivElement>(null);
   const hasUserScrolledRef = useRef(false);
+  const [sigModalOpen, setSigModalOpen] = useState(false);
+  const [sigDraft, setSigDraft] = useState<string | null>(null);
 
   // Scroll gate — must genuinely scroll past the document viewer before signing is allowed.
   // We require BOTH: (a) the user has performed a scroll interaction, AND (b) the viewer's
@@ -464,13 +466,97 @@ export default function DocSign() {
               />
             </div>
 
-            {/* Main signature (if no dedicated signature field) */}
+            {/* Main signature (if no dedicated signature field) — styled to match the
+                "Accepted, Acknowledged and Agreed / By: Landlord" block in the agreement.
+                Clicking the signature line opens a modal to draw the signature, which
+                then appears on the line itself. */}
             {!hasSignatureField && (
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-gray-700">
-                  Signature <span className="text-red-500">*</span>
-                </Label>
-                <SignaturePad id="main-sig" height={150} onCapture={data => setMainSigData(data)} />
+              <div className="border-2 border-gray-200 rounded-xl p-6 bg-gray-50/50" data-testid="block-landlord-signature">
+                <p className="text-base font-semibold text-gray-900 mb-1">Accepted, Acknowledged and Agreed:</p>
+                <p className="text-base font-semibold text-gray-900 mb-6">By: Landlord</p>
+
+                {/* Signature line */}
+                <div className="relative" style={{ maxWidth: 360 }}>
+                  {mainSigData ? (
+                    <>
+                      <img
+                        src={mainSigData}
+                        alt="Your signature"
+                        className="block"
+                        style={{ height: 72, objectFit: "contain", marginBottom: -8 }}
+                        data-testid="img-signature-on-line"
+                      />
+                      <div className="border-b-2 border-gray-900" />
+                      <p className="text-xs text-gray-500 mt-1">(signature)</p>
+                      <button
+                        onClick={() => { setSigDraft(mainSigData); setSigModalOpen(true); }}
+                        className="text-xs text-blue-600 hover:underline mt-1"
+                        data-testid="button-resign"
+                      >
+                        ✎ Re-sign
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => { setSigDraft(null); setSigModalOpen(true); }}
+                        className="group w-full flex items-center justify-center gap-2 py-4 mb-1 bg-amber-100 hover:bg-amber-200 border-2 border-dashed border-amber-500 rounded-lg transition-colors animate-pulse hover:animate-none"
+                        data-testid="button-open-signature-pad"
+                      >
+                        <svg className="w-5 h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span className="text-sm font-bold text-amber-900">Sign here — click to approve</span>
+                      </button>
+                      <div className="border-b-2 border-gray-900" />
+                      <p className="text-xs text-gray-500 mt-1">(signature)</p>
+                      <p className="text-xs text-gray-400 italic">Signature will appear here after signing</p>
+                    </>
+                  )}
+                </div>
+                <p className="text-sm text-gray-700 mt-4 font-medium">
+                  Landlord (or Landlord's Property Manager, if authorized)
+                </p>
+              </div>
+            )}
+
+            {/* Signature modal */}
+            {sigModalOpen && (
+              <div
+                className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+                onClick={() => setSigModalOpen(false)}
+                data-testid="modal-signature"
+              >
+                <div
+                  className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="px-5 py-4 border-b bg-gray-50">
+                    <h3 className="text-base font-bold text-gray-900">Draw Your Signature</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Sign with your mouse or finger, then click "Accept &amp; Use Signature" to apply it to the agreement.</p>
+                  </div>
+                  <div className="p-5 space-y-4">
+                    <SignaturePad id="modal-sig" height={180} onCapture={data => setSigDraft(data)} />
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => { setSigDraft(null); setSigModalOpen(false); }}
+                        className="flex-1"
+                        data-testid="button-cancel-signature"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => { setMainSigData(sigDraft); setSigModalOpen(false); }}
+                        disabled={!sigDraft}
+                        className="flex-1 bg-blue-700 hover:bg-blue-800 text-white"
+                        data-testid="button-accept-signature"
+                      >
+                        Accept &amp; Use Signature
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
