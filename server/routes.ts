@@ -12,6 +12,8 @@ import path from "path";
 import fs from "fs";
 import bcrypt from "bcryptjs";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { persistLocalFileToStorage, persistBufferToStorage, readFileFromAnyPath } from "./objectStorageHelper";
 
 /**
  * Stamps the captured landlord signature onto a PDF by appending a clean
@@ -26,9 +28,8 @@ async function stampSignatureOnPdf(
 ): Promise<string | null> {
   try {
     if (!signatureDataUrl || !signatureDataUrl.startsWith("data:image/")) return null;
-    const absoluteOriginal = path.join(process.cwd(), "client", "public", originalPath.replace(/^\//, ""));
-    if (!fs.existsSync(absoluteOriginal)) return null;
-    const pdfBytes = fs.readFileSync(absoluteOriginal);
+    const pdfBytes = await readFileFromAnyPath(originalPath);
+    if (!pdfBytes) return null;
     const pdfDoc = await PDFDocument.load(pdfBytes);
 
     // Decode the signature image (png or jpeg)
@@ -106,10 +107,9 @@ async function stampSignatureOnPdf(
     );
 
     const signedBytes = await pdfDoc.save();
-    const signedFilename = `signed-${Date.now()}-${path.basename(originalPath)}`;
-    const signedAbsolute = path.join(process.cwd(), "client", "public", "uploads", "doc-signatures", signedFilename);
-    fs.writeFileSync(signedAbsolute, signedBytes);
-    return `/uploads/doc-signatures/${signedFilename}`;
+    const baseName = path.basename(originalPath);
+    const signedName = `signed-${Date.now()}-${baseName}`;
+    return await persistBufferToStorage(Buffer.from(signedBytes), signedName, "application/pdf");
   } catch (e) {
     console.error("[stampSignatureOnPdf] failed:", e);
     return null;
@@ -286,7 +286,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  
+
+  // Serve files from Replit Object Storage at /objects/*
+  registerObjectStorageRoutes(app);
+
   // ===== USER / AUTH ROUTES =====
   
   // Login (checks email + password; returns twoFactorRequired if 2FA is enabled)
@@ -4990,6 +4993,21 @@ export async function registerRoutes(
       const { landlordName, landlordEmail, signatureFields, templateIds, signers: signersRaw, templateData } = req.body;
 
       const uploadedFiles = (req.files as Express.Multer.File[]) || [];
+
+      // Persist each uploaded file to Replit Object Storage (survives redeploys).
+      // Replace each file's path/filename with the persistent object-storage URL.
+      const persistedFiles: Array<{ url: string; originalname: string; mimetype: string; size: number }> = [];
+      for (const f of uploadedFiles) {
+        try {
+          const url = await persistLocalFileToStorage(f.path, f.originalname, f.mimetype);
+          persistedFiles.push({ url, originalname: f.originalname, mimetype: f.mimetype, size: f.size });
+        } catch (e) {
+          console.error("[doc-signatures] failed to persist file to object storage:", e);
+          // Fallback: keep the legacy disk path if persistence fails.
+          persistedFiles.push({ url: `/uploads/doc-signatures/${f.filename}`, originalname: f.originalname, mimetype: f.mimetype, size: f.size });
+        }
+      }
+
       const masterToken = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 
       // Build signers list — supports multi-signer (new) or single signer (legacy)
@@ -5018,9 +5036,9 @@ export async function registerRoutes(
       // Create the signature request record
       const record = await storage.createDocSignature({
         locationId: location.id,
-        documentPath: uploadedFiles[0] ? `/uploads/doc-signatures/${uploadedFiles[0].filename}` : null,
-        documentName: uploadedFiles[0] ? uploadedFiles[0].originalname : null,
-        documentMimeType: uploadedFiles[0] ? uploadedFiles[0].mimetype : null,
+        documentPath: persistedFiles[0]?.url || null,
+        documentName: persistedFiles[0]?.originalname || null,
+        documentMimeType: persistedFiles[0]?.mimetype || null,
         landlordName: primarySigner.name || location.landlordName || "",
         landlordEmail: primarySigner.email,
         propertyAddress: `${location.propertyAddress}${location.unit ? ", Unit " + location.unit : ""}`,
@@ -5033,11 +5051,11 @@ export async function registerRoutes(
       });
 
       // Save each uploaded file to location_doc_signature_files
-      for (let i = 0; i < uploadedFiles.length; i++) {
-        const f = uploadedFiles[i];
+      for (let i = 0; i < persistedFiles.length; i++) {
+        const f = persistedFiles[i];
         await storage.createDocSigFile({
           sigRequestId: record.id,
-          filePath: `/uploads/doc-signatures/${f.filename}`,
+          filePath: f.url,
           fileName: f.originalname,
           mimeType: f.mimetype,
           sortOrder: i,
@@ -5227,7 +5245,7 @@ export async function registerRoutes(
       // and attach the SIGNED PDF (not the original) to documents. Also email signed copies
       // to the client(s) as confirmation of completion.
       if (updateData.status === "signed") {
-        const signedFilesForEmail: { absPath: string; fileName: string }[] = [];
+        const signedFilesForEmail: { content: Buffer; fileName: string }[] = [];
         try {
           const leads = await storage.getLeadsForLocation(record.locationId);
           const activeLead = leads.find(l => l.status !== "Declined") || leads[0];
@@ -5268,9 +5286,13 @@ export async function registerRoutes(
                 fileSize: null,
               });
             }
-            // Collect absolute path for email attachment
-            const abs = path.join(process.cwd(), "client", "public", attachPath.replace(/^\//, ""));
-            if (fs.existsSync(abs)) signedFilesForEmail.push({ absPath: abs, fileName: attachName });
+            // Collect content for email attachment (handles /objects/* and legacy /uploads/*)
+            try {
+              const buf = await readFileFromAnyPath(attachPath);
+              if (buf) signedFilesForEmail.push({ content: buf, fileName: attachName });
+            } catch (e) {
+              console.error("[doc-sign] failed reading file for email attach:", e);
+            }
           }
         } catch (e) {
           console.error("[doc-sign] Failed to attach signed docs:", e);
@@ -5303,7 +5325,7 @@ export async function registerRoutes(
                 <p style="color:#888;font-size:12px;">This is an automated confirmation from QuoteUs.ca. The use of electronic signatures has the same legal effect and enforceability as a handwritten signature.</p>
               </div>
             `;
-            const attachments = signedFilesForEmail.map(f => ({ filename: f.fileName, path: f.absPath }));
+            const attachments = signedFilesForEmail.map(f => ({ filename: f.fileName, content: f.content }));
             for (const to of recipients) {
               await sendEmail({
                 to,
@@ -5473,9 +5495,16 @@ export async function registerRoutes(
       if (!req.file) return res.status(400).json({ error: "File is required" });
       const { title } = req.body;
       if (!title) return res.status(400).json({ error: "Title is required" });
+      // Persist template to Replit Object Storage so it survives autoscale redeploys.
+      let templateUrl = `/uploads/doc-signatures/${req.file.filename}`;
+      try {
+        templateUrl = await persistLocalFileToStorage(req.file.path, req.file.originalname, req.file.mimetype);
+      } catch (e) {
+        console.error("[doc-templates] failed to persist to object storage, falling back to disk:", e);
+      }
       const template = await storage.createDocTemplate({
         title,
-        filePath: `/uploads/doc-signatures/${req.file.filename}`,
+        filePath: templateUrl,
         fileName: req.file.originalname,
         mimeType: req.file.mimetype,
         uploadedBy: actor.id,
