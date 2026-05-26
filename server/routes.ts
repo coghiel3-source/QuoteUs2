@@ -126,6 +126,21 @@ function safeUsers(users: any[]): any[] {
   return users.map(safeUser);
 }
 
+// ── RG Org-aware authorization helpers ─────────────────────────────────────
+// A rep can access an RG resource if they own it OR if they're the principal
+// of an org and the resource owner is a member of that same org.
+async function canActorAccessRepResource(actor: any, ownerRepId: string | null | undefined): Promise<boolean> {
+  if (!actor) return false;
+  if (actor.role === "admin" || actor.role === "manager") return true;
+  if (actor.role !== "rep") return false;
+  if (!ownerRepId) return false;
+  if (ownerRepId === actor.id) return true;
+  const membership = await storage.getOrgMembership(actor.id);
+  if (!membership || membership.member.role !== "principal") return false;
+  const members = await storage.getOrgMembers(membership.org.id);
+  return members.some(m => m.userId === ownerRepId);
+}
+
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "client", "public", "uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -1461,9 +1476,12 @@ export async function registerRoutes(
       const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
       if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
       if (!userId) return res.status(400).json({ error: "userId required" });
+      if (!["principal", "member"].includes(role)) return res.status(400).json({ error: "role must be 'principal' or 'member'" });
+      const org = await storage.getOrganization(req.params.id);
+      if (!org) return res.status(404).json({ error: "Organization not found" });
       const targetUser = await storage.getUser(userId);
       if (!targetUser || targetUser.role !== "rep") return res.status(400).json({ error: "Only rep users can be added" });
-      // Remove from any existing org first
+      // Enforce one membership per user: remove from any existing org first
       const existing = await storage.getOrgMembership(userId);
       if (existing) await storage.removeOrgMember(existing.org.id, userId);
       const member = await storage.addOrgMember(req.params.id, userId, role);
@@ -1476,6 +1494,10 @@ export async function registerRoutes(
       const { actorId, role } = req.body;
       const actor = actorId ? await storage.getUser(actorId) : (req.session as any)?.user;
       if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      if (!["principal", "member"].includes(role)) return res.status(400).json({ error: "role must be 'principal' or 'member'" });
+      // Verify the member actually belongs to the org in the URL (prevent cross-org tampering)
+      const members = await storage.getOrgMembers(req.params.id);
+      if (!members.some(m => m.id === req.params.memberId)) return res.status(404).json({ error: "Member not found in this organization" });
       const updated = await storage.updateOrgMember(req.params.memberId, role);
       if (!updated) return res.status(404).json({ error: "Member not found" });
       res.json(updated);
@@ -3395,7 +3417,7 @@ export async function registerRoutes(
       if (!actor) return res.status(403).json({ error: "Unauthorized" });
       const lead = await storage.getRgLead(req.params.id);
       if (!lead) return res.status(404).json({ error: "Lead not found" });
-      if (actor.role === "rep" && lead.repId !== actor.id) return res.status(403).json({ error: "Access denied" });
+      if (!(await canActorAccessRepResource(actor, lead.repId))) return res.status(403).json({ error: "Access denied" });
       res.json(lead);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -3426,7 +3448,7 @@ export async function registerRoutes(
       if (!actor) return res.status(403).json({ error: "Unauthorized" });
       const lead = await storage.getRgLead(req.params.id);
       if (!lead) return res.status(404).json({ error: "Lead not found" });
-      if (actor.role === "rep" && lead.repId !== actor.id) return res.status(403).json({ error: "Access denied" });
+      if (!(await canActorAccessRepResource(actor, lead.repId))) return res.status(403).json({ error: "Access denied" });
       const updated = await storage.updateRgLead(req.params.id, data);
       res.json(updated);
     } catch (error: any) {
@@ -3443,7 +3465,7 @@ export async function registerRoutes(
       if (!actor) return res.status(403).json({ error: "Unauthorized" });
       const lead = await storage.getRgLead(req.params.id);
       if (!lead) return res.status(404).json({ error: "Lead not found" });
-      if (actor.role === "rep" && lead.repId !== actor.id) return res.status(403).json({ error: "Access denied" });
+      if (!(await canActorAccessRepResource(actor, lead.repId))) return res.status(403).json({ error: "Access denied" });
       await storage.deleteRgLead(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
@@ -3553,6 +3575,7 @@ export async function registerRoutes(
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
       const location = await storage.getLocation(req.params.id);
       if (!location) return res.status(404).json({ error: "Location not found" });
+      if (!(await canActorAccessRepResource(actor, location.repId))) return res.status(403).json({ error: "Access denied" });
       res.json(location);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -3566,6 +3589,9 @@ export async function registerRoutes(
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId as string);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+      if (!(await canActorAccessRepResource(actor, location.repId))) return res.status(403).json({ error: "Access denied" });
       const tenants = await storage.getLeadsForLocation(req.params.id);
       res.json(tenants);
     } catch (error: any) {
@@ -3580,6 +3606,9 @@ export async function registerRoutes(
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId as string);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+      if (!(await canActorAccessRepResource(actor, location.repId))) return res.status(403).json({ error: "Access denied" });
       const tenants = await storage.getLeadsForLocation(req.params.id);
       const allReqs = await Promise.all(tenants.map(t => storage.getDocumentRequestsForLead(t.id)));
       res.json(allReqs.flat());
@@ -3595,6 +3624,9 @@ export async function registerRoutes(
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId as string);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const location = await storage.getLocation(req.params.id);
+      if (!location) return res.status(404).json({ error: "Location not found" });
+      if (!(await canActorAccessRepResource(actor, location.repId))) return res.status(403).json({ error: "Access denied" });
       const tenants = await storage.getLeadsForLocation(req.params.id);
       const allDocs = await Promise.all(tenants.map(t => storage.getDocumentsForLead(t.id)));
       res.json(allDocs.flat());
@@ -3649,6 +3681,9 @@ export async function registerRoutes(
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const existing = await storage.getLocation(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Location not found" });
+      if (!(await canActorAccessRepResource(actor, existing.repId))) return res.status(403).json({ error: "Access denied" });
       const updated = await storage.updateLocation(req.params.id, data);
       if (!updated) return res.status(404).json({ error: "Location not found" });
       res.json(updated);
@@ -3664,6 +3699,9 @@ export async function registerRoutes(
       if (!actorId) return res.status(400).json({ error: "actorId required" });
       const actor = await storage.getUser(actorId as string);
       if (!actor || !["rep", "admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Insufficient permissions" });
+      const existing = await storage.getLocation(req.params.id);
+      if (!existing) return res.status(404).json({ error: "Location not found" });
+      if (!(await canActorAccessRepResource(actor, existing.repId))) return res.status(403).json({ error: "Access denied" });
       await storage.deleteLocation(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
