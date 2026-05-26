@@ -447,6 +447,7 @@ export const locationDocSignatureFiles = pgTable("location_doc_signature_files",
   fileName: text("file_name"),
   mimeType: text("mime_type"),
   sortOrder: integer("sort_order").default(0),
+  signedFilePath: text("signed_file_path"),
 });
 export type LocationDocSignatureFile = typeof locationDocSignatureFiles.$inferSelect;
 

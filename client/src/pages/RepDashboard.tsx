@@ -3670,11 +3670,16 @@ ${notesBlock}${signedBlock}
                                     )}
                                     {docFiles.length > 0 && (
                                       <div className="flex flex-wrap gap-2 mt-1">
-                                        {docFiles.map((f: any, fi: number) => (
-                                          <a key={fi} href={f.filePath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center gap-1">
-                                            <FileText className="h-3 w-3" />{f.fileName || `Document ${fi + 1}`}
-                                          </a>
-                                        ))}
+                                        {docFiles.map((f: any, fi: number) => {
+                                          const hasSigned = !!f.signedFilePath;
+                                          const href = hasSigned ? f.signedFilePath : f.filePath;
+                                          const label = f.fileName || `Document ${fi + 1}`;
+                                          return (
+                                            <a key={fi} href={href} target="_blank" rel="noopener noreferrer" className={`text-xs hover:underline flex items-center gap-1 ${hasSigned ? "text-green-600 font-medium" : "text-blue-500"}`}>
+                                              <FileText className="h-3 w-3" />{hasSigned ? `Signed - ${label}` : label}
+                                            </a>
+                                          );
+                                        })}
                                       </div>
                                     )}
                                   </div>

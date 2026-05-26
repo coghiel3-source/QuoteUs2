@@ -5274,6 +5274,13 @@ export async function registerRoutes(
               if (signedPath) {
                 attachPath = signedPath;
                 attachName = `Signed - ${attachName}`;
+                // Persist the signed-copy URL back to the doc-sig file row so the
+                // rep dashboard can link to the SIGNED PDF (not the unsigned original).
+                try {
+                  await storage.updateDocSigFileSignedPath(f.id, signedPath);
+                } catch (e) {
+                  console.error("[doc-sign] failed to persist signedFilePath on doc-sig file:", e);
+                }
               }
             }
             if (activeLead) {

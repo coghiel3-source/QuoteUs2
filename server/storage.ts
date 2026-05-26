@@ -954,6 +954,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(locationDocSignatureFiles.sortOrder);
   }
 
+  async updateDocSigFileSignedPath(id: string, signedFilePath: string): Promise<void> {
+    await db.update(locationDocSignatureFiles)
+      .set({ signedFilePath })
+      .where(eq(locationDocSignatureFiles.id, id));
+  }
+
   async createDocTemplate(data: { title: string; filePath: string; fileName?: string; mimeType?: string; uploadedBy?: string }): Promise<DocTemplate> {
     const [created] = await db.insert(docTemplates).values(data).returning();
     return created;
