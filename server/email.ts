@@ -1,11 +1,19 @@
 import nodemailer from 'nodemailer';
 import { storage } from './storage';
 
+interface EmailAttachment {
+  filename: string;
+  path?: string;
+  content?: Buffer | string;
+  contentType?: string;
+}
+
 interface EmailOptions {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  attachments?: EmailAttachment[];
 }
 
 interface SmtpSettings {
@@ -75,13 +83,16 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       }
     });
 
-    const mailOptions = {
+    const mailOptions: any = {
       from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,
       text: options.text || undefined,
     };
+    if (options.attachments && options.attachments.length > 0) {
+      mailOptions.attachments = options.attachments;
+    }
 
     const info = await transporter.sendMail(mailOptions);
     console.log(`[Email] Sent successfully to ${options.to} - MessageId: ${info.messageId}`);

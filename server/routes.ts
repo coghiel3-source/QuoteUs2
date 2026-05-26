@@ -5186,38 +5186,41 @@ export async function registerRoutes(
 
       // Auto-attach document files to rep_documents via the location's active lead (only when fully signed).
       // For PDFs, stamp the captured signature onto a clean appended landlord signature page
-      // and attach the SIGNED PDF (not the original) to documents.
+      // and attach the SIGNED PDF (not the original) to documents. Also email signed copies
+      // to the client(s) as confirmation of completion.
       if (updateData.status === "signed") {
+        const signedFilesForEmail: { absPath: string; fileName: string }[] = [];
         try {
           const leads = await storage.getLeadsForLocation(record.locationId);
           const activeLead = leads.find(l => l.status !== "Declined") || leads[0];
-          if (activeLead) {
-            const files = await storage.getFilesForDocSig(record.id);
-            // Determine the signature data to stamp (use top-level or last signer's data)
-            let sigDataToStamp: string | null = signatureData || null;
-            let stampSignerName: string = signerName || "";
-            if (!sigDataToStamp && record.signers) {
-              try {
-                const ss = JSON.parse(record.signers);
-                const signed = ss.filter((s: any) => s.signatureData);
-                if (signed.length > 0) {
-                  sigDataToStamp = signed[signed.length - 1].signatureData;
-                  stampSignerName = signed[signed.length - 1].signerName || stampSignerName;
-                }
-              } catch {}
-            }
 
-            for (const f of files) {
-              let attachPath = f.filePath;
-              let attachName = f.fileName || "Signed Document";
-              const isPdf = f.mimeType === "application/pdf" || (f.filePath || "").toLowerCase().endsWith(".pdf");
-              if (isPdf && sigDataToStamp && stampSignerName) {
-                const signedPath = await stampSignatureOnPdf(f.filePath, sigDataToStamp, stampSignerName);
-                if (signedPath) {
-                  attachPath = signedPath;
-                  attachName = `Signed - ${attachName}`;
-                }
+          // Determine the signature data to stamp (use top-level or last signer's data)
+          let sigDataToStamp: string | null = signatureData || null;
+          let stampSignerName: string = signerName || "";
+          if (!sigDataToStamp && record.signers) {
+            try {
+              const ss = JSON.parse(record.signers);
+              const signed = ss.filter((s: any) => s.signatureData);
+              if (signed.length > 0) {
+                sigDataToStamp = signed[signed.length - 1].signatureData;
+                stampSignerName = signed[signed.length - 1].signerName || stampSignerName;
               }
+            } catch {}
+          }
+
+          const files = await storage.getFilesForDocSig(record.id);
+          for (const f of files) {
+            let attachPath = f.filePath;
+            let attachName = f.fileName || "Signed Document";
+            const isPdf = f.mimeType === "application/pdf" || (f.filePath || "").toLowerCase().endsWith(".pdf");
+            if (isPdf && sigDataToStamp && stampSignerName) {
+              const signedPath = await stampSignatureOnPdf(f.filePath, sigDataToStamp, stampSignerName);
+              if (signedPath) {
+                attachPath = signedPath;
+                attachName = `Signed - ${attachName}`;
+              }
+            }
+            if (activeLead) {
               await storage.createRepDocument({
                 rgLeadId: activeLead.id,
                 documentRequestId: null,
@@ -5227,9 +5230,53 @@ export async function registerRoutes(
                 fileSize: null,
               });
             }
+            // Collect absolute path for email attachment
+            const abs = path.join(process.cwd(), "client", "public", attachPath.replace(/^\//, ""));
+            if (fs.existsSync(abs)) signedFilesForEmail.push({ absPath: abs, fileName: attachName });
           }
         } catch (e) {
           console.error("[doc-sign] Failed to attach signed docs:", e);
+        }
+
+        // Email signed copies to the client(s) as confirmation
+        try {
+          // Collect recipient emails: top-level landlordEmail + any signer emails
+          const recipients = new Set<string>();
+          if (record.landlordEmail) recipients.add(record.landlordEmail);
+          if (record.signers) {
+            try {
+              const ss = JSON.parse(record.signers);
+              for (const s of ss) {
+                if (s.email) recipients.add(s.email);
+              }
+            } catch {}
+          }
+          if (recipients.size > 0 && signedFilesForEmail.length > 0) {
+            const docTitle = record.documentName || "Signed Document";
+            const propertyAddr = record.propertyAddress ? `<p style="margin:8px 0;color:#555;"><strong>Property:</strong> ${record.propertyAddress}</p>` : "";
+            const html = `
+              <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+                <h2 style="color:#1e40af;margin-top:0;">Your Signed Document — Confirmation of Completion</h2>
+                <p style="color:#333;font-size:15px;">Hello${stampSignerName ? ` ${stampSignerName}` : ""},</p>
+                <p style="color:#333;font-size:15px;">Thank you for signing <strong>${docTitle}</strong>. A fully signed copy is attached to this email for your records.</p>
+                ${propertyAddr}
+                <p style="color:#333;font-size:15px;">Signed on ${new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}.</p>
+                <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+                <p style="color:#888;font-size:12px;">This is an automated confirmation from QuoteUs.ca. The use of electronic signatures has the same legal effect and enforceability as a handwritten signature.</p>
+              </div>
+            `;
+            const attachments = signedFilesForEmail.map(f => ({ filename: f.fileName, path: f.absPath }));
+            for (const to of recipients) {
+              await sendEmail({
+                to,
+                subject: `Signed Copy — ${docTitle}`,
+                html,
+                attachments,
+              });
+            }
+          }
+        } catch (e) {
+          console.error("[doc-sign] Failed to email signed copy to client:", e);
         }
       }
 
