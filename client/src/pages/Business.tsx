@@ -10,10 +10,16 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import AdPlacement from "@/components/AdPlacement";
+import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
 export default function BusinessPage() {
+  useSeo({
+    title: "Business Insurance Ontario | Commercial Quotes — QuoteUs.ca",
+    description: "Commercial and small business insurance quotes for Ontario. CGL, property, professional liability, BOP and more from licensed brokers. Free quote.",
+    keywords: "business insurance Ontario, small business insurance quote, commercial general liability Ontario, CGL insurance, professional liability insurance, BOP business owners policy Canada",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

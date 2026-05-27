@@ -9,11 +9,17 @@ import { Heart } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import AdPlacement from "@/components/AdPlacement";
+import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function LifePage() {
+  useSeo({
+    title: "Life Insurance Quotes Ontario | Term & Whole Life — QuoteUs.ca",
+    description: "Get free life insurance quotes from licensed Ontario brokers. Compare term and whole life coverage to protect your family. Fast quotes, no obligation.",
+    keywords: "life insurance Ontario, term life insurance quote, whole life insurance Canada, life insurance broker Ontario, cheap life insurance quote, family life insurance",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

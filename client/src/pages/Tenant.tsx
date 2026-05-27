@@ -12,10 +12,16 @@ import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { VehicleSelector } from "@/components/VehicleSelector";
 import AdPlacement from "@/components/AdPlacement";
+import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
 export default function TenantPage() {
+  useSeo({
+    title: "Tenant Insurance Ontario | Cheap Renters Insurance Quotes — QuoteUs.ca",
+    description: "Affordable tenant (renters) insurance quotes for Ontario apartments and rentals. Cover your belongings, liability and additional living expenses. Free, fast, no obligation.",
+    keywords: "tenant insurance Ontario, renters insurance Toronto, cheap tenant insurance, apartment insurance Ontario, contents insurance, tenant insurance quote, liability coverage renters",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

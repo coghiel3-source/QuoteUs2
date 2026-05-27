@@ -3,8 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign, Landmark, KeyRound } from "lucide-react";
 import heroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1765553789903.jpg";
+import { useSeo } from "@/hooks/use-seo";
 
 export default function HomePage() {
+  useSeo({
+    title: "QuoteUs.ca | Free Ontario Insurance Quotes — Auto, Home, Tenant, Rent Guarantee & More",
+    description: "Compare free Ontario insurance quotes in minutes. Auto, Home, Tenant, Rent Guarantee, Life, Travel, Pet, Business and Mortgage — from licensed Ontario brokers. No obligation.",
+    keywords: "Ontario insurance, auto insurance Ontario, home insurance Ontario, tenant insurance, rent guarantee, landlord insurance, life insurance quote, travel insurance Canada, pet insurance, business insurance, mortgage insurance, compare insurance quotes Ontario, cheap insurance Ontario, insurance broker Ontario",
+  });
   const products = [
     { icon: Car, label: "Auto", href: "/auto", desc: "Compare rates for G1, G2 & G drivers" },
     { icon: Home, label: "Home", href: "/home-insurance", desc: "Protect your biggest investment" },

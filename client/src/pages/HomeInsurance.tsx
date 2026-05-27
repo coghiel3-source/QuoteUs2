@@ -12,10 +12,16 @@ import { ClaimsHistorySection } from "@/components/ClaimsHistorySection";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { VehicleSelector } from "@/components/VehicleSelector";
 import AdPlacement from "@/components/AdPlacement";
+import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
 export default function HomeInsurancePage() {
+  useSeo({
+    title: "Home Insurance Quotes Ontario | Free Quote in Minutes — QuoteUs.ca",
+    description: "Get free home insurance quotes from Ontario's top brokers. Compare rates for homeowners — fire, water, theft, liability and replacement-cost coverage. No obligation.",
+    keywords: "home insurance Ontario, homeowners insurance quote, cheap home insurance Ontario, house insurance Toronto, condo insurance Ontario, property insurance quote, home insurance broker Ontario",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

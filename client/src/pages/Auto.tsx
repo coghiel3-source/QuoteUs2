@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useQuotes } from "@/lib/QuoteContext";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import AdPlacement from "@/components/AdPlacement";
+import { useSeo } from "@/hooks/use-seo";
 
 const autoSchema = z.object({
   primaryDriver: z.object({
@@ -115,6 +116,11 @@ const autoSchema = z.object({
 type AutoFormValues = z.infer<typeof autoSchema>;
 
 export default function AutoPage() {
+  useSeo({
+    title: "Auto Insurance Quotes Ontario | G1, G2 & G Drivers — QuoteUs.ca",
+    description: "Compare Ontario auto insurance quotes from top brokers. G1, G2 and G drivers, new and high-risk welcome. Save on car insurance — free quote, no obligation.",
+    keywords: "auto insurance Ontario, car insurance quote Ontario, cheap car insurance Ontario, G1 insurance, G2 insurance, high risk auto insurance, Toronto auto insurance, Ontario car insurance broker, compare car insurance quotes",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

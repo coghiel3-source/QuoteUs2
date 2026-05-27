@@ -1,7 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Handshake, BookOpen, ShieldCheck, Users } from "lucide-react";
+import { useSeo } from "@/hooks/use-seo";
 
 export default function AboutPage() {
+  useSeo({
+    title: "About QuoteUs.ca | Ontario's Insurance Quoting Platform",
+    description: "Learn how QuoteUs.ca connects Ontario customers with trusted licensed brokers for fast, transparent insurance quotes across every major product line.",
+    keywords: "about QuoteUs, Ontario insurance quoting platform, licensed insurance brokers Ontario, insurance marketplace Canada",
+  });
   return (
     <div className="bg-secondary/30 min-h-screen pb-20">
       <div className="bg-primary text-white py-16 px-4">

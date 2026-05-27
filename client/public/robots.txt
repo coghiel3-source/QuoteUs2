@@ -1,0 +1,63 @@
+User-agent: *
+Allow: /
+Allow: /auto
+Allow: /home-insurance
+Allow: /tenant
+Allow: /travel
+Allow: /life
+Allow: /business
+Allow: /pet
+Allow: /mortgage
+Allow: /compare
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /rent-guarantee
+
+Disallow: /admin
+Disallow: /rep
+Disallow: /dashboard
+Disallow: /broker/
+Disallow: /login
+Disallow: /api/
+Disallow: /sign/
+Disallow: /doc-sign/
+Disallow: /service-sign/
+Disallow: /invoice-sign/
+Disallow: /doc-upload/
+Disallow: /customer-portal
+Disallow: /rg-payment/
+Disallow: /ad-preview/
+Disallow: /objects/
+Disallow: /uploads/
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+Sitemap: https://quoteus.ca/sitemap.xml
+Host: https://quoteus.ca

@@ -10,10 +10,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Plane } from "lucide-react";
 import { useState } from "react";
 import AdPlacement from "@/components/AdPlacement";
+import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
 export default function TravelPage() {
+  useSeo({
+    title: "Travel Insurance Canada | Single Trip & Annual Plans — QuoteUs.ca",
+    description: "Compare travel insurance for Canadians. Emergency medical, trip cancellation, baggage and multi-trip annual plans. Get covered before you fly.",
+    keywords: "travel insurance Canada, travel medical insurance, snowbird insurance, trip cancellation insurance, multi-trip annual travel insurance, Ontario travel insurance quote",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

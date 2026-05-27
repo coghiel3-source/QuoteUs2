@@ -10,8 +10,14 @@ import { useState } from "react";
 import { Link } from "wouter";
 
 import { useQuotes } from "@/lib/QuoteContext";
+import { useSeo } from "@/hooks/use-seo";
 
 export default function ContactPage() {
+  useSeo({
+    title: "Contact QuoteUs.ca | Ontario Insurance Help & Support",
+    description: "Contact QuoteUs.ca for help with your insurance quote, claim, broker referral, or partnership. Ontario-based support team — fast response.",
+    keywords: "contact QuoteUs, Ontario insurance support, insurance broker contact, insurance help Ontario",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

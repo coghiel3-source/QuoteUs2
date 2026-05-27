@@ -10,8 +10,14 @@ import { useState, useMemo } from "react";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import AdPlacement from "@/components/AdPlacement";
 import { useQuotes } from "@/lib/QuoteContext";
+import { useSeo } from "@/hooks/use-seo";
 
 export default function MortgagePage() {
+  useSeo({
+    title: "Mortgage Insurance Ontario | Protection Quotes — QuoteUs.ca",
+    description: "Mortgage protection and creditor insurance quotes for Ontario homeowners. Protect your mortgage payments with life, disability and critical-illness coverage.",
+    keywords: "mortgage insurance Ontario, mortgage protection insurance Canada, creditor insurance, mortgage life insurance quote, mortgage disability insurance Ontario",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

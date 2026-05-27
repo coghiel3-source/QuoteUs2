@@ -8,10 +8,16 @@ import { useToast } from "@/hooks/use-toast";
 import { Dog } from "lucide-react";
 import { useState } from "react";
 import AdPlacement from "@/components/AdPlacement";
+import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
 
 export default function PetPage() {
+  useSeo({
+    title: "Pet Insurance Ontario | Dog & Cat Coverage Quotes — QuoteUs.ca",
+    description: "Compare pet insurance quotes for dogs and cats in Ontario. Accident, illness and wellness coverage to keep your pet healthy. Free quote in minutes.",
+    keywords: "pet insurance Ontario, dog insurance Canada, cat insurance quote, puppy insurance, pet health insurance Ontario, best pet insurance Canada",
+  });
   const { toast } = useToast();
   const { addQuote } = useQuotes();
   const [isSubmitting, setIsSubmitting] = useState(false);

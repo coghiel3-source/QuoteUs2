@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { VehicleSelector } from "@/components/VehicleSelector";
 import { ArrowRightLeft, Shield, Zap, AlertTriangle, TrendingDown } from "lucide-react";
 import { motion } from "framer-motion";
+import { useSeo } from "@/hooks/use-seo";
 
 // ─── Vehicle class inference ──────────────────────────────────────────────────
 
@@ -242,6 +243,11 @@ const LABEL_COLORS: Record<string, string> = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ComparePage() {
+  useSeo({
+    title: "Compare Car Insurance Rates Ontario | Vehicle Comparison — QuoteUs.ca",
+    description: "Compare insurance rates across different vehicles in Ontario. See how make, model and class impact your auto premium — pick the smarter car before you buy.",
+    keywords: "compare car insurance Ontario, vehicle insurance comparison, cheapest cars to insure Ontario, Ontario auto insurance compare, car insurance calculator Ontario",
+  });
   const [result, setResult] = useState<CompareResult | null>(null);
   const [isComparing, setIsComparing] = useState(false);
 
