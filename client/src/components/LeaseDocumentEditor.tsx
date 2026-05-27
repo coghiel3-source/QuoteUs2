@@ -173,11 +173,44 @@ export default function LeaseDocumentEditor({ open, onClose, locationId, initial
     const pW = pdf.internal.pageSize.getWidth();
     const pH = pdf.internal.pageSize.getHeight();
     const iH = (canvas.height * pW) / canvas.width;
+
+    // Locate the landlord signature line so we can embed an invisible text
+    // anchor at its position in the PDF. The server-side stamper searches for
+    // this marker to place the signature on the actual line (vs. a new page).
+    const elRect = el.getBoundingClientRect();
+    const anchorEl = el.querySelector<HTMLElement>("#landlord-sig-anchor");
+    let anchorMm: { x: number; y: number; w: number } | null = null;
+    if (anchorEl) {
+      const r = anchorEl.getBoundingClientRect();
+      const scaleMm = pW / elRect.width;
+      anchorMm = {
+        x: (r.left - elRect.left) * scaleMm,
+        y: (r.top - elRect.top) * scaleMm,
+        w: r.width * scaleMm,
+      };
+    }
+
     let rem = iH, yOff = 0;
+    let pageIdx = 0;
     while (rem > 0) {
       pdf.addImage(imgData, "JPEG", 0, yOff, pW, iH);
+      // If the anchor falls on this page, embed an invisible marker text on
+      // the signature line. White text on white background — invisible to
+      // humans, fully extractable by pdfjs server-side.
+      if (anchorMm) {
+        const pageTop = pageIdx * pH;
+        const pageBottom = pageTop + pH;
+        if (anchorMm.y >= pageTop && anchorMm.y <= pageBottom) {
+          const localY = anchorMm.y - pageTop;
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFontSize(6);
+          // Marker text is unique + describes the field. Server matches the prefix.
+          pdf.text(`__SIG_ANCHOR_LANDLORD__W=${anchorMm.w.toFixed(1)}`, anchorMm.x, localY);
+          pdf.setTextColor(0, 0, 0);
+        }
+      }
       rem -= pH;
-      if (rem > 0) { yOff -= pH; pdf.addPage(); }
+      if (rem > 0) { yOff -= pH; pdf.addPage(); pageIdx++; }
     }
     return pdf.output("blob");
   }
@@ -976,7 +1009,7 @@ export default function LeaseDocumentEditor({ open, onClose, locationId, initial
                 <div style={{ flex: 1 }}>
                   <div style={{ marginBottom: 16 }}>Accepted, Acknowledged and Agreed:</div>
                   <div style={{ marginBottom: 24 }}>By: Landlord</div>
-                  <div style={{ marginTop: 40, borderBottom: "1px solid #000", width: 220, marginBottom: 4 }} />
+                  <div id="landlord-sig-anchor" style={{ marginTop: 40, borderBottom: "1px solid #000", width: 220, marginBottom: 4 }} />
                   <div style={{ color: "#888", fontSize: "10pt" }}>(signature)</div>
                   <div style={{ color: "#888", fontSize: "10pt", marginBottom: 8 }}>Signature will appear here after signing</div>
                   <div>Landlord (or Landlord's Property Manager, if authorized)</div>

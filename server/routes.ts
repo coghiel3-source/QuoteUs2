@@ -23,7 +23,7 @@ import { persistLocalFileToStorage, persistBufferToStorage, readFileFromAnyPath 
 async function findTextAnchorInPdf(
   pdfBytes: Uint8Array | Buffer,
   anchors: string[],
-): Promise<{ pageIndex: number; x: number; y: number; height: number; pageWidth: number; pageHeight: number } | null> {
+): Promise<{ pageIndex: number; x: number; y: number; height: number; pageWidth: number; pageHeight: number; matchedStr: string } | null> {
   try {
     const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const data = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
@@ -32,7 +32,6 @@ async function findTextAnchorInPdf(
       const page = await doc.getPage(pi + 1);
       const viewport = page.getViewport({ scale: 1 });
       const tc = await page.getTextContent();
-      // Build a flat string of items with their positions to support multi-item phrases.
       const items: { str: string; x: number; y: number; h: number }[] = [];
       for (const it of tc.items as any[]) {
         const s = (it.str || "").trim();
@@ -41,11 +40,10 @@ async function findTextAnchorInPdf(
       }
       for (const anchor of anchors) {
         const a = anchor.toLowerCase();
-        // direct single-item match
         const hit = items.find(i => i.str.toLowerCase().includes(a));
         if (hit) {
           await doc.destroy();
-          return { pageIndex: pi, x: hit.x, y: hit.y, height: hit.h, pageWidth: viewport.width, pageHeight: viewport.height };
+          return { pageIndex: pi, x: hit.x, y: hit.y, height: hit.h, pageWidth: viewport.width, pageHeight: viewport.height, matchedStr: hit.str };
         }
       }
     }
@@ -83,7 +81,10 @@ async function stampSignatureOnPdf(
     const sigImage = isPng ? await pdfDoc.embedPng(imgBytes) : await pdfDoc.embedJpg(imgBytes);
 
     // ── Try in-place stamping on the existing signature line ──
+    // Prefer the invisible marker embedded by the editor (precise position);
+    // fall back to visible placeholder text if needed.
     const anchor = await findTextAnchorInPdf(pdfBytes, [
+      "__SIG_ANCHOR_LANDLORD__",
       "Signature will appear here after signing",
       "(signature)",
     ]);
@@ -92,46 +93,67 @@ async function stampSignatureOnPdf(
       const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
       const fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
 
-      // The signature line in the template sits just above the "(signature)" /
-      // "Signature will appear here after signing" placeholder. Place the
-      // signature image so its baseline sits on (or slightly above) that line.
-      // anchor.y is the baseline of the anchor text (PDF coords: origin bottom-left).
-      const lineY = anchor.y + anchor.height + 2; // a hair above the placeholder text
-      const lineX = anchor.x;                     // align with the column
-      const lineW = 220;                           // matches template's 220pt-wide line
+      // The marker text from the editor encodes the line width like
+      // "__SIG_ANCHOR_LANDLORD__W=82.3" (mm). Parse it; otherwise default.
+      let lineWmm = 0;
+      const wMatch = anchor.matchedStr.match(/W=([\d.]+)/);
+      if (wMatch) lineWmm = parseFloat(wMatch[1]);
+      const MM_TO_PT = 72 / 25.4;
+      const lineW = lineWmm > 0 ? lineWmm * MM_TO_PT : 220;
+      const isInvisibleMarker = anchor.matchedStr.includes("__SIG_ANCHOR_LANDLORD__");
 
-      // Cover up the "(signature)" + "Signature will appear here after signing"
-      // placeholder text with a white rectangle, then draw the signature on top.
-      targetPage.drawRectangle({
-        x: lineX - 1,
-        y: anchor.y - anchor.height,
-        width: lineW + 2,
-        height: anchor.height * 3.2,
-        color: rgb(1, 1, 1),
-      });
+      // anchor.y is the baseline of the anchor text. For the invisible marker
+      // we placed the text AT the signature line; for the visible placeholder
+      // the line sits just above the text.
+      const lineY = isInvisibleMarker ? anchor.y : anchor.y + anchor.height + 2;
+      const lineX = anchor.x;
+
+      // For the visible-placeholder fallback, cover the "(signature)" +
+      // "Signature will appear here after signing" text with white so the
+      // stamp doesn't overlap them.
+      if (!isInvisibleMarker) {
+        targetPage.drawRectangle({
+          x: lineX - 1,
+          y: anchor.y - anchor.height,
+          width: lineW + 2,
+          height: anchor.height * 3.2,
+          color: rgb(1, 1, 1),
+        });
+      }
 
       const sigDims = sigImage.scale(1);
-      const sigMaxW = lineW - 10;
+      const sigMaxW = Math.max(60, lineW - 10);
       const sigMaxH = 40;
       const sigScale = Math.min(sigMaxW / sigDims.width, sigMaxH / sigDims.height);
       const sigW = sigDims.width * sigScale;
       const sigH = sigDims.height * sigScale;
-      // Place image centered horizontally on the line, baseline ~ on the line.
+      // Place image so its baseline sits just above the line, horizontally
+      // aligned with the start of the line (matches the Pensio side layout).
       targetPage.drawImage(sigImage, {
-        x: lineX + Math.max(0, (lineW - sigW) / 2),
+        x: lineX + 2,
         y: lineY + 1,
         width: sigW,
         height: sigH,
       });
 
-      // Print signer name + date just below where the placeholder used to be.
+      // Print signer name + date just below the line. For the invisible
+      // marker we have a tight layout; print small and right under the line.
       const dateStr = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
-      targetPage.drawText(`${signerName}`, {
-        x: lineX, y: anchor.y, size: 10, font: fontBold, color: rgb(0, 0, 0),
-      });
-      targetPage.drawText(`Signed on ${dateStr}`, {
-        x: lineX, y: anchor.y - 12, size: 9, font, color: rgb(0.4, 0.4, 0.4),
-      });
+      if (isInvisibleMarker) {
+        targetPage.drawText(signerName, {
+          x: lineX, y: lineY - 11, size: 9, font: fontBold, color: rgb(0, 0, 0),
+        });
+        targetPage.drawText(`Signed on ${dateStr}`, {
+          x: lineX, y: lineY - 21, size: 7.5, font, color: rgb(0.4, 0.4, 0.4),
+        });
+      } else {
+        targetPage.drawText(signerName, {
+          x: lineX, y: anchor.y, size: 10, font: fontBold, color: rgb(0, 0, 0),
+        });
+        targetPage.drawText(`Signed on ${dateStr}`, {
+          x: lineX, y: anchor.y - 12, size: 9, font, color: rgb(0.4, 0.4, 0.4),
+        });
+      }
 
       const signedBytes = await pdfDoc.save();
       const baseName = path.basename(originalPath);
