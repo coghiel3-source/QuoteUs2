@@ -108,10 +108,21 @@ async function stampSignatureOnPdf(
       const lineY = isInvisibleMarker ? anchor.y : anchor.y + anchor.height + 2;
       const lineX = anchor.x;
 
-      // For the visible-placeholder fallback, cover the "(signature)" +
-      // "Signature will appear here after signing" text with white so the
-      // stamp doesn't overlap them.
-      if (!isInvisibleMarker) {
+      // Cover the existing placeholder text under the line ("(signature)" +
+      // "Signature will appear here after signing") with white so they don't
+      // bleed through. The invisible-marker case still needs this because the
+      // editor builds the PDF as a raster image — the placeholder pixels are
+      // baked into the page even though the marker is the anchor we found.
+      if (isInvisibleMarker) {
+        // Cover ~32pt below the line where the placeholder text sits.
+        targetPage.drawRectangle({
+          x: lineX - 2,
+          y: lineY - 32,
+          width: lineW + 4,
+          height: 30,
+          color: rgb(1, 1, 1),
+        });
+      } else {
         targetPage.drawRectangle({
           x: lineX - 1,
           y: anchor.y - anchor.height,

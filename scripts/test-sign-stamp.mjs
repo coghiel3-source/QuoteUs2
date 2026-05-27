@@ -146,7 +146,9 @@ async function stampSignatureOnPdf(pdfBytes, signatureDataUrl, signerName) {
   const isInvisible = anchor.matchedStr.includes("__SIG_ANCHOR_LANDLORD__");
   const lineY = isInvisible ? anchor.y : anchor.y + anchor.height + 2;
   const lineX = anchor.x;
-  if (!isInvisible) {
+  if (isInvisible) {
+    targetPage.drawRectangle({ x: lineX - 2, y: lineY - 32, width: lineW + 4, height: 30, color: rgb(1,1,1) });
+  } else {
     targetPage.drawRectangle({ x: lineX - 1, y: anchor.y - anchor.height, width: lineW + 2, height: anchor.height * 3.2, color: rgb(1,1,1) });
   }
   const sigDims = sigImage.scale(1);
