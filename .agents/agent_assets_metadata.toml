@@ -6,3 +6,15 @@ id = "gOfUuMfFUZsUIgNeXoBKg"
 uri = "file://QuoteUs_Deploy.zip"
 type = "unspecified"
 title = "QuoteUs.ca — Deployment Package (17 MB)"
+
+[[outputs]]
+id = "Fq9HCetcA2Ge1XnGY2QAx"
+uri = "file://dist-export/quoteus-ca-source.tar.gz"
+type = "unspecified"
+title = "QuoteUs.ca — Full Source (tar.gz, 112 MB)"
+
+[[outputs]]
+id = "IIIFhzzoA7QPXKUHltFa0"
+uri = "file://dist-export/DEPLOY.md"
+type = "text"
+title = "Self-Hosted Deployment Guide"
