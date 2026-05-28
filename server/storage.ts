@@ -1070,8 +1070,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addOrgMember(orgId: string, userId: string, role: string): Promise<RgOrgMember> {
-    const [created] = await db.insert(rgOrgMembers).values({ orgId, userId, role }).returning();
-    return created;
+    return await db.transaction(async (tx) => {
+      await tx.delete(rgOrgMembers).where(eq(rgOrgMembers.userId, userId));
+      const [created] = await tx.insert(rgOrgMembers).values({ orgId, userId, role }).returning();
+      return created;
+    });
   }
 
   async updateOrgMember(id: string, role: string): Promise<RgOrgMember | undefined> {

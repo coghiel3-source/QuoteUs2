@@ -1634,7 +1634,13 @@ export async function registerRoutes(
       if (!["principal", "member"].includes(role)) return res.status(400).json({ error: "role must be 'principal' or 'member'" });
       // Verify the member actually belongs to the org in the URL (prevent cross-org tampering)
       const members = await storage.getOrgMembers(req.params.id);
-      if (!members.some(m => m.id === req.params.memberId)) return res.status(404).json({ error: "Member not found in this organization" });
+      const target = members.find(m => m.id === req.params.memberId);
+      if (!target) return res.status(404).json({ error: "Member not found in this organization" });
+      // Prevent demoting the last principal
+      if (target.role === "principal" && role !== "principal") {
+        const principalCount = members.filter(m => m.role === "principal").length;
+        if (principalCount <= 1) return res.status(400).json({ error: "Cannot demote the last principal. Promote another member first." });
+      }
       const updated = await storage.updateOrgMember(req.params.memberId, role);
       if (!updated) return res.status(404).json({ error: "Member not found" });
       res.json(updated);
@@ -1646,6 +1652,15 @@ export async function registerRoutes(
       const { actorId } = req.query;
       const actor = actorId ? await storage.getUser(actorId as string) : (req.session as any)?.user;
       if (!actor || !["admin", "manager"].includes(actor.role)) return res.status(403).json({ error: "Access denied" });
+      // Prevent removing the last principal
+      const members = await storage.getOrgMembers(req.params.id);
+      const target = members.find(m => m.userId === req.params.userId);
+      if (target?.role === "principal") {
+        const principalCount = members.filter(m => m.role === "principal").length;
+        if (principalCount <= 1 && members.length > 1) {
+          return res.status(400).json({ error: "Cannot remove the last principal while members exist. Promote another member or remove all members first." });
+        }
+      }
       await storage.removeOrgMember(req.params.id, req.params.userId);
       res.json({ success: true });
     } catch (error: any) { res.status(500).json({ error: error.message }); }
@@ -1658,7 +1673,10 @@ export async function registerRoutes(
       const actor = actorId ? await storage.getUser(actorId as string) : (req.session as any)?.user;
       if (!actor || actor.role !== "rep") return res.status(403).json({ error: "Access denied" });
       const membership = await storage.getOrgMembership(actor.id);
-      if (!membership) return res.json(null);
+      if (!membership) {
+        res.setHeader("Cache-Control", "no-store");
+        return res.json(null);
+      }
       const members = await storage.getOrgMembers(membership.org.id);
       const allUsers = await storage.getAllUsers();
       const memberUserIds = members.map(m => m.userId);

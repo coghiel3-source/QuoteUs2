@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, decimal, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, pgEnum, boolean, decimal, serial, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -685,7 +685,10 @@ export const rgOrgMembers = pgTable("rg_org_members", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: text("role").default("member"), // "principal" | "member"
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdUnique: uniqueIndex("rg_org_members_user_id_unique").on(t.userId),
+  orgUserUnique: uniqueIndex("rg_org_members_org_user_unique").on(t.orgId, t.userId),
+}));
 
 export const insertRgOrganizationSchema = createInsertSchema(rgOrganizations).omit({ id: true, createdAt: true });
 export const insertRgOrgMemberSchema = createInsertSchema(rgOrgMembers).omit({ id: true, createdAt: true });
