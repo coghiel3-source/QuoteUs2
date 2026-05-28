@@ -11,7 +11,7 @@ title = "QuoteUs.ca — Deployment Package (17 MB)"
 id = "Fq9HCetcA2Ge1XnGY2QAx"
 uri = "file://dist-export/quoteus-ca-source.tar.gz"
 type = "unspecified"
-title = "QuoteUs.ca — Full Source (tar.gz, 112 MB)"
+title = "QuoteUs.ca — Latest Source (tar.gz, 112 MB)"
 
 [[outputs]]
 id = "IIIFhzzoA7QPXKUHltFa0"
