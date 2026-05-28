@@ -1,11 +1,19 @@
 import { Link } from "wouter";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Home, Briefcase, Plane, Heart, Dog, Building2, ChevronRight, CheckCircle2, ShieldCheck, DollarSign, Landmark, KeyRound } from "lucide-react";
-import heroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1765553789903.jpg";
+import defaultHeroImage from "@assets/Lucid_Origin_PromptThree_young_adults_ages_2138_standing_backt_1765553789903.jpg";
 import { useSeo } from "@/hooks/use-seo";
 
 export default function HomePage() {
+  const [heroImage, setHeroImage] = useState<string>(defaultHeroImage);
+  useEffect(() => {
+    fetch("/api/settings/hero-image")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data?.value) setHeroImage(data.value); })
+      .catch(() => {});
+  }, []);
   useSeo({
     title: "QuoteUs.ca | Free Ontario Insurance Quotes — Auto, Home, Tenant, Rent Guarantee & More",
     description: "Compare free Ontario insurance quotes in minutes. Auto, Home, Tenant, Rent Guarantee, Life, Travel, Pet, Business and Mortgage — from licensed Ontario brokers. No obligation.",

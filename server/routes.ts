@@ -360,6 +360,29 @@ const repDocUpload = multer({
   },
 });
 
+// Hero image upload (admin only)
+const heroDir = path.join(uploadDir, "hero");
+if (!fs.existsSync(heroDir)) fs.mkdirSync(heroDir, { recursive: true });
+const heroUploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, heroDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `hero-${uniqueSuffix}${ext}`);
+  },
+});
+const heroUpload = multer({
+  storage: heroUploadStorage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) return cb(null, true);
+    cb(new Error("Only image files (JPG, PNG, WEBP, GIF) are allowed"));
+  },
+});
+
 // Doc signature uploads
 const docSignDir = path.join(uploadDir, "doc-signatures");
 if (!fs.existsSync(docSignDir)) fs.mkdirSync(docSignDir, { recursive: true });
@@ -3120,6 +3143,69 @@ export async function registerRoutes(
           tiktok: "",
         });
       }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get hero image URL (public)
+  app.get("/api/settings/hero-image", async (req, res) => {
+    try {
+      const value = await storage.getSetting("hero_image_url");
+      res.json({ value: value || null });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Helper: safely delete a previously stored hero image file
+  const deletePriorHeroFile = (url: string | null | undefined) => {
+    if (!url || !url.startsWith("/uploads/hero/")) return;
+    const fileName = path.basename(url);
+    // Guard against path traversal — basename strips any "../"
+    const fullPath = path.join(heroDir, fileName);
+    if (!fullPath.startsWith(heroDir + path.sep)) return;
+    fs.promises.unlink(fullPath).catch(() => {});
+  };
+
+  // Admin: Upload hero image (returns persisted URL; also saves setting)
+  app.post("/api/admin/hero-image", heroUpload.single("file"), async (req, res) => {
+    const cleanupTempFile = () => {
+      if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
+    };
+    try {
+      const actorId = (req.body?.actorId as string) || ((req.session as any)?.user?.id);
+      if (!actorId) { cleanupTempFile(); return res.status(401).json({ error: "actorId required" }); }
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
+        cleanupTempFile();
+        return res.status(403).json({ error: "Only admin/manager can change the hero image" });
+      }
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      const prior = await storage.getSetting("hero_image_url");
+      const url = `/uploads/hero/${req.file.filename}`;
+      await storage.setSetting("hero_image_url", url, actorId);
+      deletePriorHeroFile(prior);
+      res.json({ success: true, url });
+    } catch (error: any) {
+      cleanupTempFile();
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Reset hero image (revert to default)
+  app.delete("/api/admin/hero-image", async (req, res) => {
+    try {
+      const actorId = (req.query.actorId as string) || ((req.session as any)?.user?.id);
+      if (!actorId) return res.status(401).json({ error: "actorId required" });
+      const actor = await storage.getUser(actorId);
+      if (!actor || !["admin", "manager"].includes(actor.role)) {
+        return res.status(403).json({ error: "Only admin/manager can change the hero image" });
+      }
+      const prior = await storage.getSetting("hero_image_url");
+      await storage.setSetting("hero_image_url", "", actorId);
+      deletePriorHeroFile(prior);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

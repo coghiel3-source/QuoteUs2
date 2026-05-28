@@ -305,6 +305,10 @@ export default function AdminCRMPage() {
   });
   const [savingSocialMedia, setSavingSocialMedia] = useState(false);
   
+  // Hero Image State
+  const [heroImageUrl, setHeroImageUrl] = useState<string>("");
+  const [uploadingHero, setUploadingHero] = useState(false);
+
   // Custom CSS State
   const [customCss, setCustomCss] = useState("");
   const [updateFile, setUpdateFile] = useState<File | null>(null);
@@ -776,6 +780,12 @@ export default function AdminCRMPage() {
       })
       .catch(console.error);
     
+    // Load hero image setting
+    fetch("/api/settings/hero-image")
+      .then(r => r.json())
+      .then(data => { if (data?.value) setHeroImageUrl(data.value); })
+      .catch(console.error);
+
     // Load custom CSS
     fetch("/api/settings/custom-css")
       .then(r => r.json())
@@ -7399,6 +7409,86 @@ export default function AdminCRMPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">When a rep sends an RG application for processing, this address receives the email with all documents attached. Falls back to <code>info@quoteus.ca</code> if not set.</p>
+                </div>
+              </div>
+
+              {/* Hero / Main Site Image */}
+              <div className="border rounded-lg p-4" data-testid="section-hero-image">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-orange-100 p-2 rounded-lg">
+                    <Upload className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Main Site Image (Home Page Hero)</h3>
+                    <p className="text-sm text-muted-foreground">Replace the large image shown at the top of the home page.</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="rounded-md overflow-hidden border bg-gray-50 aspect-[16/6] flex items-center justify-center">
+                    {heroImageUrl ? (
+                      <img src={heroImageUrl} alt="Current hero" className="w-full h-full object-cover" data-testid="img-hero-current" />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Using default hero image</p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      data-testid="input-hero-file"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 15 * 1024 * 1024) {
+                          toast({ title: "File too large", description: "Maximum size is 15MB.", variant: "destructive" });
+                          e.target.value = "";
+                          return;
+                        }
+                        setUploadingHero(true);
+                        try {
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          fd.append("actorId", user?.id || "");
+                          const res = await fetch("/api/admin/hero-image", { method: "POST", body: fd });
+                          const data = await res.json();
+                          if (res.ok) {
+                            setHeroImageUrl(data.url);
+                            toast({ title: "Updated", description: "Main site image has been updated. Visitors will see it on next page load." });
+                          } else {
+                            toast({ title: "Upload failed", description: data.error || "Could not upload image", variant: "destructive" });
+                          }
+                        } catch (err: any) {
+                          toast({ title: "Upload failed", description: err.message || "Network error", variant: "destructive" });
+                        } finally {
+                          setUploadingHero(false);
+                          e.target.value = "";
+                        }
+                      }}
+                      disabled={uploadingHero}
+                      className="max-w-sm"
+                    />
+                    {heroImageUrl && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid="button-hero-reset"
+                        disabled={uploadingHero}
+                        onClick={async () => {
+                          if (!confirm("Reset to the default site image?")) return;
+                          const res = await fetch(`/api/admin/hero-image?actorId=${user?.id || ""}`, { method: "DELETE" });
+                          if (res.ok) {
+                            setHeroImageUrl("");
+                            toast({ title: "Reset", description: "Reverted to default hero image." });
+                          } else {
+                            toast({ title: "Error", description: "Could not reset", variant: "destructive" });
+                          }
+                        }}
+                      >
+                        Reset to default
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Recommended: a wide landscape image (e.g. 2000×800). JPG, PNG, WEBP, or GIF, up to 15MB.</p>
                 </div>
               </div>
 
