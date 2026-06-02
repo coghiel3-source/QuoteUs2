@@ -308,6 +308,18 @@ export default function AdminCRMPage() {
   // Hero Image State
   const [heroImageUrl, setHeroImageUrl] = useState<string>("");
   const [uploadingHero, setUploadingHero] = useState(false);
+  const [heroFile, setHeroFile] = useState<File | null>(null);
+  const [heroPreview, setHeroPreview] = useState<string>("");
+  const heroFileInputRef = useRef<HTMLInputElement>(null);
+  const heroPreviewRef = useRef<string>("");
+  useEffect(() => {
+    heroPreviewRef.current = heroPreview;
+  }, [heroPreview]);
+  useEffect(() => {
+    return () => {
+      if (heroPreviewRef.current) URL.revokeObjectURL(heroPreviewRef.current);
+    };
+  }, []);
 
   // Custom CSS State
   const [customCss, setCustomCss] = useState("");
@@ -7424,50 +7436,92 @@ export default function AdminCRMPage() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <div className="rounded-md overflow-hidden border bg-gray-50 aspect-[16/6] flex items-center justify-center">
-                    {heroImageUrl ? (
+                  <div className="rounded-md overflow-hidden border bg-gray-50 aspect-[16/6] flex items-center justify-center relative">
+                    {heroPreview ? (
+                      <img src={heroPreview} alt="Preview of new hero" className="w-full h-full object-cover" data-testid="img-hero-preview" />
+                    ) : heroImageUrl ? (
                       <img src={heroImageUrl} alt="Current hero" className="w-full h-full object-cover" data-testid="img-hero-current" />
                     ) : (
                       <p className="text-sm text-muted-foreground">Using default hero image</p>
                     )}
+                    {heroPreview && (
+                      <span className="absolute top-2 left-2 bg-orange-600 text-white text-xs font-medium px-2 py-1 rounded" data-testid="badge-hero-preview">
+                        Preview — not saved yet
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Input
+                      ref={heroFileInputRef}
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
                       data-testid="input-hero-file"
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         if (file.size > 15 * 1024 * 1024) {
                           toast({ title: "File too large", description: "Maximum size is 15MB.", variant: "destructive" });
-                          e.target.value = "";
+                          if (heroFileInputRef.current) heroFileInputRef.current.value = "";
                           return;
                         }
-                        setUploadingHero(true);
-                        try {
-                          const fd = new FormData();
-                          fd.append("file", file);
-                          fd.append("actorId", user?.id || "");
-                          const res = await fetch("/api/admin/hero-image", { method: "POST", body: fd });
-                          const data = await res.json();
-                          if (res.ok) {
-                            setHeroImageUrl(data.url);
-                            toast({ title: "Updated", description: "Main site image has been updated. Visitors will see it on next page load." });
-                          } else {
-                            toast({ title: "Upload failed", description: data.error || "Could not upload image", variant: "destructive" });
-                          }
-                        } catch (err: any) {
-                          toast({ title: "Upload failed", description: err.message || "Network error", variant: "destructive" });
-                        } finally {
-                          setUploadingHero(false);
-                          e.target.value = "";
-                        }
+                        if (heroPreview) URL.revokeObjectURL(heroPreview);
+                        setHeroFile(file);
+                        setHeroPreview(URL.createObjectURL(file));
                       }}
                       disabled={uploadingHero}
                       className="max-w-sm"
                     />
-                    {heroImageUrl && (
+                    {heroFile && (
+                      <>
+                        <Button
+                          size="sm"
+                          data-testid="button-hero-save"
+                          disabled={uploadingHero}
+                          onClick={async () => {
+                            if (!heroFile) return;
+                            setUploadingHero(true);
+                            try {
+                              const fd = new FormData();
+                              fd.append("file", heroFile);
+                              fd.append("actorId", user?.id || "");
+                              const res = await fetch("/api/admin/hero-image", { method: "POST", body: fd });
+                              const data = await res.json();
+                              if (res.ok) {
+                                setHeroImageUrl(data.url);
+                                if (heroPreview) URL.revokeObjectURL(heroPreview);
+                                setHeroPreview("");
+                                setHeroFile(null);
+                                if (heroFileInputRef.current) heroFileInputRef.current.value = "";
+                                toast({ title: "Saved", description: "Main site image has been updated. Visitors will see it on next page load." });
+                              } else {
+                                toast({ title: "Save failed", description: data.error || "Could not upload image", variant: "destructive" });
+                              }
+                            } catch (err: any) {
+                              toast({ title: "Save failed", description: err.message || "Network error", variant: "destructive" });
+                            } finally {
+                              setUploadingHero(false);
+                            }
+                          }}
+                        >
+                          {uploadingHero ? "Saving…" : "Save image"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          data-testid="button-hero-cancel"
+                          disabled={uploadingHero}
+                          onClick={() => {
+                            if (heroPreview) URL.revokeObjectURL(heroPreview);
+                            setHeroPreview("");
+                            setHeroFile(null);
+                            if (heroFileInputRef.current) heroFileInputRef.current.value = "";
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    )}
+                    {heroImageUrl && !heroFile && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -7488,7 +7542,7 @@ export default function AdminCRMPage() {
                       </Button>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Recommended: a wide landscape image (e.g. 2000×800). JPG, PNG, WEBP, or GIF, up to 15MB.</p>
+                  <p className="text-xs text-muted-foreground">Choose an image to preview it here, then click <strong>Save image</strong> to make it live. Recommended: a wide landscape image (e.g. 2000×800). JPG, PNG, WEBP, or GIF, up to 15MB.</p>
                 </div>
               </div>
 
