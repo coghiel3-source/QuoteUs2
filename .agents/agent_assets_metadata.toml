@@ -17,7 +17,7 @@ title = "QuoteUs.ca — Latest Source (tar.gz, 112 MB)"
 id = "IIIFhzzoA7QPXKUHltFa0"
 uri = "file://dist-export/DEPLOY.md"
 type = "text"
-title = "Deployment Guide"
+title = "Deployment Guide (DEPLOY.md)"
 
 [[outputs]]
 id = "Ea8_QjYPdNGvtDFzZ3fiS"
@@ -30,3 +30,9 @@ id = "WfksHUhY-hYTYUGN-EghF"
 uri = "file://dist-export/MANIFEST.txt"
 type = "text"
 title = "File Manifest (226 files — confirms everything inside)"
+
+[[outputs]]
+id = "bZiieGs3CzNV7G7B2YQw_"
+uri = "file://dist-export/QuoteUs_1234.tar.gz"
+type = "unspecified"
+title = "QuoteUs_1234 — Complete Website (all files, SEO, Rent Guarantee, mascot, DEPLOY.md)"
