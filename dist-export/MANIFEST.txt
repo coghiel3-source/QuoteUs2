@@ -16,6 +16,7 @@
 ./attached_assets/image_1774157170506.png
 ./attached_assets/image_1774158582054.png
 ./attached_assets/image_1774159231425.png
+./attached_assets/image_1781630980191.png
 ./attached_assets/IMG_5489_1777267645590.png
 ./attached_assets/Lease_Co-Guarantee_Agreement_T_1777904862990.pdf
 ./attached_assets/Lease_Co-Guarantee_Agreement_T_1777982829197.pdf

@@ -29,10 +29,10 @@ title = "QuoteUs.ca — Full Website (master download, includes Rent Guarantee +
 id = "WfksHUhY-hYTYUGN-EghF"
 uri = "file://dist-export/MANIFEST.txt"
 type = "text"
-title = "File Manifest (226 files — confirms everything inside)"
+title = "File Manifest (227 files)"
 
 [[outputs]]
 id = "bZiieGs3CzNV7G7B2YQw_"
 uri = "file://dist-export/QuoteUs_1234.tar.gz"
 type = "unspecified"
-title = "QuoteUs_1234 — Complete Website (all files, SEO, Rent Guarantee, mascot, DEPLOY.md)"
+title = "QuoteUs_1234 — Full Website for 3rd-Party Hosting (all source, SEO, mascot, DEPLOY.md)"
