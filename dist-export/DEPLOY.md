@@ -62,6 +62,12 @@ DATABASE_URL=postgres://USER:PASS@HOST:5432/DB
 SESSION_SECRET=<long-random-string>
 PORT=5000
 NODE_ENV=production
+# Your site's public address — REQUIRED on any non-Replit host.
+# Used to build OAuth callback URLs, Stripe redirect/webhook URLs, and
+# password-reset links. No trailing slash.
+APP_BASE_URL=https://yourdomain.com
+# Optional: bind address. Defaults to 0.0.0.0 (correct for almost all hosts).
+# HOST=0.0.0.0
 
 # ── Object Storage (GCS by default; swap server/objectStorage*.ts for S3/R2) ──
 DEFAULT_OBJECT_STORAGE_BUCKET_ID=your-bucket
@@ -104,6 +110,71 @@ pm2 start npm --name quoteus -- start
 pm2 save
 pm2 startup
 ```
+
+> **The app entry point is `dist/index.cjs`** (created by `npm run build`).
+> `npm start` runs `NODE_ENV=production node dist/index.cjs`.
+
+---
+
+## 5b. "It works on my VPS but not on my other host" — Read This
+
+This is a **Node.js + PostgreSQL** app. It runs the same way everywhere, but
+**managed / cPanel-style hosts start apps differently than a VPS**, and that
+is almost always the cause when a VPS works and another host doesn't. Check
+these in order:
+
+1. **Did the build actually run?**
+   Many managed hosts run `npm install` but **not** `npm run build`, so `dist/`
+   never gets created and the app can't start (or shows a blank page / "Could
+   not find the build directory"). Open the host's terminal and run
+   `npm run build` manually. The folder `dist/index.cjs` and `dist/public/`
+   must exist afterward.
+
+2. **Were dev dependencies installed?**
+   The build needs `vite`, `esbuild`, and `tsx` (listed under devDependencies).
+   If your host runs `npm install --production` / `--omit=dev`, the build tools
+   are missing. Run a full `npm install` (no production flag) **before**
+   building, then you can prune afterward if you like.
+
+3. **Is `NODE_ENV` set to `production`?**
+   If it isn't, the server tries to start the Vite **dev** server, which isn't
+   bundled for production → instant crash. `npm start` sets this automatically,
+   but if your host launches the file directly (see #4) you must set
+   `NODE_ENV=production` in the host's environment-variables panel.
+
+4. **Is the startup file correct?**
+   cPanel "Setup Node.js App" (Phusion Passenger) does **not** run `npm start`.
+   It launches one file directly. Set the **Application startup file** to
+   `dist/index.cjs` (after building). Set **Application mode = Production**.
+
+5. **Did you set `APP_BASE_URL`?**
+   On any non-Replit host this must be your real domain
+   (e.g. `https://yourdomain.com`). Without it, Google login redirects, Stripe
+   checkout/return URLs, the Stripe webhook, and password-reset links all fall
+   back to `http://localhost:5000` and will fail. (The app no longer crashes on
+   the port-binding step on managed hosts — that Replit-only option is now
+   disabled automatically off-Replit.)
+
+6. **Is the database reachable from this host?**
+   A VPS usually talks to a Postgres on the same box. A managed host may need:
+   - the DB host to allow remote connections / your host's IP, and
+   - `?sslmode=require` appended to `DATABASE_URL` for hosted Postgres
+     (Neon, Supabase, RDS). Example:
+     `postgres://user:pass@host:5432/db?sslmode=require`
+
+7. **Run `npm run db:push` once** against the new database so all tables exist.
+   Symptom if skipped: pages load but every action errors with
+   "relation ... does not exist".
+
+8. **File uploads (binders, hero image, signatures)** are written to
+   `client/public/uploads/`. On hosts with a read-only or ephemeral filesystem
+   those writes fail. Use a host that allows writing to disk, or configure the
+   built-in object storage (GCS) env vars in §4.
+
+If the app still won't boot, get the **actual error** — that's the fastest
+path. On Passenger/cPanel look at `stderr.log` in your app folder; with pm2 run
+`pm2 logs quoteus`; running directly, just run `npm start` in the terminal and
+read the first error printed.
 
 ---
 

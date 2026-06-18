@@ -625,7 +625,9 @@ export async function registerRoutes(
       await storage.setResetToken(user.id, resetToken, resetExpiry);
       
       // Send password reset email
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+      const baseUrl = process.env.APP_BASE_URL
+        ? process.env.APP_BASE_URL.replace(/\/$/, "")
+        : process.env.REPLIT_DEV_DOMAIN 
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
         : process.env.REPLIT_DEPLOYMENT_URL || "http://localhost:5000";
       const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
@@ -2191,7 +2193,9 @@ export async function registerRoutes(
       }
       
       // Create checkout session
-      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
+      const baseUrl = process.env.APP_BASE_URL
+        ? process.env.APP_BASE_URL.replace(/\/$/, "")
+        : process.env.REPLIT_DOMAINS?.split(',')[0] 
         ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
         : 'http://localhost:5000';
         
@@ -4319,7 +4323,9 @@ export async function registerRoutes(
       }
 
       const stripe = await getUncachableStripeClient();
-      const baseUrl = process.env.REPLIT_DOMAINS?.split(",")[0]
+      const baseUrl = process.env.APP_BASE_URL
+        ? process.env.APP_BASE_URL.replace(/\/$/, "")
+        : process.env.REPLIT_DOMAINS?.split(",")[0]
         ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
         : "http://localhost:5000";
 

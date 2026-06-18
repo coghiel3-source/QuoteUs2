@@ -32,9 +32,13 @@ async function initStripe() {
     const stripeSync = await getStripeSync();
     
     const domains = process.env.REPLIT_DOMAINS?.split(',')[0];
-    if (domains) {
+    const webhookBaseUrl = process.env.APP_BASE_URL
+      ? process.env.APP_BASE_URL.replace(/\/$/, "")
+      : domains
+      ? `https://${domains}`
+      : null;
+    if (webhookBaseUrl) {
       console.log('[Stripe] Setting up managed webhook...');
-      const webhookBaseUrl = `https://${domains}`;
       await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
       console.log('[Stripe] Webhook configured');
     }
@@ -166,14 +170,16 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  // `reusePort` (SO_REUSEPORT) is used on Replit but throws ENOTSUP on many
+  // managed/shared hosts and some kernels. Only enable it on Replit.
+  const listenOptions: { port: number; host: string; reusePort?: boolean } = {
+    port,
+    host: process.env.HOST || "0.0.0.0",
+  };
+  if (process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN) {
+    listenOptions.reusePort = true;
+  }
+  httpServer.listen(listenOptions, () => {
+    log(`serving on port ${port}`);
+  });
 })();
