@@ -13,11 +13,12 @@ export interface Activity {
 export interface Quote {
   id: string;
   quoteNumber: string;
-  type: 'Auto' | 'Home' | 'Tenant' | 'Business' | 'Life' | 'Travel' | 'Pet' | 'Mortgage' | 'General';
+  type: 'Auto' | 'Home' | 'Tenant' | 'Business' | 'Life' | 'Travel' | 'Pet' | 'Mortgage' | 'Rent Guarantee' | 'General';
   clientName: string;
   email?: string;
   phone?: string;
   postalCode?: string;
+  referenceId?: string;
   date?: string; // For backwards compatibility
   createdAt?: string; // From database
   status: 'New' | 'Contacted' | 'Quoted' | 'Bound' | 'Follow-Up' | 'Closed' | 'Lost' | 'Win' | 'Lose' | 'Expired';

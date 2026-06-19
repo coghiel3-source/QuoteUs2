@@ -83,7 +83,7 @@ function Router() {
             <Route path="/login" component={LoginPage} />
             <Route path="/ad-preview/:token" component={AdPreviewPage} />
             <Route path="/rent-guarantee" component={RentGuaranteePage} />
-            <Route path="/rep" component={RepDashboardPage} />
+            <Route path="/rep" component={() => <RepDashboardPage />} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

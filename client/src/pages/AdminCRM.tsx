@@ -3417,7 +3417,7 @@ export default function AdminCRMPage() {
                       <SelectItem value="has_ref">Has Reference ID</SelectItem>
                       <SelectItem value="no_ref">No Reference ID</SelectItem>
                       {(() => {
-                        const uniqueRefIds = [...new Set(quotes.map(q => (q as any).referenceId).filter(Boolean))];
+                        const uniqueRefIds = Array.from(new Set(quotes.map(q => (q as any).referenceId).filter(Boolean)));
                         return uniqueRefIds.map(refId => (
                           <SelectItem key={refId} value={refId}>
                             <span className="font-mono">{refId}</span>
@@ -4647,7 +4647,8 @@ export default function AdminCRMPage() {
                         manageAds: false, manageSocialMedia: false, manageCustomCss: false,
                         managePartnerRedirects: false, manageSmtp: false, manageNotificationEmail: false,
                         viewRgLeads: false, manageRgLeads: false, approveRepCommission: false,
-                      }
+                      },
+                      partnerCompany: "", partnerNotes: ""
                     });
                     setActiveTab('manager');
                     setIsAddUserOpen(true);

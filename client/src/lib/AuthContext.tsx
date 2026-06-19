@@ -12,6 +12,7 @@ export interface ManagerPermissions {
   editLeadCosts?: boolean;
   viewRgLeads?: boolean;
   manageRgLeads?: boolean;
+  viewCommission?: boolean;
 }
 
 export interface RgPermissions {
@@ -29,7 +30,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep';
+  role: 'admin' | 'manager' | 'partner' | 'broker' | 'customer' | 'rep';
   status: 'pending' | 'active' | 'denied' | 'paused' | 'cancelled';
   password?: string;
   balance?: string;
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
-  const [pendingTwoFactor, setPendingTwoFactor] = useState<{ userId: string } | null>(null);
+  const [pendingTwoFactor, setPendingTwoFactor] = useState<{ userId: string; previewCode?: string } | null>(null);
   // Seed database with initial users
   const seedUsers = async () => {
     try {

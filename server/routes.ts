@@ -5568,7 +5568,7 @@ export async function registerRoutes(
             const html = `
               <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
                 <h2 style="color:#1e40af;margin-top:0;">Your Signed Document — Confirmation of Completion</h2>
-                <p style="color:#333;font-size:15px;">Hello${stampSignerName ? ` ${stampSignerName}` : ""},</p>
+                <p style="color:#333;font-size:15px;">Hello${signerName ? ` ${signerName}` : ""},</p>
                 <p style="color:#333;font-size:15px;">Thank you for signing <strong>${docTitle}</strong>. A fully signed copy is attached to this email for your records.</p>
                 ${propertyAddr}
                 <p style="color:#333;font-size:15px;">Signed on ${new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}.</p>
@@ -5577,7 +5577,7 @@ export async function registerRoutes(
               </div>
             `;
             const attachments = signedFilesForEmail.map(f => ({ filename: f.fileName, content: f.content }));
-            for (const to of recipients) {
+            for (const to of Array.from(recipients)) {
               await sendEmail({
                 to,
                 subject: `Signed Copy — ${docTitle}`,

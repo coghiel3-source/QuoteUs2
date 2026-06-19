@@ -156,7 +156,7 @@ export default function ProfilePage() {
                               </Badge>
                             </div>
                             <div className="text-sm text-muted-foreground flex flex-col gap-1">
-                              <span className="flex items-center gap-1"><Calendar size={12} /> Requested on {format(new Date(quote.date), 'MMM d, yyyy')}</span>
+                              <span className="flex items-center gap-1"><Calendar size={12} /> Requested on {quote.date ? format(new Date(quote.date), 'MMM d, yyyy') : '—'}</span>
                               <span className="flex items-center gap-1"><MapPin size={12} /> {quote.postalCode}</span>
                             </div>
                           </div>
