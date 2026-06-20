@@ -102,11 +102,13 @@ export default function RgPaymentSuccess() {
           )}
 
           <p className="text-xs text-gray-400 text-center">
-            A receipt has been saved. You may close this window.
+            A receipt has been saved.
           </p>
 
           <button
-            onClick={() => window.close()}
+            onClick={() => {
+              window.location.href = payment?.locationId ? `/rep?location=${encodeURIComponent(payment.locationId)}` : "/rep";
+            }}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg transition-colors"
           >
             Close

@@ -1117,6 +1117,14 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
         isRep ? fetch(`/api/rep/my-organization?actorId=${user.id}`).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null),
       ]);
       setLocations(locs || []);
+      if (!embedded) {
+        const openLocId = new URLSearchParams(window.location.search).get("location");
+        if (openLocId) {
+          const locToOpen = (locs || []).find(l => l.id === openLocId);
+          if (locToOpen) { setActiveTab("locations"); openLocation(locToOpen); }
+          window.history.replaceState({}, "", "/rep");
+        }
+      }
       setLeads(leadsData || []);
       setReminders(remindersData || []);
       if (rgRatesData && typeof rgRatesData.annualRate === "number") {
