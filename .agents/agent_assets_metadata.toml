@@ -36,3 +36,15 @@ id = "bZiieGs3CzNV7G7B2YQw_"
 uri = "file://dist-export/QuoteUs_1234.tar.gz"
 type = "unspecified"
 title = "QuoteUs_1234 — Full Website (portability-fixed for 3rd-party hosting)"
+
+[[outputs]]
+id = "tZA5Flu317-lzv2R1Z65V"
+uri = "file://dist-export/QuoteUs_Full_2026-06-21.zip"
+type = "unspecified"
+title = "QuoteUs.ca — Full Download (ZIP, best for cPanel/shared hosting)"
+
+[[outputs]]
+id = "n26C5Upa3y05NBwhH6Svr"
+uri = "file://dist-export/QuoteUs_Full_2026-06-21.tar.gz"
+type = "unspecified"
+title = "QuoteUs.ca — Full Download (tar.gz)"
