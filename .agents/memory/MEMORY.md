@@ -1,0 +1,1 @@
+- [Self-hosting off Replit](self-hosting-dependencies.md) — what runs anywhere vs needs own keys (Stripe) vs breaks (Object Storage sidecar) when hosting QuoteUs on a 3rd-party server.
