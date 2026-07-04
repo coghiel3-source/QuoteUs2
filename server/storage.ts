@@ -151,7 +151,7 @@ export interface IStorage {
   deleteDocTemplate(id: string): Promise<void>;
 
   // Admin Billing
-  getAllRgPayments(): Promise<RgPayment[]>;
+  getAllRgPayments(): Promise<(RgPayment & { accountNumber: string | null; propertyAddress: string | null; landlordPhone: string | null; repId: string | null; repName: string | null })[]>;
   getAllCustomerPayments(): Promise<CustomerPayment[]>;
 
   // Customer Portal
@@ -974,8 +974,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Admin Billing operations
-  async getAllRgPayments(): Promise<RgPayment[]> {
-    return db.select().from(rgPayments).orderBy(desc(rgPayments.createdAt));
+  async getAllRgPayments(): Promise<(RgPayment & { accountNumber: string | null; propertyAddress: string | null; landlordPhone: string | null; repId: string | null; repName: string | null })[]> {
+    const rows = await db
+      .select({
+        payment: rgPayments,
+        accountNumber: rgLocations.applicationNumber,
+        propertyAddress: rgLocations.propertyAddress,
+        locationPhone: rgLocations.landlordPhone,
+        repId: rgLocations.repId,
+        repName: users.name,
+      })
+      .from(rgPayments)
+      .leftJoin(rgLocations, eq(rgPayments.locationId, rgLocations.id))
+      .leftJoin(users, eq(rgLocations.repId, users.id))
+      .orderBy(desc(rgPayments.createdAt));
+    return rows.map((r) => ({
+      ...r.payment,
+      accountNumber: r.accountNumber ?? null,
+      propertyAddress: r.propertyAddress ?? null,
+      landlordPhone: r.locationPhone ?? null,
+      repId: r.repId ?? null,
+      repName: r.repName ?? null,
+    }));
   }
 
   async getAllCustomerPayments(): Promise<CustomerPayment[]> {

@@ -649,7 +649,7 @@ export default function AdminCRMPage() {
   const [savingPermissions, setSavingPermissions] = useState(false);
 
   // Billing tab state
-  const [billingSubTab, setBillingSubTab] = useState<'rent-secure' | 'lead-transactions' | 'ad-analytics'>('rent-secure');
+  const [billingSubTab, setBillingSubTab] = useState<'rent-guarantee' | 'lead-transactions' | 'ad-analytics'>('rent-guarantee');
   const [billingRgPayments, setBillingRgPayments] = useState<any[]>([]);
   const [billingCustomerPayments, setBillingCustomerPayments] = useState<any[]>([]);
   const [billingTransactions, setBillingTransactions] = useState<any[]>([]);
@@ -661,6 +661,10 @@ export default function AdminCRMPage() {
   const [editPaymentNotes, setEditPaymentNotes] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
   const [billingStatusFilter, setBillingStatusFilter] = useState('all');
+  const [billingRgSearch, setBillingRgSearch] = useState('');
+  const [billingRgRepFilter, setBillingRgRepFilter] = useState('all');
+  const [billingRgDateFrom, setBillingRgDateFrom] = useState('');
+  const [billingRgDateTo, setBillingRgDateTo] = useState('');
 
   const fetchBillingData = async () => {
     setBillingLoading(true);
@@ -6266,7 +6270,23 @@ export default function AdminCRMPage() {
             }
           };
 
-          const filteredRg = billingStatusFilter === 'all' ? billingRgPayments : billingRgPayments.filter(p => p.status === billingStatusFilter);
+          const rgSearchLower = billingRgSearch.trim().toLowerCase();
+          const filteredRg = billingRgPayments.filter(p => {
+            if (billingStatusFilter !== 'all' && p.status !== billingStatusFilter) return false;
+            if (billingRgRepFilter !== 'all' && p.repId !== billingRgRepFilter) return false;
+            const d = p.paidAt || p.createdAt;
+            if (billingRgDateFrom && (!d || new Date(d) < new Date(billingRgDateFrom + 'T00:00:00'))) return false;
+            if (billingRgDateTo && (!d || new Date(d) > new Date(billingRgDateTo + 'T23:59:59'))) return false;
+            if (rgSearchLower) {
+              const hay = [p.trackingCode, p.accountNumber, p.landlordName, p.landlordEmail, p.landlordPhone, p.propertyAddress, p.repName, p.description]
+                .filter(Boolean).join(' ').toLowerCase();
+              if (!hay.includes(rgSearchLower)) return false;
+            }
+            return true;
+          });
+          const rgRepOptions: [string, string][] = Array.from(
+            new Map(billingRgPayments.filter(p => p.repId).map(p => [String(p.repId), String(p.repName || 'Unknown rep')])).entries()
+          );
           const filteredCust = billingStatusFilter === 'all' ? billingCustomerPayments : billingCustomerPayments.filter(p => p.status === billingStatusFilter);
           const filteredTx = billingStatusFilter === 'all' ? billingTransactions : billingTransactions.filter(t => t.type === billingStatusFilter);
 
@@ -6278,7 +6298,7 @@ export default function AdminCRMPage() {
                   <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                     <Banknote className="w-6 h-6 text-blue-600" /> Billing Central
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">Review and manage all billing across Rent Secure, leads, and advertisements</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Review and manage all billing across Rent Guarantee, leads, and advertisements</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={fetchBillingData} disabled={billingLoading} data-testid="btn-billing-refresh">
                   <RefreshCw className={`w-4 h-4 mr-2 ${billingLoading ? 'animate-spin' : ''}`} /> Refresh
@@ -6319,9 +6339,9 @@ export default function AdminCRMPage() {
 
               {/* Sub-tabs */}
               <div className="flex gap-2 border-b pb-0">
-                {(['rent-secure', 'lead-transactions', 'ad-analytics'] as const).map(tab => {
+                {(['rent-guarantee', 'lead-transactions', 'ad-analytics'] as const).map(tab => {
                   const labels: Record<string, string> = {
-                    'rent-secure': 'Rent Secure',
+                    'rent-guarantee': 'Rent Guarantee',
                     'lead-transactions': 'Lead Transactions',
                     'ad-analytics': 'Ad Analytics',
                   };
@@ -6338,8 +6358,8 @@ export default function AdminCRMPage() {
                 })}
               </div>
 
-              {/* ── Rent Secure Sub-tab ── */}
-              {billingSubTab === 'rent-secure' && (
+              {/* ── Rent Guarantee Sub-tab ── */}
+              {billingSubTab === 'rent-guarantee' && (
                 <div className="space-y-5">
                   <div className="flex items-center gap-3 flex-wrap">
                     <p className="text-sm font-medium text-gray-700">Filter by status:</p>
@@ -6350,13 +6370,51 @@ export default function AdminCRMPage() {
                     ))}
                   </div>
 
+                  {/* Search + filters */}
+                  <div className="flex items-end gap-3 flex-wrap">
+                    <div className="flex-1 min-w-[220px]">
+                      <Label className="text-xs text-gray-600">Search</Label>
+                      <div className="relative mt-1">
+                        <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Input value={billingRgSearch} onChange={e => setBillingRgSearch(e.target.value)} placeholder="Account #, transaction #, client name, address, phone…" className="h-9 pl-8 text-sm" data-testid="billing-rg-search" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">RG Rep</Label>
+                      <Select value={billingRgRepFilter} onValueChange={setBillingRgRepFilter}>
+                        <SelectTrigger className="h-9 w-[180px] text-sm mt-1" data-testid="billing-rg-rep-filter">
+                          <SelectValue placeholder="All reps" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All reps</SelectItem>
+                          {rgRepOptions.map(([id, name]) => (
+                            <SelectItem key={id} value={id}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">From date</Label>
+                      <Input type="date" value={billingRgDateFrom} onChange={e => setBillingRgDateFrom(e.target.value)} className="h-9 w-[150px] text-sm mt-1" data-testid="billing-rg-date-from" />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600">To date</Label>
+                      <Input type="date" value={billingRgDateTo} onChange={e => setBillingRgDateTo(e.target.value)} className="h-9 w-[150px] text-sm mt-1" data-testid="billing-rg-date-to" />
+                    </div>
+                    {(billingRgSearch || billingRgRepFilter !== 'all' || billingRgDateFrom || billingRgDateTo) && (
+                      <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={() => { setBillingRgSearch(''); setBillingRgRepFilter('all'); setBillingRgDateFrom(''); setBillingRgDateTo(''); }} data-testid="billing-rg-clear-filters">
+                        <X className="w-3.5 h-3.5 mr-1" /> Clear
+                      </Button>
+                    )}
+                  </div>
+
                   {/* RG Premiums */}
                   <Card>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-blue-600" /> Rent Guarantee Premiums
+                        <Building2 className="w-4 h-4 text-blue-600" /> Rent Guarantee Transactions
                       </CardTitle>
-                      <CardDescription>Stripe-collected RG insurance premiums by landlord/location</CardDescription>
+                      <CardDescription>All Rent Guarantee payments with transaction #, account #, client, property, and submitting rep</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
                       {billingLoading ? (
@@ -6368,10 +6426,12 @@ export default function AdminCRMPage() {
                           <table className="w-full text-sm">
                             <thead className="bg-gray-50 border-b">
                               <tr>
-                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Tracking Code</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Transaction #</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Account #</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Client</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Property Address</th>
+                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">RG Rep</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Plan</th>
-                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Landlord</th>
-                                <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Period</th>
                                 <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Amount</th>
                                 <th className="text-center px-4 py-2 font-medium text-xs text-gray-600">Status</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Date</th>
@@ -6382,12 +6442,18 @@ export default function AdminCRMPage() {
                               {filteredRg.map(p => (
                                 <tr key={p.id} className="hover:bg-gray-50" data-testid={`billing-rg-row-${p.id}`}>
                                   <td className="px-4 py-2.5 font-mono text-xs font-semibold text-blue-700">{p.trackingCode}</td>
-                                  <td className="px-4 py-2.5 capitalize">{p.planType}</td>
+                                  <td className="px-4 py-2.5 font-mono text-xs" data-testid={`billing-rg-account-${p.id}`}>{p.accountNumber || '—'}</td>
                                   <td className="px-4 py-2.5">
                                     <div className="font-medium">{p.landlordName || '—'}</div>
                                     <div className="text-xs text-gray-500">{p.landlordEmail || ''}</div>
+                                    {p.landlordPhone && <div className="text-xs text-gray-500">{p.landlordPhone}</div>}
                                   </td>
-                                  <td className="px-4 py-2.5 text-xs text-gray-600">{p.periodLabel || '—'}</td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[180px]">{p.propertyAddress || '—'}</td>
+                                  <td className="px-4 py-2.5 text-xs" data-testid={`billing-rg-rep-${p.id}`}>{p.repName || '—'}</td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="capitalize text-xs">{p.planType}</div>
+                                    <div className="text-xs text-gray-500">{p.periodLabel || ''}</div>
+                                  </td>
                                   <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency((p.amountCents || 0) / 100)}</td>
                                   <td className="px-4 py-2.5 text-center">{statusBadge(p.status)}</td>
                                   <td className="px-4 py-2.5 text-xs text-gray-500">{fmtDate(p.paidAt || p.createdAt)}</td>
