@@ -6433,6 +6433,7 @@ export default function AdminCRMPage() {
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">RG Rep</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Plan</th>
                                 <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Amount</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Term Balance</th>
                                 <th className="text-center px-4 py-2 font-medium text-xs text-gray-600">Status</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Date</th>
                                 <th className="px-4 py-2"></th>
@@ -6455,6 +6456,16 @@ export default function AdminCRMPage() {
                                     <div className="text-xs text-gray-500">{p.periodLabel || ''}</div>
                                   </td>
                                   <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency((p.amountCents || 0) / 100)}</td>
+                                  <td className="px-4 py-2.5 text-right" data-testid={`billing-rg-balance-${p.id}`}>
+                                    {p.termTotalCents != null ? (
+                                      <>
+                                        <div className={`text-xs font-semibold ${(p.termBalanceCents || 0) > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                                          {(p.termBalanceCents || 0) > 0 ? fmtCurrency((p.termBalanceCents || 0) / 100) : 'Paid in full'}
+                                        </div>
+                                        <div className="text-[11px] text-gray-400">{fmtCurrency((p.termPaidCents || 0) / 100)} of {fmtCurrency(p.termTotalCents / 100)}</div>
+                                      </>
+                                    ) : <span className="text-gray-400">—</span>}
+                                  </td>
                                   <td className="px-4 py-2.5 text-center">{statusBadge(p.status)}</td>
                                   <td className="px-4 py-2.5 text-xs text-gray-500">{fmtDate(p.paidAt || p.createdAt)}</td>
                                   <td className="px-4 py-2.5">

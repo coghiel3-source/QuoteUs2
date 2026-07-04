@@ -151,7 +151,7 @@ export interface IStorage {
   deleteDocTemplate(id: string): Promise<void>;
 
   // Admin Billing
-  getAllRgPayments(): Promise<(RgPayment & { accountNumber: string | null; propertyAddress: string | null; landlordPhone: string | null; repId: string | null; repName: string | null })[]>;
+  getAllRgPayments(): Promise<(RgPayment & { accountNumber: string | null; propertyAddress: string | null; landlordPhone: string | null; repId: string | null; repName: string | null; termTotalCents: number | null; termPaidCents: number | null; termBalanceCents: number | null })[]>;
   getAllCustomerPayments(): Promise<CustomerPayment[]>;
 
   // Customer Portal
@@ -974,7 +974,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Admin Billing operations
-  async getAllRgPayments(): Promise<(RgPayment & { accountNumber: string | null; propertyAddress: string | null; landlordPhone: string | null; repId: string | null; repName: string | null })[]> {
+  async getAllRgPayments(): Promise<(RgPayment & { accountNumber: string | null; propertyAddress: string | null; landlordPhone: string | null; repId: string | null; repName: string | null; termTotalCents: number | null; termPaidCents: number | null; termBalanceCents: number | null })[]> {
     const rows = await db
       .select({
         payment: rgPayments,
@@ -983,19 +983,57 @@ export class DatabaseStorage implements IStorage {
         locationPhone: rgLocations.landlordPhone,
         repId: rgLocations.repId,
         repName: users.name,
+        monthlyRent: rgLocations.monthlyRent,
+        annualRatePercent: rgLocations.annualRatePercent,
+        monthlyRatePercent: rgLocations.monthlyRatePercent,
+        commissionPercent: rgLocations.commissionPercent,
+        monthlyCommissionPercent: rgLocations.monthlyCommissionPercent,
       })
       .from(rgPayments)
       .leftJoin(rgLocations, eq(rgPayments.locationId, rgLocations.id))
       .leftJoin(users, eq(rgLocations.repId, users.id))
       .orderBy(desc(rgPayments.createdAt));
-    return rows.map((r) => ({
-      ...r.payment,
-      accountNumber: r.accountNumber ?? null,
-      propertyAddress: r.propertyAddress ?? null,
-      landlordPhone: r.locationPhone ?? null,
-      repId: r.repId ?? null,
-      repName: r.repName ?? null,
-    }));
+
+    // Per-location term summary: expected total for a 12-month term (total deduction = RG rate + commission,
+    // matching the amounts collected via the rep Pricing tab) and the sum of paid payments.
+    const termByLocation = new Map<string, { totalCents: number | null; paidCents: number }>();
+    for (const r of rows) {
+      const locId = r.payment.locationId;
+      if (!locId) continue;
+      let entry = termByLocation.get(locId);
+      if (!entry) {
+        const rent = parseFloat(r.monthlyRent ?? "0") || 0;
+        let totalCents: number | null = null;
+        if (rent > 0) {
+          // Rows are ordered newest-first, so the first row seen for a location carries the latest plan type.
+          const isMonthly = r.payment.planType === "monthly";
+          const rate = isMonthly
+            ? (parseFloat(r.monthlyRatePercent ?? "0") || 0) + (parseFloat(r.monthlyCommissionPercent ?? "0") || 0)
+            : (parseFloat(r.annualRatePercent ?? "0") || 0) + (parseFloat(r.commissionPercent ?? "0") || 0);
+          if (rate > 0) totalCents = Math.round((rate / 100) * rent * 12 * 100);
+        }
+        entry = { totalCents, paidCents: 0 };
+        termByLocation.set(locId, entry);
+      }
+      if (r.payment.status === "paid") entry.paidCents += r.payment.amountCents || 0;
+    }
+
+    return rows.map((r) => {
+      const term = r.payment.locationId ? termByLocation.get(r.payment.locationId) : undefined;
+      const totalCents = term?.totalCents ?? null;
+      const paidCents = term ? term.paidCents : null;
+      return {
+        ...r.payment,
+        accountNumber: r.accountNumber ?? null,
+        propertyAddress: r.propertyAddress ?? null,
+        landlordPhone: r.locationPhone ?? null,
+        repId: r.repId ?? null,
+        repName: r.repName ?? null,
+        termTotalCents: totalCents,
+        termPaidCents: paidCents,
+        termBalanceCents: totalCents != null && paidCents != null ? totalCents - paidCents : null,
+      };
+    });
   }
 
   async getAllCustomerPayments(): Promise<CustomerPayment[]> {

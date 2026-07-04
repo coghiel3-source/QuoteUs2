@@ -665,6 +665,33 @@ function PricingTab({
             )}
           </div>
 
+          {/* Term Balance Summary */}
+          {rent > 0 && (() => {
+            const paidTotal = paidPayments.reduce((s, p) => s + (p.amountCents || 0), 0) / 100;
+            const latest = payments[0];
+            const isMonthlyTerm = (latest?.planType || "annual") === "monthly";
+            const termTotal = isMonthlyTerm ? totalDeductionMonthly * 12 : totalDeductionAnnual;
+            const balance = termTotal - paidTotal;
+            return (
+              <div className="grid grid-cols-3 divide-x border-b bg-blue-50/40" data-testid="term-balance-summary">
+                <div className="px-4 py-2.5 text-center">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-wide">Term Total {isMonthlyTerm ? "(12 mo)" : "(annual)"}</p>
+                  <p className="text-sm font-bold text-gray-900" data-testid="text-term-total">${fmt(termTotal)}</p>
+                </div>
+                <div className="px-4 py-2.5 text-center">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-wide">Paid to Date</p>
+                  <p className="text-sm font-bold text-green-700" data-testid="text-term-paid">${fmt(paidTotal)}</p>
+                </div>
+                <div className="px-4 py-2.5 text-center">
+                  <p className="text-[11px] text-gray-500 uppercase tracking-wide">Balance for Term</p>
+                  <p className={`text-sm font-bold ${balance > 0.005 ? "text-amber-600" : "text-green-700"}`} data-testid="text-term-balance">
+                    {balance > 0.005 ? `$${fmt(balance)}` : "Paid in full"}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {payments.length === 0 ? (
             <div className="py-8 text-center">
               <CreditCard className="h-8 w-8 text-gray-200 mx-auto mb-2" />
