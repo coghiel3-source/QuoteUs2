@@ -6227,11 +6227,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Missing required fields or amount too small." });
       }
 
-      const stripe = getUncachableStripeClient();
-      if (!stripe) return res.status(503).json({ error: "Payment processing unavailable." });
+      const stripe = await getUncachableStripeClient();
 
       const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
-      const session = await (stripe as any).checkout.sessions.create({
+      const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         mode: "payment",
         customer_email: email || undefined,
@@ -6275,10 +6274,9 @@ export async function registerRoutes(
       const { sessionId } = req.body;
       if (!sessionId) return res.status(400).json({ error: "Session ID required." });
 
-      const stripe = getUncachableStripeClient();
-      if (!stripe) return res.status(503).json({ error: "Payment processing unavailable." });
+      const stripe = await getUncachableStripeClient();
 
-      const session = await (stripe as any).checkout.sessions.retrieve(sessionId);
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
       const payment = await storage.getCustomerPaymentBySession(sessionId);
       if (!payment) return res.status(404).json({ error: "Payment record not found." });
 
