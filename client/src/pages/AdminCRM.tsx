@@ -673,8 +673,8 @@ export default function AdminCRMPage() {
     setBillingLoading(true);
     try {
       const [rgRes, custRes, txRes, adsRes] = await Promise.all([
-        fetch('/api/admin/billing/rg-payments'),
-        fetch('/api/admin/billing/customer-payments'),
+        fetch(`/api/admin/billing/rg-payments?actorId=${user?.id}`),
+        fetch(`/api/admin/billing/customer-payments?actorId=${user?.id}`),
         fetch('/api/admin/transactions'),
         fetch('/api/admin/advertisements'),
       ]);
@@ -686,6 +686,35 @@ export default function AdminCRMPage() {
       console.error(e);
     } finally {
       setBillingLoading(false);
+    }
+  };
+
+  const [billingSyncing, setBillingSyncing] = useState(false);
+  const handleBillingStripeSync = async () => {
+    setBillingSyncing(true);
+    try {
+      const res = await fetch('/api/admin/billing/rg-payments/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actorId: user?.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Sync failed');
+      }
+      const { confirmed, synced } = await res.json();
+      const total = (confirmed || 0) + (synced || 0);
+      toast({
+        title: 'Stripe sync complete',
+        description: total > 0
+          ? `${total} payment${total === 1 ? '' : 's'} updated from Stripe.`
+          : 'Everything is already up to date.',
+      });
+      await fetchBillingData();
+    } catch (e: any) {
+      toast({ title: 'Stripe sync failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setBillingSyncing(false);
     }
   };
 
@@ -6331,7 +6360,7 @@ export default function AdminCRMPage() {
               const res = await fetch(url, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: editPaymentStatus, description: editPaymentDesc }),
+                body: JSON.stringify({ status: editPaymentStatus, description: editPaymentDesc, actorId: user?.id }),
               });
               if (res.ok) {
                 setEditingPayment(null);
@@ -6440,6 +6469,17 @@ export default function AdminCRMPage() {
                         {s.charAt(0).toUpperCase() + s.slice(1)}
                       </Button>
                     ))}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs ml-auto"
+                      disabled={billingSyncing}
+                      onClick={handleBillingStripeSync}
+                      data-testid="button-billing-stripe-sync"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${billingSyncing ? 'animate-spin' : ''}`} />
+                      {billingSyncing ? 'Syncing…' : 'Sync with Stripe'}
+                    </Button>
                   </div>
 
                   {/* Search + filters */}

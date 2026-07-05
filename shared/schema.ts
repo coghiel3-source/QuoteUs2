@@ -382,6 +382,7 @@ export const rgPayments = pgTable("rg_payments", {
   status: varchar("status", { length: 20 }).notNull().default("pending"), // "pending" | "paid" | "failed"
   stripeSessionId: varchar("stripe_session_id"),
   stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  stripeInvoiceId: varchar("stripe_invoice_id"), // set for subscription invoice payments (dedupe key)
   stripeSubscriptionId: varchar("stripe_subscription_id"), // set for auto-charged recurring payments
   landlordEmail: text("landlord_email"),
   landlordName: text("landlord_name"),

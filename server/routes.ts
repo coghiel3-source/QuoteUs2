@@ -6,6 +6,7 @@ import { db } from "./db";
 import { z } from "zod";
 import { sendEmail, generateNewLeadEmail, generateAssignmentEmail, generateStatusChangeEmail, generateThankYouEmail, clearSmtpCache, generatePasswordResetEmail } from "./email";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { generateTrackingCode, getSubscriptionCheckoutPaymentDetails, syncSubscriptionInvoicesForLocation } from "./rgStripeSync";
 import crypto from "crypto";
 import multer from "multer";
 import path from "path";
@@ -4312,15 +4313,6 @@ export async function registerRoutes(
 
   // ── RG Payment System ────────────────────────────────────────────
 
-  function generateTrackingCode(planType: string): string {
-    const prefix = planType === "annual" ? "RGA" : "RGM";
-    const year = new Date().getFullYear();
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let code = "";
-    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-    return `${prefix}-${year}-${code}`;
-  }
-
   // Create Stripe checkout for a landlord payment
   app.post("/api/rep/locations/:id/create-payment", async (req, res) => {
     try {
@@ -4504,48 +4496,61 @@ export async function registerRoutes(
         return res.json({ synced: 0 });
       }
       const stripe = await getUncachableStripeClient();
-      const invoices = await stripe.invoices.list({
-        subscription: location.stripeSubscriptionId,
-        status: "paid",
-        limit: 100,
-      });
-
-      let synced = 0;
-      for (const inv of invoices.data) {
-        // Skip if already recorded
-        const existing = await storage.getRgPaymentByStripePaymentIntent((inv as any).payment_intent as string);
-        if (existing) continue;
-
-        const periodStart = inv.period_start ? new Date(inv.period_start * 1000) : new Date();
-        const periodLabel = periodStart.toLocaleString("en-CA", { month: "long", year: "numeric" });
-        let trackingCode = generateTrackingCode("monthly");
-        for (let i = 0; i < 5; i++) {
-          const ex = await storage.getRgPaymentByTrackingCode(trackingCode);
-          if (!ex) break;
-          trackingCode = generateTrackingCode("monthly");
-        }
-        await storage.createRgPayment({
-          locationId: location.id,
-          trackingCode,
-          planType: "monthly",
-          amountCents: inv.amount_paid,
-          landlordEmail: location.landlordEmail || "",
-          landlordName: location.landlordName || "",
-          description: `Monthly RG Premium – ${periodLabel} (auto)`,
-          periodLabel,
-          createdBy: user.id,
-          status: "paid",
-          stripeSubscriptionId: location.stripeSubscriptionId,
-          stripePaymentIntentId: (inv as any).payment_intent as string,
-          paidAt: new Date(inv.status_transitions?.paid_at ? inv.status_transitions.paid_at * 1000 : Date.now()),
-        } as any);
-        synced++;
-      }
+      const synced = await syncSubscriptionInvoicesForLocation(stripe, location, user.id);
       res.json({ synced });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ── Stripe reconciliation for RG payments ─────────────────────────────
+  // 1) Confirms pending checkout payments that were completed on Stripe but never
+  //    confirmed (e.g. the payer closed the tab before returning to the success page).
+  // 2) Pulls in subscription invoices that Stripe charged automatically.
+  // Keeps the Billing tab in line with real Stripe activity.
+  let lastRgStripeReconcile = 0;
+  async function reconcileRgStripePayments(): Promise<{ confirmed: number; synced: number }> {
+    const stripe = await getUncachableStripeClient();
+    let confirmed = 0;
+    let synced = 0;
+
+    // Step 1: pending payments that have a Stripe checkout session
+    const pendingPayments = await storage.getPendingRgPaymentsWithSession();
+    for (const p of pendingPayments) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(p.stripeSessionId!);
+        if (session.payment_status !== "paid") continue;
+        const updateData: any = { status: "paid", paidAt: new Date() };
+        if (session.mode === "subscription" && session.subscription) {
+          const subId = session.subscription as string;
+          updateData.stripeSubscriptionId = subId;
+          Object.assign(updateData, await getSubscriptionCheckoutPaymentDetails(stripe, session));
+          await storage.updateLocation(p.locationId, {
+            stripeSubscriptionId: subId,
+            subscriptionStatus: "active",
+          } as any);
+        } else if (session.payment_intent) {
+          updateData.stripePaymentIntentId = session.payment_intent as string;
+        }
+        await storage.updateRgPayment(p.id, updateData);
+        confirmed++;
+      } catch {
+        // Session may be expired or from a different Stripe account — skip it
+      }
+    }
+
+    // Step 2: locations with subscriptions — record any Stripe invoices we're missing
+    const subLocations = await storage.getLocationsWithSubscription();
+    for (const location of subLocations) {
+      try {
+        synced += await syncSubscriptionInvoicesForLocation(stripe, location, "stripe-sync");
+      } catch {
+        // One location's Stripe error shouldn't break reconciliation for the rest
+      }
+    }
+
+    return { confirmed, synced };
+  }
 
   // Confirm payment after Stripe redirect
   app.post("/api/rg/payment/confirm", async (req, res) => {
@@ -4571,6 +4576,7 @@ export async function registerRoutes(
         // Store subscription ID on the payment and on the location
         const subId = session.subscription as string;
         updateData.stripeSubscriptionId = subId;
+        Object.assign(updateData, await getSubscriptionCheckoutPaymentDetails(stripe, session));
         await storage.updateLocation(payment.locationId, {
           stripeSubscriptionId: subId,
           subscriptionStatus: "active",
@@ -6028,9 +6034,20 @@ export async function registerRoutes(
 
   app.get("/api/admin/billing/rg-payments", async (req, res) => {
     try {
-      const user = (req as any).user;
+      const actorId = req.query.actorId as string | undefined;
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
       if (!user || (user.role !== "admin" && user.role !== "manager")) {
         return res.status(403).json({ error: "Forbidden" });
+      }
+      // Auto-reconcile with Stripe (at most once per minute) so payments completed
+      // on Stripe show up here without anyone clicking Sync
+      if (Date.now() - lastRgStripeReconcile > 60_000) {
+        lastRgStripeReconcile = Date.now();
+        try {
+          await reconcileRgStripePayments();
+        } catch (e) {
+          console.error("[Billing] Stripe reconcile failed:", e);
+        }
       }
       const payments = await storage.getAllRgPayments();
       res.json(payments);
@@ -6039,9 +6056,25 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/billing/rg-payments/sync", async (req, res) => {
+    try {
+      const actorId = (req.body?.actorId as string | undefined) || (req.query.actorId as string | undefined);
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      lastRgStripeReconcile = Date.now();
+      const result = await reconcileRgStripePayments();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.patch("/api/admin/billing/rg-payments/:id", async (req, res) => {
     try {
-      const user = (req as any).user;
+      const actorId = (req.body?.actorId as string | undefined) || (req.query.actorId as string | undefined);
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
       if (!user || (user.role !== "admin" && user.role !== "manager")) {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -6062,7 +6095,8 @@ export async function registerRoutes(
 
   app.get("/api/admin/billing/customer-payments", async (req, res) => {
     try {
-      const user = (req as any).user;
+      const actorId = req.query.actorId as string | undefined;
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
       if (!user || (user.role !== "admin" && user.role !== "manager")) {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -6075,7 +6109,8 @@ export async function registerRoutes(
 
   app.patch("/api/admin/billing/customer-payments/:id", async (req, res) => {
     try {
-      const user = (req as any).user;
+      const actorId = (req.body?.actorId as string | undefined) || (req.query.actorId as string | undefined);
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
       if (!user || (user.role !== "admin" && user.role !== "manager")) {
         return res.status(403).json({ error: "Forbidden" });
       }

@@ -23,6 +23,11 @@ services — failures are isolated to specific request handlers.
   Connections. Credential priority: env vars > DB system_settings > Replit connector.
 - Set APP_BASE_URL=https://yourdomain so Stripe webhook, Google callback, and
   checkout redirect URLs use the correct host.
+- DB schema must be migrated when pulling updates. E.g. rg_payments gained
+  stripe_invoice_id (July 2026): run
+  `ALTER TABLE rg_payments ADD COLUMN IF NOT EXISTS stripe_invoice_id varchar`
+  (or npm run db:push) on the self-host DB, otherwise Stripe reconciliation
+  inserts throw and the sync silently reports 0 (errors are caught per-location).
 
 ## Breaks off-Replit until changed
 - Replit Object Storage uses a sidecar at http://127.0.0.1:1106 plus

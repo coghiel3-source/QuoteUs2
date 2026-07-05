@@ -1,7 +1,7 @@
 // Database blueprint integration - see blueprint:javascript_database
 import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, rgOrganizations, rgOrgMembers, serviceAgreements, serviceAgreementAttachments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate, type RgOrganization, type InsertRgOrganization, type RgOrgMember, type ServiceAgreement, type InsertServiceAgreement, type SaAttachment, type InsertSaAttachment } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, or, lte, gte, isNull, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, or, lte, gte, isNull, isNotNull, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -117,6 +117,8 @@ export interface IStorage {
   getRgPaymentByTrackingCode(code: string): Promise<RgPayment | null>;
   getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null>;
   getRgPaymentByStripePaymentIntent(intentId: string): Promise<RgPayment | null>;
+  getPendingRgPaymentsWithSession(): Promise<RgPayment[]>;
+  getLocationsWithSubscription(): Promise<RgLocation[]>;
   updateRgPayment(id: string, data: any): Promise<RgPayment | null>;
 
   // Rep commission payout operations
@@ -854,6 +856,14 @@ export class DatabaseStorage implements IStorage {
   async getRgPaymentBySessionId(sessionId: string): Promise<RgPayment | null> {
     const [row] = await db.select().from(rgPayments).where(eq(rgPayments.stripeSessionId, sessionId));
     return row || null;
+  }
+
+  async getPendingRgPaymentsWithSession(): Promise<RgPayment[]> {
+    return db.select().from(rgPayments).where(and(eq(rgPayments.status, "pending"), isNotNull(rgPayments.stripeSessionId)));
+  }
+
+  async getLocationsWithSubscription(): Promise<RgLocation[]> {
+    return db.select().from(rgLocations).where(isNotNull(rgLocations.stripeSubscriptionId));
   }
 
   async getRgPaymentByStripePaymentIntent(intentId: string): Promise<RgPayment | null> {
