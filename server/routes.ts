@@ -1009,6 +1009,20 @@ export async function registerRoutes(
     }
   });
 
+  // Bulk delete quotes
+  app.post("/api/quotes/bulk-delete", async (req, res) => {
+    try {
+      const ids = req.body?.ids;
+      if (!Array.isArray(ids) || ids.length === 0 || !ids.every((id: any) => typeof id === "string")) {
+        return res.status(400).json({ error: "ids must be a non-empty array of strings" });
+      }
+      const deleted = await storage.deleteQuotes(ids);
+      res.json({ deleted });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Send lead details to assigned broker via email
   app.post("/api/leads/:id/send-to-broker", async (req, res) => {
     try {

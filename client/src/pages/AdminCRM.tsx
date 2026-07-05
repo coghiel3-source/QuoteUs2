@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Search, Filter, Download, User, Calendar, MapPin, Car, Home, Briefcase, Plane, Heart, Dog, Shield, ShieldCheck, Check, X, FileText, BarChart, Settings, LogOut, LayoutDashboard, Users, UserPlus, Plus, MoreHorizontal, Lock, Pause, Play, Ban, Trash2, Mail, MessageSquare, Clock, AlertCircle, Eye, EyeOff, Key, CheckCircle, XCircle, Menu, Pencil, UserCog, Megaphone, Link2, Code, Timer, RefreshCw, Upload, PackageCheck, Send, ChevronLeft, ChevronRight, ChevronDown, BadgePercent, CreditCard, Receipt, TrendingUp, Building2, ArrowUpDown, Banknote, Handshake } from "lucide-react";
 import AdvertisementManager, { AdvertisementManagerHandle } from "@/components/AdvertisementManager";
@@ -27,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 
 export default function AdminCRMPage() {
-  const { quotes, updateStatus, assignQuote, assignQuoteLocal, refreshQuotes, addQuote, deleteQuote, addNote, logEmail } = useQuotes();
+  const { quotes, updateStatus, assignQuote, assignQuoteLocal, refreshQuotes, addQuote, deleteQuote, deleteQuotes, addNote, logEmail } = useQuotes();
   const { user, users, approveBroker, denyBroker, logout, updateUser, resetPassword, register, refreshUser } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -90,6 +91,8 @@ export default function AdminCRMPage() {
   
   // Lead Detail View State
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
@@ -1723,6 +1726,30 @@ export default function AdminCRMPage() {
   const sortedQuotes = [...filteredQuotes].sort((a, b) => 
     new Date(b.date || new Date()).getTime() - new Date(a.date || new Date()).getTime()
   );
+
+  const handleBulkDeleteLeads = async () => {
+    const ids = Array.from(selectedLeadIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} selected lead${ids.length > 1 ? 's' : ''}? This action cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      await deleteQuotes(ids);
+      setSelectedLeadIds(new Set());
+      toast({
+        title: "Leads Deleted",
+        description: `${ids.length} lead${ids.length > 1 ? 's have' : ' has'} been permanently removed.`,
+        variant: "destructive",
+      });
+    } catch {
+      toast({
+        title: "Delete Failed",
+        description: "The selected leads could not be deleted. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const getIconForType = (type: string) => {
     switch (type) {
@@ -3437,11 +3464,40 @@ export default function AdminCRMPage() {
                 </div>
               </div>
 
+              {/* Bulk Actions Bar */}
+              {hasPermission('assignLeads') && selectedLeadIds.size > 0 && (
+                <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-md px-4 py-2 mb-3" data-testid="bulk-actions-bar">
+                  <span className="text-sm font-medium text-red-800" data-testid="text-selected-count">
+                    {selectedLeadIds.size} lead{selectedLeadIds.size > 1 ? 's' : ''} selected
+                  </span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedLeadIds(new Set())} data-testid="button-clear-selection">
+                      Clear
+                    </Button>
+                    <Button variant="destructive" size="sm" disabled={bulkDeleting} onClick={handleBulkDeleteLeads} data-testid="button-bulk-delete-leads">
+                      <Trash2 size={14} className="mr-1" /> {bulkDeleting ? 'Deleting…' : 'Delete Selected'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Table */}
               <div className="rounded-md border bg-white overflow-hidden">
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
+                      {hasPermission('assignLeads') && (
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                            checked={sortedQuotes.length > 0 && sortedQuotes.every(q => selectedLeadIds.has(q.id))}
+                            onCheckedChange={(checked) => {
+                              setSelectedLeadIds(checked ? new Set(sortedQuotes.map(q => q.id)) : new Set());
+                            }}
+                            aria-label="Select all leads"
+                            data-testid="checkbox-select-all-leads"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead className="w-[120px]">Status</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Client Details</TableHead>
@@ -3454,7 +3510,7 @@ export default function AdminCRMPage() {
                   <TableBody>
                     {sortedQuotes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={hasPermission('assignLeads') ? 8 : 7} className="h-24 text-center text-muted-foreground">
                           No quotes found matching your criteria.
                         </TableCell>
                       </TableRow>
@@ -3465,6 +3521,22 @@ export default function AdminCRMPage() {
                           if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="combobox"]')) return;
                           setSelectedQuote(quote);
                         }}>
+                          {hasPermission('assignLeads') && (
+                            <TableCell className="w-[40px]" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={selectedLeadIds.has(quote.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedLeadIds(prev => {
+                                    const next = new Set(prev);
+                                    if (checked) next.add(quote.id); else next.delete(quote.id);
+                                    return next;
+                                  });
+                                }}
+                                aria-label="Select lead"
+                                data-testid={`checkbox-select-lead-${quote.id}`}
+                              />
+                            </TableCell>
+                          )}
                           <TableCell>
                             <Select 
                               value={quote.status} 

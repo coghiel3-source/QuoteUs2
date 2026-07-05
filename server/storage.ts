@@ -22,6 +22,7 @@ export interface IStorage {
   createQuote(quote: InsertQuote): Promise<Quote>;
   updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined>;
   deleteQuote(id: string): Promise<boolean>;
+  deleteQuotes(ids: string[]): Promise<number>;
   
   // Activity operations
   getActivitiesForQuote(quoteId: string): Promise<Activity[]>;
@@ -292,8 +293,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteQuote(id: string): Promise<boolean> {
-    const result = await db.delete(quotes).where(eq(quotes.id, id));
-    return result.rowCount ? result.rowCount > 0 : false;
+    return await db.transaction(async (tx) => {
+      // Detach transaction records (keep financial history) before deleting the quote
+      await tx.update(transactions).set({ quoteId: null }).where(eq(transactions.quoteId, id));
+      const result = await tx.delete(quotes).where(eq(quotes.id, id));
+      return result.rowCount ? result.rowCount > 0 : false;
+    });
+  }
+
+  async deleteQuotes(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    return await db.transaction(async (tx) => {
+      // Detach transaction records (keep financial history) before deleting the quotes
+      await tx.update(transactions).set({ quoteId: null }).where(inArray(transactions.quoteId, ids));
+      const result = await tx.delete(quotes).where(inArray(quotes.id, ids));
+      return result.rowCount ?? 0;
+    });
   }
 
   // Activity operations

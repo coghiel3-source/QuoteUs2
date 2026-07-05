@@ -40,6 +40,7 @@ interface QuoteContextType {
   assignQuoteLocal: (quoteId: string, brokerId: string) => void;
   refreshQuotes: () => Promise<void>;
   deleteQuote: (id: string) => Promise<void>;
+  deleteQuotes: (ids: string[]) => Promise<void>;
   addNote: (id: string, note: string, author: string) => Promise<void>;
   logEmail: (id: string, subject: string, recipient: string, author: string) => Promise<void>;
 }
@@ -241,6 +242,19 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteQuotes = async (ids: string[]) => {
+    try {
+      await apiRequest('/quotes/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
+      setQuotes(prev => prev.filter(q => !ids.includes(q.id)));
+    } catch (error) {
+      console.error('Failed to delete quotes:', error);
+      throw error;
+    }
+  };
+
   const addNote = async (id: string, note: string, author: string) => {
     try {
       const currentQuote = quotes.find(q => q.id === id);
@@ -315,7 +329,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <QuoteContext.Provider value={{ quotes, loading, addQuote, updateStatus, assignQuote, assignQuoteLocal, refreshQuotes, deleteQuote, addNote, logEmail }}>
+    <QuoteContext.Provider value={{ quotes, loading, addQuote, updateStatus, assignQuote, assignQuoteLocal, refreshQuotes, deleteQuote, deleteQuotes, addNote, logEmail }}>
       {children}
     </QuoteContext.Provider>
   );
