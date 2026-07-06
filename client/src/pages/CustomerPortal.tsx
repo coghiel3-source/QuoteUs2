@@ -71,7 +71,7 @@ function SuccessPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-[60vh] flex items-center justify-center p-4 py-16">
       <Card className="w-full max-w-md shadow-xl text-center">
         <CardContent className="pt-10 pb-8 px-8">
           {status === "loading" && (
@@ -624,21 +624,18 @@ export default function CustomerPortal() {
   if (isSuccess) return <SuccessPage />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
+    <div className="bg-gradient-to-br from-slate-50 to-blue-50">
+      <main className="max-w-2xl mx-auto px-4 py-8">
+        {/* Page Title */}
+        <div className="flex items-center gap-3 mb-6">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#1B2B5E] to-[#2d4a9e] flex items-center justify-center">
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-[#1B2B5E] text-lg leading-none">Make Payment</h1>
+            <h1 className="font-bold text-[#1B2B5E] text-lg leading-none" data-testid="text-portal-title">Make Payment</h1>
             <p className="text-xs text-gray-500">QuoteUs.ca Insurance</p>
           </div>
         </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-8">
         {!authChecked ? (
           <div className="text-center py-12 text-gray-500">Loading…</div>
         ) : account ? (
@@ -685,11 +682,6 @@ export default function CustomerPortal() {
           </motion.div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="text-center py-6 text-xs text-gray-400">
-        © {new Date().getFullYear()} QuoteUs.ca · Customer Payment Portal · <a href="/" className="underline hover:text-gray-600">Back to Home</a>
-      </footer>
     </div>
   );
 }

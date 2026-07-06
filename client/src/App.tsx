@@ -56,8 +56,6 @@ function Router() {
       <Route path="/doc-sign/:token" component={DocSignPage} />
       <Route path="/service-sign/:token" component={ServiceSignPage} />
       <Route path="/rg-payment/success" component={RgPaymentSuccessPage} />
-      <Route path="/customer-portal/success" component={CustomerPortalPage} />
-      <Route path="/customer-portal" component={CustomerPortalPage} />
       <Route path="/invoice-sign/:token" component={InvoiceSignPage} />
       {/* Main app with layout */}
       <Route>
@@ -83,6 +81,8 @@ function Router() {
             <Route path="/login" component={LoginPage} />
             <Route path="/ad-preview/:token" component={AdPreviewPage} />
             <Route path="/rent-guarantee" component={RentGuaranteePage} />
+            <Route path="/customer-portal/success" component={CustomerPortalPage} />
+            <Route path="/customer-portal" component={CustomerPortalPage} />
             <Route path="/rep" component={() => <RepDashboardPage />} />
             <Route component={NotFound} />
           </Switch>
