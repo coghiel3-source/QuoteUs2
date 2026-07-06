@@ -122,6 +122,7 @@ function PaymentForm({ account }: { account: any | null }) {
     contactName: account?.contactName || "",
     postalCode: account?.postalCode || "",
     email: account?.email || "",
+    phone: account?.phone || "",
     amount: "",
     description: "",
   });
@@ -142,7 +143,8 @@ function PaymentForm({ account }: { account: any | null }) {
           policyNumber: form.policyNumber.trim().toUpperCase() || undefined,
           contactName: form.contactName.trim(),
           postalCode: form.postalCode.trim().toUpperCase(),
-          email: form.email.trim() || undefined,
+          email: form.email.trim(),
+          phone: form.phone.trim() || undefined,
           amountCents,
           description: form.description.trim() || "Insurance Payment",
         }),
@@ -206,16 +208,28 @@ function PaymentForm({ account }: { account: any | null }) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="email">Email (optional)</Label>
+          <Label htmlFor="phone">Phone Number</Label>
           <Input
-            id="email"
-            data-testid="input-email-payment"
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            id="phone"
+            data-testid="input-phone-payment"
+            type="tel"
+            placeholder="416-555-0100"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="email">Email Address</Label>
+        <Input
+          id="email"
+          data-testid="input-email-payment"
+          type="email"
+          placeholder="you@example.com"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          required
+        />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="description">Payment Description</Label>

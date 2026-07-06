@@ -643,6 +643,7 @@ export const customerPayments = pgTable("customer_payments", {
   policyNumber: text("policy_number"),
   contactName: text("contact_name").notNull(),
   email: text("email"),
+  phone: text("phone"),
   description: text("description"),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"),

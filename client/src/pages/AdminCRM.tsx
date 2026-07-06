@@ -6628,6 +6628,7 @@ export default function AdminCRMPage() {
                                   <td className="px-4 py-2.5">
                                     <div className="font-medium">{p.contactName}</div>
                                     <div className="text-xs text-gray-500">{p.email || ''}</div>
+                                    {p.phone && <div className="text-xs text-gray-500" data-testid={`billing-cust-phone-${p.id}`}>{p.phone}</div>}
                                   </td>
                                   <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[200px]">
                                     <div className="truncate">{p.description || '—'}</div>
