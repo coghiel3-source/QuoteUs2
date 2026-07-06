@@ -118,6 +118,7 @@ function PaymentForm({ account }: { account: any | null }) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     accountNumber: account?.accountNumber || "",
+    policyNumber: "",
     contactName: account?.contactName || "",
     postalCode: account?.postalCode || "",
     email: account?.email || "",
@@ -138,6 +139,7 @@ function PaymentForm({ account }: { account: any | null }) {
         method: "POST",
         body: JSON.stringify({
           accountNumber: form.accountNumber.trim().toUpperCase(),
+          policyNumber: form.policyNumber.trim().toUpperCase() || undefined,
           contactName: form.contactName.trim(),
           postalCode: form.postalCode.trim().toUpperCase(),
           email: form.email.trim() || undefined,
@@ -159,27 +161,37 @@ function PaymentForm({ account }: { account: any | null }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label htmlFor="accountNumber">Account / Policy Number</Label>
+          <Label htmlFor="accountNumber">{account ? "Account Number" : "Account / Policy Number"}</Label>
           <Input
             id="accountNumber"
             data-testid="input-account-number"
-            placeholder="CP-XXXXXX or policy #"
+            placeholder={account ? "CP-XXXXXX" : "CP-XXXXXX or policy #"}
             value={form.accountNumber}
             onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
             required
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="contactName">Full Name</Label>
+          <Label htmlFor="policyNumber">Account / Policy # to Apply Payment</Label>
           <Input
-            id="contactName"
-            data-testid="input-contact-name"
-            placeholder="John Smith"
-            value={form.contactName}
-            onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-            required
+            id="policyNumber"
+            data-testid="input-policy-number"
+            placeholder="Policy or account # for this payment"
+            value={form.policyNumber}
+            onChange={(e) => setForm({ ...form, policyNumber: e.target.value })}
           />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="contactName">Full Name</Label>
+        <Input
+          id="contactName"
+          data-testid="input-contact-name"
+          placeholder="John Smith"
+          value={form.contactName}
+          onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+          required
+        />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -510,6 +522,9 @@ function Dashboard({ account, onLogout }: { account: any; onLogout: () => void }
                     <div key={p.id} data-testid={`payment-row-${p.id}`} className="flex items-center justify-between p-3 rounded-lg border bg-gray-50">
                       <div>
                         <p className="font-medium text-sm text-gray-900">{p.description || "Insurance Payment"}</p>
+                        {p.policyNumber && (
+                          <p className="text-xs text-gray-600 font-mono" data-testid={`payment-policy-${p.id}`}>Applied to: {p.policyNumber}</p>
+                        )}
                         <p className="text-xs text-gray-500">{formatDate(p.createdAt)}</p>
                       </div>
                       <div className="text-right">

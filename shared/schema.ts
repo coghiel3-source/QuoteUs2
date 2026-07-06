@@ -640,6 +640,7 @@ export const customerAccounts = pgTable("customer_accounts", {
 export const customerPayments = pgTable("customer_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   accountNumber: varchar("account_number", { length: 20 }).notNull(),
+  policyNumber: text("policy_number"),
   contactName: text("contact_name").notNull(),
   email: text("email"),
   description: text("description"),

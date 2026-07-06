@@ -6629,7 +6629,10 @@ export default function AdminCRMPage() {
                                     <div className="font-medium">{p.contactName}</div>
                                     <div className="text-xs text-gray-500">{p.email || ''}</div>
                                   </td>
-                                  <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[200px] truncate">{p.description || '—'}</td>
+                                  <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[200px]">
+                                    <div className="truncate">{p.description || '—'}</div>
+                                    {p.policyNumber && <div className="font-mono text-[11px] text-blue-700" data-testid={`billing-cust-policy-${p.id}`}>Apply to: {p.policyNumber}</div>}
+                                  </td>
                                   <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency(p.amount)}</td>
                                   <td className="px-4 py-2.5 text-center">{statusBadge(p.status)}</td>
                                   <td className="px-4 py-2.5 text-xs text-gray-500">{fmtDate(p.paidAt || p.createdAt)}</td>

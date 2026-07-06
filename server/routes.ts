@@ -6222,10 +6222,11 @@ export async function registerRoutes(
   // Create a Stripe checkout session for a customer payment
   app.post("/api/customer/payment", async (req, res) => {
     try {
-      const { accountNumber, contactName, postalCode, amountCents, description, email } = req.body;
+      const { accountNumber, policyNumber, contactName, postalCode, amountCents, description, email } = req.body;
       if (!accountNumber || !contactName || !postalCode || !amountCents || amountCents < 50) {
         return res.status(400).json({ error: "Missing required fields or amount too small." });
       }
+      const policyRef = typeof policyNumber === "string" ? policyNumber.trim() : "";
 
       const stripe = await getUncachableStripeClient();
 
@@ -6241,7 +6242,7 @@ export async function registerRoutes(
               unit_amount: amountCents,
               product_data: {
                 name: description || "Insurance Payment",
-                description: `Account: ${accountNumber}`,
+                description: `Account: ${accountNumber}${policyRef ? ` · Apply to Policy: ${policyRef}` : ""}`,
               },
             },
             quantity: 1,
@@ -6249,11 +6250,12 @@ export async function registerRoutes(
         ],
         success_url: `${origin}/customer-portal/success?session_id={CHECKOUT_SESSION_ID}&account=${encodeURIComponent(accountNumber)}`,
         cancel_url: `${origin}/customer-portal`,
-        metadata: { accountNumber, contactName, postalCode },
+        metadata: { accountNumber, policyNumber: policyRef, contactName, postalCode },
       });
 
       const payment = await storage.createCustomerPayment({
         accountNumber,
+        policyNumber: policyRef || null,
         contactName,
         email: email || null,
         description: description || "Insurance Payment",
