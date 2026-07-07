@@ -33,12 +33,24 @@ services — failures are isolated to specific request handlers.
   The Billing Central payment-allocation feature needs a new table (drizzle
   `db:push` is blocked in this repl by an unrelated interactive prompt, so create
   it directly): `CREATE TABLE IF NOT EXISTS payment_allocations (id varchar
-  PRIMARY KEY DEFAULT gen_random_uuid(), payment_id varchar NOT NULL REFERENCES
-  customer_payments(id) ON DELETE CASCADE, target_type varchar(20) NOT NULL,
-  target_id varchar NOT NULL, target_label text NOT NULL, amount numeric(10,2) NOT
-  NULL, note text, created_by varchar, created_at timestamp DEFAULT now() NOT
-  NULL);` — match the exact columns to shared/schema.ts `paymentAllocations` if it
-  drifts.
+  PRIMARY KEY DEFAULT gen_random_uuid(), payment_id varchar NOT NULL,
+  payment_source varchar(20) NOT NULL DEFAULT 'customer', target_type varchar(20)
+  NOT NULL, target_id varchar NOT NULL, target_label text NOT NULL, amount
+  numeric(10,2) NOT NULL, note text, created_by varchar, created_at timestamp
+  DEFAULT now() NOT NULL);` — match the exact columns to shared/schema.ts
+  `paymentAllocations` if it drifts.
+  Allocations are now source-polymorphic: `payment_id` points to either
+  `customer_payments` OR `rg_payments`, disambiguated by `payment_source`
+  ('customer'|'rg'). There is deliberately NO FK on `payment_id` (a customer-only
+  FK can't cover both sources). If an older DB still has the FK, drop it:
+  `ALTER TABLE payment_allocations DROP CONSTRAINT IF EXISTS
+  payment_allocations_payment_id_fkey;` and add the column if missing:
+  `ALTER TABLE payment_allocations ADD COLUMN IF NOT EXISTS payment_source
+  varchar(20) NOT NULL DEFAULT 'customer';`
+  **Why no FK is safe:** no payment-delete methods exist in storage, so the old
+  ON DELETE CASCADE never fired anyway; integrity is enforced in
+  createPaymentAllocation (row-locks the source payment, validates against its
+  amount).
 
 ## Breaks off-Replit until changed
 - Replit Object Storage uses a sidecar at http://127.0.0.1:1106 plus

@@ -3962,6 +3962,15 @@ export async function registerRoutes(
       const existing = await storage.getLocation(req.params.id);
       if (!existing) return res.status(404).json({ error: "Location not found" });
       if (!(await canActorAccessRepResource(actor, existing.repId))) return res.status(403).json({ error: "Access denied" });
+      // Guard: deleting a location cascades to its RG payments. If any of those payments
+      // have fund allocations, block the delete so we don't orphan allocation records.
+      const locPayments = await storage.getPaymentsForLocation(req.params.id);
+      for (const p of locPayments) {
+        const allocs = await storage.getAllocationsForPayment(p.id);
+        if (allocs.length > 0) {
+          return res.status(400).json({ error: "This location has payments with applied funds. Remove those fund allocations before deleting the location." });
+        }
+      }
       await storage.deleteLocation(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
@@ -6050,7 +6059,19 @@ export async function registerRoutes(
         }
       }
       const payments = await storage.getAllRgPayments();
-      res.json(payments);
+      const allocations = await storage.getAllPaymentAllocations();
+      const enriched = payments.map((p) => {
+        const paymentCents = p.amountCents || 0;
+        const own = allocations.filter((a) => a.paymentId === p.id && a.paymentSource === "rg");
+        const allocatedCents = own.reduce((sum, a) => sum + Math.round(parseFloat(a.amount) * 100), 0);
+        return {
+          ...p,
+          allocations: own,
+          allocatedAmount: (allocatedCents / 100).toFixed(2),
+          remainingAmount: ((paymentCents - allocatedCents) / 100).toFixed(2),
+        };
+      });
+      res.json(enriched);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -6079,6 +6100,13 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Forbidden" });
       }
       const { status, description, periodLabel, landlordName, landlordEmail } = req.body;
+      // Guard: don't move a payment away from "paid" while allocations still reference it
+      if (status !== undefined && status !== "paid") {
+        const existing = await storage.getAllocationsForPayment(req.params.id);
+        if (existing.length > 0) {
+          return res.status(400).json({ error: "Remove the fund allocations before changing this payment away from Paid." });
+        }
+      }
       const updated = await storage.updateRgPayment(req.params.id, {
         ...(status !== undefined && { status }),
         ...(description !== undefined && { description }),
@@ -6104,7 +6132,7 @@ export async function registerRoutes(
       const allocations = await storage.getAllPaymentAllocations();
       const enriched = payments.map((p) => {
         const paymentCents = Math.round(parseFloat(p.amount) * 100);
-        const own = allocations.filter((a) => a.paymentId === p.id);
+        const own = allocations.filter((a) => a.paymentId === p.id && a.paymentSource !== "rg");
         const allocatedCents = own.reduce((sum, a) => sum + Math.round(parseFloat(a.amount) * 100), 0);
         return {
           ...p,
@@ -6189,6 +6217,40 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Choose a customer or location to apply funds to." });
       }
       const created = await storage.createPaymentAllocation(req.params.id, {
+        paymentSource: "customer",
+        targetType,
+        targetId,
+        targetLabel,
+        amount,
+        note: note || null,
+        createdBy: user.id,
+      });
+      res.json(created);
+    } catch (error: any) {
+      if (typeof error?.message === "string" && error.message.startsWith("VALIDATION: ")) {
+        return res.status(400).json({ error: error.message.replace("VALIDATION: ", "") });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create an allocation for a Rent Guarantee payment (apply part/all to a customer or location)
+  app.post("/api/admin/billing/rg-payments/:id/allocations", async (req, res) => {
+    try {
+      const actorId = (req.body?.actorId as string | undefined) || (req.query.actorId as string | undefined);
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const { targetType, targetId, targetLabel, amount, note } = req.body;
+      if (targetType !== "customer" && targetType !== "location") {
+        return res.status(400).json({ error: "Select whether you're applying funds to a customer or a location." });
+      }
+      if (!targetId || !targetLabel) {
+        return res.status(400).json({ error: "Choose a customer or location to apply funds to." });
+      }
+      const created = await storage.createPaymentAllocation(req.params.id, {
+        paymentSource: "rg",
         targetType,
         targetId,
         targetLabel,

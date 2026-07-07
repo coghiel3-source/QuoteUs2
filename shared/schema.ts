@@ -671,7 +671,9 @@ export type InsertCustomerPayment = z.infer<typeof insertCustomerPaymentSchema>;
 // Payment allocations: split a customer payment across customers/locations
 export const paymentAllocations = pgTable("payment_allocations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  paymentId: varchar("payment_id").notNull().references(() => customerPayments.id, { onDelete: "cascade" }),
+  // Polymorphic source: id points to either customer_payments or rg_payments depending on paymentSource
+  paymentId: varchar("payment_id").notNull(),
+  paymentSource: varchar("payment_source", { length: 20 }).notNull().default("customer"), // 'customer' | 'rg'
   targetType: varchar("target_type", { length: 20 }).notNull(), // 'customer' | 'location'
   targetId: varchar("target_id").notNull(),
   targetLabel: text("target_label").notNull(),

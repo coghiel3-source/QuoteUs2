@@ -1134,17 +1134,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPaymentAllocation(paymentId: string, data: Omit<InsertPaymentAllocation, "paymentId">): Promise<PaymentAllocation> {
+    const source = data.paymentSource === "rg" ? "rg" : "customer";
     return db.transaction(async (tx) => {
-      const [payment] = await tx.select().from(customerPayments).where(eq(customerPayments.id, paymentId)).for("update");
-      if (!payment) throw new Error("VALIDATION: Payment not found");
-      if (payment.status !== "paid") throw new Error("VALIDATION: Only paid payments can be allocated");
+      // Lock the source payment row so concurrent allocations can't jointly over-allocate
+      let paymentCents: number;
+      if (source === "rg") {
+        const [payment] = await tx.select().from(rgPayments).where(eq(rgPayments.id, paymentId)).for("update");
+        if (!payment) throw new Error("VALIDATION: Payment not found");
+        if (payment.status !== "paid") throw new Error("VALIDATION: Only paid payments can be allocated");
+        paymentCents = payment.amountCents || 0;
+      } else {
+        const [payment] = await tx.select().from(customerPayments).where(eq(customerPayments.id, paymentId)).for("update");
+        if (!payment) throw new Error("VALIDATION: Payment not found");
+        if (payment.status !== "paid") throw new Error("VALIDATION: Only paid payments can be allocated");
+        paymentCents = Math.round(parseFloat(payment.amount) * 100);
+      }
       const newCents = Math.round(parseFloat(String(data.amount)) * 100);
       if (!Number.isFinite(newCents) || newCents <= 0) throw new Error("VALIDATION: Allocation amount must be greater than zero");
       const existing = await tx.select().from(paymentAllocations).where(eq(paymentAllocations.paymentId, paymentId));
-      const paymentCents = Math.round(parseFloat(payment.amount) * 100);
       const allocatedCents = existing.reduce((sum, a) => sum + Math.round(parseFloat(a.amount) * 100), 0);
       if (allocatedCents + newCents > paymentCents) throw new Error("VALIDATION: Allocation exceeds the remaining balance for this payment");
-      const [created] = await tx.insert(paymentAllocations).values({ ...data, paymentId, amount: (newCents / 100).toFixed(2) }).returning();
+      const [created] = await tx.insert(paymentAllocations).values({ ...data, paymentId, paymentSource: source, amount: (newCents / 100).toFixed(2) }).returning();
       return created;
     });
   }

@@ -6358,12 +6358,10 @@ export default function AdminCRMPage() {
             setNewAllocTargetId('');
             setNewAllocAmount('');
             setNewAllocNote('');
-            if (type === 'customer') {
-              fetch(`/api/admin/billing/allocation-targets?actorId=${user?.id}`)
-                .then(r => r.ok ? r.json() : { customers: [], locations: [] })
-                .then(setAllocTargets)
-                .catch(() => setAllocTargets({ customers: [], locations: [] }));
-            }
+            fetch(`/api/admin/billing/allocation-targets?actorId=${user?.id}`)
+              .then(r => r.ok ? r.json() : { customers: [], locations: [] })
+              .then(setAllocTargets)
+              .catch(() => setAllocTargets({ customers: [], locations: [] }));
           };
 
           const saveEdit = async () => {
@@ -6390,14 +6388,16 @@ export default function AdminCRMPage() {
             }
           };
 
-          // Re-fetch customer payments and refresh the open dialog's snapshot
+          // Re-fetch payments and refresh the open dialog's snapshot (works for both RG and customer)
           const syncEditingPayment = async () => {
+            if (!editingPayment) return;
+            const isRg = editingPayment.type === 'rg';
             try {
-              const res = await fetch(`/api/admin/billing/customer-payments?actorId=${user?.id}`);
+              const res = await fetch(`/api/admin/billing/${isRg ? 'rg-payments' : 'customer-payments'}?actorId=${user?.id}`);
               if (res.ok) {
                 const list = await res.json();
-                setBillingCustomerPayments(list);
-                setEditingPayment(prev => (prev && prev.type === 'customer')
+                if (isRg) setBillingRgPayments(list); else setBillingCustomerPayments(list);
+                setEditingPayment(prev => (prev && prev.type === (isRg ? 'rg' : 'customer'))
                   ? { ...prev, data: list.find((x: any) => x.id === prev.data.id) || prev.data }
                   : prev);
               }
@@ -6419,7 +6419,8 @@ export default function AdminCRMPage() {
             }
             setSavingAlloc(true);
             try {
-              const res = await fetch(`/api/admin/billing/customer-payments/${editingPayment.data.id}/allocations`, {
+              const base = editingPayment.type === 'rg' ? 'rg-payments' : 'customer-payments';
+              const res = await fetch(`/api/admin/billing/${base}/${editingPayment.data.id}/allocations`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ actorId: user?.id, targetType: newAllocType, targetId: target.id, targetLabel: target.label, amount: newAllocAmount, note: newAllocNote || null }),
@@ -6622,6 +6623,7 @@ export default function AdminCRMPage() {
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">RG Rep</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Plan</th>
                                 <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Amount</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Applied / Remaining</th>
                                 <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Term Balance</th>
                                 <th className="text-center px-4 py-2 font-medium text-xs text-gray-600">Status</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Date</th>
@@ -6645,6 +6647,16 @@ export default function AdminCRMPage() {
                                     <div className="text-xs text-gray-500">{p.periodLabel || ''}</div>
                                   </td>
                                   <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency((p.amountCents || 0) / 100)}</td>
+                                  <td className="px-4 py-2.5 text-right text-xs">
+                                    {p.status === 'paid' ? (
+                                      <>
+                                        <div className="text-gray-600" data-testid={`billing-rg-applied-${p.id}`}>{fmtCurrency(p.allocatedAmount ?? 0)} applied</div>
+                                        <div className={`font-semibold ${parseFloat(p.remainingAmount ?? String((p.amountCents || 0) / 100)) > 0.004 ? 'text-amber-600' : 'text-green-600'}`} data-testid={`billing-rg-remaining-${p.id}`}>{fmtCurrency(p.remainingAmount ?? (p.amountCents || 0) / 100)} left</div>
+                                      </>
+                                    ) : (
+                                      <span className="text-gray-400">—</span>
+                                    )}
+                                  </td>
                                   <td className="px-4 py-2.5 text-right" data-testid={`billing-rg-balance-${p.id}`}>
                                     {p.termTotalCents != null ? (
                                       <>
@@ -6947,15 +6959,15 @@ export default function AdminCRMPage() {
                         />
                       </div>
 
-                      {editingPayment.type === 'customer' && editingPayment.data.status === 'paid' && (
+                      {(editingPayment.type === 'customer' || editingPayment.type === 'rg') && editingPayment.data.status === 'paid' && (
                         <div className="space-y-3 border-t pt-4">
                           <div className="flex items-center justify-between">
                             <label className="text-sm font-medium">Apply funds to customers / locations</label>
                             <span
-                              className={`text-xs font-semibold ${parseFloat(editingPayment.data.remainingAmount ?? editingPayment.data.amount) > 0.004 ? 'text-amber-600' : 'text-green-600'}`}
+                              className={`text-xs font-semibold ${parseFloat((editingPayment.data.remainingAmount ?? editingPayment.data.amount ?? ((editingPayment.data.amountCents || 0) / 100).toFixed(2))) > 0.004 ? 'text-amber-600' : 'text-green-600'}`}
                               data-testid="billing-alloc-remaining"
                             >
-                              {fmtCurrency(editingPayment.data.remainingAmount ?? editingPayment.data.amount)} left
+                              {fmtCurrency((editingPayment.data.remainingAmount ?? editingPayment.data.amount ?? ((editingPayment.data.amountCents || 0) / 100).toFixed(2)))} left
                             </span>
                           </div>
 
@@ -6978,7 +6990,7 @@ export default function AdminCRMPage() {
                             </div>
                           )}
 
-                          {parseFloat(editingPayment.data.remainingAmount ?? editingPayment.data.amount) > 0.004 ? (
+                          {parseFloat((editingPayment.data.remainingAmount ?? editingPayment.data.amount ?? ((editingPayment.data.amountCents || 0) / 100).toFixed(2))) > 0.004 ? (
                             <div className="space-y-2 border rounded-md p-3">
                               <div className="flex gap-2">
                                 <button type="button" onClick={() => { setNewAllocType('customer'); setNewAllocTargetId(''); }} className={`flex-1 text-xs py-1.5 rounded border ${newAllocType === 'customer' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700'}`} data-testid="billing-alloc-type-customer">Customer</button>
