@@ -1,5 +1,5 @@
 // Database blueprint integration - see blueprint:javascript_database
-import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, rgOrganizations, rgOrgMembers, serviceAgreements, serviceAgreementAttachments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate, type RgOrganization, type InsertRgOrganization, type RgOrgMember, type ServiceAgreement, type InsertServiceAgreement, type SaAttachment, type InsertSaAttachment } from "@shared/schema";
+import { users, quotes, activities, transactions, systemSettings, otpSettings, advertisements, brokerNotes, partnerRedirects, referralPartners, rgLocations, rgLeads, documentRequests, repDocuments, repReminders, signatureTemplates, signatureRequests, locationDocSignatures, locationDocSignatureFiles, docTemplates, rgPayments, repPayouts, customerAccounts, customerPayments, paymentAllocations, rgOrganizations, rgOrgMembers, serviceAgreements, serviceAgreementAttachments, type User, type InsertUser, type Quote, type InsertQuote, type Activity, type InsertActivity, type Transaction, type InsertTransaction, type SystemSetting, type OtpSettings, type Advertisement, type InsertAdvertisement, type BrokerNote, type InsertBrokerNote, type PartnerRedirect, type InsertPartnerRedirect, type ReferralPartner, type InsertReferralPartner, type RgLocation, type InsertRgLocation, type RgLead, type InsertRgLead, type DocumentRequest, type InsertDocumentRequest, type RepDocument, type InsertRepDocument, type RepReminder, type InsertRepReminder, type RgPayment, type RepPayout, type CustomerAccount, type CustomerPayment, type PaymentAllocation, type InsertPaymentAllocation, type LocationDocSignature, type LocationDocSignatureFile, type DocTemplate, type RgOrganization, type InsertRgOrganization, type RgOrgMember, type ServiceAgreement, type InsertServiceAgreement, type SaAttachment, type InsertSaAttachment } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, lte, gte, isNull, isNotNull, inArray } from "drizzle-orm";
 
@@ -167,6 +167,12 @@ export interface IStorage {
   getCustomerPaymentBySession(sessionId: string): Promise<CustomerPayment | undefined>;
   updateCustomerPayment(id: string, data: any): Promise<CustomerPayment | undefined>;
   getCustomerPaymentsByAccount(accountNumber: string): Promise<CustomerPayment[]>;
+  getAllCustomerAccounts(): Promise<CustomerAccount[]>;
+  getCustomerPayment(id: string): Promise<CustomerPayment | undefined>;
+  getAllPaymentAllocations(): Promise<PaymentAllocation[]>;
+  getAllocationsForPayment(paymentId: string): Promise<PaymentAllocation[]>;
+  createPaymentAllocation(paymentId: string, data: Omit<InsertPaymentAllocation, "paymentId">): Promise<PaymentAllocation>;
+  deletePaymentAllocation(id: string): Promise<PaymentAllocation | undefined>;
   getQuotesByEmail(email: string): Promise<Quote[]>;
 
   // RG Organization operations
@@ -1108,6 +1114,44 @@ export class DatabaseStorage implements IStorage {
 
   async getCustomerPaymentsByAccount(accountNumber: string): Promise<CustomerPayment[]> {
     return db.select().from(customerPayments).where(eq(customerPayments.accountNumber, accountNumber)).orderBy(desc(customerPayments.createdAt));
+  }
+
+  async getAllCustomerAccounts(): Promise<CustomerAccount[]> {
+    return db.select().from(customerAccounts).orderBy(desc(customerAccounts.createdAt));
+  }
+
+  async getCustomerPayment(id: string): Promise<CustomerPayment | undefined> {
+    const [row] = await db.select().from(customerPayments).where(eq(customerPayments.id, id));
+    return row;
+  }
+
+  async getAllPaymentAllocations(): Promise<PaymentAllocation[]> {
+    return db.select().from(paymentAllocations).orderBy(desc(paymentAllocations.createdAt));
+  }
+
+  async getAllocationsForPayment(paymentId: string): Promise<PaymentAllocation[]> {
+    return db.select().from(paymentAllocations).where(eq(paymentAllocations.paymentId, paymentId)).orderBy(desc(paymentAllocations.createdAt));
+  }
+
+  async createPaymentAllocation(paymentId: string, data: Omit<InsertPaymentAllocation, "paymentId">): Promise<PaymentAllocation> {
+    return db.transaction(async (tx) => {
+      const [payment] = await tx.select().from(customerPayments).where(eq(customerPayments.id, paymentId)).for("update");
+      if (!payment) throw new Error("VALIDATION: Payment not found");
+      if (payment.status !== "paid") throw new Error("VALIDATION: Only paid payments can be allocated");
+      const newCents = Math.round(parseFloat(String(data.amount)) * 100);
+      if (!Number.isFinite(newCents) || newCents <= 0) throw new Error("VALIDATION: Allocation amount must be greater than zero");
+      const existing = await tx.select().from(paymentAllocations).where(eq(paymentAllocations.paymentId, paymentId));
+      const paymentCents = Math.round(parseFloat(payment.amount) * 100);
+      const allocatedCents = existing.reduce((sum, a) => sum + Math.round(parseFloat(a.amount) * 100), 0);
+      if (allocatedCents + newCents > paymentCents) throw new Error("VALIDATION: Allocation exceeds the remaining balance for this payment");
+      const [created] = await tx.insert(paymentAllocations).values({ ...data, paymentId, amount: (newCents / 100).toFixed(2) }).returning();
+      return created;
+    });
+  }
+
+  async deletePaymentAllocation(id: string): Promise<PaymentAllocation | undefined> {
+    const [deleted] = await db.delete(paymentAllocations).where(eq(paymentAllocations.id, id)).returning();
+    return deleted;
   }
 
   async getQuotesByEmail(email: string): Promise<Quote[]> {

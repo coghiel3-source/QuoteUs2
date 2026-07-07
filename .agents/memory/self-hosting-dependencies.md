@@ -30,6 +30,15 @@ services — failures are isolated to specific request handlers.
   Without stripe_invoice_id, Stripe reconciliation inserts throw and sync
   silently reports 0 (errors caught per-location). Without policy_number,
   POST /api/customer/payment throws — customer portal payments break outright.
+  The Billing Central payment-allocation feature needs a new table (drizzle
+  `db:push` is blocked in this repl by an unrelated interactive prompt, so create
+  it directly): `CREATE TABLE IF NOT EXISTS payment_allocations (id varchar
+  PRIMARY KEY DEFAULT gen_random_uuid(), payment_id varchar NOT NULL REFERENCES
+  customer_payments(id) ON DELETE CASCADE, target_type varchar(20) NOT NULL,
+  target_id varchar NOT NULL, target_label text NOT NULL, amount numeric(10,2) NOT
+  NULL, note text, created_by varchar, created_at timestamp DEFAULT now() NOT
+  NULL);` — match the exact columns to shared/schema.ts `paymentAllocations` if it
+  drifts.
 
 ## Breaks off-Replit until changed
 - Replit Object Storage uses a sidecar at http://127.0.0.1:1106 plus

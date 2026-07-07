@@ -663,6 +663,12 @@ export default function AdminCRMPage() {
   const [editPaymentDesc, setEditPaymentDesc] = useState('');
   const [editPaymentNotes, setEditPaymentNotes] = useState('');
   const [savingPayment, setSavingPayment] = useState(false);
+  const [allocTargets, setAllocTargets] = useState<{ customers: any[]; locations: any[] }>({ customers: [], locations: [] });
+  const [newAllocType, setNewAllocType] = useState<'customer' | 'location'>('customer');
+  const [newAllocTargetId, setNewAllocTargetId] = useState('');
+  const [newAllocAmount, setNewAllocAmount] = useState('');
+  const [newAllocNote, setNewAllocNote] = useState('');
+  const [savingAlloc, setSavingAlloc] = useState(false);
   const [billingStatusFilter, setBillingStatusFilter] = useState('all');
   const [billingRgSearch, setBillingRgSearch] = useState('');
   const [billingRgRepFilter, setBillingRgRepFilter] = useState('all');
@@ -6348,6 +6354,16 @@ export default function AdminCRMPage() {
             setEditPaymentStatus(data.status || '');
             setEditPaymentDesc(data.description || '');
             setEditPaymentNotes('');
+            setNewAllocType('customer');
+            setNewAllocTargetId('');
+            setNewAllocAmount('');
+            setNewAllocNote('');
+            if (type === 'customer') {
+              fetch(`/api/admin/billing/allocation-targets?actorId=${user?.id}`)
+                .then(r => r.ok ? r.json() : { customers: [], locations: [] })
+                .then(setAllocTargets)
+                .catch(() => setAllocTargets({ customers: [], locations: [] }));
+            }
           };
 
           const saveEdit = async () => {
@@ -6365,9 +6381,70 @@ export default function AdminCRMPage() {
               if (res.ok) {
                 setEditingPayment(null);
                 fetchBillingData();
+              } else {
+                const e = await res.json().catch(() => ({}));
+                toast({ title: 'Could not save payment', description: e.error || 'Save failed', variant: 'destructive' });
               }
             } finally {
               setSavingPayment(false);
+            }
+          };
+
+          // Re-fetch customer payments and refresh the open dialog's snapshot
+          const syncEditingPayment = async () => {
+            try {
+              const res = await fetch(`/api/admin/billing/customer-payments?actorId=${user?.id}`);
+              if (res.ok) {
+                const list = await res.json();
+                setBillingCustomerPayments(list);
+                setEditingPayment(prev => (prev && prev.type === 'customer')
+                  ? { ...prev, data: list.find((x: any) => x.id === prev.data.id) || prev.data }
+                  : prev);
+              }
+            } catch { /* ignore */ }
+          };
+
+          const addAllocation = async () => {
+            if (!editingPayment) return;
+            const pool = newAllocType === 'customer' ? allocTargets.customers : allocTargets.locations;
+            const target = pool.find((t: any) => t.id === newAllocTargetId);
+            if (!target) {
+              toast({ title: 'Choose a target', description: `Pick a ${newAllocType} to apply funds to.`, variant: 'destructive' });
+              return;
+            }
+            const amt = parseFloat(newAllocAmount);
+            if (!amt || amt <= 0) {
+              toast({ title: 'Enter an amount', description: 'Allocation amount must be greater than zero.', variant: 'destructive' });
+              return;
+            }
+            setSavingAlloc(true);
+            try {
+              const res = await fetch(`/api/admin/billing/customer-payments/${editingPayment.data.id}/allocations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ actorId: user?.id, targetType: newAllocType, targetId: target.id, targetLabel: target.label, amount: newAllocAmount, note: newAllocNote || null }),
+              });
+              if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Failed to apply funds'); }
+              setNewAllocTargetId(''); setNewAllocAmount(''); setNewAllocNote('');
+              await syncEditingPayment();
+              toast({ title: 'Funds applied', description: `Applied to ${target.label}.` });
+            } catch (e: any) {
+              toast({ title: 'Could not apply funds', description: e.message, variant: 'destructive' });
+            } finally {
+              setSavingAlloc(false);
+            }
+          };
+
+          const removeAllocation = async (allocId: string) => {
+            setSavingAlloc(true);
+            try {
+              const res = await fetch(`/api/admin/billing/allocations/${allocId}?actorId=${user?.id}`, { method: 'DELETE' });
+              if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Failed to remove allocation'); }
+              await syncEditingPayment();
+            } catch (e: any) {
+              toast({ title: 'Could not remove allocation', description: e.message, variant: 'destructive' });
+            } finally {
+              setSavingAlloc(false);
             }
           };
 
@@ -6616,6 +6693,7 @@ export default function AdminCRMPage() {
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Contact</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Description</th>
                                 <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Amount</th>
+                                <th className="text-right px-4 py-2 font-medium text-xs text-gray-600">Applied / Remaining</th>
                                 <th className="text-center px-4 py-2 font-medium text-xs text-gray-600">Status</th>
                                 <th className="text-left px-4 py-2 font-medium text-xs text-gray-600">Date</th>
                                 <th className="px-4 py-2"></th>
@@ -6635,6 +6713,16 @@ export default function AdminCRMPage() {
                                     {p.policyNumber && <div className="font-mono text-[11px] text-blue-700" data-testid={`billing-cust-policy-${p.id}`}>Apply to: {p.policyNumber}</div>}
                                   </td>
                                   <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency(p.amount)}</td>
+                                  <td className="px-4 py-2.5 text-right text-xs">
+                                    {p.status === 'paid' ? (
+                                      <>
+                                        <div className="text-gray-600" data-testid={`billing-cust-applied-${p.id}`}>{fmtCurrency(p.allocatedAmount ?? 0)} applied</div>
+                                        <div className={`font-semibold ${parseFloat(p.remainingAmount ?? p.amount) > 0.004 ? 'text-amber-600' : 'text-green-600'}`} data-testid={`billing-cust-remaining-${p.id}`}>{fmtCurrency(p.remainingAmount ?? p.amount)} left</div>
+                                      </>
+                                    ) : (
+                                      <span className="text-gray-400">—</span>
+                                    )}
+                                  </td>
                                   <td className="px-4 py-2.5 text-center">{statusBadge(p.status)}</td>
                                   <td className="px-4 py-2.5 text-xs text-gray-500">{fmtDate(p.paidAt || p.createdAt)}</td>
                                   <td className="px-4 py-2.5">
@@ -6858,6 +6946,65 @@ export default function AdminCRMPage() {
                           data-testid="billing-edit-desc"
                         />
                       </div>
+
+                      {editingPayment.type === 'customer' && editingPayment.data.status === 'paid' && (
+                        <div className="space-y-3 border-t pt-4">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium">Apply funds to customers / locations</label>
+                            <span
+                              className={`text-xs font-semibold ${parseFloat(editingPayment.data.remainingAmount ?? editingPayment.data.amount) > 0.004 ? 'text-amber-600' : 'text-green-600'}`}
+                              data-testid="billing-alloc-remaining"
+                            >
+                              {fmtCurrency(editingPayment.data.remainingAmount ?? editingPayment.data.amount)} left
+                            </span>
+                          </div>
+
+                          {(editingPayment.data.allocations || []).length > 0 && (
+                            <div className="space-y-1.5">
+                              {editingPayment.data.allocations.map((a: any) => (
+                                <div key={a.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-md px-3 py-2 text-sm" data-testid={`billing-alloc-row-${a.id}`}>
+                                  <div className="min-w-0">
+                                    <div className="font-medium truncate">{a.targetLabel}</div>
+                                    <div className="text-xs text-gray-500 capitalize">{a.targetType}{a.note ? ` · ${a.note}` : ''}</div>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="font-semibold">{fmtCurrency(a.amount)}</span>
+                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:text-red-600" onClick={() => removeAllocation(a.id)} disabled={savingAlloc} data-testid={`billing-alloc-remove-${a.id}`}>
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {parseFloat(editingPayment.data.remainingAmount ?? editingPayment.data.amount) > 0.004 ? (
+                            <div className="space-y-2 border rounded-md p-3">
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => { setNewAllocType('customer'); setNewAllocTargetId(''); }} className={`flex-1 text-xs py-1.5 rounded border ${newAllocType === 'customer' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700'}`} data-testid="billing-alloc-type-customer">Customer</button>
+                                <button type="button" onClick={() => { setNewAllocType('location'); setNewAllocTargetId(''); }} className={`flex-1 text-xs py-1.5 rounded border ${newAllocType === 'location' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700'}`} data-testid="billing-alloc-type-location">Location</button>
+                              </div>
+                              <select className="w-full border rounded-md px-3 py-2 text-sm" value={newAllocTargetId} onChange={e => setNewAllocTargetId(e.target.value)} data-testid="billing-alloc-target">
+                                <option value="">Select {newAllocType}…</option>
+                                {(newAllocType === 'customer' ? allocTargets.customers : allocTargets.locations).map((t: any) => (
+                                  <option key={t.id} value={t.id}>{t.label}</option>
+                                ))}
+                              </select>
+                              <div className="flex gap-2">
+                                <input type="number" step="0.01" min="0" className="w-32 border rounded-md px-3 py-2 text-sm" placeholder="Amount" value={newAllocAmount} onChange={e => setNewAllocAmount(e.target.value)} data-testid="billing-alloc-amount" />
+                                <input type="text" className="flex-1 border rounded-md px-3 py-2 text-sm" placeholder="Note (optional)" value={newAllocNote} onChange={e => setNewAllocNote(e.target.value)} data-testid="billing-alloc-note" />
+                              </div>
+                              <div className="flex justify-end">
+                                <Button size="sm" onClick={addAllocation} disabled={savingAlloc || !newAllocTargetId || !newAllocAmount} data-testid="billing-alloc-add">
+                                  {savingAlloc ? 'Applying…' : 'Apply funds'}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-green-600 font-medium" data-testid="billing-alloc-fully">All funds have been applied.</div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                     <div className="flex gap-2 px-6 pb-6">
                       <Button variant="outline" className="flex-1" onClick={() => setEditingPayment(null)} data-testid="billing-edit-cancel">Cancel</Button>

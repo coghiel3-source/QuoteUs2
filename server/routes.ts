@@ -6101,7 +6101,19 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Forbidden" });
       }
       const payments = await storage.getAllCustomerPayments();
-      res.json(payments);
+      const allocations = await storage.getAllPaymentAllocations();
+      const enriched = payments.map((p) => {
+        const paymentCents = Math.round(parseFloat(p.amount) * 100);
+        const own = allocations.filter((a) => a.paymentId === p.id);
+        const allocatedCents = own.reduce((sum, a) => sum + Math.round(parseFloat(a.amount) * 100), 0);
+        return {
+          ...p,
+          allocations: own,
+          allocatedAmount: (allocatedCents / 100).toFixed(2),
+          remainingAmount: ((paymentCents - allocatedCents) / 100).toFixed(2),
+        };
+      });
+      res.json(enriched);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -6115,12 +6127,95 @@ export async function registerRoutes(
         return res.status(403).json({ error: "Forbidden" });
       }
       const { status, description } = req.body;
+      // Guard: don't move a payment away from "paid" while allocations still reference it
+      if (status !== undefined && status !== "paid") {
+        const existing = await storage.getAllocationsForPayment(req.params.id);
+        if (existing.length > 0) {
+          return res.status(400).json({ error: "Remove the fund allocations before changing this payment away from Paid." });
+        }
+      }
       const updated = await storage.updateCustomerPayment(req.params.id, {
         ...(status !== undefined && { status }),
         ...(description !== undefined && { description }),
         ...(status === "paid" ? { paidAt: new Date() } : {}),
       });
       res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Targets a payment can be allocated to (customer accounts + RG locations)
+  app.get("/api/admin/billing/allocation-targets", async (req, res) => {
+    try {
+      const actorId = req.query.actorId as string | undefined;
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const [accounts, locations] = await Promise.all([
+        storage.getAllCustomerAccounts(),
+        storage.getAllLocations(),
+      ]);
+      const customers = accounts.map((a) => ({
+        id: a.id,
+        label: `${a.accountNumber} · ${a.contactName}`,
+        sublabel: a.email || "",
+      }));
+      const locs = locations.map((l) => ({
+        id: l.id,
+        label: l.propertyAddress + (l.unit ? ` #${l.unit}` : ""),
+        sublabel: [l.applicationNumber, l.landlordName].filter(Boolean).join(" · "),
+      }));
+      res.json({ customers, locations: locs });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create an allocation (apply part/all of a payment to a customer or location)
+  app.post("/api/admin/billing/customer-payments/:id/allocations", async (req, res) => {
+    try {
+      const actorId = (req.body?.actorId as string | undefined) || (req.query.actorId as string | undefined);
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const { targetType, targetId, targetLabel, amount, note } = req.body;
+      if (targetType !== "customer" && targetType !== "location") {
+        return res.status(400).json({ error: "Select whether you're applying funds to a customer or a location." });
+      }
+      if (!targetId || !targetLabel) {
+        return res.status(400).json({ error: "Choose a customer or location to apply funds to." });
+      }
+      const created = await storage.createPaymentAllocation(req.params.id, {
+        targetType,
+        targetId,
+        targetLabel,
+        amount,
+        note: note || null,
+        createdBy: user.id,
+      });
+      res.json(created);
+    } catch (error: any) {
+      if (typeof error?.message === "string" && error.message.startsWith("VALIDATION: ")) {
+        return res.status(400).json({ error: error.message.replace("VALIDATION: ", "") });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Remove an allocation (returns the funds to the payment's remaining balance)
+  app.delete("/api/admin/billing/allocations/:id", async (req, res) => {
+    try {
+      const actorId = (req.body?.actorId as string | undefined) || (req.query.actorId as string | undefined);
+      const user = actorId ? await storage.getUser(actorId) : (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "manager")) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const deleted = await storage.deletePaymentAllocation(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Allocation not found" });
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -668,6 +668,27 @@ export type InsertCustomerAccount = z.infer<typeof insertCustomerAccountSchema>;
 export type CustomerPayment = typeof customerPayments.$inferSelect;
 export type InsertCustomerPayment = z.infer<typeof insertCustomerPaymentSchema>;
 
+// Payment allocations: split a customer payment across customers/locations
+export const paymentAllocations = pgTable("payment_allocations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  paymentId: varchar("payment_id").notNull().references(() => customerPayments.id, { onDelete: "cascade" }),
+  targetType: varchar("target_type", { length: 20 }).notNull(), // 'customer' | 'location'
+  targetId: varchar("target_id").notNull(),
+  targetLabel: text("target_label").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  note: text("note"),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPaymentAllocationSchema = createInsertSchema(paymentAllocations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PaymentAllocation = typeof paymentAllocations.$inferSelect;
+export type InsertPaymentAllocation = z.infer<typeof insertPaymentAllocationSchema>;
+
 // ── RG Organizations ────────────────────────────────────────────────────────
 
 export const rgOrganizations = pgTable("rg_organizations", {
