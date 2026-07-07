@@ -31,6 +31,7 @@ interface VehicleSelectorProps {
   setValue: UseFormSetValue<any>;
   watch: UseFormWatch<any>;
   showVin?: boolean;
+  showDatePurchased?: boolean;
 }
 
 function SearchableSelect({ 
@@ -119,7 +120,7 @@ interface VehicleTrim {
 let cachedVehicles: Vehicle[] | null = null;
 let cachedVehicleTrims: VehicleTrim[] | null = null;
 
-export function VehicleSelector({ index, register, setValue, watch, showVin = false }: VehicleSelectorProps) {
+export function VehicleSelector({ index, register, setValue, watch, showVin = false, showDatePurchased = true }: VehicleSelectorProps) {
   const year = watch(`vehicles.${index}.year`);
   const make = watch(`vehicles.${index}.make`);
   const model = watch(`vehicles.${index}.model`);
@@ -282,6 +283,18 @@ export function VehicleSelector({ index, register, setValue, watch, showVin = fa
           <input type="hidden" {...register(`vehicles.${index}.trim`)} />
         </div>
       </div>
+
+      {showDatePurchased && (
+        <div className="space-y-2">
+           <Label htmlFor={`vehicle-${index}-date-purchased`}>Date Purchased (Optional)</Label>
+           <Input
+             id={`vehicle-${index}-date-purchased`}
+             type="date"
+             {...register(`vehicles.${index}.datePurchased`)}
+             data-testid={`input-date-purchased-${index}`}
+           />
+        </div>
+      )}
 
       {showVin && (
         <div className="space-y-2">

@@ -66,6 +66,7 @@ export default function HomeInsurancePage() {
         email: data.email,
         phone: data.phone,
         address: data.address,
+        city: data.city,
         postalCode: data.postalCode,
         yearBuilt: data.yearBuilt,
         sqft: data.sqft,
@@ -176,6 +177,11 @@ export default function HomeInsurancePage() {
                   <Label>Postal Code</Label>
                   <Input {...register("postalCode")} placeholder="M5V 2T6" required autoComplete="postal-code" />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input {...register("city")} placeholder="Toronto" autoComplete="address-level2" />
               </div>
 
               <div className="space-y-2">

@@ -67,6 +67,7 @@ export default function TenantPage() {
         phone: data.phone,
         address: data.address,
         unit: data.unit,
+        city: data.city,
         postalCode: data.postalCode,
         contentsValue: data.contentsValue,
         yearsAtAddress: data.yearsAtAddress,
@@ -176,9 +177,15 @@ export default function TenantPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                 <Label>Postal Code</Label>
-                 <Input {...register("postalCode")} placeholder="M5V 2T6" required autoComplete="postal-code" />
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <Label>City</Label>
+                   <Input {...register("city")} placeholder="Toronto" autoComplete="address-level2" />
+                </div>
+                <div className="space-y-2">
+                   <Label>Postal Code</Label>
+                   <Input {...register("postalCode")} placeholder="M5V 2T6" required autoComplete="postal-code" />
+                </div>
               </div>
 
               <div className="space-y-2">

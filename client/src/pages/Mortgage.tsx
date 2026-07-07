@@ -80,6 +80,7 @@ export default function MortgagePage() {
         email: data.email,
         phone: data.phone,
         address: data.address,
+        city: data.city,
         postalCode: data.postalCode,
         mortgageType: data.mortgageType,
         propertyType: data.propertyType,
@@ -251,6 +252,10 @@ export default function MortgagePage() {
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input {...register("city")} placeholder="Toronto" autoComplete="address-level2" data-testid="input-city" />
+                </div>
                 <div className="space-y-2">
                   <Label>Postal Code</Label>
                   <Input {...register("postalCode")} placeholder="M5V 3A8" required data-testid="input-postal-code" />

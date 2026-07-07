@@ -27,6 +27,7 @@ const autoSections: DetailSection[] = [
     icon: <MapPin size={16} />,
     fields: [
       { label: "Address", key: "address" },
+      { label: "City", key: "city" },
       { label: "Postal Code", key: "postalCode" },
     ]
   },
@@ -81,6 +82,7 @@ const homeSections: DetailSection[] = [
     icon: <MapPin size={16} />,
     fields: [
       { label: "Address", key: "address" },
+      { label: "City", key: "city" },
       { label: "Postal Code", key: "postalCode" },
     ]
   },
@@ -126,6 +128,7 @@ const tenantSections: DetailSection[] = [
     fields: [
       { label: "Address", key: "address" },
       { label: "Unit", key: "unit" },
+      { label: "City", key: "city" },
       { label: "Postal Code", key: "postalCode" },
     ]
   },
@@ -160,6 +163,7 @@ const businessSections: DetailSection[] = [
     icon: <MapPin size={16} />,
     fields: [
       { label: "Address", key: "address" },
+      { label: "City", key: "city" },
       { label: "Postal Code", key: "postalCode" },
     ]
   },
@@ -194,6 +198,7 @@ const lifeSections: DetailSection[] = [
     icon: <MapPin size={16} />,
     fields: [
       { label: "Address", key: "address" },
+      { label: "City", key: "city" },
       { label: "Postal Code", key: "postalCode" },
     ]
   },
@@ -237,6 +242,7 @@ const travelSections: DetailSection[] = [
     icon: <MapPin size={16} />,
     fields: [
       { label: "Address", key: "address" },
+      { label: "City", key: "city" },
       { label: "Postal Code", key: "postalCode" },
     ]
   },
@@ -271,6 +277,7 @@ const petSections: DetailSection[] = [
     icon: <MapPin size={16} />,
     fields: [
       { label: "Address", key: "address" },
+      { label: "City", key: "city" },
       { label: "Postal Code", key: "postalCode" },
     ]
   },
@@ -350,6 +357,7 @@ function renderVehicles(vehicles: any[]): React.ReactNode {
           </div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             {v.vin && <><span className="text-slate-500">VIN:</span><span className="font-medium">{v.vin}</span></>}
+            {v.datePurchased && <><span className="text-slate-500">Date Purchased:</span><span className="font-medium">{v.datePurchased}</span></>}
             <span className="text-slate-500">Usage:</span><span className="font-medium capitalize">{v.usage}</span>
             <span className="text-slate-500">Annual KM:</span><span className="font-medium">{v.annualKm?.toLocaleString()}</span>
             <span className="text-slate-500">Coverage:</span><span className="font-medium capitalize">{v.coverageType === 'full' ? 'Full Coverage' : 'Liability Only'}</span>

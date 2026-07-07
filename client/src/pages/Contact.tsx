@@ -40,6 +40,7 @@ export default function ContactPage() {
         email: data.email,
         phone: data.phone,
         address: data.address,
+        city: data.city,
         subject: data.subject,
         message: data.message,
         inquiryType: 'General Contact'
@@ -158,8 +159,13 @@ export default function ContactPage() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="address">Address</Label>
-                          <Input id="address" {...register("address")} placeholder="123 Main St, Toronto" autoComplete="street-address" />
+                          <Input id="address" {...register("address")} placeholder="123 Main St" autoComplete="street-address" />
                         </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input id="city" {...register("city")} placeholder="Toronto" autoComplete="address-level2" />
                       </div>
 
                       <div className="space-y-2">

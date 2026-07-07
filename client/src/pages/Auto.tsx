@@ -31,6 +31,7 @@ const autoSchema = z.object({
     maritalStatus: z.enum(["single", "married", "commonLaw", "divorced", "widowed"]).optional(),
     postalCode: z.string().regex(/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/, "Invalid Ontario postal code"),
     address: z.string().min(5, "Valid garaging address required"),
+    city: z.string().optional(),
     licenseType: z.enum(["G1", "G2", "G"]),
     licenseDate: z.string().min(1, "License date required"),
     licenseDateG2: z.string().optional(),
@@ -61,6 +62,7 @@ const autoSchema = z.object({
     model: z.string().min(1, "Model is required"),
     trim: z.string().optional(),
     vin: z.string().optional(),
+    datePurchased: z.string().optional(),
     usage: z.enum(["commute", "pleasure", "business", "rideshare"]),
     annualKm: z.number().min(0, "Kilometres required"),
     coverageType: z.enum(["liability", "full"]).default("liability"),
@@ -190,6 +192,7 @@ export default function AutoPage() {
           phone: data.primaryDriver.phone,
           dob: data.primaryDriver.dob,
           address: data.primaryDriver.address,
+          city: data.primaryDriver.city,
           postalCode: data.primaryDriver.postalCode,
           licenseType: data.primaryDriver.licenseType,
           licenseDate: data.primaryDriver.licenseDate,
@@ -206,6 +209,7 @@ export default function AutoPage() {
           make: v.make,
           model: v.model,
           vin: v.vin,
+          datePurchased: v.datePurchased,
           usage: v.usage,
           annualKm: v.annualKm,
           coverageType: v.coverageType,
@@ -385,6 +389,11 @@ export default function AutoPage() {
                     data-testid="input-address"
                   />
                   <p className="text-xs text-muted-foreground">Start typing to see suggestions, or enter your address manually</p>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input id="city" placeholder="Toronto" {...form.register("primaryDriver.city")} data-testid="input-city" autoComplete="address-level2" />
                 </div>
                 
                 <div className="md:col-span-2 grid md:grid-cols-2 gap-6 pt-4 border-t mt-2">

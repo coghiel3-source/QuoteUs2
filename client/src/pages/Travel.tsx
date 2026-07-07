@@ -43,6 +43,7 @@ export default function TravelPage() {
         email: data.email,
         phone: data.phone,
         address: data.address,
+        city: data.city,
         postalCode: data.postalCode,
         destination: data.destination,
         departureDate: data.departureDate,
@@ -129,6 +130,11 @@ export default function TravelPage() {
                   <Label>Postal Code</Label>
                   <Input {...register("postalCode")} placeholder="M5V 2T6" required />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input {...register("city")} placeholder="Toronto" autoComplete="address-level2" />
               </div>
 
               <div className="space-y-2">

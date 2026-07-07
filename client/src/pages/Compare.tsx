@@ -310,6 +310,7 @@ export default function ComparePage() {
                   register={form.register}
                   setValue={form.setValue}
                   watch={form.watch}
+                  showDatePurchased={false}
                 />
               </div>
 
@@ -329,6 +330,7 @@ export default function ComparePage() {
                   register={form.register}
                   setValue={form.setValue}
                   watch={form.watch}
+                  showDatePurchased={false}
                 />
               </div>
 

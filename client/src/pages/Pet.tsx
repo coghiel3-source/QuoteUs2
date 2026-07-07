@@ -41,6 +41,7 @@ export default function PetPage() {
         email: data.email,
         phone: data.phone,
         address: data.address,
+        city: data.city,
         postalCode: data.postalCode,
         petName: data.petName,
         petType: data.petType,
@@ -125,6 +126,11 @@ export default function PetPage() {
                   <Label>Postal Code</Label>
                   <Input {...register("postalCode")} placeholder="M5V 2T6" required />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input {...register("city")} placeholder="Toronto" autoComplete="address-level2" />
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
