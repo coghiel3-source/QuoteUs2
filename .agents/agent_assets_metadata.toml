@@ -54,3 +54,9 @@ id = "M8knE_aVYWo_YZhMuKbuU"
 uri = "file://dist-export/QuoteUs_Full_2026-07-19.zip"
 type = "unspecified"
 title = "QuoteUs Full Package — 2026-07-19 (latest)"
+
+[[outputs]]
+id = "oMBySNoRyoZDsQMrOoRNM"
+uri = "file://dist-export/QuoteUs_Complete_2026-07-19.zip"
+type = "unspecified"
+title = "QuoteUs Complete Package (live data, July 19 2026)"

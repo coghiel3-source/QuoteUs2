@@ -1,5 +1,22 @@
 import type { Express } from "express";
+import fs from "fs";
+import path from "path";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+
+/**
+ * Fallback for self-hosted (non-Replit) servers: files that were exported
+ * from object storage live on local disk under client/public/uploads/.
+ * Maps /objects/uploads/<name> -> client/public/uploads/<name>.
+ */
+function tryServeFromLocalDisk(objectPath: string, res: any): boolean {
+  const prefix = "/objects/uploads/";
+  if (!objectPath.startsWith(prefix)) return false;
+  const name = path.basename(objectPath.slice(prefix.length));
+  const abs = path.join(process.cwd(), "client", "public", "uploads", name);
+  if (!fs.existsSync(abs)) return false;
+  res.sendFile(abs);
+  return true;
+}
 
 /**
  * Register object storage routes for file uploads.
@@ -75,6 +92,9 @@ export function registerObjectStorageRoutes(app: Express): void {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
+      // Object storage unavailable (e.g. self-hosted) or object missing:
+      // fall back to the exported copy on local disk before erroring.
+      if (tryServeFromLocalDisk(req.path, res)) return;
       console.error("Error serving object:", error);
       if (error instanceof ObjectNotFoundError) {
         return res.status(404).json({ error: "Object not found" });

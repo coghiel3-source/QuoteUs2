@@ -66,13 +66,25 @@ export async function readFileFromAnyPath(filePath: string): Promise<Buffer | nu
   if (!filePath) return null;
   if (filePath.startsWith("/objects/")) {
     const entityId = filePath.slice("/objects/".length);
-    const fullPath = `${getPrivateDir()}/${entityId}`;
-    const { bucketName, objectName } = parseBucketPath(fullPath);
-    const file = objectStorageClient.bucket(bucketName).file(objectName);
-    const [exists] = await file.exists();
-    if (!exists) return null;
-    const [buf] = await file.download();
-    return buf;
+    try {
+      const fullPath = `${getPrivateDir()}/${entityId}`;
+      const { bucketName, objectName } = parseBucketPath(fullPath);
+      const file = objectStorageClient.bucket(bucketName).file(objectName);
+      const [exists] = await file.exists();
+      if (exists) {
+        const [buf] = await file.download();
+        return buf;
+      }
+    } catch {
+      // object storage unavailable (e.g. self-hosted) — try local disk below
+    }
+    // Fallback: exported copy on local disk under client/public/uploads/
+    if (entityId.startsWith("uploads/")) {
+      const name = path.basename(entityId.slice("uploads/".length));
+      const abs = path.join(process.cwd(), "client", "public", "uploads", name);
+      if (fs.existsSync(abs)) return fs.readFileSync(abs);
+    }
+    return null;
   }
   // legacy disk path
   const rel = filePath.replace(/^\//, "");

@@ -58,8 +58,24 @@ services — failures are isolated to specific request handlers.
   The e-signature / service-agreement document storage (persistBufferToStorage /
   persistLocalFileToStorage producing /objects/* URLs) depends on it and will throw
   on a third-party host. Fix: route those writes to local disk like the other
-  /uploads/* features (or an S3-compatible store). readFileFromAnyPath already reads
-  legacy /uploads/* from disk, so only the write paths need switching.
+  /uploads/* features (or an S3-compatible store).
+- READS of /objects/uploads/* now fall back to local disk
+  (client/public/uploads/<basename>) when the bucket is unavailable — both the
+  serve route and readFileFromAnyPath. So exported files keep working off-Replit;
+  only NEW uploads via the /objects write path still need the bucket.
+
+## Data location gotchas (learned July 2026)
+- The REAL leads/settings live in the production DB, not dev — always export from
+  prod (executeSql environment:"production", read-only) when building a backup.
+  Prod system_settings carries smtp_settings + stripe keys, so those genuinely
+  migrate with a prod DB dump.
+- Autoscale deployment disk is ephemeral: legacy /uploads/* files uploaded through
+  the live site are WIPED by each republish and unrecoverable (they 404 on the live
+  site too). Files written via persistBufferToStorage survive in the bucket under
+  .private/uploads/ and can be recovered from dev (same bucket shared dev/prod).
+- Hand-built SQL backups: pg_dump section dumps set search_path to '' — any
+  appended INSERTs need `SET search_path TO public;` first, and sequence-reset DO
+  blocks must schema-qualify table names.
 
 **Why:** the user repeatedly self-hosts this app on their own server (Hostinger /
 Web Hosting Canada). Knowing the exact Replit-only seams avoids re-investigating

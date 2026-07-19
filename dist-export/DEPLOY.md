@@ -16,42 +16,55 @@ This archive contains the complete website source code — nothing else needed.
 
 ## 2. Extract & Install
 ```
-tar -xzf quoteus-ca-website.tar.gz
-cd <extracted-folder>
+unzip QuoteUs_Complete_*.zip
+cd quoteus-ca
 npm install
 ```
 
 ---
 
-## 3. Database — Create & Initialize
+## 3. Database — Load Your Data (one command)
+
+**This package includes `database-backup.sql` — a complete copy of your
+LIVE QuoteUs database (snapshot from the running site, July 19 2026): every
+lead, user account, login, credit balance, and setting.** You do NOT need
+to build the database from scratch.
 
 ### 3a. Create an empty Postgres database
-On your DB host (Neon, Supabase, AWS RDS, DigitalOcean, or local Postgres):
+On your DB host (cPanel/Plesk database panel, Neon, Supabase, DigitalOcean,
+or local Postgres). If using SQL directly:
 ```sql
 CREATE DATABASE quoteus;
 CREATE USER quoteus_app WITH ENCRYPTED PASSWORD 'change-me';
 GRANT ALL PRIVILEGES ON DATABASE quoteus TO quoteus_app;
 ```
-Grab the connection string:
+Your connection string is then:
 `postgres://quoteus_app:change-me@HOST:5432/quoteus`
+(put it in `.env` as `DATABASE_URL` — see §4)
 
-### 3b. Put it in `.env`
-Create a file called `.env` in the project root (see full template in §4).
-
-### 3c. Push the schema
-This creates every table the app needs (users, quotes, rg_locations, rg_leads,
-rg_organizations, rg_org_members, service_agreements, system_settings, etc.):
+### 3b. Load the backup — this is the whole setup
 ```
-npm run db:push
+psql "postgres://quoteus_app:change-me@HOST:5432/quoteus" < database-backup.sql
 ```
-If it prompts about rename vs create, choose **create**.
+Done. This creates **all tables AND restores all your existing data** in one
+step. Your admin account and password work exactly as before — just log in.
+Do **not** run `npm run db:push` after restoring (the backup already matches
+this code version).
 
-### 3d. Create your first admin
-After your first login (any method), promote yourself:
+> On cPanel hosts without shell access: create the database in the panel,
+> then use **phpPgAdmin → SQL → import** to load `database-backup.sql`.
+
+### Only if you want to start EMPTY instead (no old data)
+Skip the backup. Run `npm run db:push` to create blank tables, then after
+your first login promote yourself to admin:
 ```sql
 UPDATE users SET role='admin' WHERE email='you@yourdomain.com';
 ```
-Log out and back in — you'll now see `/admin` and `/rep` routes.
+
+### Only if your server ALREADY runs QuoteUs with its own data
+Do **not** load the backup (it would sit alongside/conflict with your live
+data). Keep your existing database and just update its schema:
+`npm run db:push` (or the SQL in §9).
 
 ---
 
@@ -69,11 +82,14 @@ APP_BASE_URL=https://yourdomain.com
 # Optional: bind address. Defaults to 0.0.0.0 (correct for almost all hosts).
 # HOST=0.0.0.0
 
-# ── Object Storage (GCS by default; swap server/objectStorage*.ts for S3/R2) ──
-DEFAULT_OBJECT_STORAGE_BUCKET_ID=your-bucket
-PUBLIC_OBJECT_SEARCH_PATHS=your-bucket/public
-PRIVATE_OBJECT_DIR=your-bucket/.private
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+# ── Object Storage — OPTIONAL. Without it the app serves/stores files on
+# disk in client/public/uploads/ (the default for self-hosting).
+# Only fill these in if you want cloud file storage (GCS; swap
+# server/objectStorage*.ts for S3/R2):
+# DEFAULT_OBJECT_STORAGE_BUCKET_ID=your-bucket
+# PUBLIC_OBJECT_SEARCH_PATHS=your-bucket/public
+# PRIVATE_OBJECT_DIR=your-bucket/.private
+# GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
 
 # ── Google OAuth (admin/rep/customer login) ───────────────
 GOOGLE_CLIENT_ID=...apps.googleusercontent.com
@@ -162,7 +178,9 @@ these in order:
      (Neon, Supabase, RDS). Example:
      `postgres://user:pass@host:5432/db?sslmode=require`
 
-7. **Run `npm run db:push` once** against the new database so all tables exist.
+7. **Do all tables exist?** If you loaded `database-backup.sql` (§3b) they
+   already do — skip this. Only if you started with an EMPTY database and
+   skipped the backup, run `npm run db:push` once so the tables get created.
    Symptom if skipped: pages load but every action errors with
    "relation ... does not exist".
 
@@ -170,6 +188,13 @@ these in order:
    `client/public/uploads/`. On hosts with a read-only or ephemeral filesystem
    those writes fail. Use a host that allows writing to disk, or configure the
    built-in object storage (GCS) env vars in §4.
+   Your existing uploaded documents are already included in
+   `client/public/uploads/` in this package, and the app automatically serves
+   them from there when object storage isn't configured.
+   Note: a small number of older files (a few ad images and signed-document
+   copies) were already lost from the live server before this export and
+   could not be recovered — those links show "not found" on the live site
+   today too, so nothing is lost by moving.
 
 If the app still won't boot, get the **actual error** — that's the fastest
 path. On Passenger/cPanel look at `stderr.log` in your app folder; with pm2 run
@@ -312,7 +337,7 @@ DEPLOY.md      (this file)
 ## 12. Quick Troubleshooting
 | Symptom                          | Fix                                                    |
 |----------------------------------|--------------------------------------------------------|
-| "relation X does not exist"      | Run `npm run db:push` again                            |
+| "relation X does not exist"      | Backup not loaded into THIS database — re-check §3b (or `npm run db:push` if you chose to start empty) |
 | 502 from Nginx                   | `pm2 logs quoteus` — likely missing env var            |
 | OAuth redirect mismatch          | Update `GOOGLE_OAUTH_REDIRECT_URL` + Google Console    |
 | Stripe webhook 400s              | `STRIPE_WEBHOOK_SECRET` must match the Stripe dashboard|
