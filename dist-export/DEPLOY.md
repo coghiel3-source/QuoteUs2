@@ -256,6 +256,38 @@ npm run build
 pm2 restart quoteus
 ```
 
+### Schema changes in the July 2026 release
+`npm run db:push` handles these automatically on most setups. If it prompts
+or fails, apply them directly with psql — all statements are safe to re-run:
+
+```sql
+-- Stripe reconciliation + customer portal payments
+ALTER TABLE rg_payments       ADD COLUMN IF NOT EXISTS stripe_invoice_id varchar;
+ALTER TABLE customer_payments ADD COLUMN IF NOT EXISTS policy_number text;
+
+-- Billing Central payment splits (customer AND rent-guarantee payments)
+CREATE TABLE IF NOT EXISTS payment_allocations (
+  id             varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  payment_id     varchar NOT NULL,
+  payment_source varchar(20) NOT NULL DEFAULT 'customer',
+  target_type    varchar(20) NOT NULL,
+  target_id      varchar NOT NULL,
+  target_label   text NOT NULL,
+  amount         numeric(10,2) NOT NULL,
+  note           text,
+  created_by     varchar,
+  created_at     timestamp DEFAULT now() NOT NULL
+);
+
+-- If the table already exists from an earlier update:
+ALTER TABLE payment_allocations
+  ADD COLUMN IF NOT EXISTS payment_source varchar(20) NOT NULL DEFAULT 'customer';
+-- payment_id now points at either customer_payments OR rg_payments
+-- (disambiguated by payment_source), so the old customer-only FK must go:
+ALTER TABLE payment_allocations
+  DROP CONSTRAINT IF EXISTS payment_allocations_payment_id_fkey;
+```
+
 ---
 
 ## 10. Backups (recommended)

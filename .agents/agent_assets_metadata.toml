@@ -48,3 +48,9 @@ id = "n26C5Upa3y05NBwhH6Svr"
 uri = "file://dist-export/QuoteUs_Full_2026-06-21.tar.gz"
 type = "unspecified"
 title = "QuoteUs.ca — Full Download (tar.gz)"
+
+[[outputs]]
+id = "M8knE_aVYWo_YZhMuKbuU"
+uri = "file://dist-export/QuoteUs_Full_2026-07-19.zip"
+type = "unspecified"
+title = "QuoteUs Full Package — 2026-07-19"
