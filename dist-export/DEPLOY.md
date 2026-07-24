@@ -16,7 +16,7 @@ This archive contains the complete website source code — nothing else needed.
 
 ## 2. Extract & Install
 ```
-unzip QuoteUs_Complete_*.zip
+unzip QuoteUs_1.zip
 cd quoteus-ca
 npm install
 ```

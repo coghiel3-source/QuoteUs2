@@ -60,3 +60,9 @@ id = "oMBySNoRyoZDsQMrOoRNM"
 uri = "file://dist-export/QuoteUs_Complete_2026-07-19.zip"
 type = "unspecified"
 title = "QuoteUs Complete Package (live data, July 19 2026)"
+
+[[outputs]]
+id = "gGM2Q59_2BTpB0ip0TQls"
+uri = "file://dist-export/QuoteUs_1.zip"
+type = "unspecified"
+title = "QuoteUs_1 — complete package for 3rd-party hosting"
