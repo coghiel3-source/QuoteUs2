@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -20,35 +21,38 @@ declare module "http" {
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    console.log('[Stripe] No DATABASE_URL, skipping Stripe initialization');
+    console.log("[Stripe] No DATABASE_URL, skipping Stripe initialization");
     return;
   }
 
   try {
-    console.log('[Stripe] Initializing schema...');
+    console.log("[Stripe] Initializing schema...");
     await runMigrations({ databaseUrl });
-    console.log('[Stripe] Schema ready');
+    console.log("[Stripe] Schema ready");
 
     const stripeSync = await getStripeSync();
-    
-    const domains = process.env.REPLIT_DOMAINS?.split(',')[0];
+
+    const domains = process.env.REPLIT_DOMAINS?.split(",")[0];
     const webhookBaseUrl = process.env.APP_BASE_URL
       ? process.env.APP_BASE_URL.replace(/\/$/, "")
       : domains
-      ? `https://${domains}`
-      : null;
+        ? `https://${domains}`
+        : null;
     if (webhookBaseUrl) {
-      console.log('[Stripe] Setting up managed webhook...');
-      await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
-      console.log('[Stripe] Webhook configured');
+      console.log("[Stripe] Setting up managed webhook...");
+      await stripeSync.findOrCreateManagedWebhook(
+        `${webhookBaseUrl}/api/stripe/webhook`,
+      );
+      console.log("[Stripe] Webhook configured");
     }
 
     // Sync backfill in background
-    stripeSync.syncBackfill()
-      .then(() => console.log('[Stripe] Data synced'))
-      .catch((err: any) => console.error('[Stripe] Sync error:', err));
+    stripeSync
+      .syncBackfill()
+      .then(() => console.log("[Stripe] Data synced"))
+      .catch((err: any) => console.error("[Stripe] Sync error:", err));
   } catch (error) {
-    console.error('[Stripe] Initialization error:', error);
+    console.error("[Stripe] Initialization error:", error);
   }
 }
 
@@ -57,27 +61,27 @@ initStripe();
 
 // Register Stripe webhook route BEFORE express.json()
 app.post(
-  '/api/stripe/webhook',
-  express.raw({ type: 'application/json' }),
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
   async (req, res) => {
-    const signature = req.headers['stripe-signature'];
+    const signature = req.headers["stripe-signature"];
     if (!signature) {
-      return res.status(400).json({ error: 'Missing stripe-signature' });
+      return res.status(400).json({ error: "Missing stripe-signature" });
     }
 
     try {
       const sig = Array.isArray(signature) ? signature[0] : signature;
       if (!Buffer.isBuffer(req.body)) {
-        console.error('[Stripe Webhook] Body is not a Buffer');
-        return res.status(500).json({ error: 'Webhook processing error' });
+        console.error("[Stripe Webhook] Body is not a Buffer");
+        return res.status(500).json({ error: "Webhook processing error" });
       }
       await WebhookHandlers.processWebhook(req.body as Buffer, sig);
       res.status(200).json({ received: true });
     } catch (error: any) {
-      console.error('[Stripe Webhook] Error:', error.message);
-      res.status(400).json({ error: 'Webhook processing error' });
+      console.error("[Stripe Webhook] Error:", error.message);
+      res.status(400).json({ error: "Webhook processing error" });
     }
-  }
+  },
 );
 
 // Serve uploaded files (ads, etc.) directly from the uploads directory
