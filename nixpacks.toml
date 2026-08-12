@@ -1,13 +1,13 @@
 [variables]
-NODE_ENV = "production"
 NIXPACKS_NODE_VERSION = "22"
+NPM_CONFIG_PRODUCTION = "false"
 
 [phases.setup]
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
 cmds = [
-  "npm ci"
+  "npm ci --include=dev"
 ]
 
 [phases.build]
