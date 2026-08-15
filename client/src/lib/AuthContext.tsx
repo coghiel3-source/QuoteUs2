@@ -70,12 +70,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Auto-logout after this much inactivity (2 hours)
+const INACTIVITY_LIMIT_MS = 2 * 60 * 60 * 1000;
+const LAST_ACTIVITY_KEY = 'quoteus_last_activity';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
   const [user, setUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem('quoteus_user');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      // If the last recorded activity is older than the limit, treat the session as expired
+      const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || '0', 10);
+      if (last && Date.now() - last > INACTIVITY_LIMIT_MS) {
+        localStorage.removeItem('quoteus_user');
+        localStorage.removeItem(LAST_ACTIVITY_KEY);
+        return null;
+      }
+      return JSON.parse(saved);
     } catch {
       return null;
     }
@@ -157,6 +169,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       localStorage.removeItem('quoteus_user');
     }
+  }, [user]);
+
+  // Auto-logout after 2 hours of inactivity
+  useEffect(() => {
+    if (!user) {
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+      return;
+    }
+
+    const doLogout = () => {
+      setUser(null);
+      setPendingTwoFactor(null);
+      localStorage.removeItem('quoteus_user');
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+    };
+
+    // Returns true if the session has expired (and logs out). Always check
+    // BEFORE recording new activity, so returning to a suspended tab after
+    // the limit logs out instead of silently renewing the session.
+    const isExpired = () => {
+      const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || '0', 10);
+      if (last && Date.now() - last > INACTIVITY_LIMIT_MS) {
+        doLogout();
+        return true;
+      }
+      return false;
+    };
+
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+
+    let lastRecorded = Date.now();
+    const recordActivity = () => {
+      if (isExpired()) return;
+      const now = Date.now();
+      // Throttle writes to once per 30 seconds
+      if (now - lastRecorded > 30 * 1000) {
+        lastRecorded = now;
+        localStorage.setItem(LAST_ACTIVITY_KEY, String(now));
+      }
+    };
+
+    const events: (keyof WindowEventMap)[] = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach((e) => window.addEventListener(e, recordActivity, { passive: true }));
+
+    // Re-check when the tab regains focus/visibility (timers are throttled in background tabs)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') isExpired();
+    };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+
+    // Keep tabs in sync: if another tab logs out (removes the stored user), log out here too
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'quoteus_user' && e.newValue === null) {
+        setUser(null);
+        setPendingTwoFactor(null);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    const interval = setInterval(isExpired, 60 * 1000);
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, recordActivity));
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('storage', onStorage);
+      clearInterval(interval);
+    };
   }, [user]);
 
   useEffect(() => {
