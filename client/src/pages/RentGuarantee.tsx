@@ -259,6 +259,45 @@ export default function RentGuaranteePage() {
         </motion.div>
       </div>
 
+       {/* ── Rent protection overview ─────────────────────── */}
+       <section className="container mx-auto max-w-5xl px-4 mt-8" aria-labelledby="rent-guarantee-video-heading">
+         <motion.div
+           initial="hidden"
+           whileInView="visible"
+           viewport={{ once: true, amount: 0.25 }}
+           variants={fadeUp}
+           className="overflow-hidden rounded-2xl border border-primary/10 bg-white shadow-sm"
+         >
+           <div className="grid md:grid-cols-[0.85fr_1.15fr]">
+             <div className="flex flex-col justify-center px-6 py-7 md:px-8">
+               <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                 <span className="h-px w-6 bg-accent" aria-hidden="true" />
+                 A closer look
+               </div>
+               <h2 id="rent-guarantee-video-heading" className="text-2xl font-bold leading-tight text-gray-900">
+                 See how rent protection fits your property plan.
+               </h2>
+               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                 A brief overview for Ontario landlords weighing their options before requesting a quote.
+               </p>
+             </div>
+             <div className="border-t border-primary/10 bg-primary/5 p-3 md:border-l md:border-t-0 md:p-4">
+               <div className="relative aspect-video overflow-hidden rounded-xl bg-primary shadow-sm">
+                 <iframe
+                   className="absolute inset-0 h-full w-full"
+                   src="https://www.youtube-nocookie.com/embed/ahuUqjaXL4o?rel=0"
+                   title="QuoteUs Rent Guarantee overview for Ontario landlords"
+                   loading="lazy"
+                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                   referrerPolicy="strict-origin-when-cross-origin"
+                   allowFullScreen
+                 />
+               </div>
+             </div>
+           </div>
+         </motion.div>
+       </section>
+
       {/* ── Quote Form ───────────────────────────────────── */}
       <div id="landlord-form" className="container mx-auto max-w-3xl px-4 mt-10">
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="text-center mb-6">
