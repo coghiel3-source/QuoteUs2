@@ -319,6 +319,39 @@ export default function AutoPage() {
       </div>
 
       <div className="container mx-auto max-w-4xl px-4 -mt-8">
+        <section
+          className="mb-8 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-sm"
+          aria-labelledby="auto-insurance-video-heading"
+        >
+          <div className="grid md:grid-cols-[0.85fr_1.15fr]">
+            <div className="flex flex-col justify-center px-5 py-6 md:px-7">
+              <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
+                <span className="h-px w-6 bg-accent" aria-hidden="true" />
+                Before you compare
+              </div>
+              <h2 id="auto-insurance-video-heading" className="font-serif text-2xl font-bold leading-tight text-primary">
+                A quick guide to your Ontario auto insurance quote
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                Watch this short overview, then complete the form below. Your details help a licensed Ontario broker compare options that fit your driving history and vehicle.
+              </p>
+            </div>
+            <div className="border-t border-primary/10 bg-primary/5 p-3 md:border-l md:border-t-0 md:p-4">
+              <div className="relative aspect-video overflow-hidden rounded-lg bg-primary shadow-sm">
+                <iframe
+                  className="absolute inset-0 h-full w-full"
+                  src="https://www.youtube-nocookie.com/embed/fvoQGGihF3Q?rel=0&modestbranding=1"
+                  title="QuoteUs guide to comparing auto insurance quotes for Ontario drivers"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="space-y-8">
             
