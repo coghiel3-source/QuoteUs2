@@ -101,6 +101,33 @@ export default function LifePage() {
             <CardDescription>Help us find the right plan for you.</CardDescription>
           </CardHeader>
           <CardContent>
+             <section
+               className="mb-8 grid gap-5 rounded-lg border border-primary/10 bg-secondary/50 p-4 md:grid-cols-[1fr_230px] md:items-center md:p-5"
+               aria-labelledby="life-guide-heading"
+             >
+               <div>
+                 <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary/70">A quick guide</p>
+                 <h2 id="life-guide-heading" className="font-serif text-xl font-bold text-primary">
+                   A clear starting point for protecting your family
+                 </h2>
+                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                   Watch this short introduction, then share a few details below. A licensed Ontario advisor can help you compare coverage with confidence.
+                 </p>
+               </div>
+               <div className="overflow-hidden rounded-md border border-primary/10 bg-primary/5 shadow-sm">
+                 <div className="aspect-video">
+                   <iframe
+                     className="h-full w-full"
+                     src="https://www.youtube-nocookie.com/embed/mYxzcLT0cE4?rel=0&modestbranding=1"
+                     title="QuoteUs guide to life insurance options for Ontario families"
+                     loading="lazy"
+                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                     referrerPolicy="strict-origin-when-cross-origin"
+                     allowFullScreen
+                   />
+                 </div>
+               </div>
+             </section>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
