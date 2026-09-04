@@ -102,7 +102,7 @@ export default function LifePage() {
           </CardHeader>
           <CardContent>
              <section
-               className="mb-8 grid gap-5 rounded-lg border border-primary/10 bg-secondary/50 p-4 md:grid-cols-[1fr_230px] md:items-center md:p-5"
+               className="mb-8 grid gap-5 rounded-lg border border-primary/10 bg-secondary/50 p-4 md:grid-cols-[0.85fr_1.15fr] md:items-center md:p-5"
                aria-labelledby="life-guide-heading"
              >
                <div>
