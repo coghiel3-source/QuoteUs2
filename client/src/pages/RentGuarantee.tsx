@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useQuotes } from "@/lib/QuoteContext";
 import AdPlacement from "@/components/AdPlacement";
+import YouTubeAnalyticsPlayer from "@/components/YouTubeAnalyticsPlayer";
 import {
   Shield,
   CheckCircle2,
@@ -283,14 +284,12 @@ export default function RentGuaranteePage() {
              </div>
              <div className="border-t border-primary/10 bg-primary/5 p-3 md:border-l md:border-t-0 md:p-4">
                <div className="relative aspect-video overflow-hidden rounded-xl bg-primary shadow-sm">
-                 <iframe
+                 <YouTubeAnalyticsPlayer
                    className="absolute inset-0 h-full w-full"
+                   videoId="ahuUqjaXL4o"
+                   insuranceType="Rent Guarantee"
                    src="https://www.youtube-nocookie.com/embed/ahuUqjaXL4o?rel=0"
                    title="QuoteUs Rent Guarantee overview for Ontario landlords"
-                   loading="lazy"
-                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                   referrerPolicy="strict-origin-when-cross-origin"
-                   allowFullScreen
                  />
                </div>
              </div>

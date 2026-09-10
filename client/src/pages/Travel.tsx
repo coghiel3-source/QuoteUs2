@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plane } from "lucide-react";
 import { useState } from "react";
 import AdPlacement from "@/components/AdPlacement";
+import YouTubeAnalyticsPlayer from "@/components/YouTubeAnalyticsPlayer";
 import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
@@ -111,14 +112,12 @@ export default function TravelPage() {
             </div>
             <div className="border-t border-primary/10 bg-primary/5 p-3 md:border-l md:border-t-0 md:p-4">
               <div className="relative aspect-video overflow-hidden rounded-lg bg-primary shadow-sm">
-                <iframe
+                <YouTubeAnalyticsPlayer
                   className="absolute inset-0 h-full w-full"
+                  videoId="wlOxMuq9OKQ"
+                  insuranceType="Travel"
                   src="https://www.youtube-nocookie.com/embed/wlOxMuq9OKQ?rel=0&modestbranding=1"
                   title="QuoteUs guide to comparing travel insurance coverage for Ontario travellers"
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
                 />
               </div>
             </div>

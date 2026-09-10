@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import AdPlacement from "@/components/AdPlacement";
+import YouTubeAnalyticsPlayer from "@/components/YouTubeAnalyticsPlayer";
 import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
@@ -117,14 +118,12 @@ export default function BusinessPage() {
             </div>
             <div className="border-t border-primary/10 bg-primary/5 p-3 md:border-l md:border-t-0 md:p-4">
               <div className="relative aspect-video overflow-hidden rounded-lg bg-primary shadow-sm">
-                <iframe
+                <YouTubeAnalyticsPlayer
                   className="absolute inset-0 h-full w-full"
+                  videoId="vBfF2bHsKrw"
+                  insuranceType="Business"
                   src="https://www.youtube-nocookie.com/embed/vBfF2bHsKrw?rel=0&modestbranding=1"
                   title="QuoteUs guide to comparing business insurance coverage for Ontario business owners"
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
                 />
               </div>
             </div>

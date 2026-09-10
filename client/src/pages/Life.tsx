@@ -9,6 +9,7 @@ import { Heart } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import AdPlacement from "@/components/AdPlacement";
+import YouTubeAnalyticsPlayer from "@/components/YouTubeAnalyticsPlayer";
 import { useSeo } from "@/hooks/use-seo";
 
 import { useQuotes } from "@/lib/QuoteContext";
@@ -116,14 +117,12 @@ export default function LifePage() {
                </div>
                <div className="overflow-hidden rounded-md border border-primary/10 bg-primary/5 shadow-sm">
                  <div className="aspect-video">
-                   <iframe
+                    <YouTubeAnalyticsPlayer
                      className="h-full w-full"
+                      videoId="mYxzcLT0cE4"
+                      insuranceType="Life"
                      src="https://www.youtube-nocookie.com/embed/mYxzcLT0cE4?rel=0&modestbranding=1"
                      title="QuoteUs guide to life insurance options for Ontario families"
-                     loading="lazy"
-                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                     referrerPolicy="strict-origin-when-cross-origin"
-                     allowFullScreen
                    />
                  </div>
                </div>

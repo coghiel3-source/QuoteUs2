@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiRequest } from './api';
+import { trackEvent } from '@/lib/analytics';
+
+function safeTrackEvent(...args: Parameters<typeof trackEvent>) {
+  try {
+    void Promise.resolve(trackEvent(...args)).catch(() => {
+      // Analytics failures must not affect form submission.
+    });
+  } catch {
+    // Analytics failures must not affect form submission.
+  }
+}
 
 export interface Activity {
   id: string;
@@ -92,6 +103,25 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addQuote = async (quoteData: Omit<Quote, 'id' | 'quoteNumber' | 'date' | 'createdAt' | 'status' | 'priority' | 'source' | 'internalNotes' | 'activityLog'> & { priority?: Quote['priority'], source?: string }) => {
+    const isGeneralContact = quoteData.type === 'General';
+    const submissionProperties: Record<string, string> = isGeneralContact
+      ? { location: 'contact_page' }
+      : { insurance_type: quoteData.type };
+    const submissionEvents = isGeneralContact
+      ? {
+          attempt: 'contact_submit_attempt',
+          submitted: 'contact_submitted',
+          failed: 'contact_submission_failed',
+        } as const
+      : {
+          attempt: 'quote_submit_attempt',
+          submitted: 'quote_submitted',
+          failed: 'quote_submission_failed',
+        } as const;
+    let postSucceeded = false;
+
+    safeTrackEvent(submissionEvents.attempt, submissionProperties);
+
     try {
       const newQuote = await apiRequest<any>('/quotes', {
         method: 'POST',
@@ -110,6 +140,9 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
         }),
       });
 
+      postSucceeded = true;
+      safeTrackEvent(submissionEvents.submitted, submissionProperties);
+
       // Fetch activities for the new quote
       const activities = await apiRequest<Activity[]>(`/quotes/${newQuote.id}/activities`);
 
@@ -124,6 +157,9 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
 
       console.log(`[API] Quote ${newQuote.quoteNumber} created`);
     } catch (error) {
+      if (!postSucceeded) {
+        safeTrackEvent(submissionEvents.failed, submissionProperties);
+      }
       console.error('Failed to add quote:', error);
       throw error;
     }

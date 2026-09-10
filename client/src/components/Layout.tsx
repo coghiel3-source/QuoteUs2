@@ -8,6 +8,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import logoImage from "@assets/FullLogo_Transparent_1769748805647.png";
 import AIMascotChat from "./AIMascotChat";
+import { trackEvent } from "@/lib/analytics";
+
+function safeTrackEvent(...args: Parameters<typeof trackEvent>) {
+  try {
+    void Promise.resolve(trackEvent(...args)).catch(() => {
+      // Analytics failures must not affect form submission.
+    });
+  } catch {
+    // Analytics failures must not affect form submission.
+  }
+}
 
 interface SocialMedia {
   facebook: string;
@@ -256,6 +267,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   e.preventDefault();
                   if (!contactName || !contactEmail || !contactCategory || !contactMessage) return;
                   setContactSubmitting(true);
+                  const submissionProperties = { location: "footer" };
+                  safeTrackEvent("contact_submit_attempt", submissionProperties);
                   try {
                     const res = await fetch("/api/contact", {
                       method: "POST",
@@ -268,13 +281,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       }),
                     });
                     if (res.ok) {
+                      safeTrackEvent("contact_submitted", submissionProperties);
                       setContactSuccess(true);
                       setContactName("");
                       setContactEmail("");
                       setContactCategory("");
                       setContactMessage("");
+                    } else {
+                      safeTrackEvent("contact_submission_failed", submissionProperties);
                     }
                   } catch (err) {
+                    safeTrackEvent("contact_submission_failed", submissionProperties);
                     console.error(err);
                   } finally {
                     setContactSubmitting(false);

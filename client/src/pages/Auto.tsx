@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useQuotes } from "@/lib/QuoteContext";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 import AdPlacement from "@/components/AdPlacement";
+import YouTubeAnalyticsPlayer from "@/components/YouTubeAnalyticsPlayer";
 import { useSeo } from "@/hooks/use-seo";
 
 const autoSchema = z.object({
@@ -338,14 +339,12 @@ export default function AutoPage() {
             </div>
             <div className="border-t border-primary/10 bg-primary/5 p-3 md:border-l md:border-t-0 md:p-4">
               <div className="relative aspect-video overflow-hidden rounded-lg bg-primary shadow-sm">
-                <iframe
+                <YouTubeAnalyticsPlayer
                   className="absolute inset-0 h-full w-full"
+                  videoId="fvoQGGihF3Q"
+                  insuranceType="Auto"
                   src="https://www.youtube-nocookie.com/embed/fvoQGGihF3Q?rel=0&modestbranding=1"
                   title="QuoteUs guide to comparing auto insurance quotes for Ontario drivers"
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
                 />
               </div>
             </div>
