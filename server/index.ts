@@ -6,9 +6,14 @@ import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { setupGoogleAuth } from "./googleAuth";
+import { seoDirectives, sitemapXml } from "./seo";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Headers precede all API, upload, object and token route handlers.
+app.use(seoDirectives);
+app.get("/sitemap.xml", (_req, res) => res.type("application/xml").send(sitemapXml()));
 
 declare module "http" {
   interface IncomingMessage {

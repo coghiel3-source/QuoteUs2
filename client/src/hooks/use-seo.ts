@@ -1,13 +1,6 @@
 import { useEffect } from "react";
-
-type SeoOpts = {
-  title: string;
-  description?: string;
-  keywords?: string;
-  canonical?: string;
-  image?: string;
-  noindex?: boolean;
-};
+import { useLocation } from "wouter";
+import { canonicalUrl, classifyPage, publicPages, SEO_IMAGE, SEO_ORIGIN } from "@shared/seo";
 
 function upsertMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
@@ -17,47 +10,54 @@ function upsertMeta(attr: "name" | "property", key: string, content: string) {
     document.head.appendChild(el);
   }
   el.setAttribute("content", content);
-  return el;
 }
 
-function upsertLink(rel: string, href: string) {
-  let el = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
-  if (!el) {
-    el = document.createElement("link");
-    el.setAttribute("rel", rel);
-    document.head.appendChild(el);
-  }
-  el.setAttribute("href", href);
-  return el;
-}
-
-const BASE = "https://quoteus.ca";
-
-export function useSeo(opts: SeoOpts) {
+/** One route-driven metadata owner handles all client-side navigations. */
+export function SeoNavigation() {
+  const [location] = useLocation();
   useEffect(() => {
-    const prevTitle = document.title;
-    document.title = opts.title;
-
-    const canonical = opts.canonical || `${BASE}${window.location.pathname}`;
-    const image = opts.image || `${BASE}/opengraph.jpg`;
-    const desc = opts.description || "";
-
-    upsertLink("canonical", canonical);
-    if (desc) upsertMeta("name", "description", desc);
-    if (opts.keywords) upsertMeta("name", "keywords", opts.keywords);
-    upsertMeta("name", "robots", opts.noindex ? "noindex, nofollow" : "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1");
-
-    upsertMeta("property", "og:title", opts.title);
-    upsertMeta("property", "og:url", canonical);
-    upsertMeta("property", "og:image", image);
-    if (desc) upsertMeta("property", "og:description", desc);
-
-    upsertMeta("name", "twitter:title", opts.title);
-    upsertMeta("name", "twitter:image", image);
-    if (desc) upsertMeta("name", "twitter:description", desc);
-
-    return () => {
-      document.title = prevTitle;
-    };
-  }, [opts.title, opts.description, opts.keywords, opts.canonical, opts.image, opts.noindex]);
+    const kind = classifyPage(location);
+    const page = kind === "public" ? publicPages[location] : undefined;
+    const title = page?.title ?? (kind === "private" ? "QuoteUs.ca | Account" : "Page Not Found | QuoteUs.ca");
+    const description = page?.description ?? (kind === "private" ? "QuoteUs.ca account page." : "This page could not be found.");
+    document.title = title;
+    upsertMeta("name", "description", description);
+    upsertMeta("name", "robots", page ? "index, follow" : "noindex, nofollow");
+    const canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (page) {
+      const link = canonical || document.createElement("link");
+      link.rel = "canonical";
+      link.href = canonicalUrl(location);
+      if (!canonical) document.head.appendChild(link);
+    } else {
+      canonical?.remove();
+    }
+    upsertMeta("property", "og:title", title);
+    upsertMeta("property", "og:description", description);
+    upsertMeta("property", "og:image", SEO_IMAGE);
+    upsertMeta("name", "twitter:title", title);
+    upsertMeta("name", "twitter:description", description);
+    upsertMeta("name", "twitter:image", SEO_IMAGE);
+    const ogUrl = document.head.querySelector<HTMLMetaElement>('meta[property="og:url"]');
+    if (page) upsertMeta("property", "og:url", canonicalUrl(location));
+    else ogUrl?.remove();
+    document.getElementById("seo-structured-data")?.remove();
+    if (page) {
+      const script = document.createElement("script");
+      script.id = "seo-structured-data";
+      script.type = "application/ld+json";
+      script.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "Organization", name: "QuoteUs.ca", url: SEO_ORIGIN },
+          { "@type": "WebSite", name: "QuoteUs.ca", url: SEO_ORIGIN },
+        ],
+      });
+      document.head.appendChild(script);
+    }
+  }, [location]);
+  return null;
 }
+
+// Legacy page-local calls are intentionally inert; SeoNavigation owns route metadata.
+export function useSeo(_opts: { title: string; description?: string; keywords?: string; canonical?: string; image?: string; noindex?: boolean }) {}

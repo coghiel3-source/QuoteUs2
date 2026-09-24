@@ -36,6 +36,7 @@ import ServiceSignPage from "@/pages/ServiceSign";
 import RgPaymentSuccessPage from "@/pages/RgPaymentSuccess";
 import CustomerPortalPage from "@/pages/CustomerPortal";
 import InvoiceSignPage from "@/pages/InvoiceSign";
+import { SeoNavigation } from "@/hooks/use-seo";
 
 // Placeholder pages for other routes to prevent 404s during dev
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -101,6 +102,7 @@ function App() {
           <QuoteProvider>
             <Toaster />
             <AnalyticsEvents />
+            <SeoNavigation />
             <Router />
           </QuoteProvider>
         </AuthProvider>

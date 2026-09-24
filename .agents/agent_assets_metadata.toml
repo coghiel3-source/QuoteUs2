@@ -91,3 +91,17 @@ mtime_ms = 1790285710674
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/6cff17f4-2b25-4789-a590-63733d1a7e79/afb4abdc-8311-4a9d-9a38-4527ac63453c"
 storage_version_token = "1790285730355868"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "5E3XcnEDTBe9c9DFqBcZc"
+uri = "file://dist-export/QuoteUs_Search_Visibility_Update.zip"
+type = "unspecified"
+title = "QuoteUs Search Visibility Update"
+description = "SEO code update and step-by-step installation, Google Search Console, and Bing Webmaster setup instructions for your existing hosting company. No customer data or credentials included."
+logical_id = "d1f898c3-04c0-439b-936b-f199e270fb70"
+content_hash = "sha256:e166ccd48aa019d7d6c86a71ce1d8ec7660f4258b3cb4e362af7e55ebda7233a"
+size = 38670
+mtime_ms = 1790287034530
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/d1f898c3-04c0-439b-936b-f199e270fb70/e9b9a370-ed8e-4086-8273-907706b813d3"
+storage_version_token = "1790287056840171"
+content_type = "application/octet-stream"

@@ -126,18 +126,6 @@ export default function RentGuaranteePage() {
   const [rentalProvince, setRentalProvince] = useState("ON");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  useEffect(() => {
-    const prevTitle = document.title;
-    document.title = "Rent Guarantee for Landlords | QuoteUs.ca";
-    const desc = document.querySelector('meta[name="description"]');
-    const prevDesc = desc?.getAttribute("content") || "";
-    if (desc) desc.setAttribute("content", "Protect your rental income with Rent Guarantee. Covers up to 12 months of unpaid rent (max $60,000), eviction costs, and property damage. Available across Canada. Get a free quote today.");
-    return () => {
-      document.title = prevTitle;
-      if (desc) desc.setAttribute("content", prevDesc);
-    };
-  }, []);
-
   const {
     register,
     handleSubmit,

@@ -5,6 +5,7 @@ import viteConfig from "../vite.config";
 import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
+import { redirectIndexHtml, renderPageHtml } from "./seo";
 
 const viteLogger = createLogger();
 
@@ -29,10 +30,15 @@ export async function setupVite(server: Server, app: Express) {
     appType: "custom",
   });
 
+  app.use(redirectIndexHtml);
   app.use(vite.middlewares);
 
-  app.use("*", async (req, res, next) => {
+  app.use(async (req, res, next) => {
     const url = req.originalUrl;
+    if (!["GET", "HEAD"].includes(req.method) || /^\/(?:api|uploads|objects)(?:\/|$)/.test(req.path) || /\.[^/]+$/.test(req.path)) {
+      res.setHeader("X-Robots-Tag", "noindex, nofollow");
+      return res.status(404).end();
+    }
 
     try {
       const clientTemplate = path.resolve(
@@ -49,7 +55,9 @@ export async function setupVite(server: Server, app: Express) {
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      const rendered = renderPageHtml(page, req.path);
+      if (rendered.robots) res.setHeader("X-Robots-Tag", rendered.robots);
+      res.status(rendered.status).set({ "Content-Type": "text/html" }).end(rendered.html);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

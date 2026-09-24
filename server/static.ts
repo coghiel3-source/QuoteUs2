@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
+import { redirectIndexHtml, serveSeoHtml } from "./seo";
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
@@ -10,10 +11,10 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(redirectIndexHtml);
+  app.use(express.static(distPath, { index: false }));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
+  // Serve the SPA document only for page requests; do not turn missing assets/API into HTML.
+  const template = fs.readFileSync(path.resolve(distPath, "index.html"), "utf-8");
+  app.use(serveSeoHtml(template));
 }
