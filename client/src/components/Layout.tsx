@@ -102,7 +102,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto max-w-7xl flex h-20 items-center justify-between px-4">
+        <div className="public-header-row container mx-auto max-w-7xl flex h-20 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-3 group">
               <div className="h-12 w-auto overflow-hidden rounded-lg">
                 <img src={logoImage} alt="QuoteUs Logo" className="h-full w-auto object-contain" />
@@ -110,7 +110,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-8">
+          <nav className="public-navigation hidden lg:flex items-center gap-8">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href} className={`text-sm font-medium transition-colors hover:text-accent ${
                   location === link.href ? "text-accent font-semibold" : "text-foreground/80"
@@ -131,7 +131,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {/* Mobile Nav */}
           <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
             <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="public-menu-toggle">
                 <Menu size={24} />
               </Button>
             </SheetTrigger>

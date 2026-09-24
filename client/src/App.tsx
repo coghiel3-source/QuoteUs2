@@ -1,6 +1,7 @@
+import { Suspense, lazy } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QuoteProvider } from "@/lib/QuoteContext";
@@ -19,42 +20,33 @@ import BusinessPage from "@/pages/Business";
 import PetPage from "@/pages/Pet";
 import MortgagePage from "@/pages/Mortgage";
 import AboutPage from "@/pages/About";
-import DashboardPage from "@/pages/Dashboard";
 import PrivacyPage from "@/pages/Privacy";
 import TermsPage from "@/pages/Terms";
 import ContactPage from "@/pages/Contact";
-import AdminCRMPage from "@/pages/AdminCRM";
-import BrokerCreditsPage from "@/pages/BrokerCredits";
-import LoginPage from "@/pages/Login";
-import AdPreviewPage from "@/pages/AdPreview";
 import RentGuaranteePage from "@/pages/RentGuarantee";
 import RentGuaranteeGuidePage from "@/pages/RentGuaranteeGuide";
-import "@/pages/rent-guarantee-guide.css";
 import RentClockPage from "@/pages/RentClock";
-import RepDashboardPage from "@/pages/RepDashboard";
-import DocUploadPage from "@/pages/DocUpload";
-import SignAgreementPage from "@/pages/SignAgreement";
-import DocSignPage from "@/pages/DocSign";
-import ServiceSignPage from "@/pages/ServiceSign";
-import RgPaymentSuccessPage from "@/pages/RgPaymentSuccess";
-import CustomerPortalPage from "@/pages/CustomerPortal";
-import InvoiceSignPage from "@/pages/InvoiceSign";
 import { SeoNavigation } from "@/hooks/use-seo";
 
-// Placeholder pages for other routes to prevent 404s during dev
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div className="container mx-auto py-20 px-4 text-center">
-    <h1 className="text-4xl font-serif font-bold text-primary mb-4">{title} Insurance</h1>
-    <p className="text-muted-foreground mb-8 text-lg">Our {title.toLowerCase()} quote engine is being updated for 2025 rates.</p>
-    <div className="max-w-2xl mx-auto bg-secondary/30 p-8 rounded-xl border border-border">
-      <p className="mb-4">This section would contain the specific form for {title} insurance.</p>
-    </div>
-  </div>
-);
+// Account, payment, and token pages are loaded only on the client. They must
+// not enter the public prerender bundle (or run browser-only module code on SSR).
+const DashboardPage = lazy(() => import("@/pages/Dashboard"));
+const AdminCRMPage = lazy(() => import("@/pages/AdminCRM"));
+const BrokerCreditsPage = lazy(() => import("@/pages/BrokerCredits"));
+const LoginPage = lazy(() => import("@/pages/Login"));
+const AdPreviewPage = lazy(() => import("@/pages/AdPreview"));
+const RepDashboardPage = lazy(() => import("@/pages/RepDashboard"));
+const DocUploadPage = lazy(() => import("@/pages/DocUpload"));
+const SignAgreementPage = lazy(() => import("@/pages/SignAgreement"));
+const DocSignPage = lazy(() => import("@/pages/DocSign"));
+const ServiceSignPage = lazy(() => import("@/pages/ServiceSign"));
+const RgPaymentSuccessPage = lazy(() => import("@/pages/RgPaymentSuccess"));
+const CustomerPortalPage = lazy(() => import("@/pages/CustomerPortal"));
+const InvoiceSignPage = lazy(() => import("@/pages/InvoiceSign"));
 
-function Router() {
+function AppRoutes() {
   return (
-    <Switch>
+    <Suspense fallback={null}><Switch>
       {/* Public standalone pages (no nav/footer) */}
       <Route path="/doc-upload/:token" component={DocUploadPage} />
       <Route path="/sign/:token" component={SignAgreementPage} />
@@ -62,8 +54,8 @@ function Router() {
       <Route path="/service-sign/:token" component={ServiceSignPage} />
       <Route path="/rg-payment/success" component={RgPaymentSuccessPage} />
       <Route path="/invoice-sign/:token" component={InvoiceSignPage} />
-      {/* Main app with layout */}
       <Route path="/rent-clock" component={RentClockPage} />
+      {/* Main app with layout */}
       <Route>
         <Layout>
           <Switch>
@@ -95,20 +87,20 @@ function Router() {
           </Switch>
         </Layout>
       </Route>
-    </Switch>
+    </Switch></Suspense>
   );
 }
 
-function App() {
+function App({ client = queryClient }: { client?: QueryClient }) {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={client}>
       <TooltipProvider>
         <AuthProvider>
           <QuoteProvider>
             <Toaster />
             <AnalyticsEvents />
             <SeoNavigation />
-            <Router />
+            <AppRoutes />
           </QuoteProvider>
         </AuthProvider>
       </TooltipProvider>

@@ -76,22 +76,10 @@ const LAST_ACTIVITY_KEY = 'quoteus_last_activity';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('quoteus_user');
-      if (!saved) return null;
-      // If the last recorded activity is older than the limit, treat the session as expired
-      const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || '0', 10);
-      if (last && Date.now() - last > INACTIVITY_LIMIT_MS) {
-        localStorage.removeItem('quoteus_user');
-        localStorage.removeItem(LAST_ACTIVITY_KEY);
-        return null;
-      }
-      return JSON.parse(saved);
-    } catch {
-      return null;
-    }
-  });
+  // Keep the first browser render identical to the server render. Restore the
+  // stored session after hydration, before any persistence effects can clear it.
+  const [user, setUser] = useState<User | null>(null);
+  const [sessionRestored, setSessionRestored] = useState(false);
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
   const [pendingTwoFactor, setPendingTwoFactor] = useState<{ userId: string; previewCode?: string } | null>(null);
@@ -163,16 +151,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem('quoteus_user');
+      if (saved) {
+        const last = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || '0', 10);
+        if (last && Date.now() - last > INACTIVITY_LIMIT_MS) {
+          localStorage.removeItem('quoteus_user');
+          localStorage.removeItem(LAST_ACTIVITY_KEY);
+        } else {
+          setUser(JSON.parse(saved));
+        }
+      }
+    } catch {
+      // An invalid/unavailable stored session is treated as signed out.
+    } finally {
+      setSessionRestored(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sessionRestored) return;
     if (user) {
       const { password, ...safeUser } = user as any;
       localStorage.setItem('quoteus_user', JSON.stringify(safeUser));
     } else {
       localStorage.removeItem('quoteus_user');
     }
-  }, [user]);
+  }, [user, sessionRestored]);
 
   // Auto-logout after 2 hours of inactivity
   useEffect(() => {
+    if (!sessionRestored) return;
     if (!user) {
       localStorage.removeItem(LAST_ACTIVITY_KEY);
       return;
@@ -238,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('storage', onStorage);
       clearInterval(interval);
     };
-  }, [user]);
+  }, [user, sessionRestored]);
 
   useEffect(() => {
     const initializeAuth = async () => {

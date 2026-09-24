@@ -4,7 +4,6 @@ import { trackRentClock } from "@/lib/rentClockAnalytics";
 import { CLOCK_DISCLOSURE, CALCULATOR_DISCLOSURE, FOOTER_DISCLOSURE, RENT_CLOCK_PROVINCES, RENT_GUARANTEE_URL, type ProvinceCode } from "./rentClockConfig";
 import { formatCAD, validateRent, validateUnits } from "./rentClockCalculation";
 import { useCopyText, useRentClock } from "./useRentClock";
-import "./rent-clock.css";
 
 function Brand() {
   return <a className="rc-brand" href="https://quoteus.ca/" aria-label="QuoteUs.ca home"><img src="/logo.png" width="1280" height="1024" alt="QuoteUs.ca — Click-Quote-Covered" /></a>;

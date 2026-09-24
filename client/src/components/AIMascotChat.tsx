@@ -38,8 +38,13 @@ export default function AIMascotChat() {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<PanelView>("chat");
   const [messages, setMessages] = useState<Message[]>([
-    { role: "bot", text: WELCOME, time: nowTime() },
+    { role: "bot", text: WELCOME, time: "" },
   ]);
+  useEffect(() => {
+    setMessages((current) => current.map((message, index) =>
+      index === 0 && !message.time ? { ...message, time: nowTime() } : message,
+    ));
+  }, []);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
