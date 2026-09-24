@@ -17,7 +17,50 @@ function getPrivateDir(): string {
 }
 
 function sanitizeName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
+  return name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120) || "file";
+}
+
+export function useLocalDocumentStorage(): boolean {
+  const mode = process.env.DOCUMENT_STORAGE_MODE;
+  if (mode && mode !== "local" && mode !== "replit") {
+    throw new Error("DOCUMENT_STORAGE_MODE must be 'local' or 'replit'");
+  }
+  return mode === "local";
+}
+
+function localDocumentDir(): string {
+  // Off-Replit default is outside the web root and the application directory.
+  // Production hosts should mount a persistent volume and set DOCUMENT_STORAGE_DIR.
+  const dir = process.env.DOCUMENT_STORAGE_DIR || path.resolve(process.cwd(), "..", "quoteus-document-storage");
+  if (!path.isAbsolute(dir)) throw new Error("DOCUMENT_STORAGE_DIR must be an absolute path");
+  return dir;
+}
+
+/** Only generated single-file upload IDs are addressable from /objects. */
+function validUploadEntity(entityId: string): boolean {
+  return /^uploads\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(entityId) &&
+    entityId.split("/")[1] !== "." && entityId.split("/")[1] !== "..";
+}
+
+export function localDocumentPath(entityId: string): string | null {
+  if (!validUploadEntity(entityId)) return null;
+  return path.join(localDocumentDir(), entityId);
+}
+
+export function exportedUploadPath(entityId: string): string | null {
+  if (!validUploadEntity(entityId)) return null;
+  return path.join(process.cwd(), "client", "public", "uploads", entityId.slice("uploads/".length));
+}
+
+async function readLocalFile(filePath: string): Promise<Buffer | null> {
+  try {
+    // Uploaded objects are regular files, never follow symlinks out of storage.
+    if (!(await fs.promises.lstat(filePath)).isFile()) return null;
+    return await fs.promises.readFile(filePath);
+  } catch (error: any) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
 }
 
 /**
@@ -32,6 +75,13 @@ export async function persistBufferToStorage(
   const key = crypto.randomUUID();
   const safe = sanitizeName(originalName || "file");
   const entityId = `uploads/${key}-${safe}`;
+  if (useLocalDocumentStorage()) {
+    const destination = localDocumentPath(entityId)!;
+    await fs.promises.mkdir(path.dirname(destination), { recursive: true });
+    // Exclusive creation prevents an existing file or symlink from being overwritten.
+    await fs.promises.writeFile(destination, buf, { flag: "wx", mode: 0o600 });
+    return `/objects/${entityId}`;
+  }
   const fullPath = `${getPrivateDir()}/${entityId}`;
   const { bucketName, objectName } = parseBucketPath(fullPath);
   const file = objectStorageClient.bucket(bucketName).file(objectName);
@@ -66,6 +116,11 @@ export async function readFileFromAnyPath(filePath: string): Promise<Buffer | nu
   if (!filePath) return null;
   if (filePath.startsWith("/objects/")) {
     const entityId = filePath.slice("/objects/".length);
+    const exported = exportedUploadPath(entityId);
+    if (useLocalDocumentStorage()) {
+      if (!exported) return null;
+      return (await readLocalFile(localDocumentPath(entityId)!)) ?? await readLocalFile(exported);
+    }
     try {
       const fullPath = `${getPrivateDir()}/${entityId}`;
       const { bucketName, objectName } = parseBucketPath(fullPath);
@@ -79,18 +134,14 @@ export async function readFileFromAnyPath(filePath: string): Promise<Buffer | nu
       // object storage unavailable (e.g. self-hosted) — try local disk below
     }
     // Fallback: exported copy on local disk under client/public/uploads/
-    if (entityId.startsWith("uploads/")) {
-      const name = path.basename(entityId.slice("uploads/".length));
-      const abs = path.join(process.cwd(), "client", "public", "uploads", name);
-      if (fs.existsSync(abs)) return fs.readFileSync(abs);
-    }
-    return null;
+    return exported ? readLocalFile(exported) : null;
   }
   // legacy disk path
-  const rel = filePath.replace(/^\//, "");
-  const abs = path.isAbsolute(filePath)
-    ? filePath
-    : path.join(process.cwd(), "client", "public", rel);
-  if (!fs.existsSync(abs)) return null;
-  return fs.readFileSync(abs);
+  if (filePath.startsWith("/uploads/") || filePath.startsWith("uploads/")) {
+    const rel = filePath.replace(/^\//, "");
+    if (rel.split("/").some(part => part === "." || part === ".." || part.includes("\\") || part.includes("%"))) return null;
+    return readLocalFile(path.join(process.cwd(), "client", "public", rel));
+  }
+  if (!path.isAbsolute(filePath)) return null;
+  return readLocalFile(filePath);
 }

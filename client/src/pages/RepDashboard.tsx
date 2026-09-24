@@ -904,6 +904,8 @@ export default function RepDashboard({ embedded = false }: RepDashboardProps) {
   // Lead docs
   const [docRequests, setDocRequests] = useState<DocumentRequest[]>([]);
   const [documents, setDocuments] = useState<RepDocument[]>([]);
+  const [reissuingDocRequestId, setReissuingDocRequestId] = useState<string | null>(null);
+  const [reissueDocError, setReissueDocError] = useState<Record<string, string>>({});
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Global RG default rates from admin
@@ -1839,6 +1841,65 @@ ${notesBlock}${signedBlock}
     }
   }
 
+  async function reissueDocRequest(request: DocumentRequest) {
+    if (!user || !["rep", "admin", "manager"].includes(user.role) || reissuingDocRequestId) return;
+    setReissuingDocRequestId(request.id);
+    setReissueDocError(prev => ({ ...prev, [request.id]: "" }));
+    try {
+      const result = await apiRequest<DocumentRequest>(`/rep/leads/${request.rgLeadId}/request-docs`, {
+        method: "POST",
+        body: JSON.stringify({
+          actorId: user.id,
+          recipientType: request.recipientType,
+          recipientName: request.recipientName,
+          recipientEmail: request.recipientEmail,
+          requiredDocs: request.requiredDocs,
+          expiresInDays: 7,
+        }),
+      });
+      if (!result.token || !result.expiresAt || new Date(result.expiresAt) <= new Date()) {
+        throw new Error("A fresh upload link was not returned. Please reload the requests before sharing a link.");
+      }
+      setDocRequests(prev => prev.some(req => req.id === request.id) ? [result, ...prev] : prev);
+      setLocationDocRequests(prev => prev.some(req => req.id === request.id) ? [result, ...prev] : prev);
+      toast({ title: "New upload link created", description: "Copy the link from the new active request above and send it to the recipient." });
+    } catch (err: any) {
+      const message = err.message || "Failed to reissue document request";
+      setReissueDocError(prev => ({ ...prev, [request.id]: message }));
+      toast({ title: "Could not reissue request", description: message, variant: "destructive" });
+    } finally {
+      setReissuingDocRequestId(null);
+    }
+  }
+
+  function docRequestActions(request: DocumentRequest) {
+    const expired = request.expiresAt && new Date(request.expiresAt) < new Date();
+    if (expired) {
+      return (
+        <>
+          <button
+            type="button"
+            disabled={reissuingDocRequestId !== null}
+            onClick={() => reissueDocRequest(request)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:underline disabled:opacity-50"
+            data-testid={`button-reissue-doc-request-${request.id}`}
+          >
+            <RefreshCw className="h-3 w-3" />
+            {reissuingDocRequestId === request.id ? "Reissuing..." : "Reissue link"}
+          </button>
+          {reissueDocError[request.id] && <p role="alert" className="text-xs text-red-600">{reissueDocError[request.id]}</p>}
+        </>
+      );
+    }
+    const link = `${window.location.origin}/doc-upload/${request.token}`;
+    return (
+      <>
+        <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
+        <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
+      </>
+    );
+  }
+
   async function handleDeleteDoc(docId: string) {
     if (!user) return;
     try {
@@ -2757,7 +2818,6 @@ ${notesBlock}${signedBlock}
                           <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Document Requests</CardTitle></CardHeader>
                           <CardContent className="space-y-2">
                             {locationDocRequests.map(req => {
-                              const link = `${window.location.origin}/doc-upload/${req.token}`;
                               const expired = req.expiresAt && new Date(req.expiresAt) < new Date();
                               return (
                                 <div key={req.id} className="bg-gray-50 rounded-lg p-3 text-sm">
@@ -2768,10 +2828,7 @@ ${notesBlock}${signedBlock}
                                   {req.recipientEmail && (
                                     <p className="text-xs text-gray-500 flex items-center gap-1 mb-1.5"><Mail className="h-3 w-3" /> {req.recipientEmail}</p>
                                   )}
-                                  <div className="flex gap-2 mt-1">
-                                    <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
-                                    <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
-                                  </div>
+                                  <div className="flex flex-wrap gap-2 mt-1">{docRequestActions(req)}</div>
                                 </div>
                               );
                             })}
@@ -3740,7 +3797,6 @@ ${notesBlock}${signedBlock}
                           <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Document Requests</p>
                           <div className="space-y-2">
                             {locationDocRequests.map(req => {
-                              const link = `${window.location.origin}/doc-upload/${req.token}`;
                               const expired = req.expiresAt && new Date(req.expiresAt) < new Date();
                               return (
                                 <div key={req.id} className="bg-white border rounded-lg p-3 text-sm">
@@ -3751,10 +3807,7 @@ ${notesBlock}${signedBlock}
                                   {req.recipientEmail && (
                                     <p className="text-xs text-gray-500 flex items-center gap-1 mb-1.5"><Mail className="h-3 w-3" /> {req.recipientEmail}</p>
                                   )}
-                                  <div className="flex gap-2 mt-1">
-                                    <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
-                                    <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
-                                  </div>
+                                   <div className="flex flex-wrap gap-2 mt-1">{docRequestActions(req)}</div>
                                 </div>
                               );
                             })}
@@ -5021,7 +5074,6 @@ ${notesBlock}${signedBlock}
                       <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-600">Document Requests Sent</CardTitle></CardHeader>
                       <CardContent className="space-y-2">
                         {docRequests.map(req => {
-                          const link = `${window.location.origin}/doc-upload/${req.token}`;
                           const expired = req.expiresAt && new Date(req.expiresAt) < new Date();
                           return (
                             <div key={req.id} className="bg-gray-50 rounded-lg p-3 text-sm">
@@ -5032,10 +5084,7 @@ ${notesBlock}${signedBlock}
                               {req.recipientEmail && (
                                 <p className="text-xs text-gray-500 flex items-center gap-1 mb-1.5"><Mail className="h-3 w-3" /> {req.recipientEmail}</p>
                               )}
-                              <div className="flex gap-2 mt-1">
-                                <button onClick={() => copyLink(link)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><Copy className="h-3 w-3" /> Copy link</button>
-                                <a href={link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><ExternalLink className="h-3 w-3" /> Open</a>
-                              </div>
+                              <div className="flex flex-wrap gap-2 mt-1">{docRequestActions(req)}</div>
                             </div>
                           );
                         })}

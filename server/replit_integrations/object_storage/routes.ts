@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import fs from "fs";
-import path from "path";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { exportedUploadPath, localDocumentPath, useLocalDocumentStorage } from "../../objectStorageHelper";
 
 /**
  * Fallback for self-hosted (non-Replit) servers: files that were exported
@@ -11,9 +11,9 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 function tryServeFromLocalDisk(objectPath: string, res: any): boolean {
   const prefix = "/objects/uploads/";
   if (!objectPath.startsWith(prefix)) return false;
-  const name = path.basename(objectPath.slice(prefix.length));
-  const abs = path.join(process.cwd(), "client", "public", "uploads", name);
-  if (!fs.existsSync(abs)) return false;
+  const abs = exportedUploadPath(objectPath.slice("/objects/".length));
+  if (!abs || !fs.existsSync(abs) || !fs.lstatSync(abs).isFile()) return false;
+  res.set("Cache-Control", "private, no-store");
   res.sendFile(abs);
   return true;
 }
@@ -89,6 +89,15 @@ export function registerObjectStorageRoutes(app: Express): void {
    */
   app.get("/objects/:objectPath(*)", async (req, res) => {
     try {
+      if (useLocalDocumentStorage()) {
+        const local = localDocumentPath(req.path.slice("/objects/".length));
+        if (local && fs.existsSync(local) && fs.lstatSync(local).isFile()) {
+          res.set("Cache-Control", "private, no-store");
+          return res.sendFile(local);
+        }
+        if (tryServeFromLocalDisk(req.path, res)) return;
+        return res.status(404).json({ error: "Object not found" });
+      }
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {

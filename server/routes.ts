@@ -5267,18 +5267,17 @@ export async function registerRoutes(
 
       const uploadedFiles = (req.files as Express.Multer.File[]) || [];
 
-      // Persist each uploaded file to Replit Object Storage (survives redeploys).
-      // Replace each file's path/filename with the persistent object-storage URL.
+      // Persist before creating the signature request; a failed write must not
+      // create a signing link pointing at an ephemeral multer upload.
       const persistedFiles: Array<{ url: string; originalname: string; mimetype: string; size: number }> = [];
-      for (const f of uploadedFiles) {
-        try {
+      try {
+        for (const f of uploadedFiles) {
           const url = await persistLocalFileToStorage(f.path, f.originalname, f.mimetype);
           persistedFiles.push({ url, originalname: f.originalname, mimetype: f.mimetype, size: f.size });
-        } catch (e) {
-          console.error("[doc-signatures] failed to persist file to object storage:", e);
-          // Fallback: keep the legacy disk path if persistence fails.
-          persistedFiles.push({ url: `/uploads/doc-signatures/${f.filename}`, originalname: f.originalname, mimetype: f.mimetype, size: f.size });
         }
+      } catch (e) {
+        console.error("[doc-signatures] failed to persist document:", e);
+        return res.status(500).json({ error: "Document storage failed; signing request was not created" });
       }
 
       const masterToken = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);

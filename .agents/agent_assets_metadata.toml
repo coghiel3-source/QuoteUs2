@@ -6,63 +6,88 @@ id = "gOfUuMfFUZsUIgNeXoBKg"
 uri = "file://QuoteUs_Deploy.zip"
 type = "unspecified"
 title = "QuoteUs.ca — Deployment Package (17 MB)"
+logical_id = "06c054c9-a410-4497-90e2-45a5b67f061c"
 
 [[outputs]]
 id = "Fq9HCetcA2Ge1XnGY2QAx"
 uri = "file://dist-export/quoteus-ca-source.tar.gz"
 type = "unspecified"
 title = "QuoteUs.ca — Latest Source (tar.gz, 112 MB)"
+logical_id = "69e5145a-e2ea-439d-a9e4-483db636f8e5"
 
 [[outputs]]
 id = "IIIFhzzoA7QPXKUHltFa0"
 uri = "file://dist-export/DEPLOY.md"
 type = "text"
 title = "Deployment Guide (now with §5b host troubleshooting)"
+logical_id = "abfb6429-9282-4648-9a56-6923d81128e2"
 
 [[outputs]]
 id = "Ea8_QjYPdNGvtDFzZ3fiS"
 uri = "file://dist-export/quoteus-ca-website.tar.gz"
 type = "unspecified"
 title = "QuoteUs.ca — Full Website (master download, includes Rent Guarantee + mascot + all pages)"
+logical_id = "eb244aa3-95e1-485e-a574-907b57730554"
 
 [[outputs]]
 id = "WfksHUhY-hYTYUGN-EghF"
 uri = "file://dist-export/MANIFEST.txt"
 type = "text"
 title = "File Manifest (227 files)"
+logical_id = "47a90ac5-3b5d-488b-ac34-af75f4c12c3c"
 
 [[outputs]]
 id = "bZiieGs3CzNV7G7B2YQw_"
 uri = "file://dist-export/QuoteUs_1234.tar.gz"
 type = "unspecified"
 title = "QuoteUs_1234 — Full Website (portability-fixed for 3rd-party hosting)"
+logical_id = "d9515089-b6d5-4baf-b2d0-5d63bd43480a"
 
 [[outputs]]
 id = "tZA5Flu317-lzv2R1Z65V"
 uri = "file://dist-export/QuoteUs_Full_2026-06-21.zip"
 type = "unspecified"
 title = "QuoteUs.ca — Full Download (ZIP, best for cPanel/shared hosting)"
+logical_id = "c680f74e-5f40-48c2-ae76-9549a162a358"
 
 [[outputs]]
 id = "n26C5Upa3y05NBwhH6Svr"
 uri = "file://dist-export/QuoteUs_Full_2026-06-21.tar.gz"
 type = "unspecified"
 title = "QuoteUs.ca — Full Download (tar.gz)"
+logical_id = "741803d1-65f5-4d51-9b06-f5963ed78558"
 
 [[outputs]]
 id = "M8knE_aVYWo_YZhMuKbuU"
 uri = "file://dist-export/QuoteUs_Full_2026-07-19.zip"
 type = "unspecified"
 title = "QuoteUs Full Package — 2026-07-19 (latest)"
+logical_id = "ccacf594-1287-487d-af97-f9440587c71c"
 
 [[outputs]]
 id = "oMBySNoRyoZDsQMrOoRNM"
 uri = "file://dist-export/QuoteUs_Complete_2026-07-19.zip"
 type = "unspecified"
 title = "QuoteUs Complete Package (live data, July 19 2026)"
+logical_id = "4361710f-3528-4665-985c-7a09504a6cfb"
 
 [[outputs]]
 id = "gGM2Q59_2BTpB0ip0TQls"
 uri = "file://dist-export/QuoteUs_1.zip"
 type = "unspecified"
 title = "QuoteUs_1 — complete package for 3rd-party hosting"
+logical_id = "211bc7bc-567c-4d84-a3d7-0b19bea7df5e"
+
+[[outputs]]
+id = "_e1OChCJTJipbpUtLK4eS"
+uri = "file://dist-export/QuoteUs_Document_Repair.zip"
+type = "unspecified"
+title = "QuoteUs Document Repair — Third-Party Hosting"
+description = "Private repair kit with targeted code changes, 11 recovered PDFs, recovery inventory, and hosting installation instructions. No database restore or credentials included."
+logical_id = "6cff17f4-2b25-4789-a590-63733d1a7e79"
+content_hash = "sha256:96847cd18e692ef414995f1937e5f73cfc78e12fbea5f299598488bd20f54557"
+size = 80600758
+mtime_ms = 1790285710674
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/6cff17f4-2b25-4789-a590-63733d1a7e79/afb4abdc-8311-4a9d-9a38-4527ac63453c"
+storage_version_token = "1790285730355868"
+content_type = "application/octet-stream"

@@ -52,17 +52,21 @@ services — failures are isolated to specific request handlers.
   createPaymentAllocation (row-locks the source payment, validates against its
   amount).
 
-## Breaks off-Replit until changed
-- Replit Object Storage uses a sidecar at http://127.0.0.1:1106 plus
-  PRIVATE_OBJECT_DIR / PUBLIC_OBJECT_SEARCH_PATHS — none of which exist off-Replit.
-  The e-signature / service-agreement document storage (persistBufferToStorage /
-  persistLocalFileToStorage producing /objects/* URLs) depends on it and will throw
-  on a third-party host. Fix: route those writes to local disk like the other
-  /uploads/* features (or an S3-compatible store).
-- READS of /objects/uploads/* now fall back to local disk
-  (client/public/uploads/<basename>) when the bucket is unavailable — both the
-  serve route and readFileFromAnyPath. So exported files keep working off-Replit;
-  only NEW uploads via the /objects write path still need the bucket.
+## Hosting decision and storage boundary
+Keep quoteus.ca on the third-party hosting company; do not switch its DNS back
+to Replit as a document-access fix.
+
+**Why:** The user explicitly selected third-party hosting on 2026-09-24.
+Replit cloud-backed document links were readable through the Replit deployment
+but failed through the custom domain. Replit deployment metadata listing the
+custom domain alone did not prove it was serving that deployment.
+
+**How to apply:** Compare actual responses from both hosts when diagnosing
+production issues. Deliver reviewed repair packages for the hosting administrator;
+never imply workspace edits have changed the third-party live server. Keep
+existing host data and uploads, and never restore the old export database over
+the live database. Third-party document storage must use host-owned persistent
+storage rather than assuming the Replit storage sidecar is available.
 
 ## Data location gotchas (learned July 2026)
 - The REAL leads/settings live in the production DB, not dev — always export from

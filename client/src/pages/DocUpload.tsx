@@ -119,8 +119,9 @@ export default function DocUpload() {
           <div className="bg-red-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <AlertCircle className="h-8 w-8 text-red-600" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Link Unavailable</h1>
-          <p className="text-gray-500">{error || "This upload link has expired. Please contact your representative for a new link."}</p>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Upload Link Unavailable</h1>
+          <p className="text-gray-500">{error || "This upload link has expired."}</p>
+          <p className="text-gray-600 mt-3">You cannot upload documents with this link. Please contact the representative who sent it and ask them to send you a fresh upload link.</p>
         </div>
       </div>
     );

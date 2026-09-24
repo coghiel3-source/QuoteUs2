@@ -83,7 +83,15 @@ app.post(
 // Serve uploaded files (ads, etc.) directly from the uploads directory
 import path from "path";
 const uploadsDir = path.join(process.cwd(), "client", "public", "uploads");
-app.use("/uploads", express.static(uploadsDir));
+app.use("/uploads", express.static(uploadsDir, {
+  setHeaders: (res, filePath) => {
+    if (filePath.startsWith(path.join(uploadsDir, "doc-signatures") + path.sep)) {
+      res.setHeader("Cache-Control", "private, no-store");
+    }
+  },
+}));
+// Missing legacy uploads must not fall through to the SPA's HTML catch-all.
+app.use("/uploads", (_req, res) => res.status(404).json({ error: "Upload not found" }));
 
 // Serve downloadable PHP zip
 const phpZipPath = path.join(process.cwd(), "QuoteUs_PHP_1.zip");
