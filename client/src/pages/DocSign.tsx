@@ -3,6 +3,7 @@ import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fieldDocumentIndex, nextGuideIndex } from "./docSignGuide";
 
 type FieldType = "signature" | "initials" | "date" | "text" | "notes";
 
@@ -15,14 +16,29 @@ interface SignatureField {
   signerId?: string;
   page?: number;
   hint?: string;
+  documentId?: string;
+  fileId?: string;
+  documentIndex?: number;
+  docIndex?: number;
+  fileIndex?: number;
+}
+
+interface GuideStep {
+  key: string;
+  label: string;
+  complete: boolean;
+  required: boolean;
+  field?: SignatureField;
 }
 
 function SignaturePad({
   id,
+  label = "Signature",
   height = 140,
   onCapture,
 }: {
   id: string;
+  label?: string;
   height?: number;
   onCapture: (data: string | null) => void;
 }) {
@@ -95,6 +111,10 @@ function SignaturePad({
       <div className="relative border-2 border-gray-200 rounded-xl overflow-hidden bg-white touch-none" style={{ height }}>
         <canvas
           ref={canvasRef}
+          id={id}
+          tabIndex={0}
+          role="img"
+          aria-label={`Draw ${label.toLowerCase()} here`}
           width={600}
           height={height * 2}
           className="w-full h-full cursor-crosshair"
@@ -103,7 +123,7 @@ function SignaturePad({
         />
         {isEmpty && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-gray-300 text-sm select-none">Sign here</p>
+            <p className="text-gray-300 text-sm select-none">Draw {label.toLowerCase()} here</p>
           </div>
         )}
       </div>
@@ -135,54 +155,26 @@ export default function DocSign() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [scrolledToBottom, setScrolledToBottom] = useState(false);
-  const docViewerRef = useRef<HTMLDivElement>(null);
-  const hasUserScrolledRef = useRef(false);
+  const [completionStatus, setCompletionStatus] = useState<string | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
+  const [signedCopiesReady, setSignedCopiesReady] = useState(false);
+  const [consented, setConsented] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [errorStep, setErrorStep] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState<string | null>(null);
+  const stepRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [sigModalOpen, setSigModalOpen] = useState(false);
   const [sigDraft, setSigDraft] = useState<string | null>(null);
-
-  // Scroll gate — must genuinely scroll past the document viewer before signing is allowed.
-  // We require BOTH: (a) the user has performed a scroll interaction, AND (b) the viewer's
-  // bottom is at/above the viewport bottom. Edge case: if the page is not scrollable at all
-  // (document already fits in viewport), unlock automatically after mount.
-  useEffect(() => {
-    // Reset on document set change so a fresh document always gates again
-    setScrolledToBottom(false);
-    hasUserScrolledRef.current = false;
-
-    const check = () => {
-      const viewer = docViewerRef.current;
-      if (!viewer) return;
-      const viewerBottom = viewer.getBoundingClientRect().bottom;
-      if (viewerBottom <= window.innerHeight + 20) setScrolledToBottom(true);
-    };
-    const onScroll = () => {
-      hasUserScrolledRef.current = true;
-      check();
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    // After layout settles, if there is nothing to scroll, unlock automatically.
-    const t = setTimeout(() => {
-      const scrollable = document.documentElement.scrollHeight - window.innerHeight > 10;
-      if (!scrollable) setScrolledToBottom(true);
-      else if (hasUserScrolledRef.current) check();
-    }, 400);
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      clearTimeout(t);
-    };
-  }, [files.length, loading]);
 
   const getDocPage = (i: number) => docPages[i] ?? 1;
   const setDocPage = (i: number, p: number) => setDocPages(prev => ({ ...prev, [i]: Math.max(1, p) }));
 
-  // Jump to the page a field lives on when the user focuses it
+  // A page belongs to its document, not whichever tab happens to be open.
+  // Older requests have only a page number; use the first document for those.
   const focusField = (field: SignatureField) => {
-    if (field.page && field.page >= 1) {
-      setDocPage(activeDoc, field.page);
-    }
+    const index = fieldDocumentIndex(field, files);
+    if (files.length) setActiveDoc(index);
+    if (field.page && field.page >= 1) setDocPage(index, field.page);
   };
 
   useEffect(() => {
@@ -211,19 +203,45 @@ export default function DocSign() {
 
   const allFields = fields;
   const hasSignatureField = allFields.some(f => f.type === "signature" || f.type === "initials");
+  const steps: GuideStep[] = [
+    { key: "name", label: "Your Full Legal Name", complete: !!signerName.trim(), required: true },
+    ...(!hasSignatureField ? [{ key: "main-signature", label: "Signature", complete: !!mainSigData, required: true }] : []),
+    ...allFields.map(f => ({ key: `field-${f.id}`, label: f.label || f.type, complete: !!fieldResponses[f.id]?.trim(), required: f.required, field: f })),
+    { key: "consent", label: "Agreement confirmation", complete: consented, required: true },
+  ];
+  const requiredSteps = steps.filter(step => step.required);
+  const filled = requiredSteps.filter(step => step.complete).length;
+  const totalRequired = requiredSteps.length;
+  const pct = totalRequired > 0 ? Math.round((filled / totalRequired) * 100) : 100;
+
+  const jumpToStep = (step: typeof steps[number]) => {
+    setActiveStep(step.key);
+    if (step.field) focusField(step.field);
+    const target = stepRefs.current[step.key];
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    // preventScroll avoids focus snapping past the smooth scroll animation.
+    target?.querySelector<HTMLElement>("input, textarea, canvas, button")?.focus({ preventScroll: true });
+  };
+  const navigate = (direction: "start" | "next" | "previous") => {
+    const target = steps[nextGuideIndex(steps, activeStep, direction)];
+    if (target) jumpToStep(target);
+  };
 
   const validate = () => {
-    if (!signerName.trim()) return "Please enter your full name.";
-    if (!hasSignatureField && !mainSigData) return "Please draw your signature.";
-    for (const f of allFields) {
-      if (f.required && !fieldResponses[f.id]) return `"${f.label}" is required.`;
-    }
-    return null;
+    const missing = requiredSteps.find(step => !step.complete);
+    if (!missing) return null;
+    const message = missing.key === "name" ? "Please enter your full legal name."
+      : missing.key === "main-signature" ? "Please draw your signature."
+      : missing.key === "consent" ? "Please confirm you have read and agree to the documents."
+      : `Please complete "${missing.label}" (${missing.field?.type === "initials" ? "initials" : missing.field?.type || "field"}).`;
+    return { message, step: missing };
   };
 
   const handleSubmit = async () => {
     const err = validate();
-    if (err) { alert(err); return; }
+    if (err) { setFormError(err.message); setErrorStep(err.step.key); jumpToStep(err.step); return; }
+    setFormError(null);
+    setErrorStep(null);
     setSubmitting(true);
     try {
       const sigField = allFields.find(f => f.type === "signature" || f.type === "initials");
@@ -236,17 +254,17 @@ export default function DocSign() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
+      setCompletionStatus(data.status || null);
+      setNotificationStatus(data.notificationStatus || (data.completionEmailSent === true ? "sent" : null));
+      setSignedCopiesReady(data.signedCopiesReady === true);
       setSubmitted(true);
     } catch (e: any) {
-      alert(e.message || "Submission failed. Please try again.");
+      setFormError(e.message || "Submission failed. Please try again.");
+      setErrorStep(null);
     } finally {
       setSubmitting(false);
     }
   };
-
-  const totalRequired = allFields.filter(f => f.required).length + (hasSignatureField ? 0 : 1);
-  const filled = allFields.filter(f => f.required && fieldResponses[f.id]).length + (hasSignatureField ? 0 : mainSigData ? 1 : 0);
-  const pct = totalRequired > 0 ? Math.round((filled / totalRequired) * 100) : 100;
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -279,8 +297,11 @@ export default function DocSign() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Documents Signed</h2>
-        <p className="text-gray-500 text-sm">Thank you, <strong>{signerName}</strong>. Your signature has been recorded.</p>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">{completionStatus === "partial" ? "Your signing is complete" : "Documents Signed"}</h2>
+        <p className="text-gray-500 text-sm">Thank you, <strong>{signerName}</strong>. Your signature has been recorded.{completionStatus === "partial" ? " Waiting for the other signers to complete their fields." : ""}</p>
+        {notificationStatus === "sent" && <p className="text-gray-500 text-sm mt-2">{completionStatus === "partial" ? "A confirmation of your signature has been emailed to you. Completed copies will be sent after everyone has signed." : signedCopiesReady ? "A confirmation and signed copies have been emailed to the recipients, with a copy to rgprocessing@quoteus.ca." : "A confirmation has been emailed, with a copy to rgprocessing@quoteus.ca. Please contact the sender for the completed document copies."}</p>}
+        {notificationStatus === "pending" && <p className="text-gray-500 text-sm mt-2">The signed copy email is pending.</p>}
+        {notificationStatus === "failed" && <p className="text-amber-700 text-sm mt-2">Your signature was saved, but the signed copy email could not be sent. Please contact the sender for a copy.</p>}
         {record?.propertyAddress && <p className="text-gray-400 text-xs mt-2">{record.propertyAddress}</p>}
       </div>
     </div>
@@ -327,12 +348,18 @@ export default function DocSign() {
             <div className="w-20 h-1.5 bg-white/30 rounded-full overflow-hidden">
               <div className="h-full bg-white rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-blue-200 text-xs">{filled}/{totalRequired}</span>
+            <span className="text-blue-100 text-xs" aria-live="polite">{filled}/{totalRequired} required</span>
           </div>
         )}
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+
+        <div className="bg-white rounded-xl border shadow-sm px-4 py-3 flex flex-wrap items-center gap-2" aria-label="Signing guide">
+          <p className="text-sm text-gray-700 mr-auto"><strong>{filled} of {totalRequired}</strong> required steps complete. Fill fields in any order, or use the guide.</p>
+          <Button variant="outline" size="sm" onClick={() => navigate("previous")} disabled={!activeStep || steps[0]?.key === activeStep}>Previous</Button>
+          <Button variant="outline" size="sm" onClick={() => navigate(activeStep ? "next" : "start")}>{activeStep ? "Next field" : "Start"}</Button>
+        </div>
 
         {/* Signer context banner */}
         {signer && (
@@ -381,7 +408,7 @@ export default function DocSign() {
         })()}
 
         {/* Document Viewer */}
-        <div ref={docViewerRef} className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
 
           {files.length > 1 && (
             <div className="flex overflow-x-auto border-b bg-gray-50">
@@ -446,13 +473,13 @@ export default function DocSign() {
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b bg-gray-50">
             <h2 className="text-sm font-bold text-gray-800">Complete &amp; Sign</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Review the document above, then fill in the fields below.</p>
+            <p className="text-xs text-gray-500 mt-0.5">Review the documents above. Fill in fields freely or use Start / Next field to move through them.</p>
           </div>
 
           <div className="p-5 space-y-5">
 
             {/* Signer name */}
-            <div className="space-y-1.5">
+            <div ref={el => { stepRefs.current.name = el; }} className="space-y-1.5 scroll-mt-24" onFocus={() => setActiveStep("name")}>
               <Label htmlFor="signerName" className="text-sm font-semibold text-gray-700">
                 Your Full Legal Name <span className="text-red-500">*</span>
               </Label>
@@ -464,6 +491,7 @@ export default function DocSign() {
                 onChange={e => setSignerName(e.target.value)}
                 className="text-sm"
               />
+              {errorStep === "name" && !signerName.trim() && <p role="alert" className="text-sm text-red-700">{formError}</p>}
             </div>
 
             {/* Main signature (if no dedicated signature field) — styled to match the
@@ -471,7 +499,7 @@ export default function DocSign() {
                 Clicking the signature line opens a modal to draw the signature, which
                 then appears on the line itself. */}
             {!hasSignatureField && (
-              <div className="border-2 border-gray-200 rounded-xl p-6 bg-gray-50/50" data-testid="block-landlord-signature">
+              <div ref={el => { stepRefs.current["main-signature"] = el; }} className="border-2 border-gray-200 rounded-xl p-6 bg-gray-50/50 scroll-mt-24" data-testid="block-landlord-signature" onFocus={() => setActiveStep("main-signature")}>
                 <p className="text-base font-semibold text-gray-900 mb-1">Accepted, Acknowledged and Agreed:</p>
                 <p className="text-base font-semibold text-gray-900 mb-6">By: Landlord</p>
 
@@ -517,6 +545,7 @@ export default function DocSign() {
                 <p className="text-sm text-gray-700 mt-4 font-medium">
                   Landlord (or Landlord's Property Manager, if authorized)
                 </p>
+                {errorStep === "main-signature" && !mainSigData && <p role="alert" className="text-sm text-red-700 mt-2">{formError}</p>}
               </div>
             )}
 
@@ -562,10 +591,10 @@ export default function DocSign() {
 
             {/* All required fields */}
             {allFields.map(field => (
-              <div key={field.id} className="space-y-1.5">
+              <div key={field.id} ref={el => { stepRefs.current[`field-${field.id}`] = el; }} className={`space-y-1.5 scroll-mt-24 rounded-lg ${activeStep === `field-${field.id}` ? "ring-2 ring-blue-200 p-2 -m-2" : ""}`} onFocus={() => { setActiveStep(`field-${field.id}`); focusField(field); }}>
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <Label className="text-sm font-semibold text-gray-700">
+                    <Label htmlFor={`field-input-${field.id}`} className="text-sm font-semibold text-gray-700">
                       {field.label}
                       {field.required && <span className="text-red-500 ml-1">*</span>}
                       <span className="ml-2 text-xs font-normal text-gray-400 capitalize">({field.type})</span>
@@ -575,7 +604,7 @@ export default function DocSign() {
                       <p className="text-xs text-blue-600 mt-0.5 flex items-center gap-1">
                         {field.page && (
                           <button
-                            onClick={() => { setDocPage(activeDoc, field.page!); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                            onClick={() => { focusField(field); }}
                             className="underline hover:text-blue-800 font-medium"
                           >
                             Page {field.page}
@@ -588,63 +617,50 @@ export default function DocSign() {
                   </div>
                 </div>
                 {(field.type === "signature" || field.type === "initials") ? (
-                  <div onFocus={() => focusField(field)}>
+                  <div>
                     <SignaturePad
                       id={`pad-${field.id}`}
+                      label={field.type === "initials" ? "Initials" : "Signature"}
                       height={field.type === "initials" ? 90 : 150}
                       onCapture={data => setFieldResponses(prev => ({ ...prev, [field.id]: data || "" }))}
                     />
                   </div>
                 ) : field.type === "date" ? (
-                  <Input type="date" className="text-sm max-w-xs"
-                    onFocus={() => focusField(field)}
+                  <Input id={`field-input-${field.id}`} type="date" className="text-sm max-w-xs"
                     value={fieldResponses[field.id] || ""}
                     onChange={e => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))} />
                 ) : field.type === "notes" ? (
                   <textarea
+                    id={`field-input-${field.id}`}
                     className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={4}
                     placeholder={field.defaultValue || `Enter ${field.label.toLowerCase()}`}
-                    onFocus={() => focusField(field)}
                     value={fieldResponses[field.id] || ""}
                     onChange={e => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
                   />
                 ) : (
-                  <Input className="text-sm"
+                  <Input id={`field-input-${field.id}`} className="text-sm"
                     placeholder={field.defaultValue || `Enter ${field.label.toLowerCase()}`}
-                    onFocus={() => focusField(field)}
                     value={fieldResponses[field.id] || ""}
                     onChange={e => setFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))} />
                 )}
+                {errorStep === `field-${field.id}` && !fieldResponses[field.id]?.trim() && <p role="alert" className="text-sm text-red-700">{formError}</p>}
               </div>
             ))}
 
             {/* Submit */}
             <div className="pt-2 border-t space-y-3">
-              {!scrolledToBottom && (
-                <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-start gap-3" data-testid="banner-scroll-required">
-                  <svg className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-amber-900">Please scroll to the bottom of the agreement</p>
-                    <p className="text-xs text-amber-700 mt-0.5">You must review the entire document before you can sign.</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const v = docViewerRef.current;
-                      if (v) window.scrollTo({ top: v.offsetTop + v.offsetHeight - window.innerHeight + 40, behavior: "smooth" });
-                    }}
-                    className="text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg shrink-0"
-                    data-testid="button-scroll-to-bottom"
-                  >
-                    Scroll down
-                  </button>
-                </div>
-              )}
+              <div ref={el => { stepRefs.current.consent = el; }} className="flex items-start gap-2 scroll-mt-24" onFocus={() => setActiveStep("consent")}>
+                <input id="doc-sign-consent" type="checkbox" checked={consented} onChange={e => setConsented(e.target.checked)} className="mt-1" />
+                <Label htmlFor="doc-sign-consent" className="text-sm text-gray-700 font-normal">
+                  I have reviewed and agree to all documents above, and consent to signing electronically. <span className="text-red-500">*</span>
+                </Label>
+              </div>
+              {errorStep === "consent" && !consented && <p role="alert" className="text-sm text-red-700">{formError}</p>}
+              {formError && !errorStep && <p role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{formError}</p>}
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !signerName.trim() || (!hasSignatureField && !mainSigData) || !scrolledToBottom}
+                disabled={submitting}
                 className="bg-blue-700 hover:bg-blue-800 text-white w-full h-11 text-sm font-semibold disabled:opacity-50"
                 data-testid="button-submit-signature"
               >
@@ -653,7 +669,7 @@ export default function DocSign() {
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Submitting…
                   </span>
-                ) : !scrolledToBottom ? "Scroll to bottom to sign" : `Submit Signed Document${files.length > 1 ? "s" : ""}`}
+                ) : `Finish & Sign Document${files.length > 1 ? "s" : ""}`}
               </Button>
               <p className="text-xs text-gray-400 text-center">
                 By submitting, you confirm you have read and agree to all documents above.

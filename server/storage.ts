@@ -145,6 +145,7 @@ export interface IStorage {
   getDocSignatureByToken(token: string): Promise<LocationDocSignature | null>;
   getDocSignatureBySignerToken(signerToken: string): Promise<LocationDocSignature | null>;
   updateDocSignature(id: string, data: any): Promise<LocationDocSignature | null>;
+  updateDocSignatureIfUnchanged(id: string, previousSigners: string | null, data: any): Promise<LocationDocSignature | null>;
   createDocSigFile(data: { sigRequestId: string; filePath: string; fileName?: string; mimeType?: string; sortOrder?: number }): Promise<LocationDocSignatureFile>;
   getFilesForDocSig(sigRequestId: string): Promise<LocationDocSignatureFile[]>;
 
@@ -964,6 +965,18 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(locationDocSignatures)
       .set(data)
       .where(eq(locationDocSignatures.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async updateDocSignatureIfUnchanged(id: string, previousSigners: string | null, data: any): Promise<LocationDocSignature | null> {
+    const [updated] = await db.update(locationDocSignatures)
+      .set(data)
+      .where(and(
+        eq(locationDocSignatures.id, id),
+        previousSigners === null ? isNull(locationDocSignatures.signers) : eq(locationDocSignatures.signers, previousSigners),
+        sql`${locationDocSignatures.status} <> 'signed'`,
+      ))
       .returning();
     return updated || null;
   }

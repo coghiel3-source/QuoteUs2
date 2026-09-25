@@ -15,6 +15,32 @@ import bcrypt from "bcryptjs";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import { persistLocalFileToStorage, persistBufferToStorage, readFileFromAnyPath } from "./objectStorageHelper";
+import { completedSignerRecords, completionCopyMessage, isDuplicateSigningSubmission, sendCompletionNotifications, validateSigningResponses, type SigningField, type SigningResponse } from "./signingCompletion";
+import { renderCompletedPdf } from "./completedPdf";
+
+const COMPLETION_CC = "rgprocessing@quoteus.ca";
+const escapeEmailHtml = (value: string) => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+// Render an immutable original plus every signer's recorded answers. In a multi-signer
+// request a single signature-line anchor is insufficient (and overwrites prior signers).
+async function stampCompletedPdf(
+  originalPath: string,
+  signers: Array<{ signerName: string; signatureData?: string | null; fieldResponses?: SigningResponse[] }>,
+  fields: SigningField[],
+): Promise<string | null> {
+  try {
+    if (signers.length === 1 && !fields.length && signers[0].signatureData) {
+      return stampSignatureOnPdf(originalPath, signers[0].signatureData, signers[0].signerName);
+    }
+    const original = await readFileFromAnyPath(originalPath);
+    if (!original) return null;
+    const bytes = await renderCompletedPdf(original, signers, fields);
+    return persistBufferToStorage(Buffer.from(bytes), `signed-${Date.now()}-${path.basename(originalPath)}`, "application/pdf");
+  } catch {
+    console.error("[doc-sign] Failed to create completed PDF");
+    return null;
+  }
+}
 
 /**
  * Locate a text anchor in the PDF using pdfjs-dist and return its
@@ -5244,7 +5270,20 @@ export async function registerRoutes(
         console.error("[sign] Failed to auto-approve lead:", e);
       }
 
-      res.json(updated);
+      let notificationStatus: "sent" | "failed" | "not_required" = "not_required";
+      if (request.landlordEmail) {
+        try {
+          notificationStatus = await sendEmail({
+            to: request.landlordEmail, cc: COMPLETION_CC,
+            subject: "Your agreement has been signed — QuoteUs.ca",
+            html: "<p>Your signature has been recorded. Your agreement is complete. Thank you for signing.</p>",
+          }) ? "sent" : "failed";
+        } catch {
+          notificationStatus = "failed";
+          console.error("[sign] Failed to send confirmation");
+        }
+      }
+      res.json({ ...updated, notificationStatus });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -5460,166 +5499,177 @@ export async function registerRoutes(
     try {
       const { token } = req.params;
       let record = await storage.getDocSignatureByToken(token);
-      let signerEntry: any = null;
-      let signerIdx = -1;
-
-      if (!record) {
-        record = await storage.getDocSignatureBySignerToken(token);
-        if (record?.signers) {
-          const signers = JSON.parse(record.signers);
-          signerIdx = signers.findIndex((s: any) => s.token === token);
-          signerEntry = signerIdx >= 0 ? signers[signerIdx] : null;
-        }
-      }
-
+      const masterToken = !!record;
+      if (!record) record = await storage.getDocSignatureBySignerToken(token);
       if (!record) return res.status(404).json({ error: "Signing request not found" });
-
-      const isAlreadySigned = signerEntry ? signerEntry.status === "signed" : record.status === "signed";
-      if (isAlreadySigned) return res.status(400).json({ error: "This document has already been signed" });
-
       const { signatureData, signerName, fieldResponses } = req.body;
-      if (!signerName) return res.status(400).json({ error: "Signer name is required" });
-
-      let updateData: any = {};
-      if (signerEntry !== null && signerIdx >= 0 && record.signers) {
-        // Update the specific signer entry inside the signers JSON
-        const signers = JSON.parse(record.signers);
-        signers[signerIdx] = {
-          ...signers[signerIdx],
-          status: "signed",
-          signedAt: new Date().toISOString(),
-          signatureData: signatureData || null,
-          signerName,
-        };
-        const allSigned = signers.every((s: any) => s.status === "signed");
-        updateData = {
-          signers: JSON.stringify(signers),
-          status: allSigned ? "signed" : "partial",
-          // Update top-level for backward compat when all are done
-          ...(allSigned ? { signatureData, signerName, signedAt: new Date() } : {}),
-          signatureFields: fieldResponses ? JSON.stringify(fieldResponses) : record.signatureFields,
-        };
-      } else {
-        // Legacy single-signer flow
-        updateData = {
-          status: "signed",
-          signatureData,
-          signerName,
-          signedAt: new Date(),
-          signatureFields: fieldResponses ? JSON.stringify(fieldResponses) : record.signatureFields,
-        };
+      if (typeof signerName !== "string" || !signerName.trim()) return res.status(400).json({ error: "Signer name is required" });
+      let updated: typeof record | null = null;
+      let signerEntry: any;
+      let fields: SigningField[] = [];
+      // Optimistic CAS prevents simultaneous signers from replacing each other's JSON.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (!record) break;
+        const signers: any[] = record.signers ? JSON.parse(record.signers) : [];
+        const signerIdx = signers.findIndex(s => s.token === token);
+        if (signers.length && signerIdx < 0) {
+          // A master token is a request identifier, not a way to sign for everyone.
+          return res.status(403).json({ error: "Use your individual signer link" });
+        }
+        signerEntry = signerIdx >= 0 ? signers[signerIdx] : null;
+        if (isDuplicateSigningSubmission(record.status, signerEntry?.status)) {
+          return res.status(409).json({ error: "This document has already been signed", status: record.status, notificationStatus: "not_required" });
+        }
+        fields = record.signatureFields ? JSON.parse(record.signatureFields) : [];
+        if (!Array.isArray(fields)) return res.status(500).json({ error: "Invalid signing field definitions" });
+        const validated = validateSigningResponses(fields, fieldResponses ?? [], signerEntry?.id, signatureData);
+        if (validated.error) return res.status(400).json({ error: validated.error });
+        const capturedSignature = typeof signatureData === "string" && signatureData.startsWith("data:image/")
+          ? signatureData : validated.responses.find(r => r.type === "signature" && r.value)?.value;
+        if (!capturedSignature || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(capturedSignature)) {
+          return res.status(400).json({ error: "A valid signature is required" });
+        }
+        const now = new Date();
+        const updateData: any = signerIdx >= 0 ? (() => {
+          signers[signerIdx] = { ...signers[signerIdx], status: "signed", signedAt: now.toISOString(),
+            signatureData: capturedSignature, signerName: signerName.trim(), fieldResponses: validated.responses };
+          const allSigned = signers.every(s => s.status === "signed");
+          return { signers: JSON.stringify(signers), status: allSigned ? "signed" : "partial",
+            ...(allSigned ? { signatureData: capturedSignature, signerName: signerName.trim(), signedAt: now } : {}) };
+        })() : { status: "signed", signatureData: capturedSignature, signerName: signerName.trim(), signedAt: now,
+          // Legacy single-signer rows have no signers JSON: use it to retain answers.
+          signers: JSON.stringify([{ id: "legacy", name: signerName.trim(), email: record.landlordEmail,
+            status: "signed", signedAt: now.toISOString(), signatureData: capturedSignature,
+            signerName: signerName.trim(), fieldResponses: validated.responses }]) };
+        updated = await storage.updateDocSignatureIfUnchanged(record.id, record.signers, updateData);
+        if (updated) break;
+        record = masterToken ? await storage.getDocSignatureByToken(token) : await storage.getDocSignatureBySignerToken(token);
       }
-
-      const updated = await storage.updateDocSignature(record.id, updateData);
+      if (!updated || !record) return res.status(409).json({ error: "Signing state changed; please retry", notificationStatus: "not_required" });
+      let notificationStatus: "sent" | "failed" | "pending" | "not_required" = "not_required";
+      let signedCopiesReady = false;
 
       // Auto-attach document files to rep_documents via the location's active lead (only when fully signed).
       // For PDFs, stamp the captured signature onto a clean appended landlord signature page
       // and attach the SIGNED PDF (not the original) to documents. Also email signed copies
       // to the client(s) as confirmation of completion.
-      if (updateData.status === "signed") {
+      if (updated.status === "signed") {
         const signedFilesForEmail: { content: Buffer; fileName: string }[] = [];
+        let copiesComplete = true;
         try {
-          const leads = await storage.getLeadsForLocation(record.locationId);
-          const activeLead = leads.find(l => l.status !== "Declined") || leads[0];
-
-          // Determine the signature data to stamp (use top-level or last signer's data)
-          let sigDataToStamp: string | null = signatureData || null;
-          let stampSignerName: string = signerName || "";
-          if (!sigDataToStamp && record.signers) {
-            try {
-              const ss = JSON.parse(record.signers);
-              const signed = ss.filter((s: any) => s.signatureData);
-              if (signed.length > 0) {
-                sigDataToStamp = signed[signed.length - 1].signatureData;
-                stampSignerName = signed[signed.length - 1].signerName || stampSignerName;
-              }
-            } catch {}
+          let activeLead: { id: string } | undefined;
+          try {
+            const leads = await storage.getLeadsForLocation(record.locationId);
+            activeLead = leads.find(l => l.status !== "Declined") || leads[0];
+          } catch {
+            console.error("[doc-sign] Could not link completed file to lead");
           }
+          const allSigners = completedSignerRecords(updated.signers);
 
           const files = await storage.getFilesForDocSig(record.id);
+          if (!files.length) copiesComplete = false;
           for (const f of files) {
-            let attachPath = f.filePath;
-            let attachName = f.fileName || "Signed Document";
+            const attachName = `Signed - ${f.fileName || "Document"}`;
             const isPdf = f.mimeType === "application/pdf" || (f.filePath || "").toLowerCase().endsWith(".pdf");
-            if (isPdf && sigDataToStamp && stampSignerName) {
-              const signedPath = await stampSignatureOnPdf(f.filePath, sigDataToStamp, stampSignerName);
-              if (signedPath) {
-                attachPath = signedPath;
-                attachName = `Signed - ${attachName}`;
-                // Persist the signed-copy URL back to the doc-sig file row so the
-                // rep dashboard can link to the SIGNED PDF (not the unsigned original).
+            if (!isPdf) {
+              copiesComplete = false;
+              continue; // Original HTML/images are not fully signed documents.
+            }
+            try {
+              const signedPath = await stampCompletedPdf(f.filePath, allSigners, fields);
+              if (!signedPath) {
+                copiesComplete = false;
+                continue; // Never represent an unsigned original as a completed copy.
+              }
+              try {
+                await storage.updateDocSigFileSignedPath(f.id, signedPath);
+              } catch {
+                console.error("[doc-sign] failed to persist signed file path");
+              }
+              if (activeLead) {
                 try {
-                  await storage.updateDocSigFileSignedPath(f.id, signedPath);
-                } catch (e) {
-                  console.error("[doc-sign] failed to persist signedFilePath on doc-sig file:", e);
+                  await storage.createRepDocument({
+                    rgLeadId: activeLead.id,
+                    documentRequestId: null,
+                    docType: "signed-document",
+                    fileName: attachName,
+                    fileUrl: signedPath,
+                    fileSize: null,
+                  });
+                } catch {
+                  console.error("[doc-sign] Failed to link completed file to lead");
                 }
               }
-            }
-            if (activeLead) {
-              await storage.createRepDocument({
-                rgLeadId: activeLead.id,
-                documentRequestId: null,
-                docType: "signed-document",
-                fileName: attachName,
-                fileUrl: attachPath,
-                fileSize: null,
-              });
-            }
-            // Collect content for email attachment (handles /objects/* and legacy /uploads/*)
-            try {
-              const buf = await readFileFromAnyPath(attachPath);
+              const buf = await readFileFromAnyPath(signedPath);
               if (buf) signedFilesForEmail.push({ content: buf, fileName: attachName });
-            } catch (e) {
-              console.error("[doc-sign] failed reading file for email attach:", e);
+              else copiesComplete = false;
+            } catch {
+              copiesComplete = false;
+              console.error("[doc-sign] failed reading completed file for email attachment");
             }
           }
-        } catch (e) {
-          console.error("[doc-sign] Failed to attach signed docs:", e);
+        } catch {
+          copiesComplete = false;
+          console.error("[doc-sign] Failed to prepare completed documents");
         }
+        signedCopiesReady = copiesComplete && signedFilesForEmail.length > 0;
 
         // Email signed copies to the client(s) as confirmation
         try {
           // Collect recipient emails: top-level landlordEmail + any signer emails
           const recipients = new Set<string>();
           if (record.landlordEmail) recipients.add(record.landlordEmail);
-          if (record.signers) {
+          if (updated.signers) {
             try {
-              const ss = JSON.parse(record.signers);
+              const ss = JSON.parse(updated.signers);
               for (const s of ss) {
                 if (s.email) recipients.add(s.email);
               }
             } catch {}
           }
-          if (recipients.size > 0 && signedFilesForEmail.length > 0) {
+          if (recipients.size > 0) {
             const docTitle = record.documentName || "Signed Document";
-            const propertyAddr = record.propertyAddress ? `<p style="margin:8px 0;color:#555;"><strong>Property:</strong> ${record.propertyAddress}</p>` : "";
+            const propertyAddr = record.propertyAddress ? `<p style="margin:8px 0;color:#555;"><strong>Property:</strong> ${escapeEmailHtml(record.propertyAddress)}</p>` : "";
             const html = `
               <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
                 <h2 style="color:#1e40af;margin-top:0;">Your Signed Document — Confirmation of Completion</h2>
-                <p style="color:#333;font-size:15px;">Hello${signerName ? ` ${signerName}` : ""},</p>
-                <p style="color:#333;font-size:15px;">Thank you for signing <strong>${docTitle}</strong>. A fully signed copy is attached to this email for your records.</p>
+                <p style="color:#333;font-size:15px;">Hello,</p>
+                <p style="color:#333;font-size:15px;">Thank you for signing <strong>${escapeEmailHtml(docTitle)}</strong>. ${completionCopyMessage(signedCopiesReady)}</p>
                 ${propertyAddr}
                 <p style="color:#333;font-size:15px;">Signed on ${new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" })}.</p>
                 <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
                 <p style="color:#888;font-size:12px;">This is an automated confirmation from QuoteUs.ca. The use of electronic signatures has the same legal effect and enforceability as a handwritten signature.</p>
               </div>
             `;
-            const attachments = signedFilesForEmail.map(f => ({ filename: f.fileName, content: f.content }));
-            for (const to of Array.from(recipients)) {
-              await sendEmail({
-                to,
-                subject: `Signed Copy — ${docTitle}`,
-                html,
-                attachments,
-              });
-            }
+            const attachments = signedCopiesReady ? signedFilesForEmail.map(f => ({ filename: f.fileName, content: f.content })) : [];
+            notificationStatus = await sendCompletionNotifications(
+              Array.from(recipients), { subject: signedCopiesReady ? `Signed Copy — ${docTitle}` : `Signing Complete — ${docTitle}`, html, attachments }, sendEmail,
+            );
+          } else {
+            notificationStatus = "not_required";
           }
-        } catch (e) {
-          console.error("[doc-sign] Failed to email signed copy to client:", e);
+        } catch {
+          notificationStatus = "failed";
+          console.error("[doc-sign] Failed to notify completion");
+        }
+      } else {
+        notificationStatus = "pending";
+        const recipient = signerEntry?.email || record.landlordEmail;
+        if (recipient) {
+          try {
+            notificationStatus = await sendEmail({
+              to: recipient,
+              subject: "Your signature was recorded — awaiting other signers",
+              html: `<p>Thank you for signing ${escapeEmailHtml(record.documentName || "your document")}. Your signature has been recorded. We will send a completed copy once all signers have signed.</p>`,
+            }) ? "sent" : "failed";
+          } catch {
+            notificationStatus = "failed";
+            console.error("[doc-sign] Failed to notify signer");
+          }
         }
       }
 
-      res.json(updated);
+      res.json({ ...updated, status: updated.status, notificationStatus, signedCopiesReady });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -5760,7 +5810,20 @@ export async function registerRoutes(
         signerName,
         signedAt: new Date(),
       });
-      res.json(updated);
+      let notificationStatus: "sent" | "failed" | "not_required" = "not_required";
+      if (sa.landlordEmail) {
+        try {
+          notificationStatus = await sendEmail({
+            to: sa.landlordEmail, cc: COMPLETION_CC,
+            subject: "Your service agreement has been signed — QuoteUs.ca",
+            html: "<p>Your signature has been recorded. Your service agreement is complete. Thank you for signing.</p>",
+          }) ? "sent" : "failed";
+        } catch {
+          notificationStatus = "failed";
+          console.error("[service-sign] Failed to send confirmation");
+        }
+      }
+      res.json({ ...updated, notificationStatus });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 

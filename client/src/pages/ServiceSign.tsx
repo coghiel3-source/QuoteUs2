@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type NotificationStatus = "sent" | "failed" | "pending" | "not_required";
+
 function SignaturePad({ onCapture }: { onCapture: (data: string | null) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -100,6 +102,13 @@ export default function ServiceSign() {
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<NotificationStatus | null>(null);
+  const signatureHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  function goToSignature() {
+    signatureHeadingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    signatureHeadingRef.current?.focus({ preventScroll: true });
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -126,7 +135,9 @@ export default function ServiceSign() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ signerName, signatureData }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      const result: { error?: string; notificationStatus?: NotificationStatus } = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to submit signature");
+      setNotificationStatus(result.notificationStatus || null);
       setSubmitted(true);
     } catch (e: any) { setError(e.message || "Failed to submit signature"); }
     setSubmitting(false);
@@ -158,7 +169,18 @@ export default function ServiceSign() {
           <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
         </div>
         <h2 className="text-xl font-bold text-gray-800 mb-2">Agreement Signed</h2>
-        <p className="text-gray-500 text-sm">Thank you{agreement?.signerName ? `, ${agreement.signerName}` : ""}. Your QuoteUs.ca Service Agreement has been successfully signed. A copy will be provided to you.</p>
+        <p className="text-gray-500 text-sm">Thank you{agreement?.signerName ? `, ${agreement.signerName}` : ""}. Your QuoteUs.ca Service Agreement has been successfully signed.</p>
+        <p role="status" className={`mt-3 text-sm ${notificationStatus === "failed" ? "text-amber-700" : "text-gray-600"}`}>
+          {notificationStatus === "sent"
+            ? "A confirmation email has been sent."
+            : notificationStatus === "failed"
+              ? "Your signature was saved, but the confirmation email could not be sent. Please contact QuoteUs.ca if you need a copy."
+              : notificationStatus === "pending"
+                ? "Your signature was saved. Email confirmation is pending."
+                : notificationStatus === "not_required"
+                  ? "Your signature was saved. No email confirmation was required."
+                  : "Your signature was saved. Email confirmation status is unavailable."}
+        </p>
         <div className="mt-6 p-4 bg-gray-50 rounded-xl text-left text-sm text-gray-600 space-y-1">
           <p><strong>Property:</strong> {agreement?.propertyAddress}</p>
           <p><strong>Service Fee:</strong> ${agreement?.serviceFee}</p>
@@ -179,6 +201,13 @@ export default function ServiceSign() {
             <h1 className="text-white font-bold text-xl">QuoteUs.ca</h1>
             <p className="text-blue-200 text-sm">Service Agreement</p>
           </div>
+        </div>
+
+        <div className="bg-blue-50 border-x border-blue-100 px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-blue-900">Review the agreement below. You can scroll through it normally, or go straight to the signature section when ready.</p>
+          <Button type="button" variant="outline" onClick={goToSignature} className="shrink-0 border-blue-300 text-blue-700" data-testid="button-next-signature">
+            Next: Signature
+          </Button>
         </div>
 
         {/* Agreement Document */}
@@ -294,7 +323,7 @@ export default function ServiceSign() {
         {/* Signature Section */}
         <div className="bg-white shadow-sm border-x border-b rounded-b-2xl px-8 py-7 space-y-5">
           <div className="border-t pt-5">
-            <h3 className="font-bold text-gray-900 mb-1 text-sm uppercase tracking-wide">Agreement &amp; Signature</h3>
+            <h3 ref={signatureHeadingRef} tabIndex={-1} className="font-bold text-gray-900 mb-1 text-sm uppercase tracking-wide scroll-mt-6 focus:outline-none">Agreement &amp; Signature</h3>
             <p className="text-sm text-gray-500 mb-5">I confirm that the above services have been agreed upon and accepted.</p>
 
             <div className="space-y-4">

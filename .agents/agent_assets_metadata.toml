@@ -105,3 +105,17 @@ mtime_ms = 1790287034530
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/d1f898c3-04c0-439b-936b-f199e270fb70/e9b9a370-ed8e-4086-8273-907706b813d3"
 storage_version_token = "1790287056840171"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "zR8-eagJKm0u7hGwBOnFn"
+uri = "file://dist-export/QuoteUs_Guided_Signing_Update.zip"
+type = "unspecified"
+title = "QuoteUs Guided Signing Update"
+description = "Guided signature and initials navigation, client confirmations with processing CC, multi-signer fixes, tests, and third-party hosting installation instructions. No customer data included."
+logical_id = "a8993761-c16a-42ca-9977-f45379a7e8b3"
+content_hash = "sha256:2bd822fef02fe56d954afac137082ce7ee704efbc0b26b729e74c9f370bf1cc9"
+size = 113900
+mtime_ms = 1790313347122
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/a8993761-c16a-42ca-9977-f45379a7e8b3/fe832659-6100-4a3a-be3a-c436e0b42d69"
+storage_version_token = "1790313375164236"
+content_type = "application/octet-stream"

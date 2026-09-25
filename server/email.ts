@@ -10,6 +10,7 @@ interface EmailAttachment {
 
 interface EmailOptions {
   to: string;
+  cc?: string;
   subject: string;
   html: string;
   text?: string;
@@ -86,6 +87,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     const mailOptions: any = {
       from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
       to: options.to,
+      cc: options.cc,
       subject: options.subject,
       html: options.html,
       text: options.text || undefined,

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type NotificationStatus = "sent" | "failed" | "pending" | "not_required";
+
 export default function SignAgreement() {
   const [, params] = useRoute("/sign/:token");
   const token = params?.token;
@@ -15,10 +17,17 @@ export default function SignAgreement() {
   const [submitting, setSubmitting] = useState(false);
   const [signed, setSigned] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
+  const [notificationStatus, setNotificationStatus] = useState<NotificationStatus | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const signatureHeadingRef = useRef<HTMLHeadingElement>(null);
   const drawing = useRef(false);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
+
+  const goToSignature = () => {
+    signatureHeadingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    signatureHeadingRef.current?.focus({ preventScroll: true });
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -102,8 +111,9 @@ export default function SignAgreement() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ signatureData, signerName: signerName.trim() }),
       });
-      const result = await res.json();
+      const result: { error?: string; notificationStatus?: NotificationStatus } = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to submit");
+      setNotificationStatus(result.notificationStatus || null);
       setSigned(true);
     } catch (err: any) {
       alert(err.message || "Submission failed. Please try again.");
@@ -152,6 +162,17 @@ export default function SignAgreement() {
         <h2 className="text-xl font-semibold text-gray-800 mb-2">Agreement Signed!</h2>
         <p className="text-gray-600 mb-1">Thank you, <strong>{signerName}</strong>.</p>
         <p className="text-gray-500 text-sm">Your signature has been recorded successfully. You may close this window.</p>
+        <p role="status" className={`mt-3 text-sm ${notificationStatus === "failed" ? "text-amber-700" : "text-gray-600"}`}>
+          {notificationStatus === "sent"
+            ? "A confirmation email has been sent."
+            : notificationStatus === "failed"
+              ? "Your signature was saved, but the confirmation email could not be sent. Please contact QuoteUs.ca if you need a copy."
+              : notificationStatus === "pending"
+                ? "Your signature was saved. Email confirmation is pending."
+                : notificationStatus === "not_required"
+                  ? "Your signature was saved. No email confirmation was required."
+                  : "Your signature was saved. Email confirmation status is unavailable."}
+        </p>
       </div>
     </div>
   );
@@ -198,6 +219,13 @@ export default function SignAgreement() {
           </div>
         </div>
 
+        <div className="bg-blue-50 border-x border-blue-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <p className="text-sm text-blue-900">Review the agreement below. You can scroll through it normally, or go straight to the signature section when ready.</p>
+          <Button type="button" variant="outline" onClick={goToSignature} className="shrink-0 border-blue-300 text-blue-700" data-testid="button-next-signature">
+            Next: Signature
+          </Button>
+        </div>
+
         {/* Agreement Body */}
         <div className="bg-white border-x border-gray-200 p-8">
           <div
@@ -212,7 +240,7 @@ export default function SignAgreement() {
 
         {/* Signature Section */}
         <div className="bg-white border border-gray-200 rounded-b-xl p-6 mt-0 border-t-0">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Sign Below</h3>
+          <h3 ref={signatureHeadingRef} tabIndex={-1} className="text-base font-semibold text-gray-800 mb-4 scroll-mt-6 focus:outline-none">Sign Below</h3>
           <div className="grid gap-5">
             <div>
               <Label htmlFor="signerName" className="text-sm font-medium text-gray-700 mb-1 block">
