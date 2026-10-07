@@ -28,6 +28,7 @@ import BrokerCreditsPage from "@/pages/BrokerCredits";
 import LoginPage from "@/pages/Login";
 import AdPreviewPage from "@/pages/AdPreview";
 import RentGuaranteePage from "@/pages/RentGuarantee";
+import RentClockPage from "@/pages/RentClock";
 import RepDashboardPage from "@/pages/RepDashboard";
 import DocUploadPage from "@/pages/DocUpload";
 import SignAgreementPage from "@/pages/SignAgreement";
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/rg-payment/success" component={RgPaymentSuccessPage} />
       <Route path="/invoice-sign/:token" component={InvoiceSignPage} />
       {/* Main app with layout */}
+      <Route path="/rent-clock" component={RentClockPage} />
       <Route>
         <Layout>
           <Switch>

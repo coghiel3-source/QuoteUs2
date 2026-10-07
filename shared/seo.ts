@@ -3,6 +3,7 @@ export const SEO_IMAGE = `${SEO_ORIGIN}/opengraph.jpg`;
 
 // Only routes with actual public pages belong here (and in the sitemap).
 export const publicPages: Record<string, { title: string; description: string }> = {
+  "/rent-clock": { title: "The Rent Clock | QuoteUs.ca Rent Guarantee", description: "Explore an illustrative tribunal comparison for Canadian landlords. Calculate potential unpaid rent and review QuoteUs.ca Rent Guarantee options." },
   "/": { title: "QuoteUs.ca | Insurance Made Simple for Canadians", description: "Compare quotes from Canada's providers. Explore Auto, Home, Business and other insurance options with one simple form." },
   "/auto": { title: "Auto Insurance Quote | QuoteUs.ca", description: "Save on auto insurance across Ontario. Compare multiple carriers to find a policy that fits your driving profile." },
   "/home-insurance": { title: "Home Insurance Quote | QuoteUs.ca", description: "Protect your Ontario home. Request home insurance coverage for your most valuable asset." },

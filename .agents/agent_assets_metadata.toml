@@ -119,3 +119,17 @@ mtime_ms = 1790313347122
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/a8993761-c16a-42ca-9977-f45379a7e8b3/fe832659-6100-4a3a-be3a-c436e0b42d69"
 storage_version_token = "1790313375164236"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "6RLhbk8FI_vGxNvAvCk3Q"
+uri = "file://dist-export/QuoteUs_Rent_Clock_Update.zip"
+type = "unspecified"
+title = "QuoteUs Rent Clock — Hosting Update"
+description = "Working Rent Clock campaign page, calculator, sharing, embed widget, image and installation instructions for your existing host. Keeps the Rent Guarantee application unchanged."
+logical_id = "b47c2cdb-a151-4bd7-b328-15b383be5a3f"
+content_hash = "sha256:41d73c10b926f3d680205d1bea19dd26f1af59becf0bed955cfe07d63ae781eb"
+size = 340909
+mtime_ms = 1791350531152
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/b47c2cdb-a151-4bd7-b328-15b383be5a3f/5d3bcac6-5229-44cb-960b-4212d0239096"
+storage_version_token = "1791350537069925"
+content_type = "application/octet-stream"

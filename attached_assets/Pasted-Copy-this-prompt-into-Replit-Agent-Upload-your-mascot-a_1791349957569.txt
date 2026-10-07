@@ -1,0 +1,226 @@
+Copy this prompt into Replit Agent. Upload your mascot and landlord image with it.
+
+Build a complete, responsive QuoteUs.ca Rent Guarantee landing page based on the page we created:
+https://quoteus-rent-clock.kneel2god.chatgpt.site
+
+Use the specifications below if the reference page cannot be accessed. Implement the page and its working interactions, not just a mockup. If this is an existing QuoteUs.ca project, preserve its existing framework, navigation, branding and application workflow.
+
+GOAL
+Encourage Canadian landlords and property managers to explore Rent Guarantee and start the application process. Build the campaign around “The Rent Clock” and the tagline:
+“We Don’t Wait for the Tribunal.”
+
+DESIGN
+Create an inviting, professional page with:
+- Light mint-green backgrounds and white cards.
+- Deep forest green text and panels: #092e28.
+- Green primary buttons: #208446.
+- Lime accents for calculator results and the payout comparison: #c9f45b.
+- Rounded corners, subtle shadows, generous spacing and readable typography.
+- A desktop content width of approximately 1180px.
+- Responsive layouts that stack neatly on mobile.
+
+IMAGES
+Use the uploaded assets:
+1. mascot.png — the QuoteUs.ca raccoon mascot. Preserve its appearance, transparency and proportions. Place it beside the hero message and again in the final signup section.
+2. Frustrated landlord image — a landlord reviewing bills at a kitchen table. Place it beside “Every month adds up,” immediately above the calculator. Use rounded corners and responsive sizing.
+
+Do not invent testimonials, customer counts, association endorsements or partner logos.
+
+PAGE CONTENT AND STRUCTURE
+
+1. Navigation
+- QuoteUs.ca logo linking to https://quoteus.ca/
+- “Your rent exposure” linking to the calculator.
+- “How it works” linking to the process section.
+- “Get Rent Guarantee” linking to https://quoteus.ca/rent-guarantee
+
+2. Hero
+Eyebrow:
+“RENT GUARANTEE FOR CANADIAN LANDLORDS”
+
+Headline:
+“Your rental.
+Your future.
+Let’s protect it.”
+
+Tagline:
+“We Don’t Wait for the Tribunal.”
+
+Supporting copy:
+“You’ve put a lot into your rental. Let’s help you protect the income that supports it, with clear options and a friendly place to start.”
+
+Buttons:
+- “Let’s protect my rent” → https://quoteus.ca/rent-guarantee
+- “See my rent exposure” → calculator section
+
+Small supporting text:
+“Check eligibility and terms before you commit. Not available in Quebec.”
+
+Place the mascot alongside the supporting copy. Position The Rent Clock beside the hero content on desktop and beneath it on mobile.
+
+3. The Rent Clock
+Create a dark-green comparison card with two large counters.
+
+Province selector must include ONLY:
+- Ontario · LTB
+- British Columbia · RTB
+- Alberta · RTDRS
+
+Do not include Quebec or TAL in the selector, tracker data or comparison.
+
+Left counter:
+“Tribunal wait scenario”
+
+Ontario:
+- Show “240”
+- Label “days of waiting”
+- Status “Illustrative comparison”
+- Explanation: “Ontario illustration: 8 months × 30 days.”
+
+British Columbia and Alberta:
+- Show “—”
+- Label “data not connected”
+- Status “Data pending”
+- Do not invent wait-time figures.
+
+Right counter:
+“QuoteUs payout campaign target*”
+- Show “1”
+- Label “day · subject to confirmation”
+
+Display this disclosure clearly:
+“*One-day payment is a proposed campaign claim, not a confirmed benefit. Timing depends on approved product terms and claim requirements. This is not a live tribunal data feed.”
+
+Provide an official tribunal link that changes with the selected province:
+- Ontario: https://tribunalsontario.ca/ltb/
+- British Columbia: https://www2.gov.bc.ca/gov/content/housing-tenancy/residential-tenancies
+- Alberta: https://www.alberta.ca/residential-tenancy-dispute-resolution-service
+
+Keep province configuration separate from presentation so verified figures, source URLs and update dates can be added later. Do not label the tracker “live” until an actual verified feed is connected.
+
+4. Audience strip
+- Independent landlords · 1–10 rental units
+- Property managers · portfolios of every size
+- Realtors · help protect investor clients
+
+5. Rent-exposure section
+Eyebrow:
+“THE COST OF THE CLOCK”
+
+Heading:
+“Every month adds up.”
+
+Copy:
+“Rent can stop. Mortgage payments, taxes and operating costs keep coming. See how much rental income could be at stake.”
+
+Place the frustrated landlord image beside this copy.
+
+Build a working calculator with:
+- Monthly rent per unit in CAD; default $2,500.
+- Number of units with unpaid rent; default 1.
+- Months without rent; slider from 1–12, default 8.
+
+Formula:
+Monthly rent × units with unpaid rent × months without rent
+
+Show the result immediately in a contrasting lime-green panel:
+“POTENTIAL UNPAID RENT”
+
+Default result:
+“$20,000”
+“$2,500 × 1 unit × 8 months”
+
+Validate numeric inputs, require whole numbers for units, and handle empty or invalid inputs gracefully. Format results as Canadian dollars.
+
+Calculator disclosure:
+“A planning scenario, not a forecast of tribunal wait times or a coverage calculation. Does not include legal fees, damage or other expenses.”
+
+Button:
+“Check my Rent Guarantee options” → https://quoteus.ca/rent-guarantee
+
+Sharing:
+Add “Share my calculation.” Copy a URL containing the rent, units, months and province values. Opening that URL must restore those values. Provide a usable fallback when clipboard access is unavailable.
+
+6. Embeddable widget
+Add a collapsible section:
+“For associations & property managers: embed The Rent Clock”
+
+Include:
+- Read-only iframe embed code.
+- A “Copy embed code” button.
+- Clear success and error feedback.
+
+Support ?embed=1 to display only The Rent Clock, its province selector, disclosures, source links and QuoteUs.ca attribution. Hide the rest of the landing page in embed mode.
+
+Use the current deployed origin when generating embed URLs. Ensure the widget fits narrow containers and that essential disclosures are not clipped. Do not allow an embed to remove the disclosures.
+
+7. Benefits
+Heading:
+“Less uncertainty.
+More room to breathe.”
+
+Three cards:
+- “Plan for a missed payment” — Explain protection for eligible unpaid rent.
+- “Keep the bigger picture in view” — Explain how rent protection can support cash-flow planning.
+- “Know what you’re signing up for” — Encourage review of eligibility, pricing, limits, exclusions and payout timing.
+
+Do not invent prices, coverage limits or confirmed payment promises.
+
+8. How it works
+Heading:
+“Three steps. A clearer plan.”
+
+Steps:
+1. Tell us about your rental.
+2. Review your eligibility & options.
+3. Complete your agreement.
+
+Explain that protection begins according to the approved agreement after required checks and paperwork.
+
+9. FAQ accordion
+Include:
+- Does QuoteUs.ca guarantee payment in one day?
+  Explain that the counter is a proposed campaign target, not a contractual promise.
+- Are the tribunal numbers live?
+  Explain that Ontario is an illustrative scenario and verified provincial feeds are not connected.
+- Can I protect an existing tenancy?
+  Explain that eligibility depends on tenant history and product terms; existing arrears must not be assumed covered.
+- Is Rent Guarantee available in Quebec?
+  Answer no. Keep Quebec out of the tracker.
+- What happens when I click “Let’s protect my rent”?
+  Explain that visitors continue to QuoteUs.ca’s Rent Guarantee page. Calculator use does not submit an application or activate protection.
+
+10. Final signup section
+Include the mascot and:
+“A little protection.
+A lot more peace of mind.”
+
+Copy:
+“Find out whether your rental qualifies for Rent Guarantee. Get the details, understand the terms, and take the next step with confidence.”
+
+Button:
+“Start with QuoteUs.ca” → https://quoteus.ca/rent-guarantee
+
+11. Footer
+Links:
+- https://quoteus.ca/
+- https://quoteus.ca/privacy
+- https://quoteus.ca/rent-guarantee
+
+Disclosure:
+“QuoteUs.ca acts as an intermediary, not an insurer. Product availability, tenant eligibility, limits, exclusions, fees and payout timing are governed by the applicable agreement. The Rent Clock is an illustrative educational comparison; no live wait-time feed is connected. Not available in Quebec.”
+
+IMPLEMENTATION AND VERIFICATION
+- Use the existing project stack; for a new project, use React and TypeScript with a simple stylesheet.
+- Make all navigation, calculator controls, province changes, sharing, embed copying and FAQ interactions work.
+- Use accessible labels, keyboard controls, visible focus states, descriptive image alt text and sufficient contrast.
+- Respect reduced-motion preferences.
+- Optimize images and lazy-load images below the hero.
+- Add page title: “The Rent Clock | QuoteUs.ca Rent Guarantee”.
+- Add a relevant SEO description and QuoteUs.ca favicon.
+- Test mobile, tablet and desktop layouts for clipping and horizontal scrolling.
+- Verify the default calculator result is $20,000.
+- Verify Quebec/TAL does not appear in tracker options or data.
+- Verify all signup buttons use the actual QuoteUs.ca Rent Guarantee destination.
+- Do not create a fake application form, fake submission confirmation, payment flow or live-data connection.
+- Finish with a working preview and a concise summary of implemented features and any services still awaiting connection.
