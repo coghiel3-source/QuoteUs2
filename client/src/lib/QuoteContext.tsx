@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiRequest } from './api';
 import { trackEvent } from '@/lib/analytics';
+import { isRentClockReferral, trackRentClock } from "./rentClockAnalytics";
 
 function safeTrackEvent(...args: Parameters<typeof trackEvent>) {
   try {
@@ -141,6 +142,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
       });
 
       postSucceeded = true;
+      if (quoteData.type === "Rent Guarantee" && isRentClockReferral()) trackRentClock("application_submitted");
       safeTrackEvent(submissionEvents.submitted, submissionProperties);
 
       // Fetch activities for the new quote
@@ -158,6 +160,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
       console.log(`[API] Quote ${newQuote.quoteNumber} created`);
     } catch (error) {
       if (!postSucceeded) {
+        if (quoteData.type === "Rent Guarantee" && isRentClockReferral()) trackRentClock("application_failed");
         safeTrackEvent(submissionEvents.failed, submissionProperties);
       }
       console.error('Failed to add quote:', error);

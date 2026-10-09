@@ -133,3 +133,17 @@ mtime_ms = 1791350531152
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/b47c2cdb-a151-4bd7-b328-15b383be5a3f/5d3bcac6-5229-44cb-960b-4212d0239096"
 storage_version_token = "1791350537069925"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "DrXnw26nyrrjsk8iGJ_mO"
+uri = "file://dist-export/QuoteUs_Rent_Clock_Conversion_Update.zip"
+type = "unspecified"
+title = "Simplified Rent Clock + Conversion Tracking"
+description = "Shorter conversion-focused landing page, application-funnel events, tests, and analytics setup instructions for your hosting company."
+logical_id = "5dd7f62c-d173-4dd4-9d5d-509178e4f49e"
+content_hash = "sha256:69dc4e488828b9e6c019c6e25a288dce1ccc1d38db0ff40ca2ffa56a4d9bfcb9"
+size = 36076
+mtime_ms = 1791518071301
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/5dd7f62c-d173-4dd4-9d5d-509178e4f49e/def7dee3-0d78-4941-90d3-ef63c79e35df"
+storage_version_token = "1791518083741200"
+content_type = "application/octet-stream"

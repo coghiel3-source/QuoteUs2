@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { isRentClockReferral, trackRentClock } from "@/lib/rentClockAnalytics";
 import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,14 @@ export default function RentGuaranteePage() {
   const [propertyProvince, setPropertyProvince] = useState("ON");
   const [rentalProvince, setRentalProvince] = useState("ON");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const trackedArrival = useRef(false);
+  const trackedFormStart = useRef(false);
+  useEffect(() => {
+    if (!trackedArrival.current && isRentClockReferral()) {
+      trackedArrival.current = true;
+      trackRentClock("application_arrived");
+    }
+  }, []);
 
   const {
     register,
@@ -157,7 +166,8 @@ export default function RentGuaranteePage() {
     const propertyAddress = buildAddress(data.propertyUnit, data.propertyStreet, data.propertyCity, propertyProvince, data.propertyPostal);
     const finalRentalAddress = sameAddress === "yes" ? propertyAddress : buildAddress(data.rentalUnit, data.rentalStreet!, data.rentalCity!, rentalProvince, data.rentalPostal!);
 
-    addQuote({
+    try {
+    await addQuote({
       type: "Rent Guarantee",
       clientName: data.fullName,
       email: data.email,
@@ -166,6 +176,11 @@ export default function RentGuaranteePage() {
       referenceId: data.referenceId || undefined,
       details: { fullName: data.fullName, email: data.email, phone: data.phone, contactType, propertyAddress, rentalAddress: finalRentalAddress, monthlyRentalCost: data.monthlyRentalCost },
     });
+    } catch {
+      setIsSubmitting(false);
+      toast({ title: "Request could not be confirmed", description: "Please try again or contact us for help.", variant: "destructive" });
+      return;
+    }
 
     const info: SubmittedInfo = { fullName: data.fullName, contactType, propertyAddress, rentalAddress: finalRentalAddress, monthlyRentalCost: data.monthlyRentalCost };
     try { localStorage.setItem("rentGuaranteeSubmission", JSON.stringify(info)); } catch (_) {}
@@ -304,7 +319,12 @@ export default function RentGuaranteePage() {
                   <p className="text-xs text-muted-foreground mt-0.5">{editing ? "Update your details and resubmit." : "All fields marked * are required."}</p>
                 </div>
                 <CardContent className="p-6">
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-7">
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-7" onFocusCapture={() => {
+                    if (!trackedFormStart.current && isRentClockReferral()) {
+                      trackedFormStart.current = true;
+                      trackRentClock("application_started");
+                    }
+                  }}>
 
                     {/* ─ Section 1: Your Contact Info ─ */}
                     <div>

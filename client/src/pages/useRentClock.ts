@@ -33,15 +33,17 @@ export function useCopyText() {
     setFallback("");
     if (!text) {
       setFeedback("This calculation cannot be shared yet. Check the inputs and try again.");
-      return;
+      return false;
     }
     try {
       if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(text);
       setFeedback(successMessage);
+      return true;
     } catch {
       setFallback(text);
       setFeedback("Automatic copying is unavailable. Select and copy the text below.");
+      return false;
     }
   }
   return { copy, feedback, fallback };

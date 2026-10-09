@@ -1,17 +1,17 @@
-import type { ReactNode } from "react";
-import { ArrowRight, Building2, Clock3, FileCheck2, Handshake, House, ShieldCheck, Share2, WalletCards } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { ArrowRight, Clock3, Share2 } from "lucide-react";
+import { trackRentClock } from "@/lib/rentClockAnalytics";
 import { CLOCK_DISCLOSURE, CALCULATOR_DISCLOSURE, FOOTER_DISCLOSURE, RENT_CLOCK_PROVINCES, RENT_GUARANTEE_URL, type ProvinceCode } from "./rentClockConfig";
 import { formatCAD, validateRent, validateUnits } from "./rentClockCalculation";
 import { useCopyText, useRentClock } from "./useRentClock";
-import landlordImage from "./rent-clock-landlord.jpg";
 import "./rent-clock.css";
 
 function Brand() {
   return <a className="rc-brand" href="https://quoteus.ca/" aria-label="QuoteUs.ca home"><img src="/logo.png" width="1280" height="1024" alt="QuoteUs.ca — Click-Quote-Covered" /></a>;
 }
 
-function SignupLink({ children, lime = false }: { children: ReactNode; lime?: boolean }) {
-  return <a href={RENT_GUARANTEE_URL} className={`rc-button${lime ? " lime" : ""}`}>{children}<ArrowRight size={16} aria-hidden="true" /></a>;
+function SignupLink({ placement }: { placement: "hero" | "calculator" | "footer" | "mobile" }) {
+  return <a href={`${RENT_GUARANTEE_URL}?source=rent_clock`} className="rc-button" onClick={() => trackRentClock("cta_click", { placement })}>Check my eligibility<ArrowRight size={16} aria-hidden="true" /></a>;
 }
 
 export function RentClockWidget({ province, onProvinceChange }: { province: ProvinceCode; onProvinceChange: (value: ProvinceCode) => void }) {
@@ -68,8 +68,8 @@ const faqs = [
     answer: "No. Rent Guarantee is not available in Quebec. Quebec is not included in The Rent Clock tracker.",
   },
   {
-    question: "What happens when I click “Let’s protect my rent”?",
-    answer: "You continue to QuoteUs.ca’s Rent Guarantee page to explore your options and start the application process. Using the calculator does not submit an application, create an agreement or activate protection.",
+    question: "What happens when I click “Check my eligibility”?",
+    answer: "You continue to QuoteUs.ca’s Rent Guarantee page. The calculator does not submit an application, create an agreement or activate protection.",
   },
 ];
 
@@ -77,11 +77,36 @@ export default function RentClockPage() {
   const { inputs, setInputs, total, isEmbed, shareUrl, iframeCode } = useRentClock();
   const share = useCopyText();
   const embed = useCopyText();
+  const viewed = useRef(false);
+  const calculatorUsed = useRef(false);
+  useEffect(() => {
+    if (!isEmbed && !viewed.current) {
+      viewed.current = true;
+      trackRentClock("page_view", { mode: "landing" });
+    }
+  }, [isEmbed]);
+  const useCalculator = () => {
+    if (!calculatorUsed.current) {
+      calculatorUsed.current = true;
+      trackRentClock("calculator_used", { province: inputs.province });
+    }
+  };
   const rent = validateRent(inputs.rent);
   const units = validateUnits(inputs.units);
   const rentError = rent === null ? "Enter a positive CAD amount with up to two decimal places." : "";
   const unitsError = units === null ? "Enter a positive whole number of units." : "";
-  const changeProvince = (province: ProvinceCode) => setInputs(previous => ({ ...previous, province }));
+  const changeProvince = (province: ProvinceCode) => {
+    setInputs(previous => ({ ...previous, province }));
+    trackRentClock("province_changed", { province, mode: isEmbed ? "embed" : "landing" });
+  };
+  const shareCalculation = async () => {
+    const copied = await share.copy(shareUrl, "Calculation link copied.");
+    trackRentClock(copied ? "share_success" : "share_fallback", { province: inputs.province });
+  };
+  const copyEmbed = async () => {
+    const copied = await embed.copy(iframeCode, "Embed code copied.");
+    trackRentClock(copied ? "embed_copy_success" : "embed_copy_fallback", { province: inputs.province });
+  };
   if (isEmbed) {
     return <main className="rent-clock-page rc-embed-mode"><RentClockWidget province={inputs.province} onProvinceChange={changeProvince} /></main>;
   }
@@ -93,8 +118,6 @@ export default function RentClockPage() {
           <Brand />
           <div className="rc-nav-links">
             <a href="#rent-exposure">Your rent exposure</a>
-            <a href="#how-it-works">How it works</a>
-            <SignupLink>Get Rent Guarantee</SignupLink>
           </div>
         </nav>
       </header>
@@ -102,30 +125,27 @@ export default function RentClockPage() {
         <div className="rc-container">
           <section className="rc-hero" aria-labelledby="rc-hero-title">
             <div>
-              <p className="rc-eyebrow">RENT GUARANTEE FOR CANADIAN LANDLORDS</p>
-              <h1 id="rc-hero-title">Your rental.<br />Your future.<br /><span>Let’s protect it.</span></h1>
-              <p className="rc-tagline">We Don’t Wait for the Tribunal.</p>
+              <p className="rc-eyebrow">RENT GUARANTEE · ON / BC / AB</p>
+              <h1 id="rc-hero-title">Rent stops.<br /><span>Your bills don’t.</span></h1>
               <div className="rc-hero-story">
-                <p>You’ve put a lot into your rental. Let’s help you protect the income that supports it, with clear options and a friendly place to start.</p>
+                <p>Explore protection for eligible unpaid rent. Check whether your rental qualifies, then review the terms.</p>
                 <img src="/mascot.png" width="1024" height="1536" alt="The friendly QuoteUs.ca raccoon mascot" fetchPriority="high" />
               </div>
-              <div className="rc-actions"><SignupLink>Let’s protect my rent</SignupLink><a href="#rent-exposure" className="rc-button secondary">See my rent exposure</a></div>
-              <p className="rc-small">Check eligibility and terms before you commit. Not available in Quebec.</p>
+              <div className="rc-actions"><SignupLink placement="hero" /></div>
+              <p className="rc-small">Subject to eligibility and agreement terms. Not available in Quebec.</p>
             </div>
             <RentClockWidget province={inputs.province} onProvinceChange={changeProvince} />
           </section>
-          <div className="rc-audience" aria-label="Who Rent Guarantee is for">
-            <span><House size={18} aria-hidden="true" />Independent landlords · 1–10 rental units</span>
-            <span><Building2 size={18} aria-hidden="true" />Property managers · portfolios of every size</span>
-            <span><Handshake size={18} aria-hidden="true" />Realtors · help protect investor clients</span>
-          </div>
+          <section className="rc-next-steps" aria-label="How it works">
+            <ol><li><span>01</span>Tell us about your rental</li><li><span>02</span>Review eligibility &amp; terms</li><li><span>03</span>Complete checks &amp; agreement</li></ol>
+            <p>Protection begins only as set out in the approved agreement.</p>
+          </section>
           <section className="rc-section" id="rent-exposure" aria-labelledby="rc-exposure-title">
             <div className="rc-exposure-intro">
-              <div><p className="rc-eyebrow">THE COST OF THE CLOCK</p><h2 id="rc-exposure-title">Every month adds up.</h2><p>Rent can stop. Mortgage payments, taxes and operating costs keep coming. See how much rental income could be at stake.</p></div>
-              <img className="rc-landlord" src={landlordImage} width="1024" height="1024" loading="lazy" decoding="async" alt="A concerned landlord reviewing bills and a calculator at a kitchen table" />
+              <div><h2 id="rc-exposure-title">What could unpaid rent cost you?</h2><p>Adjust the numbers to see your planning scenario—not a coverage estimate.</p></div>
             </div>
             <div className="rc-calculator">
-              <div className="rc-controls">
+              <div className="rc-controls" onChange={useCalculator}>
                 <div className="rc-input-grid">
                   <div className="rc-field">
                     <label htmlFor="rc-rent">Monthly rent per unit (CAD)</label>
@@ -151,59 +171,37 @@ export default function RentClockPage() {
                   <p className="rc-result-amount">{total === null ? "—" : formatCAD(total)}</p>
                   <p className="rc-equation">{total !== null && rent !== null && units !== null ? `${formatCAD(rent)} × ${units.toLocaleString("en-CA")} ${units === 1 ? "unit" : "units"} × ${inputs.months} ${inputs.months === 1 ? "month" : "months"}` : rentError || unitsError ? "Enter valid amounts to see your scenario." : "This calculation is too large. Reduce the rent or number of units."}</p>
                 </div>
-                <SignupLink>Check my Rent Guarantee options</SignupLink>
-                <button className="rc-text-button" disabled={total === null || !shareUrl} onClick={() => share.copy(shareUrl, "Calculation link copied. Opening it restores your scenario.")}><Share2 size={14} aria-hidden="true" />Share my calculation</button>
+                <SignupLink placement="calculator" />
+                <button className="rc-text-button" disabled={total === null || !shareUrl} onClick={shareCalculation}><Share2 size={14} aria-hidden="true" />Share my calculation</button>
                 <p className="rc-copy-feedback" role="status">{share.feedback}</p>
                 {share.fallback && <label className="rc-copy-fallback">Calculation link — select and copy<textarea readOnly value={share.fallback} aria-label="Shareable calculation URL" onFocus={event => event.currentTarget.select()} /></label>}
               </div>
             </div>
-            <details className="rc-embed-details">
-              <summary>For associations &amp; property managers: embed The Rent Clock</summary>
+            <div className="rc-disclosures">
+            <details>
+              <summary>Questions &amp; eligibility</summary>
+              <div className="rc-faq">{faqs.map((faq, index) => <details key={faq.question} onToggle={event => { if (event.currentTarget.open) trackRentClock("faq_open", { question_index: index }); }}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div>
+            </details>
+            <details>
+              <summary>Embed The Rent Clock on your website</summary>
               <div className="rc-embed-body">
-                <p>Add this educational comparison to your website. The widget includes its province selector, source links, disclosures and QuoteUs.ca attribution. Its frame allows scrolling in narrow containers; keep disclosures visible.</p>
+                <p>Includes province selection, sources and disclosures. Allow scrolling and keep disclosures visible.</p>
                 <label htmlFor="rc-embed-code" className="rc-small">Read-only iframe embed code</label>
                 <textarea id="rc-embed-code" className="rc-embed-code" value={iframeCode} readOnly onFocus={event => event.currentTarget.select()} />
-                <button className="rc-button secondary" disabled={!iframeCode} onClick={() => embed.copy(iframeCode, "Embed code copied.")}>Copy embed code</button>
+                <button className="rc-button secondary" disabled={!iframeCode} onClick={copyEmbed}>Copy embed code</button>
                 <p className="rc-copy-feedback" role="status">{embed.feedback}</p>
                 {embed.fallback && <p className="rc-small">Select the read-only code above, then use your device’s copy command.</p>}
               </div>
             </details>
-          </section>
-        </div>
-        <section className="rc-benefits-section">
-          <div className="rc-container rc-section rc-benefits">
-            <div><p className="rc-eyebrow">A LITTLE MORE CERTAINTY</p><h2>Less uncertainty.<br />More room to breathe.</h2></div>
-            <div className="rc-benefit-list">
-              <article className="rc-benefit"><ShieldCheck size={25} aria-hidden="true" /><div><h3>Plan for a missed payment</h3><p>Explore protection for eligible unpaid rent, subject to tenant eligibility, required checks and the terms of your agreement.</p></div></article>
-              <article className="rc-benefit"><WalletCards size={25} aria-hidden="true" /><div><h3>Keep the bigger picture in view</h3><p>Rent protection can support cash-flow planning alongside your mortgage payments, taxes and everyday operating costs.</p></div></article>
-              <article className="rc-benefit"><FileCheck2 size={25} aria-hidden="true" /><div><h3>Know what you’re signing up for</h3><p>Review eligibility, pricing, limits, exclusions and payout timing before you commit. Understand what is—and isn’t—included.</p></div></article>
             </div>
-          </div>
-        </section>
-        <div className="rc-container">
-          <section className="rc-section" id="how-it-works" aria-labelledby="rc-process-title">
-            <div className="rc-process-heading"><p className="rc-eyebrow">YOUR NEXT STEP, MADE CLEAR</p><h2 id="rc-process-title">Three steps. A clearer plan.</h2></div>
-            <ol className="rc-process-list">
-              <li><span className="rc-step-number">01 / YOUR RENTAL</span><h3>Tell us about your rental.</h3><p>Start on QuoteUs.ca’s Rent Guarantee page and share the property and tenancy details needed for review.</p></li>
-              <li><span className="rc-step-number">02 / YOUR OPTIONS</span><h3>Review your eligibility &amp; options.</h3><p>Understand the eligibility requirements, pricing, coverage limits, exclusions and confirmed payout terms.</p></li>
-              <li><span className="rc-step-number">03 / YOUR AGREEMENT</span><h3>Complete your agreement.</h3><p>Review your agreement and finish the required checks and paperwork before protection can begin.</p></li>
-            </ol>
-            <p className="rc-process-disclosure">Protection begins according to the approved agreement after required checks and paperwork.</p>
-          </section>
-          <section className="rc-section rc-faq-section rc-faq-layout" aria-labelledby="rc-faq-title">
-            <div><p className="rc-eyebrow">GOOD QUESTIONS. CLEAR ANSWERS.</p><h2 id="rc-faq-title">Let’s clear<br />a few things up.</h2></div>
-            <div className="rc-faq">{faqs.map(faq => <details key={faq.question}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div>
-          </section>
-          <section className="rc-final" aria-labelledby="rc-final-title">
-            <div><h2 id="rc-final-title">A little protection.<br />A lot more peace of mind.</h2><p>Find out whether your rental qualifies for Rent Guarantee. Get the details, understand the terms, and take the next step with confidence.</p><SignupLink lime>Start with QuoteUs.ca</SignupLink></div>
-            <img src="/mascot.png" width="1024" height="1536" loading="lazy" decoding="async" alt="The QuoteUs.ca raccoon mascot, ready to help you take the next step" />
           </section>
         </div>
       </main>
       <footer className="rc-container rc-footer">
-        <div className="rc-footer-top"><Brand /><nav aria-label="Campaign footer" className="rc-footer-links"><a href="https://quoteus.ca/">QuoteUs.ca</a><a href="https://quoteus.ca/privacy">Privacy</a><a href={RENT_GUARANTEE_URL}>Rent Guarantee</a></nav></div>
+        <div className="rc-footer-top"><Brand /><nav aria-label="Campaign footer" className="rc-footer-links"><a href="https://quoteus.ca/privacy">Privacy</a><SignupLink placement="footer" /></nav></div>
         <p className="rc-footer-disclosure">{FOOTER_DISCLOSURE}</p>
       </footer>
+      <div className="rc-mobile-cta" aria-label="Check Rent Guarantee eligibility"><SignupLink placement="mobile" /></div>
     </div>
   );
 }
