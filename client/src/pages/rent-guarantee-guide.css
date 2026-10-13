@@ -1,0 +1,63 @@
+.rent-guarantee-guide {
+  --rgg-ink: #193e30;
+  --rgg-muted: #4d6358;
+  --rgg-paper: #f3f6ee;
+  --rgg-line: #d4dfd2;
+  min-height: 100dvh;
+  background: var(--rgg-paper);
+  color: var(--rgg-ink);
+  padding: 48px 20px 64px;
+}
+.rent-guarantee-guide .rgg-container { max-width: 960px; margin-inline: auto; }
+.rent-guarantee-guide .rgg-eyebrow {
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.rent-guarantee-guide h1 {
+  max-width: 760px;
+  font-size: clamp(2rem, 4.8vw, 3.35rem);
+  line-height: 1.15;
+  letter-spacing: -.025em;
+  margin: 0 0 20px;
+}
+.rent-guarantee-guide h2 { font-size: 1.4rem; line-height: 1.35; margin: 0 0 14px; }
+.rent-guarantee-guide h3 { font-size: 1rem; margin: 0 0 6px; }
+.rent-guarantee-guide p { line-height: 1.75; margin: 0 0 14px; }
+.rent-guarantee-guide .rgg-intro { max-width: 700px; color: var(--rgg-muted); font-size: 1.1rem; }
+.rent-guarantee-guide .rgg-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 24px; }
+.rent-guarantee-guide .rgg-action { white-space: normal; height: auto; min-height: 44px; padding: 12px 18px; }
+.rent-guarantee-guide .rgg-notice {
+  padding: 14px 18px;
+  border-left: 3px solid #92713e;
+  background: #eee8db;
+  color: #514126;
+  font-size: .9rem;
+  margin-bottom: 0;
+}
+.rent-guarantee-guide .rgg-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; margin-top: 34px; }
+.rent-guarantee-guide .rgg-section { padding-block: 26px; border-bottom: 1px solid var(--rgg-line); scroll-margin-top: 110px; }
+.rent-guarantee-guide .rgg-section:first-child { padding-top: 0; }
+.rent-guarantee-guide .rgg-section p,
+.rent-guarantee-guide .rgg-section li { color: var(--rgg-muted); }
+.rent-guarantee-guide .rgg-comparison { margin: 0; }
+.rent-guarantee-guide .rgg-comparison div { padding: 14px 0; border-top: 1px solid var(--rgg-line); }
+.rent-guarantee-guide .rgg-comparison dt { font-weight: 700; margin-bottom: 5px; }
+.rent-guarantee-guide .rgg-comparison dd { margin: 0; color: var(--rgg-muted); line-height: 1.7; }
+.rent-guarantee-guide ul,
+.rent-guarantee-guide ol { padding-left: 22px; margin: 0; }
+.rent-guarantee-guide li { line-height: 1.7; padding-left: 3px; margin-bottom: 10px; }
+.rent-guarantee-guide .rgg-checklist { background: #e8efe2; border-color: var(--rgg-line); box-shadow: none; }
+.rent-guarantee-guide .rgg-checklist h2 { font-size: 1.2rem; }
+.rent-guarantee-guide .rgg-checklist p { font-size: .88rem; color: var(--rgg-muted); }
+.rent-guarantee-guide .rgg-checklist li { font-size: .9rem; }
+.rent-guarantee-guide .rgg-text-link { text-decoration: underline; text-underline-offset: 4px; font-weight: 600; }
+.rent-guarantee-guide a:focus-visible { outline: 3px solid #92713e; outline-offset: 4px; border-radius: 3px; }
+.rent-guarantee-guide .rgg-faq-item { padding: 14px 0 4px; }
+.rent-guarantee-guide .rgg-disclaimer { margin-top: 28px; max-width: 700px; font-size: .85rem; color: var(--rgg-muted); }
+@media (max-width: 767px) {
+  .rent-guarantee-guide { padding: 32px 18px 44px; }
+  .rent-guarantee-guide .rgg-body { grid-template-columns: 1fr; gap: 24px; }
+}

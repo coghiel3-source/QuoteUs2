@@ -1,5 +1,8 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { canonicalUrl, classifyPage, publicPages, SEO_IMAGE, SEO_ORIGIN } from "../shared/seo";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import RentGuaranteeGuidePage from "../client/src/pages/RentGuaranteeGuide";
 
 export const noindex = "noindex, nofollow";
 
@@ -47,7 +50,12 @@ export function renderPageHtml(template: string, path: string): { html: string; 
       ],
     }).replace(/</g, "\\u003c")}</script>`] : []),
   ].join("\n");
-  return { html: template.replace("</head>", `${tags}\n</head>`), status: kind === "missing" ? 404 : 200, robots: page ? undefined : noindex };
+  let html = template.replace("</head>", `${tags}\n</head>`);
+  // Same public component for browsers and crawlers; no customer data or bot-only copy.
+  if (path === "/rent-guarantee-guide") {
+    html = html.replace('<div id="root"></div>', `<div id="root">${renderToStaticMarkup(createElement(RentGuaranteeGuidePage))}</div>`);
+  }
+  return { html, status: kind === "missing" ? 404 : 200, robots: page ? undefined : noindex };
 }
 
 /** Install before static/Vite so /index.html cannot bypass route-aware metadata. */

@@ -147,3 +147,17 @@ mtime_ms = 1791518071301
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/5dd7f62c-d173-4dd4-9d5d-509178e4f49e/def7dee3-0d78-4941-90d3-ef63c79e35df"
 storage_version_token = "1791518083741200"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "kWYqQlhddqTh6D9RoBwHK"
+uri = "file://dist-export/QuoteUs_Search_Recovery_Update.zip"
+type = "unspecified"
+title = "QuoteUs Search Recovery Update"
+description = "New landlord guide, improved search descriptions, current built site including Rent Clock, and priority instructions for correcting the live www certificate and verifying indexing. No customer uploads or credentials included."
+logical_id = "d991255a-6b9d-4333-8e8f-6ff9fb70691b"
+content_hash = "sha256:01b64c02ced229ecf9499029edc5961f93feeeb5b9df41704608c979b8f632cf"
+size = 5221645
+mtime_ms = 1791892374013
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/d991255a-6b9d-4333-8e8f-6ff9fb70691b/fefe257c-abe6-4e4b-ad93-e005edb4dff8"
+storage_version_token = "1791892427681624"
+content_type = "application/octet-stream"

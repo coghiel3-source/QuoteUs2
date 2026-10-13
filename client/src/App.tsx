@@ -28,6 +28,8 @@ import BrokerCreditsPage from "@/pages/BrokerCredits";
 import LoginPage from "@/pages/Login";
 import AdPreviewPage from "@/pages/AdPreview";
 import RentGuaranteePage from "@/pages/RentGuarantee";
+import RentGuaranteeGuidePage from "@/pages/RentGuaranteeGuide";
+import "@/pages/rent-guarantee-guide.css";
 import RentClockPage from "@/pages/RentClock";
 import RepDashboardPage from "@/pages/RepDashboard";
 import DocUploadPage from "@/pages/DocUpload";
@@ -85,6 +87,7 @@ function Router() {
             <Route path="/login" component={LoginPage} />
             <Route path="/ad-preview/:token" component={AdPreviewPage} />
             <Route path="/rent-guarantee" component={RentGuaranteePage} />
+            <Route path="/rent-guarantee-guide" component={RentGuaranteeGuidePage} />
             <Route path="/customer-portal/success" component={CustomerPortalPage} />
             <Route path="/customer-portal" component={CustomerPortalPage} />
             <Route path="/rep" component={() => <RepDashboardPage />} />

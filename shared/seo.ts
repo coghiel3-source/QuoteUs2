@@ -4,8 +4,8 @@ export const SEO_IMAGE = `${SEO_ORIGIN}/opengraph.jpg`;
 // Only routes with actual public pages belong here (and in the sitemap).
 export const publicPages: Record<string, { title: string; description: string }> = {
   "/rent-clock": { title: "The Rent Clock | QuoteUs.ca Rent Guarantee", description: "Explore an illustrative tribunal comparison for Canadian landlords. Calculate potential unpaid rent and review QuoteUs.ca Rent Guarantee options." },
-  "/": { title: "QuoteUs.ca | Insurance Made Simple for Canadians", description: "Compare quotes from Canada's providers. Explore Auto, Home, Business and other insurance options with one simple form." },
-  "/auto": { title: "Auto Insurance Quote | QuoteUs.ca", description: "Save on auto insurance across Ontario. Compare multiple carriers to find a policy that fits your driving profile." },
+  "/": { title: "Insurance Quotes in Ontario & Rent Guarantee | QuoteUs.ca", description: "Explore auto, home, tenant and business insurance quotes, plus rent guarantee options for landlords. Tell QuoteUs.ca what you need to get started." },
+  "/auto": { title: "Auto Insurance Quotes in Ontario | QuoteUs.ca", description: "Looking for auto insurance in Ontario? Share your vehicle and driving details to explore coverage options through QuoteUs.ca. Request a quote online." },
   "/home-insurance": { title: "Home Insurance Quote | QuoteUs.ca", description: "Protect your Ontario home. Request home insurance coverage for your most valuable asset." },
   "/tenant": { title: "Tenant Insurance Quote | QuoteUs.ca", description: "Explore protection for personal belongings and liability coverage for renters across Canada." },
   "/travel": { title: "Travel Insurance Quote | QuoteUs.ca", description: "Request emergency medical and trip cancellation coverage for peace of mind while you travel." },
@@ -16,7 +16,8 @@ export const publicPages: Record<string, { title: string; description: string }>
   "/compare": { title: "Vehicle Comparison Tool | QuoteUs.ca", description: "See how different vehicles compare for insurance costs, safety and risk factors." },
   "/about": { title: "About QuoteUs.ca | Insurance Made Simple", description: "Learn about QuoteUs.ca and our approach to making insurance simpler for Canadians." },
   "/contact": { title: "Contact Us | QuoteUs.ca", description: "Have questions? Reach out to the QuoteUs.ca team for support or inquiries." },
-  "/rent-guarantee": { title: "Rent Guarantee for Landlords | QuoteUs.ca", description: "Learn about rent protection for landlords and request a Rent Guarantee quote from a specialist." },
+  "/rent-guarantee": { title: "Rent Guarantee for Canadian Landlords | QuoteUs.ca", description: "Worried about unpaid rent? Explore rent guarantee for eligible tenancies and request an eligibility review. Terms apply. Not available in Quebec." },
+  "/rent-guarantee-guide": { title: "Landlord Guide to Rent Guarantee & Unpaid Rent | QuoteUs.ca", description: "Understand rent guarantee, tenant insurance differences, existing-tenancy eligibility and what to prepare before applying. Read the QuoteUs.ca landlord guide." },
   "/privacy": { title: "Privacy Policy | QuoteUs.ca", description: "Read how QuoteUs.ca collects, uses and protects personal information." },
   "/terms": { title: "Terms of Service | QuoteUs.ca", description: "Read the terms governing use of the QuoteUs.ca platform and services." },
 };

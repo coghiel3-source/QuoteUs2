@@ -192,6 +192,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <li><Link href="/mortgage" className="hover:text-white transition-colors">Mortgage Insurance</Link></li>
                 <li><Link href="/rent-guarantee" className="hover:text-white transition-colors">Rent Guarantee</Link></li>
                 <li><Link href="/rent-clock" className="hover:text-white transition-colors">The Rent Clock</Link></li>
+                <li><Link href="/rent-guarantee-guide" className="hover:text-white transition-colors">Landlord Rent Guarantee Guide</Link></li>
                 <li><Link href="/compare" className="hover:text-white transition-colors">Compare Quotes</Link></li>
               </ul>
             </div>

@@ -10,6 +10,16 @@ import type { Request, Response } from "express";
 
 const template = fs.readFileSync(new URL("../client/index.html", import.meta.url), "utf8");
 
+test("landlord guide delivers real public copy before JavaScript", () => {
+  const { html, status } = renderPageHtml(template, "/rent-guarantee-guide");
+  assert.equal(status, 200);
+  assert.match(html, /<h1[^>]*>Rent Guarantee for Canadian Landlords<\/h1>/);
+  assert.match(html, /href="\/rent-guarantee#landlord-form"/);
+  assert.match(html, /href="\/rent-clock"/);
+  assert.ok(sitemapXml().includes("https://quoteus.ca/rent-guarantee-guide"));
+  assert.ok(!renderPageHtml(template, "/login").html.includes('class="rent-guarantee-guide"'));
+});
+
 test("each public route has unique first-response metadata and canonical", () => {
   const titles = new Set<string>();
   const descriptions = new Set<string>();
