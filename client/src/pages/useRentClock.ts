@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { calculateExposure, calculationUrl, DEFAULT_CALCULATION, embedCode, restoreCalculation, type CalculationInputs } from "./rentClockCalculation";
 
 export function useRentClock() {
-  // The existing app is client-rendered. Read query state on the first render
-  // so embeds never flash the campaign page before displaying the widget.
-  const [inputs, setInputs] = useState<CalculationInputs>(() => typeof window === "undefined" ? { ...DEFAULT_CALCULATION } : restoreCalculation(window.location.search));
-  const [isEmbed, setIsEmbed] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "1");
-  const [origin, setOrigin] = useState(() => typeof window === "undefined" ? "" : window.location.origin);
+  // Match prerendered campaign HTML first. Client-only embeds can restore
+  // immediately so they never flash the full campaign page.
+  const prerendered = typeof window === "undefined" ||
+    document.getElementById("root")?.dataset.prerendered === "true";
+  const [inputs, setInputs] = useState<CalculationInputs>(() => prerendered ? { ...DEFAULT_CALCULATION } : restoreCalculation(window.location.search));
+  const [isEmbed, setIsEmbed] = useState(() => !prerendered && new URLSearchParams(window.location.search).get("embed") === "1");
+  const [origin, setOrigin] = useState(() => prerendered ? "" : window.location.origin);
   useEffect(() => {
     const restore = () => {
       setInputs(restoreCalculation(window.location.search));

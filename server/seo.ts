@@ -20,7 +20,7 @@ function escapeHtml(value: string): string {
   })[char]!);
 }
 
-export function renderPageHtml(template: string, path: string): { html: string; status: number; robots?: string } {
+export function renderPageHtml(template: string, path: string, content?: string): { html: string; status: number; robots?: string } {
   const kind = classifyPage(path);
   const page = kind === "public" ? publicPages[path] : undefined;
   const title = page?.title ?? (kind === "private" ? "QuoteUs.ca | Account" : "Page Not Found | QuoteUs.ca");
@@ -51,9 +51,15 @@ export function renderPageHtml(template: string, path: string): { html: string; 
     }).replace(/</g, "\\u003c")}</script>`] : []),
   ].join("\n");
   let html = template.replace("</head>", `${tags}\n</head>`);
-  // Same public component for browsers and crawlers; no customer data or bot-only copy.
-  if (path === "/rent-guarantee-guide") {
-    html = html.replace('<div id="root"></div>', `<div id="root">${renderToStaticMarkup(createElement(RentGuaranteeGuidePage))}</div>`);
+  // Content comes exclusively from our React renderer, never from the request.
+  // A replacement callback preserves literal "$&" etc. in rendered copy.
+  if (page && content !== undefined) {
+    if (!template.includes('<div id="root"></div>')) throw new Error("Missing prerender root");
+    html = html.replace('<div id="root"></div>', () => `<div id="root" data-prerendered="true">${content}</div>`);
+  } else if (page && path === "/rent-guarantee-guide") {
+    // Preserve the guide's standalone rendering for callers without a manifest.
+    // The full prerendered App tree above always takes precedence for hydration.
+    html = html.replace('<div id="root"></div>', () => `<div id="root">${renderToStaticMarkup(createElement(RentGuaranteeGuidePage))}</div>`);
   }
   return { html, status: kind === "missing" ? 404 : 200, robots: page ? undefined : noindex };
 }
@@ -67,13 +73,15 @@ export const redirectIndexHtml: RequestHandler = (req, res, next) => {
 };
 
 /** Production SPA fallback; use without a mount path to preserve req.path. */
-export function serveSeoHtml(template: string): RequestHandler {
+export function serveSeoHtml(template: string, content: Record<string, string> = {}): RequestHandler {
   return (req, res) => {
     if (!["GET", "HEAD"].includes(req.method) || /^\/(?:api|uploads|objects)(?:\/|$)/.test(req.path) || /\.[^/]+$/.test(req.path)) {
       res.setHeader("X-Robots-Tag", noindex);
       return res.status(404).end();
     }
-    const page = renderPageHtml(template, req.path);
+    const clientOnlyEmbed = req.path === "/rent-clock" && req.query.embed === "1";
+    const markup = !clientOnlyEmbed && Object.prototype.hasOwnProperty.call(content, req.path) ? content[req.path] : undefined;
+    const page = renderPageHtml(template, req.path, markup);
     if (page.robots) res.setHeader("X-Robots-Tag", page.robots);
     return res.status(page.status).type("html").send(page.html);
   };

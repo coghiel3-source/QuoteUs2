@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { nanoid } from "nanoid";
 import { redirectIndexHtml, renderPageHtml } from "./seo";
+import { classifyPage } from "../shared/seo";
 
 const viteLogger = createLogger();
 
@@ -55,7 +56,12 @@ export async function setupVite(server: Server, app: Express) {
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
       const page = await vite.transformIndexHtml(url, template);
-      const rendered = renderPageHtml(page, req.path);
+      let content: string | undefined;
+      if (classifyPage(req.path) === "public" && !(req.path === "/rent-clock" && req.query.embed === "1")) {
+        const { renderPublicPage } = await vite.ssrLoadModule("/src/entry-server.tsx");
+        content = renderPublicPage(req.path);
+      }
+      const rendered = renderPageHtml(page, req.path, content);
       if (rendered.robots) res.setHeader("X-Robots-Tag", rendered.robots);
       res.status(rendered.status).set({ "Content-Type": "text/html" }).end(rendered.html);
     } catch (e) {

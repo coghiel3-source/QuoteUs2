@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 
 const YOUTUBE_IFRAME_API_URL = "https://www.youtube.com/iframe_api";
@@ -141,8 +141,14 @@ export default function YouTubeAnalyticsPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const startedRef = useRef(false);
   const completedRef = useRef(false);
+  const [origin, setOrigin] = useState<string | null>(null);
 
   useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    if (!origin) return;
     let active = true;
     let player: YouTubePlayer | null = null;
     startedRef.current = false;
@@ -197,11 +203,11 @@ export default function YouTubeAnalyticsPlayer({
         // Player cleanup should never affect the surrounding quote form.
       }
     };
-  }, [insuranceType, videoId]);
+  }, [insuranceType, videoId, origin]);
 
   const iframeSrc = addEnableJsApiParameter(
     src || `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?rel=0&modestbranding=1`,
-  ) + (typeof window === "undefined" ? "" : `&origin=${encodeURIComponent(window.location.origin)}`);
+  ) + (origin ? `&origin=${encodeURIComponent(origin)}` : "");
 
   return (
     <iframe
