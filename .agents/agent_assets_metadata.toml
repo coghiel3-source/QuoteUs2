@@ -161,3 +161,17 @@ mtime_ms = 1791892374013
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/d991255a-6b9d-4333-8e8f-6ff9fb70691b/fefe257c-abe6-4e4b-ad93-e005edb4dff8"
 storage_version_token = "1791892427681624"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "UdHaYizmU6_yabAoGD2cX"
+uri = "file://dist-export/QuoteUs_Google_Ads_Update.zip"
+type = "unspecified"
+title = "QuoteUs Google Ads Installation Update"
+description = "Google tag, successful-lead conversion tracking, automated tests, and installation instructions for your third-party hosting company."
+logical_id = "14115610-57e1-410b-897d-57eeaa6a7ce0"
+content_hash = "sha256:68596b42160bd8019f4c8f0915f4cdf794f76f65bd704f338e8138d829133e62"
+size = 8813
+mtime_ms = 1792030518836
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/14115610-57e1-410b-897d-57eeaa6a7ce0/e4bc9fcb-9c2d-4d68-afef-ea061ddaa571"
+storage_version_token = "1792030525481473"
+content_type = "application/octet-stream"
