@@ -69,6 +69,15 @@ the live database. Third-party document storage must use host-owned persistent
 storage rather than assuming the Replit storage sidecar is available.
 
 ## Data location gotchas (learned July 2026)
+The user confirmed on 2026-10-14 that quoteus.ca is hosted on Hostinger.
+The specific Hostinger product (managed Node.js versus VPS) is not yet confirmed.
+
+**Why:** Republishing the Replit deployment did not update the code served by
+the custom domain.
+
+**How to apply:** Use Hostinger-specific deployment guidance; do not assume
+Replit publishing changes quoteus.ca or propose moving its DNS.
+
 - The REAL leads/settings live in the production DB, not dev — always export from
   prod (executeSql environment:"production", read-only) when building a backup.
   Prod system_settings carries smtp_settings + stripe keys, so those genuinely
