@@ -1,4 +1,5 @@
 import { trackEvent } from "./analytics";
+import { trackTagManager } from "./googleTagManager";
 
 type Event = "page_view" | "cta_click" | "calculator_used" | "share_success" | "share_fallback"
   | "embed_copy_success" | "embed_copy_fallback" | "province_changed" | "faq_open"
@@ -20,9 +21,5 @@ export function trackRentClock(event: Event, dimensions: Dimensions = {}): void 
     else if (typeof value === "string") data[key] = value.slice(0, 40);
   }
   trackEvent(`rent_clock_${event}`, data);
-  // Optional bridge to an EXISTING host-owned GA4 tag. Never install a tracker here.
-  try {
-    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
-    if (typeof gtag === "function") gtag("event", `rent_clock_${event}`, data);
-  } catch { /* Measurement must not interrupt a conversion. */ }
+  trackTagManager(`rent_clock_${event}`, data);
 }

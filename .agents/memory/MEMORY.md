@@ -4,3 +4,4 @@
 - [App auth model](app-auth-model.md) — email login has NO server session; admin/rep endpoints authorize via client-sent actorId (spoofable, codebase-wide); passport req.user only exists for Google OAuth.
 - [Public rendering boundary](public-rendering.md) — prerender public initial state only; keep host settings client-loaded and verify animation visibility without JavaScript.
 - [Merge dependency policy](merge-dependency-policy.md) — keep schema changes separate; trace every owning parent when security policy blocks a transitive dependency.
+- [Marketing measurement](marketing-measurement.md) — user chose GTM to replace direct Google tracking; verify container configuration and Hostinger deployment separately.

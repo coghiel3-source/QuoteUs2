@@ -175,3 +175,17 @@ mtime_ms = 1792030518836
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/14115610-57e1-410b-897d-57eeaa6a7ce0/e4bc9fcb-9c2d-4d68-afef-ea061ddaa571"
 storage_version_token = "1792030525481473"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "ZmnTV3NWTfJn9bd0d0wWt"
+uri = "file://dist-export/QuoteUs_GTM_Update.zip"
+type = "unspecified"
+title = "QuoteUs Google Tag Manager Update"
+description = "Replaces direct Google tracking with GTM-PZV6TJN6, preserves successful-lead events, and includes Hostinger installation and GTM conversion configuration instructions."
+logical_id = "a390533c-669d-4f73-aa8c-5e777ee1e096"
+content_hash = "sha256:199a0a4527c5edf2e13253f13a1adf0c509818fdc9811abc8f3c92f12b018700"
+size = 9746
+mtime_ms = 1792247115860
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/a390533c-669d-4f73-aa8c-5e777ee1e096/c52c5a60-f2d9-4126-9141-0f28deb8ad06"
+storage_version_token = "1792247131424264"
+content_type = "application/octet-stream"

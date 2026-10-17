@@ -1,5 +1,7 @@
 # QuoteUs Google Ads tag installation
 
+Superseded by GTM-INSTALL.md. Do not reinstall this direct tag alongside GTM.
+
 The shared HTML head loads AW-18512103274 once. The successful public enquiry
 submission path sends conversion AW-18512103274/Sh5ZCPDtlZwdEOqOoftE.
 Do not paste the conversion snippet on every page: that would count visits as leads.
