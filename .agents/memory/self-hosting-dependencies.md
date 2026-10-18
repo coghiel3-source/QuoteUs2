@@ -70,7 +70,9 @@ storage rather than assuming the Replit storage sidecar is available.
 
 ## Data location gotchas (learned July 2026)
 The user confirmed on 2026-10-14 that quoteus.ca is hosted on Hostinger.
-The specific Hostinger product (managed Node.js versus VPS) is not yet confirmed.
+The user's Hostinger screenshot confirmed VPS hosting with Dokploy on Ubuntu
+24.04 on 2026-10-18. Use the VPS overview's Manage panel button to reach Dokploy;
+managed Hostinger Node.js deployment menus do not apply to this installation.
 
 **Why:** Republishing the Replit deployment did not update the code served by
 the custom domain.
