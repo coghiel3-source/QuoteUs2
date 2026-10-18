@@ -189,3 +189,17 @@ mtime_ms = 1792247115860
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/a390533c-669d-4f73-aa8c-5e777ee1e096/c52c5a60-f2d9-4126-9141-0f28deb8ad06"
 storage_version_token = "1792247131424264"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "xQoVkOkuqr7tX0BXTUwFG"
+uri = "file://dist-export/QuoteUs_Hostinger_Install_Fix.zip"
+type = "unspecified"
+title = "Hostinger Deployment Repair"
+description = "Source patch fixing Replit-only dependency download URLs, with a portability check and Dokploy deployment instructions. No database or credential changes."
+logical_id = "915bdbad-0159-4f77-b216-c241ad44e07b"
+content_hash = "sha256:4a0860b1d1802cc01468fff3bb5f2dd90edd4cd80ac989bc2212c67ef4e7b309"
+size = 90996
+mtime_ms = 1792338508579
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/915bdbad-0159-4f77-b216-c241ad44e07b/b0a19bd3-708c-4611-9689-6bc67beb5815"
+storage_version_token = "1792338546975897"
+content_type = "application/octet-stream"
