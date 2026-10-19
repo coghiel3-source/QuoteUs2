@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, Filter, Plus, Phone, Mail, MapPin, Calendar, Clock, MoreHorizontal, FileText, CheckCircle, XCircle, ArrowRight, Users, LogIn, Lock, AlertTriangle, AlertCircle, Bell, Eye, EyeOff, Car, Home, Briefcase, Plane, Heart, Dog, Shield, DollarSign, CreditCard, Upload } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuotes, Quote } from "@/lib/QuoteContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -21,7 +21,6 @@ import LeadDetailView from "@/components/LeadDetailView";
 
 export default function DashboardPage() {
   const { user, login, logout, register } = useAuth();
-  const loggedInThisMount = useRef(false);
   const { quotes, updateStatus, refreshQuotes } = useQuotes();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
@@ -29,6 +28,8 @@ export default function DashboardPage() {
   // Login States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<"admin" | "manager" | "broker" | "rep">("broker");
   const [isRegistering, setIsRegistering] = useState(false);
@@ -47,10 +48,6 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState<number>(0);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [creditPackages, setCreditPackages] = useState<{amount: number; label: string}[]>([]);
-
-  useEffect(() => {
-    logout();
-  }, []);
 
   useEffect(() => {
     if (user && user.role === 'broker') {
@@ -122,20 +119,42 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const success = await login(email, role, password);
-    if (success) {
-      loggedInThisMount.current = true;
-      if (role === 'admin' || role === 'manager') {
-        setLocation('/admin');
-      } else if (role === 'rep') {
-        setLocation('/rep');
+    if (isLoggingIn) return;
+    setLoginError("");
+    const fields = new FormData(e.currentTarget);
+    const submittedEmail = String(fields.get("email") || "").trim();
+    const submittedPassword = String(fields.get("password") || "");
+    if (!submittedEmail || !submittedPassword) {
+      setLoginError("Enter your email address and password to continue.");
+      return;
+    }
+    setIsLoggingIn(true);
+    try {
+      const result = await login(submittedEmail, role, submittedPassword);
+      if (result === 'twoFactor') {
+        // Keep the pending challenge in AuthContext; the shared login page
+        // owns code entry. A challenge is not an authenticated user.
+        setLocation('/login');
+      } else if (result === true) {
+        if (role === 'admin' || role === 'manager') {
+          setLocation('/admin');
+        } else if (role === 'rep') {
+          setLocation('/rep');
+        } else {
+          toast({ title: "Welcome back!", description: "You are now logged in." });
+        }
       } else {
-        toast({ title: "Welcome back!", description: "You are now logged in." });
+        setLoginError("Sign-in was not completed. Please try again.");
       }
-    } else {
-      toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to sign in. Please try again.";
+      setLoginError(message === "Invalid role"
+        ? "The selected role does not match your account. Choose your account's role and try again."
+        : message);
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -164,7 +183,7 @@ export default function DashboardPage() {
     toast({ title: "Registration Submitted", description: "Your account is pending approval from an Account Manager." });
   };
 
-  if (!user || !loggedInThisMount.current) {
+  if (!user) {
     return (
       <div className="min-h-[calc(100vh-80px)] bg-secondary/30 flex items-center justify-center p-4">
         <Card id="login-form" className="w-full max-w-md shadow-xl border-none">
@@ -279,14 +298,22 @@ export default function DashboardPage() {
               </form>
             ) : (
               <form onSubmit={handleLogin} className="space-y-4">
+                {loginError && (
+                  <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    {loginError}
+                  </p>
+                )}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Email Address</label>
-                  <Input type="email" placeholder="john@QuoteUs.ca" value={email} onChange={e => setEmail(e.target.value)} required />
+                  <label htmlFor="dashboard-email" className="text-sm font-medium">Email Address</label>
+                  <Input id="dashboard-email" name="email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="john@QuoteUs.ca" value={email} onChange={e => setEmail(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Password</label>
+                  <label htmlFor="dashboard-password" className="text-sm font-medium">Password</label>
                   <div className="relative">
                     <Input 
+                      id="dashboard-password"
+                      name="password"
+                      autoComplete="current-password"
                       type={showPassword ? "text" : "password"} 
                       placeholder="********" 
                       value={password} 
@@ -317,7 +344,9 @@ export default function DashboardPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/90">Login</Button>
+                <Button type="submit" disabled={isLoggingIn} className="w-full bg-primary hover:bg-primary/90">
+                  {isLoggingIn ? "Signing in — please wait…" : "Login"}
+                </Button>
                 <div className="text-center text-sm">
                   <button type="button" onClick={() => setIsRegistering(true)} className="text-accent hover:underline">
                     New Broker? Create Profile

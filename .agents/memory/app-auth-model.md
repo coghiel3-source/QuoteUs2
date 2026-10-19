@@ -37,3 +37,20 @@ Hostinger server can deliver verification email.
 **How to apply:** Keep SMTP waits shorter than the client login deadline, retain
 verification on successful delivery, and distinguish source/browser checks from
 live-host email-delivery confirmation.
+
+## Shared login contract
+
+Audit every sign-in entry point when changing authentication return values or
+error handling; a pending verification challenge is not a successful login.
+
+**Why:** The separate dashboard form previously treated the challenge result as
+truthy success and did not catch rejected login requests, even though the
+standalone login page handled both. Testing only the standalone page missed the
+user's entry point.
+
+**How to apply:** Include all sign-in callers in regression checks, preserve the
+requested role through verification, and verify expected login rejections stay
+visible without an unhandled browser error. Authentication must survive
+navigation from verification to the portal; do not require a fresh login in the
+same component mount. Logout is explicit or due to the inactivity policy, not
+simply entering a portal page.

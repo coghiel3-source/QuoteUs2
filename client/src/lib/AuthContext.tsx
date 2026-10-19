@@ -55,7 +55,7 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   loading: boolean;
-  pendingTwoFactor: { userId: string; previewCode?: string } | null;
+  pendingTwoFactor: { userId: string; role?: User['role']; previewCode?: string } | null;
   login: (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string) => Promise<boolean | 'twoFactor'>;
   verifyTwoFactor: (token: string) => Promise<boolean>;
   loginWithGoogle: (userId: string) => Promise<boolean>;
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionRestored, setSessionRestored] = useState(false);
   const [loading, setLoading] = useState(true);
   const [seeded, setSeeded] = useState(false);
-  const [pendingTwoFactor, setPendingTwoFactor] = useState<{ userId: string; previewCode?: string } | null>(null);
+  const [pendingTwoFactor, setPendingTwoFactor] = useState<{ userId: string; role?: User['role']; previewCode?: string } | null>(null);
   // Seed database with initial users
   const seedUsers = async () => {
     try {
@@ -280,7 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 2FA required — hold userId (+ preview code if SMTP not configured), return 'twoFactor'
       if (response.twoFactorRequired) {
         if (!response.userId) throw new Error("Verification could not start. Please try signing in again.");
-        setPendingTwoFactor({ userId: response.userId, previewCode: response.previewCode });
+        setPendingTwoFactor({ userId: response.userId, role, previewCode: response.previewCode });
         return 'twoFactor';
       }
 

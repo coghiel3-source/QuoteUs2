@@ -135,7 +135,8 @@ export default function LoginPage() {
       const success = await verifyTwoFactor(token);
       if (success) {
         toast({ title: "Welcome!", description: "You have successfully logged in." });
-        setLocation(selectedRole === "rep" ? "/rep" : "/admin");
+        const verifiedRole = pendingTwoFactor?.role || selectedRole;
+        setLocation(verifiedRole === "rep" ? "/rep" : verifiedRole === "broker" ? "/dashboard" : "/admin");
       } else {
         setAuthError("The verification code is incorrect or expired. Check your email and try again.");
         toast({ variant: "destructive", title: "Invalid code", description: "The code is incorrect or expired. Please try again." });
