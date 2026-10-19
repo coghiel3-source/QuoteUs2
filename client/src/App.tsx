@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
-import { Switch, Route } from "wouter";
+import { RouteErrorBoundary, RouteLoading } from "@/components/RouteStatus";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -45,8 +46,10 @@ const CustomerPortalPage = lazy(() => import("@/pages/CustomerPortal"));
 const InvoiceSignPage = lazy(() => import("@/pages/InvoiceSign"));
 
 function AppRoutes() {
+  const [route] = useLocation();
   return (
-    <Suspense fallback={null}><Switch>
+    <RouteErrorBoundary key={route}>
+    <Suspense fallback={<RouteLoading />}><Switch>
       {/* Public standalone pages (no nav/footer) */}
       <Route path="/doc-upload/:token" component={DocUploadPage} />
       <Route path="/sign/:token" component={SignAgreementPage} />
@@ -88,6 +91,7 @@ function AppRoutes() {
         </Layout>
       </Route>
     </Switch></Suspense>
+    </RouteErrorBoundary>
   );
 }
 
