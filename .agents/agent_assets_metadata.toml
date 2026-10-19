@@ -203,3 +203,17 @@ mtime_ms = 1792338508579
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/915bdbad-0159-4f77-b216-c241ad44e07b/b0a19bd3-708c-4611-9689-6bc67beb5815"
 storage_version_token = "1792338546975897"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "ntdygRvdaVxVGW3U1lFVU"
+uri = "file://dist-export/QuoteUs_Mobile_Login_Fix.zip"
+type = "unspecified"
+title = "Mobile Login and Verification Update"
+description = "Improves the mobile verification transition, visible login errors, and timeout recovery. Includes source patch and Hostinger deployment instructions. Tested with simulated login responses."
+logical_id = "8fda3cc7-55fc-4046-be66-8056f753c6b5"
+content_hash = "sha256:094cdca19c2d4b77b457b985d716efef668814a466159a68ceb39c53bac8f8fd"
+size = 12029
+mtime_ms = 1792372438577
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/8fda3cc7-55fc-4046-be66-8056f753c6b5/d5ff328a-ce37-413d-83ea-c48fbbd31c8a"
+storage_version_token = "1792372471148429"
+content_type = "application/octet-stream"

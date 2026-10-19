@@ -262,10 +262,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, role: 'admin' | 'manager' | 'broker' | 'customer' | 'rep', password?: string): Promise<boolean | 'twoFactor'> => {
+    // AbortController works on older mobile Safari versions that lack
+    // AbortSignal.timeout. Always release the timer once the request settles.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await apiRequest<any>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, role, password }),
+        signal: controller.signal,
       });
 
       if (!response) {
@@ -274,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // 2FA required — hold userId (+ preview code if SMTP not configured), return 'twoFactor'
       if (response.twoFactorRequired) {
+        if (!response.userId) throw new Error("Verification could not start. Please try signing in again.");
         setPendingTwoFactor({ userId: response.userId, previewCode: response.previewCode });
         return 'twoFactor';
       }
@@ -282,22 +288,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (foundUser.status !== 'active') {
         if (foundUser.status === 'paused') {
-          alert("Your account has been temporarily paused. Please contact your administrator.");
-          return false;
+          throw new Error("Your account has been temporarily paused. Please contact your administrator.");
         }
         if (foundUser.status === 'cancelled' || foundUser.status === 'denied') {
-          alert("Your account has been deactivated.");
-          return false;
+          throw new Error("Your account has been deactivated.");
         }
-        alert("Your account is pending approval.");
-        return false;
+        throw new Error("Your account is pending approval.");
       }
 
       setUser(foundUser);
       return true;
     } catch (error) {
-      console.error('Login failed:', error);
-      return false;
+      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+        throw new Error("Sign-in is taking too long. Please try again. If you received multiple codes, use the newest one.");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
   };
 

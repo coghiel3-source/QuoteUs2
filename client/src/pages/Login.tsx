@@ -18,6 +18,14 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>("broker");
+  const [authError, setAuthError] = useState("");
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (authError) {
+      errorRef.current?.scrollIntoView({ block: "center" });
+      errorRef.current?.focus({ preventScroll: true });
+    }
+  }, [authError]);
 
   // OTP step state
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -40,25 +48,36 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const onSubmit = async (data: any) => {
+    setAuthError("");
     setIsSubmitting(true);
-    const result = await login(data.email, selectedRole as any, data.password);
-    setIsSubmitting(false);
-
+    try {
+    const result = await login(data.email.trim(), selectedRole as any, data.password);
     if (result === true) {
       toast({ title: "Welcome!", description: "You have successfully logged in." });
       setLocation(selectedRole === "rep" ? "/rep" : "/admin");
     } else if (result === 'twoFactor') {
       // 2FA required — OTP form will render (pendingTwoFactor is now set in context)
       setOtpDigits(["", "", "", "", "", ""]);
-      setTimeout(() => otpRefs[0].current?.focus(), 100);
     } else {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid email or password. Please contact admin if you need access.",
-      });
+      setAuthError("Sign-in was not completed. Check your email, password and selected role, then try again.");
+    }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Unable to sign in. Check your connection and try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // A same-route step change does not reset mobile scroll/keyboard automatically.
+  useEffect(() => {
+    if (!pendingTwoFactor) return;
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    const frame = requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      otpRefs[0].current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [pendingTwoFactor?.userId]);
 
   const handleOtpInput = (index: number, value: string) => {
     // Accept paste of full 6-digit code
@@ -90,6 +109,7 @@ export default function LoginPage() {
   };
 
   const handleOtpSubmit = async () => {
+    setAuthError("");
     const token = otpDigits.join("");
     if (token.length !== 6) {
       toast({ variant: "destructive", title: "Enter all 6 digits" });
@@ -102,11 +122,13 @@ export default function LoginPage() {
         toast({ title: "Welcome!", description: "You have successfully logged in." });
         setLocation(selectedRole === "rep" ? "/rep" : "/admin");
       } else {
+        setAuthError("The verification code is incorrect or expired. Check your email and try again.");
         toast({ variant: "destructive", title: "Invalid code", description: "The code is incorrect or expired. Please try again." });
         setOtpDigits(["", "", "", "", "", ""]);
         otpRefs[0].current?.focus();
       }
     } catch {
+      setAuthError("Verification failed. Check your connection and try again.");
       toast({ variant: "destructive", title: "Error", description: "Verification failed. Please try again." });
     }
     setIsSubmitting(false);
@@ -135,6 +157,11 @@ export default function LoginPage() {
               <CardDescription>Enter the 6-digit code sent to your email address. The code expires in 10 minutes.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {authError && (
+                <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  {authError}
+                </p>
+              )}
               <div className="flex justify-center gap-2">
                 {otpDigits.map((digit, i) => (
                   <input
@@ -142,12 +169,14 @@ export default function LoginPage() {
                     ref={otpRefs[i]}
                     type="text"
                     inputMode="numeric"
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                    aria-label={`Verification code digit ${i + 1}`}
                     maxLength={6}
                     value={digit}
                     onChange={e => handleOtpInput(i, e.target.value)}
                     onKeyDown={e => handleOtpKeyDown(i, e)}
                     onFocus={e => e.target.select()}
-                    className="w-12 h-14 text-center text-2xl font-bold border-2 rounded-xl bg-white focus:border-blue-500 focus:outline-none transition-colors"
+                    className="w-full min-w-0 max-w-12 h-14 text-center text-2xl font-bold border-2 rounded-xl bg-white focus:border-blue-500 focus:outline-none transition-colors"
                     data-testid={`input-otp-${i}`}
                   />
                 ))}
@@ -207,6 +236,11 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {authError && (
+                <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                  {authError}
+                </p>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
@@ -258,7 +292,7 @@ export default function LoginPage() {
 
               <div className="pt-2">
                 <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white text-lg h-12" disabled={isSubmitting} data-testid="button-login">
-                  {isSubmitting ? "Logging in..." : "Log In"}
+                  {isSubmitting ? "Signing in — please wait…" : "Log In"}
                 </Button>
               </div>
             </form>
