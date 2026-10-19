@@ -217,3 +217,17 @@ mtime_ms = 1792372438577
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/8fda3cc7-55fc-4046-be66-8056f753c6b5/d5ff328a-ce37-413d-83ea-c48fbbd31c8a"
 storage_version_token = "1792372471148429"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "LVDX2y5PknFHffCEA8J1w"
+uri = "file://dist-export/QuoteUs_Login_Delivery_Repair.zip"
+type = "unspecified"
+title = "QuoteUs login and verification-delivery update"
+description = "Source patch, updated files and Hostinger/Dokploy deployment instructions. Includes mobile autofill handling, bounded email sending and visible delivery errors; live SMTP delivery remains unverified."
+logical_id = "f64192fa-e7e0-4b8d-b23b-0fdf5e657e26"
+content_hash = "sha256:ab16e7c57be73705c7160efb63373eab50c7104a63c442fcdf37f6d7df4d0e93"
+size = 67900
+mtime_ms = 1792418874463
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/f64192fa-e7e0-4b8d-b23b-0fdf5e657e26/2390b9c2-8fae-42e6-8014-3610db86a2e8"
+storage_version_token = "1792418891626066"
+content_type = "application/octet-stream"

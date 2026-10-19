@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, Eye, EyeOff, Briefcase, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -45,13 +44,26 @@ export default function LoginPage() {
     }
   }, [pendingTwoFactor?.previewCode]);
 
-  const { register, handleSubmit, formState: { errors } } = useForm();
-
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
     setAuthError("");
+    // Read the actual DOM values. Password managers and mobile autofill can
+    // populate inputs without emitting the events form libraries rely on.
+    const fields = new FormData(event.currentTarget);
+    const email = String(fields.get("email") || "").trim();
+    const password = String(fields.get("password") || "");
+    if (!email || !password) {
+      setAuthError("Enter your email address and password to continue.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAuthError("Enter a valid email address.");
+      return;
+    }
     setIsSubmitting(true);
     try {
-    const result = await login(data.email.trim(), selectedRole as any, data.password);
+    const result = await login(email, selectedRole as any, password);
     if (result === true) {
       toast({ title: "Welcome!", description: "You have successfully logged in." });
       setLocation(selectedRole === "rep" ? "/rep" : "/admin");
@@ -62,7 +74,10 @@ export default function LoginPage() {
       setAuthError("Sign-in was not completed. Check your email, password and selected role, then try again.");
     }
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Unable to sign in. Check your connection and try again.");
+      const message = error instanceof Error ? error.message : "Unable to sign in. Check your connection and try again.";
+      setAuthError(message === "Invalid role"
+        ? "The selected role does not match your account. Choose your account's role below and try again."
+        : message);
     } finally {
       setIsSubmitting(false);
     }
@@ -235,7 +250,7 @@ export default function LoginPage() {
             <CardDescription>Enter your credentials to continue.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={onSubmit} noValidate className="space-y-4">
               {authError && (
                 <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                   {authError}
@@ -245,9 +260,8 @@ export default function LoginPage() {
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="email" type="email" {...register("email", { required: "Email is required" })} className="pl-9" placeholder="broker@example.com" autoComplete="email" data-testid="input-email" />
+                  <Input id="email" name="email" type="email" required className="pl-9" placeholder="broker@example.com" autoComplete="username" autoCapitalize="none" spellCheck={false} data-testid="input-email" />
                 </div>
-                {errors.email && <p className="text-destructive text-xs">{errors.email.message as string}</p>}
               </div>
 
               <div className="space-y-2">
@@ -257,7 +271,8 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    {...register("password", { required: "Password is required" })}
+                    name="password"
+                    required
                     className="pl-9 pr-10"
                     placeholder="••••••••"
                     autoComplete="current-password"
@@ -271,7 +286,6 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                {errors.password && <p className="text-destructive text-xs">{errors.password.message as string}</p>}
               </div>
 
               <div className="space-y-2">
