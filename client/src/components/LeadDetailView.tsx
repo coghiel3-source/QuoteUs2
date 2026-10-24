@@ -296,6 +296,8 @@ const petSections: DetailSection[] = [
     icon: <PawPrint size={16} />,
     fields: [
       { label: "Pet Name", key: "petName" },
+      { label: "Pet Date of Birth", key: "petDateOfBirth" },
+      { label: "Gender", key: "petGender" },
       { label: "Pet Type", key: "petType" },
       { label: "Breed", key: "breed" },
       { label: "Age", key: "age" },
