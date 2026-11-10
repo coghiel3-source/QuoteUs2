@@ -259,7 +259,7 @@ function PricingTab({
   const collectDefaultAnnual = totalDeductionAnnual;
   const collectDefaultMonthly = totalDeductionMonthly;
 
-  const selectedAmount = payDialog.planType === "annual" ? annualPremium : monthlyPremium;
+  const selectedAmount = payDialog.planType === "annual" ? totalDeductionAnnual : totalDeductionMonthly;
 
   async function handleCollectPayment() {
     if (!locationId || !payEmail) return;
@@ -2899,6 +2899,7 @@ ${notesBlock}${signedBlock}
                   {/* PRICING TAB */}
                   {locationDetailTab === "pricing" && (
                     <PricingTab
+                      key={selectedLocation.id}
                       monthlyRent={Number(selectedLocation.monthlyRent)}
                       markupPercent={0}
                       baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
