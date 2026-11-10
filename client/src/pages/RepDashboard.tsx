@@ -185,13 +185,11 @@ function PricingTab({
   const { toast } = useToast();
   const rent = monthlyRent || 0;
   const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
-  // totalAnnualStr / totalMonthlyStr = the COMBINED rate the user enters (RG + commission)
-  // Commission is derived as: totalRate - rgRate
-  const initAnnualRg = Number(baseAnnualRate) || 4.5;
+  // Annual Total % is added to RG %. Monthly Total % remains inclusive of RG.
   const initMonthlyRg = Number(baseMonthlyRate) || 4.5;
   const initCommA = Number(commissionPercentProp) || 0;
   const initCommM = Number(monthlyCommissionPercentProp) || 0;
-  const [totalAnnualStr, setTotalAnnualStr] = useState<string>(String(initAnnualRg + initCommA));
+  const [totalAnnualStr, setTotalAnnualStr] = useState<string>(String(initCommA));
   const [totalMonthlyStr, setTotalMonthlyStr] = useState<string>(String(initMonthlyRg + initCommM));
   const [commissionSaved, setCommissionSaved] = useState(false);
   const [pricingNotes, setPricingNotes] = useState<string>(pricingNotesProp || "");
@@ -231,11 +229,11 @@ function PricingTab({
   const MIN_MONTHLY_RATE = 4.5;
   const annualRateNum = Math.max(MIN_ANNUAL_RATE, parseFloat(editAnnual) || MIN_ANNUAL_RATE);
   const monthlyRateNum = Math.max(MIN_MONTHLY_RATE, parseFloat(editMonthly) || MIN_MONTHLY_RATE);
-  // Total rate entered by user; must be >= the RG rate
-  const totalAnnualNum = Math.max(annualRateNum, parseFloat(totalAnnualStr) || annualRateNum);
+  // Annual deduction adds both entered percentages; monthly retains its inclusive rate.
+  const commissionNum = Math.max(0, parseFloat(totalAnnualStr) || 0);
+  const totalAnnualNum = commissionNum + annualRateNum;
   const totalMonthlyNum = Math.max(monthlyRateNum, parseFloat(totalMonthlyStr) || monthlyRateNum);
   // Commission is the difference between total and RG rate
-  const commissionNum = Math.max(0, totalAnnualNum - annualRateNum);
   const commissionMonthlyNum = Math.max(0, totalMonthlyNum - monthlyRateNum);
   const finalAnnualRate = annualRateNum + markupNum;
   const finalMonthlyRate = monthlyRateNum + markupNum;
@@ -430,15 +428,15 @@ function PricingTab({
                 <div className="flex flex-col gap-1 text-sm min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="opacity-70 text-xs shrink-0">Total %</span>
-                    <WfPctInput value={totalAnnualStr} onChange={v => { setTotalAnnualStr(v); setCommissionSaved(false); }} testId="input-total-annual" min={annualRateNum} color="border-white/40 focus:ring-white/60 text-gray-900" />
+                    <WfPctInput value={totalAnnualStr} onChange={v => { setTotalAnnualStr(v); setCommissionSaved(false); }} testId="input-total-annual" min={0} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="opacity-70 text-xs shrink-0">RG min %</span>
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" min={MIN_ANNUAL_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5 opacity-90">
-                    <span className="text-xs">Commission = ${fmt(totalDeductionAnnual)} − ${fmt(rgAmountAnnual)} =</span>
-                    <span className="font-bold text-sm">${fmt(commAmountAnnual)}</span>
+                    <span className="text-xs">Total Deduction = {commissionNum.toFixed(2)}% + {annualRateNum.toFixed(2)}% =</span>
+                    <span className="font-bold text-sm">{totalAnnualNum.toFixed(2)}%</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -456,8 +454,8 @@ function PricingTab({
                   Commission
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400 font-mono">{totalAnnualNum.toFixed(2)}% × ${fmt(annualRent)}</span>
-                  <span className="font-mono text-purple-700 font-semibold w-20 text-right">${fmt(totalDeductionAnnual)}</span>
+                  <span className="text-xs text-gray-400 font-mono">{commissionNum.toFixed(2)}% × ${fmt(annualRent)}</span>
+                  <span className="font-mono text-purple-700 font-semibold w-20 text-right">${fmt(commAmountAnnual)}</span>
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm px-3 py-2.5 border-b border-gray-100">
