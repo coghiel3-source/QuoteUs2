@@ -1,4 +1,4 @@
-- [Annual RG pricing](annual-rg-pricing.md) — annual Total % adds to RG % for Total Deduction; monthly pricing remains unchanged.
+- [RG pricing](annual-rg-pricing.md) — annual and monthly Total amounts add to RG amounts for Total Deduction; preserve saved rate mapping.
 - [Rent Clock claims](rent-clock-claims.md) — campaign comparisons are illustrative; one-day payout is unconfirmed and disclosures must remain visible in embeds.
 - [Self-hosting off Replit](self-hosting-dependencies.md) — what runs anywhere vs needs own keys (Stripe) vs breaks (Object Storage sidecar) when hosting QuoteUs on a 3rd-party server.
 - [Stripe Basil API quirks](stripe-basil-api-quirks.md) — pinned Basil version removed Invoice.payment_intent; read it via expanded invoice.payments, and dev can't exercise Stripe paths (no keys).

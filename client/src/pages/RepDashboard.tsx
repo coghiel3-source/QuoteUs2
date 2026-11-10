@@ -230,13 +230,14 @@ function PricingTab({
   const MIN_MONTHLY_RATE = 4.5;
   const annualRateNum = Math.max(MIN_ANNUAL_RATE, parseFloat(editAnnual) || MIN_ANNUAL_RATE);
   const monthlyRateNum = Math.max(MIN_MONTHLY_RATE, parseFloat(editMonthly) || MIN_MONTHLY_RATE);
-  // Annual deduction adds both entered percentages; monthly retains its inclusive rate.
+  // Both deductions add the existing Total amount to the RG amount.
   const annualTotalInputNum = Math.max(annualRateNum, parseFloat(totalAnnualStr) || annualRateNum);
   const commissionNum = Math.max(0, annualTotalInputNum - annualRateNum);
   const totalAnnualNum = annualTotalInputNum + annualRateNum;
-  const totalMonthlyNum = Math.max(monthlyRateNum, parseFloat(totalMonthlyStr) || monthlyRateNum);
+  const monthlyTotalInputNum = Math.max(monthlyRateNum, parseFloat(totalMonthlyStr) || monthlyRateNum);
+  const totalMonthlyNum = monthlyTotalInputNum + monthlyRateNum;
   // Commission is the difference between total and RG rate
-  const commissionMonthlyNum = Math.max(0, totalMonthlyNum - monthlyRateNum);
+  const commissionMonthlyNum = Math.max(0, monthlyTotalInputNum - monthlyRateNum);
   const finalAnnualRate = annualRateNum + markupNum;
   const finalMonthlyRate = monthlyRateNum + markupNum;
   const annualRent = rent * 12;
@@ -246,10 +247,11 @@ function PricingTab({
   // Commission amounts (derived from difference)
   const commAmountAnnual = (commissionNum / 100) * annualRent;
   const commAmountMonthly = (commissionMonthlyNum / 100) * rent;
-  // Total deduction = totalRate × rent (same as RG + Commission)
+  // Deduction adds the two dollar amounts, without changing stored commission rates.
   const annualTotalAmount = (annualTotalInputNum / 100) * annualRent;
   const totalDeductionAnnual = annualTotalAmount + rgAmountAnnual;
-  const totalDeductionMonthly = (totalMonthlyNum / 100) * rent;
+  const monthlyTotalAmount = (monthlyTotalInputNum / 100) * rent;
+  const totalDeductionMonthly = monthlyTotalAmount + rgAmountMonthly;
   const annualPremium = rgAmountAnnual;
   const annualPremiumMonthly = annualPremium / 12;
   const monthlyPremium = rgAmountMonthly;
@@ -505,8 +507,8 @@ function PricingTab({
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" min={MIN_MONTHLY_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5 opacity-90">
-                    <span className="text-xs">Commission = ${fmt(totalDeductionMonthly)} − ${fmt(rgAmountMonthly)} =</span>
-                    <span className="font-bold text-sm">${fmt(commAmountMonthly)}</span>
+                    <span className="text-xs">Total + RG = ${fmt(monthlyTotalAmount)} + ${fmt(rgAmountMonthly)} =</span>
+                    <span className="font-bold text-sm">${fmt(totalDeductionMonthly)}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
@@ -521,11 +523,11 @@ function PricingTab({
               <div className="flex justify-between items-center text-sm px-3 py-2.5 border-b border-gray-100">
                 <span className="flex items-center gap-2 text-gray-600">
                   <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
-                  Commission
+                  Total amount
                 </span>
                 <span className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400 font-mono">{totalMonthlyNum.toFixed(2)}% × ${fmt(rent)}</span>
-                  <span className="font-mono text-purple-700 font-semibold w-20 text-right">${fmt(totalDeductionMonthly)}/mo</span>
+                  <span className="text-xs text-gray-400 font-mono">{monthlyTotalInputNum.toFixed(2)}% × ${fmt(rent)}</span>
+                  <span className="font-mono text-purple-700 font-semibold w-20 text-right">${fmt(monthlyTotalAmount)}/mo</span>
                 </span>
               </div>
               <div className="flex justify-between items-center text-sm px-3 py-2.5 border-b border-gray-100">
