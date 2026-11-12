@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { Dog } from "lucide-react";
@@ -23,12 +22,14 @@ export default function PetPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
   const { register, handleSubmit } = useForm();
+  const today = new Date();
+  const maxBirthDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const selectClassName = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    addQuote({
+    try {
+    await addQuote({
       type: 'Pet',
       clientName: `${data.firstName} ${data.lastName}`,
       email: data.email,
@@ -46,13 +47,22 @@ export default function PetPage() {
         petName: data.petName,
         petType: data.petType,
         breed: data.breed,
-        age: data.age,
+        petDateOfBirth: data.petDateOfBirth,
+        petGender: data.petGender,
         spayedNeutered: data.spayedNeutered,
         preExistingConditions: data.preExistingConditions
       }
     });
-
-    setIsSubmitting(false);
+    } catch (error) {
+      toast({
+        title: "Unable to submit quote",
+        description: "Your submission could not be confirmed. Please try again shortly.",
+        variant: "destructive",
+      });
+      return;
+    } finally {
+      setIsSubmitting(false);
+    }
     
     // Check for configured redirect BEFORE showing success
     try {
@@ -139,16 +149,12 @@ export default function PetPage() {
                   <Input {...register("petName")} placeholder="Buddy" required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Species</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dog">Dog</SelectItem>
-                      <SelectItem value="cat">Cat</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="pet-type">Type of Animal</Label>
+                  <select id="pet-type" {...register("petType", { required: true })} defaultValue="" required className={selectClassName}>
+                    <option value="" disabled>Select dog or cat</option>
+                    <option value="dog">Dog</option>
+                    <option value="cat">Cat</option>
+                  </select>
                 </div>
               </div>
 
@@ -158,22 +164,28 @@ export default function PetPage() {
                    <Input {...register("breed")} placeholder="Golden Retriever" required />
                 </div>
                 <div className="space-y-2">
-                   <Label>Age (Years)</Label>
-                   <Input {...register("age")} type="number" placeholder="2" required />
+                   <Label htmlFor="pet-date-of-birth">Pet's Date of Birth</Label>
+                   <Input id="pet-date-of-birth" {...register("petDateOfBirth", { required: true })} type="date" max={maxBirthDate} required />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                 <Label>Any Pre-existing Conditions?</Label>
-                 <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no">No</SelectItem>
-                      <SelectItem value="yes">Yes</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pet-gender">Gender</Label>
+                  <select id="pet-gender" {...register("petGender", { required: true })} defaultValue="" required className={selectClassName}>
+                    <option value="" disabled>Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pet-pre-existing">Any Pre-existing Conditions?</Label>
+                  <select id="pet-pre-existing" {...register("preExistingConditions", { required: true })} defaultValue="" required className={selectClassName}>
+                    <option value="" disabled>Select yes or no</option>
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-2">

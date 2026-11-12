@@ -547,13 +547,19 @@ export async function registerRoutes(
             <p style="color:#888;font-size:13px">If you did not attempt to log in, please ignore this email and consider changing your password.</p>
           </div>`;
 
-        const sent = await sendEmail({ to: user.email, subject: "QuoteUs.ca — Your Login Code", html: emailHtml });
+        const sent = await sendEmail({
+          to: user.email,
+          subject: "QuoteUs.ca — Your Login Code",
+          html: emailHtml,
+          deliveryTimeoutMs: 25000,
+        });
 
-        const response: any = { twoFactorRequired: true, userId: user.id };
         if (!sent) {
-          response.previewCode = otp;
+          return res.status(503).json({
+            error: "We couldn't send your verification email. Please try again shortly. If this continues, contact QuoteUs support so they can check email delivery.",
+          });
         }
-        return res.json(response);
+        return res.json({ twoFactorRequired: true, userId: user.id });
       }
       
       res.json(safeUser(user));

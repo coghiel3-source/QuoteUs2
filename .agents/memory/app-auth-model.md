@@ -24,3 +24,33 @@ flagged to the user as a follow-up, deliberately not fixed piecemeal.
 actorId fallback AND have the frontend pass `actorId=${user?.id}`; don't rely
 on `req.user` or `req.session`. If asked to harden auth, it must be a
 codebase-wide session overhaul, not per-endpoint.
+
+## Verification delivery boundary
+
+Do not unblock login by displaying an email verification code when email delivery
+fails. Treat delivery failure as an actionable error, not successful verification.
+
+**Why:** Returning the code to the same browser removes the proof of email
+possession. A local mocked login test also cannot establish that the separate
+Hostinger server can deliver verification email.
+
+**How to apply:** Keep SMTP waits shorter than the client login deadline, retain
+verification on successful delivery, and distinguish source/browser checks from
+live-host email-delivery confirmation.
+
+## Shared login contract
+
+Audit every sign-in entry point when changing authentication return values or
+error handling; a pending verification challenge is not a successful login.
+
+**Why:** The separate dashboard form previously treated the challenge result as
+truthy success and did not catch rejected login requests, even though the
+standalone login page handled both. Testing only the standalone page missed the
+user's entry point.
+
+**How to apply:** Include all sign-in callers in regression checks, preserve the
+requested role through verification, and verify expected login rejections stay
+visible without an unhandled browser error. Authentication must survive
+navigation from verification to the portal; do not require a fresh login in the
+same component mount. Logout is explicit or due to the inactivity policy, not
+simply entering a portal page.

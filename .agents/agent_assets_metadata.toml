@@ -161,3 +161,73 @@ mtime_ms = 1791892374013
 storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/d991255a-6b9d-4333-8e8f-6ff9fb70691b/fefe257c-abe6-4e4b-ad93-e005edb4dff8"
 storage_version_token = "1791892427681624"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "UdHaYizmU6_yabAoGD2cX"
+uri = "file://dist-export/QuoteUs_Google_Ads_Update.zip"
+type = "unspecified"
+title = "QuoteUs Google Ads Installation Update"
+description = "Google tag, successful-lead conversion tracking, automated tests, and installation instructions for your third-party hosting company."
+logical_id = "14115610-57e1-410b-897d-57eeaa6a7ce0"
+content_hash = "sha256:68596b42160bd8019f4c8f0915f4cdf794f76f65bd704f338e8138d829133e62"
+size = 8813
+mtime_ms = 1792030518836
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/14115610-57e1-410b-897d-57eeaa6a7ce0/e4bc9fcb-9c2d-4d68-afef-ea061ddaa571"
+storage_version_token = "1792030525481473"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "ZmnTV3NWTfJn9bd0d0wWt"
+uri = "file://dist-export/QuoteUs_GTM_Update.zip"
+type = "unspecified"
+title = "QuoteUs Google Tag Manager Update"
+description = "Replaces direct Google tracking with GTM-PZV6TJN6, preserves successful-lead events, and includes Hostinger installation and GTM conversion configuration instructions."
+logical_id = "a390533c-669d-4f73-aa8c-5e777ee1e096"
+content_hash = "sha256:199a0a4527c5edf2e13253f13a1adf0c509818fdc9811abc8f3c92f12b018700"
+size = 9746
+mtime_ms = 1792247115860
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/a390533c-669d-4f73-aa8c-5e777ee1e096/c52c5a60-f2d9-4126-9141-0f28deb8ad06"
+storage_version_token = "1792247131424264"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "xQoVkOkuqr7tX0BXTUwFG"
+uri = "file://dist-export/QuoteUs_Hostinger_Install_Fix.zip"
+type = "unspecified"
+title = "Hostinger Deployment Repair"
+description = "Source patch fixing Replit-only dependency download URLs, with a portability check and Dokploy deployment instructions. No database or credential changes."
+logical_id = "915bdbad-0159-4f77-b216-c241ad44e07b"
+content_hash = "sha256:4a0860b1d1802cc01468fff3bb5f2dd90edd4cd80ac989bc2212c67ef4e7b309"
+size = 90996
+mtime_ms = 1792338508579
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/915bdbad-0159-4f77-b216-c241ad44e07b/b0a19bd3-708c-4611-9689-6bc67beb5815"
+storage_version_token = "1792338546975897"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "ntdygRvdaVxVGW3U1lFVU"
+uri = "file://dist-export/QuoteUs_Mobile_Login_Fix.zip"
+type = "unspecified"
+title = "Mobile Login and Verification Update"
+description = "Improves the mobile verification transition, visible login errors, and timeout recovery. Includes source patch and Hostinger deployment instructions. Tested with simulated login responses."
+logical_id = "8fda3cc7-55fc-4046-be66-8056f753c6b5"
+content_hash = "sha256:094cdca19c2d4b77b457b985d716efef668814a466159a68ceb39c53bac8f8fd"
+size = 12029
+mtime_ms = 1792372438577
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/8fda3cc7-55fc-4046-be66-8056f753c6b5/d5ff328a-ce37-413d-83ea-c48fbbd31c8a"
+storage_version_token = "1792372471148429"
+content_type = "application/octet-stream"
+
+[[outputs]]
+id = "LVDX2y5PknFHffCEA8J1w"
+uri = "file://dist-export/QuoteUs_Login_Delivery_Repair.zip"
+type = "unspecified"
+title = "QuoteUs login and verification-delivery update"
+description = "Source patch, updated files and Hostinger/Dokploy deployment instructions. Includes mobile autofill handling, bounded email sending and visible delivery errors; live SMTP delivery remains unverified."
+logical_id = "f64192fa-e7e0-4b8d-b23b-0fdf5e657e26"
+content_hash = "sha256:ab16e7c57be73705c7160efb63373eab50c7104a63c442fcdf37f6d7df4d0e93"
+size = 67900
+mtime_ms = 1792418874463
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:79cd0300-1376-4fd5-8a23-d69d29edcbcd/f64192fa-e7e0-4b8d-b23b-0fdf5e657e26/2390b9c2-8fae-42e6-8014-3610db86a2e8"
+storage_version_token = "1792418891626066"
+content_type = "application/octet-stream"

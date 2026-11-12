@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { storage } from './storage';
+import { sendMailWithDeadline } from './emailDelivery';
 
 interface EmailAttachment {
   filename: string;
@@ -15,6 +16,7 @@ interface EmailOptions {
   html: string;
   text?: string;
   attachments?: EmailAttachment[];
+  deliveryTimeoutMs?: number;
 }
 
 interface SmtpSettings {
@@ -75,6 +77,11 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       host: smtpSettings.host,
       port: smtpSettings.port,
       secure: smtpSettings.useSsl && smtpSettings.port === 465,
+      ...(options.deliveryTimeoutMs ? {
+        connectionTimeout: options.deliveryTimeoutMs,
+        greetingTimeout: options.deliveryTimeoutMs,
+        socketTimeout: options.deliveryTimeoutMs,
+      } : {}),
       auth: {
         user: smtpSettings.username,
         pass: smtpSettings.password,
@@ -96,7 +103,9 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       mailOptions.attachments = options.attachments;
     }
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = options.deliveryTimeoutMs
+      ? await sendMailWithDeadline(transporter, mailOptions, options.deliveryTimeoutMs)
+      : await transporter.sendMail(mailOptions);
     console.log(`[Email] Sent successfully to ${options.to} - MessageId: ${info.messageId}`);
     return true;
   } catch (error) {
