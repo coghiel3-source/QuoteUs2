@@ -3976,6 +3976,14 @@ export async function registerRoutes(
       const existing = await storage.getLocation(req.params.id);
       if (!existing) return res.status(404).json({ error: "Location not found" });
       if (!(await canActorAccessRepResource(actor, existing.repId))) return res.status(403).json({ error: "Access denied" });
+      for (const field of ["annualRatePercent", "monthlyRatePercent"]) {
+        if (data[field] !== undefined) {
+          const value = Number(data[field]);
+          if (data[field] === null || data[field] === "" || !Number.isFinite(value) || value < 0) {
+            return res.status(400).json({ error: "RG percentages must be valid non-negative numbers" });
+          }
+        }
+      }
       const updated = await storage.updateLocation(req.params.id, data);
       if (!updated) return res.status(404).json({ error: "Location not found" });
       res.json(updated);

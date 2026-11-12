@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { rgRate } from "@shared/rgPricing";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/AuthContext";
 import { redirectToStripeCheckout } from "@/lib/stripeRedirect";
@@ -112,7 +113,7 @@ function WfPctInput({ value, onChange, testId, min, color }: { value: string; on
   return (
     <span className="inline-flex items-center gap-0.5">
       <input
-        type="number" min={min ?? 0} max="100" step="0.1"
+        type="number" min={min ?? 0} step="0.01"
         value={value}
         onChange={e => {
           const v = e.target.value;
@@ -186,8 +187,8 @@ function PricingTab({
   const rent = monthlyRent || 0;
   const [markup, setMarkup] = useState<string>(markupPercent ? String(Number(markupPercent)) : "0");
   // Preserve the existing Total % input; annual deduction adds its amount to RG.
-  const initAnnualRg = Number(baseAnnualRate) || 4.5;
-  const initMonthlyRg = Number(baseMonthlyRate) || 4.5;
+  const initAnnualRg = rgRate(baseAnnualRate);
+  const initMonthlyRg = rgRate(baseMonthlyRate);
   const initCommA = Number(commissionPercentProp) || 0;
   const initCommM = Number(monthlyCommissionPercentProp) || 0;
   const [totalAnnualStr, setTotalAnnualStr] = useState<string>(String(initAnnualRg + initCommA));
@@ -226,15 +227,15 @@ function PricingTab({
   const [rcptLoading, setRcptLoading] = useState(false);
 
   const markupNum = Math.max(0, parseFloat(markup) || 0);
-  const MIN_ANNUAL_RATE = 4.5;
-  const MIN_MONTHLY_RATE = 4.5;
+  const MIN_ANNUAL_RATE = 0;
+  const MIN_MONTHLY_RATE = 0;
   const annualRateNum = Math.max(MIN_ANNUAL_RATE, parseFloat(editAnnual) || MIN_ANNUAL_RATE);
   const monthlyRateNum = Math.max(MIN_MONTHLY_RATE, parseFloat(editMonthly) || MIN_MONTHLY_RATE);
   // Both deductions add the existing Total amount to the RG amount.
-  const annualTotalInputNum = Math.max(annualRateNum, parseFloat(totalAnnualStr) || annualRateNum);
+  const annualTotalInputNum = rgRate(totalAnnualStr);
   const commissionNum = Math.max(0, annualTotalInputNum - annualRateNum);
   const totalAnnualNum = annualTotalInputNum + annualRateNum;
-  const monthlyTotalInputNum = Math.max(monthlyRateNum, parseFloat(totalMonthlyStr) || monthlyRateNum);
+  const monthlyTotalInputNum = rgRate(totalMonthlyStr);
   const totalMonthlyNum = monthlyTotalInputNum + monthlyRateNum;
   // Commission is the difference between total and RG rate
   const commissionMonthlyNum = Math.max(0, monthlyTotalInputNum - monthlyRateNum);
@@ -405,8 +406,10 @@ function PricingTab({
                 className={(ratesSaved && commissionSaved) ? "border-green-500 text-green-600 h-7 text-xs" : "h-7 text-xs"}
                 onClick={() => {
                   onSaveRates?.(annualRateNum, monthlyRateNum);
-                  onSaveCommission?.(commissionNum);
-                  onSaveMonthlyCommission?.(commissionMonthlyNum);
+                  // Preserve the legacy Total = RG + saved difference mapping,
+                  // including Total below RG (for example, an explicit Total of 0%).
+                  onSaveCommission?.(annualTotalInputNum - annualRateNum);
+                  onSaveMonthlyCommission?.(monthlyTotalInputNum - monthlyRateNum);
                   setRatesSaved(true); setCommissionSaved(true);
                   setTimeout(() => { setRatesSaved(false); setCommissionSaved(false); }, 2000);
                 }}
@@ -433,10 +436,10 @@ function PricingTab({
                 <div className="flex flex-col gap-1 text-sm min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="opacity-70 text-xs shrink-0">Total %</span>
-                    <WfPctInput value={totalAnnualStr} onChange={v => { setTotalAnnualStr(v); setCommissionSaved(false); }} testId="input-total-annual" min={annualRateNum} color="border-white/40 focus:ring-white/60 text-gray-900" />
+                    <WfPctInput value={totalAnnualStr} onChange={v => { setTotalAnnualStr(v); setCommissionSaved(false); }} testId="input-total-annual" min={0} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="opacity-70 text-xs shrink-0">RG min %</span>
+                    <span className="opacity-70 text-xs shrink-0">RG %</span>
                     <WfPctInput value={editAnnual} onChange={v => { setEditAnnual(v); setRatesSaved(false); }} testId="input-annual-rate" min={MIN_ANNUAL_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5 opacity-90">
@@ -500,10 +503,10 @@ function PricingTab({
                 <div className="flex flex-col gap-1 text-sm min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="opacity-70 text-xs shrink-0">Total %</span>
-                    <WfPctInput value={totalMonthlyStr} onChange={v => { setTotalMonthlyStr(v); setCommissionSaved(false); }} testId="input-total-monthly" min={monthlyRateNum} color="border-white/40 focus:ring-white/60 text-gray-900" />
+                    <WfPctInput value={totalMonthlyStr} onChange={v => { setTotalMonthlyStr(v); setCommissionSaved(false); }} testId="input-total-monthly" min={0} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="opacity-70 text-xs shrink-0">RG min %</span>
+                    <span className="opacity-70 text-xs shrink-0">RG %</span>
                     <WfPctInput value={editMonthly} onChange={v => { setEditMonthly(v); setRatesSaved(false); }} testId="input-monthly-rate" min={MIN_MONTHLY_RATE} color="border-white/40 focus:ring-white/60 text-gray-900" />
                   </div>
                   <div className="flex items-center gap-1.5 opacity-90">
@@ -2902,8 +2905,8 @@ ${notesBlock}${signedBlock}
                       key={selectedLocation.id}
                       monthlyRent={Number(selectedLocation.monthlyRent)}
                       markupPercent={0}
-                      baseAnnualRate={Number(selectedLocation.annualRatePercent) || globalRgRates.annualRate}
-                      baseMonthlyRate={Number(selectedLocation.monthlyRatePercent) || globalRgRates.monthlyRate}
+                      baseAnnualRate={rgRate(selectedLocation.annualRatePercent, globalRgRates.annualRate)}
+                      baseMonthlyRate={rgRate(selectedLocation.monthlyRatePercent, globalRgRates.monthlyRate)}
                       commissionPercent={selectedLocation.commissionPercent ?? 0}
                       monthlyCommissionPercent={selectedLocation.monthlyCommissionPercent ?? 0}
                       pricingNotes={selectedLocation.pricingNotes}
