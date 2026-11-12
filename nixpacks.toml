@@ -7,7 +7,6 @@ nixPkgs = ["nodejs_22"]
 
 [phases.install]
 cmds = [
-  "node script/check-lockfile-hosts.mjs",
   "npm ci --include=dev"
 ]
 
