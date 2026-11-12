@@ -51,6 +51,9 @@ waitForPort = 5000
 mockupState = "FULLSTACK"
 integrations = ["javascript_database:1.0.0", "stripe:2.0.0", "javascript_object_storage:2.0.0"]
 
+[objectStorage]
+defaultBucketID = "replit-objstore-fe3a61dd-e3f7-4f6b-816e-05f766e2cf03"
+
 [postMerge]
 path = "script/post-merge.sh"
 timeoutMs = 300000
