@@ -16,3 +16,9 @@ Admins must be able to manually set percentages starting at 0%, including existi
 **Why:** The user explicitly requested removing the minimum percentage restriction. Zero is intentional, not a missing value.
 
 **How to apply:** Do not replace saved zero rates with global defaults. Total and RG inputs may independently be zero; the legacy saved difference may therefore be negative even though actual percentage inputs and deduction amounts are nonnegative.
+
+Customer-facing Rent Guarantee invoices must show dollar amounts without a pricing rate column or pricing percentages. Include the supplied new/existing tenant eligibility explanation above the disclaimer.
+
+**Why:** The user requested amount-only invoices and explicit eligibility disclosure; this is a presentation rule, not a change to underlying rates or deduction calculations.
+
+**How to apply:** Keep PDF, email, and online invoice review consistent. The eligibility requirement that rent not exceed 45% of gross household income remains visible; it is not a pricing rate.

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { renderRgEligibilityHtml } from "@shared/rgInvoiceEligibility";
 
 interface RgInvoice {
   id: string;
@@ -43,10 +44,6 @@ interface Props {
 
 function fmtCAD(cents: number) {
   return `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function fmtPct(pct: string | number) {
-  return `${parseFloat(String(pct)).toFixed(2)}%`;
 }
 
 // ── Invoice Print Template (rendered off-screen for PDF capture) ────────────
@@ -125,7 +122,6 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Plan</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Rate</th>
                 <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Premium</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Billing Frequency</th>
               </tr>
@@ -135,9 +131,6 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
                 <td style={{ padding: "18px 16px", borderBottom: "1px solid #e2e8f0" }}>
                   <div style={{ fontWeight: "700", fontSize: "15px", color: "#1d4ed8" }}>Annual Plan</div>
                   <div style={{ fontSize: "12px", color: "#3b82f6", marginTop: "3px" }}>Best value — save vs monthly</div>
-                </td>
-                <td style={{ padding: "18px 16px", color: "#374151", borderBottom: "1px solid #e2e8f0" }}>
-                  {fmtPct(invoice.annualRatePct)} of annual rent
                 </td>
                 <td style={{ padding: "18px 16px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
                   <div style={{ fontWeight: "700", fontSize: "20px", color: "#1d4ed8" }}>{fmtCAD(invoice.annualAmountCents)}</div>
@@ -150,9 +143,6 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
                 <td style={{ padding: "18px 16px" }}>
                   <div style={{ fontWeight: "700", fontSize: "15px", color: "#15803d" }}>Monthly Plan</div>
                   <div style={{ fontSize: "12px", color: "#16a34a", marginTop: "3px" }}>Flexible month-to-month</div>
-                </td>
-                <td style={{ padding: "18px 16px", color: "#374151" }}>
-                  {fmtPct(invoice.monthlyRatePct)} of monthly rent
                 </td>
                 <td style={{ padding: "18px 16px", textAlign: "right" }}>
                   <div style={{ fontWeight: "700", fontSize: "20px", color: "#15803d" }}>{fmtCAD(invoice.monthlyAmountCents)}<span style={{ fontSize: "13px", fontWeight: "400" }}>/mo</span></div>
@@ -173,6 +163,8 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
             <div style={{ color: "#374151", fontSize: "13px", lineHeight: "1.6" }}>{invoice.notes}</div>
           </div>
         )}
+
+        <div dangerouslySetInnerHTML={{ __html: renderRgEligibilityHtml() }} />
 
         {/* Disclaimer */}
         <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
@@ -313,7 +305,12 @@ export default function InvoiceGenerator({
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      // Eligibility can extend the invoice beyond one A4 page. Keep all content.
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      for (let offset = 0; offset < pdfHeight; offset += pageHeight) {
+        if (offset > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, -offset, pdfWidth, pdfHeight);
+      }
       const fileName = `${inv?.invoiceNumber || savedInvoice?.invoiceNumber || "invoice"}.pdf`;
       pdf.save(fileName);
       toast({ title: "PDF downloaded", description: fileName });
@@ -514,7 +511,7 @@ export default function InvoiceGenerator({
                 <div className="px-5 py-4 bg-blue-50 flex items-center gap-4">
                   <div className="flex-1">
                     <div className="font-bold text-blue-700 text-sm">Annual Plan</div>
-                    <div className="text-xs text-blue-500 mt-0.5">{fmtPct(annualRatePct)} of annual rent · One lump-sum payment</div>
+                    <div className="text-xs text-blue-500 mt-0.5">One lump-sum payment</div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-blue-700 text-xl">{fmtCAD(annualAmountCents)}</div>
@@ -524,7 +521,7 @@ export default function InvoiceGenerator({
                 <div className="px-5 py-4 bg-green-50 flex items-center gap-4">
                   <div className="flex-1">
                     <div className="font-bold text-green-700 text-sm">Monthly Plan</div>
-                    <div className="text-xs text-green-600 mt-0.5">{fmtPct(monthlyRatePct)} of monthly rent · Paid each month</div>
+                    <div className="text-xs text-green-600 mt-0.5">Paid each month</div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-green-700 text-xl">{fmtCAD(monthlyAmountCents)}<span className="text-sm font-normal">/mo</span></div>

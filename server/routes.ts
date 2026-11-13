@@ -17,6 +17,7 @@ import { registerObjectStorageRoutes } from "./replit_integrations/object_storag
 import { persistLocalFileToStorage, persistBufferToStorage, readFileFromAnyPath } from "./objectStorageHelper";
 import { completedSignerRecords, completionCopyMessage, isDuplicateSigningSubmission, sendCompletionNotifications, validateSigningResponses, type SigningField, type SigningResponse } from "./signingCompletion";
 import { renderCompletedPdf } from "./completedPdf";
+import { renderRgEligibilityHtml, renderRgEligibilityText } from "@shared/rgInvoiceEligibility";
 
 const COMPLETION_CC = "rgprocessing@quoteus.ca";
 const escapeEmailHtml = (value: string) => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -4993,7 +4994,6 @@ export async function registerRoutes(
       if (!recipientEmail) return res.status(400).json({ error: "No recipient email" });
 
       const fmtCAD = (cents: number) => `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CAD`;
-      const fmtPct = (pct: string) => `${parseFloat(pct).toFixed(2)}%`;
 
       const html = `
         <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;background:#fff;border:1px solid #e0e0e0;border-radius:12px;overflow:hidden;">
@@ -5027,7 +5027,6 @@ export async function registerRoutes(
               <thead>
                 <tr style="background:#f8fafc;">
                   <th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Plan</th>
-                  <th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Rate</th>
                   <th style="padding:12px 16px;text-align:right;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Amount</th>
                   <th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e7eb;">Billing</th>
                 </tr>
@@ -5035,19 +5034,18 @@ export async function registerRoutes(
               <tbody>
                 <tr style="background:#eff6ff;">
                   <td style="padding:14px 16px;font-weight:600;color:#1d4ed8;">Annual Plan</td>
-                  <td style="padding:14px 16px;color:#374151;">${fmtPct(invoice.annualRatePct)} of annual rent</td>
                   <td style="padding:14px 16px;text-align:right;font-weight:700;font-size:16px;color:#1d4ed8;">${fmtCAD(invoice.annualAmountCents)}</td>
                   <td style="padding:14px 16px;color:#6b7280;font-size:13px;">One-time annual payment</td>
                 </tr>
                 <tr style="background:#f0fdf4;">
                   <td style="padding:14px 16px;font-weight:600;color:#15803d;">Monthly Plan</td>
-                  <td style="padding:14px 16px;color:#374151;">${fmtPct(invoice.monthlyRatePct)} of monthly rent</td>
                   <td style="padding:14px 16px;text-align:right;font-weight:700;font-size:16px;color:#15803d;">${fmtCAD(invoice.monthlyAmountCents)}/mo</td>
                   <td style="padding:14px 16px;color:#6b7280;font-size:13px;">Billed each month<br/><span style="color:#6b7280;">(${fmtCAD(invoice.monthlyAmountCents * 12)}/yr total)</span></td>
                 </tr>
               </tbody>
             </table>
             ${invoice.notes ? `<div style="margin-top:20px;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:16px;font-size:13px;color:#555;"><strong>Notes:</strong> ${invoice.notes}</div>` : ""}
+            ${renderRgEligibilityHtml()}
             <div style="margin-top:24px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;">
               <div style="font-weight:700;font-size:11px;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Disclaimer</div>
               <p style="font-size:12px;color:#78350f;line-height:1.7;margin:0;">
@@ -5086,7 +5084,7 @@ export async function registerRoutes(
         to: recipientEmail,
         subject: invoice.signToken ? `Action Required: Accept Your Rent Guarantee Quote — ${invoice.invoiceNumber}` : `Rent Guarantee Quote — ${invoice.invoiceNumber}`,
         html: htmlWithSig,
-        text: `Rent Guarantee Quote ${invoice.invoiceNumber}\nAnnual Plan: ${fmtCAD(invoice.annualAmountCents)}\nMonthly Plan: ${fmtCAD(invoice.monthlyAmountCents)}/mo${invoice.signToken ? `\n\nAccept your quote at: ${baseUrl}/invoice-sign/${invoice.signToken}` : ""}`,
+        text: `Rent Guarantee Quote ${invoice.invoiceNumber}\nAnnual Plan: ${fmtCAD(invoice.annualAmountCents)}\nMonthly Plan: ${fmtCAD(invoice.monthlyAmountCents)}/mo\n\n${renderRgEligibilityText()}\n\nDisclaimer\nThe premiums shown above are estimates only. Applicable taxes and fees will be added at the time of payment, depending on the selected payment option. Credit card payments may incur additional processing fees — the exact amount will be confirmed at the time of payment processing. This quote is valid for 30 days from the date of issue and is subject to underwriting approval and final review.${invoice.signToken ? `\n\nAccept your quote at: ${baseUrl}/invoice-sign/${invoice.signToken}` : ""}`,
       });
 
       // Update status to emailed
