@@ -23,6 +23,7 @@ export const publicPages: Record<string, { title: string; description: string }>
 };
 
 const privatePaths = new Set([
+  "/profile", "/forgot-password", "/reset-password",
   "/dashboard", "/admin", "/broker/credits", "/login", "/rep",
   "/rg-payment/success", "/customer-portal", "/customer-portal/success",
 ]);

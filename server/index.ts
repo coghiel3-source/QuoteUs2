@@ -95,6 +95,11 @@ app.use("/uploads", express.static(uploadsDir, {
     }
   },
 }));
+// Restore this specific lost advertisement using the supplied original.
+// Do not return unrelated placeholder artwork for other missing files.
+app.get("/uploads/ad-1793151975374-218409617.png", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "client/public/advertisements/mapltours-jamaica.png"));
+});
 // Missing legacy uploads must not fall through to the SPA's HTML catch-all.
 app.use("/uploads", (_req, res) => res.status(404).json({ error: "Upload not found" }));
 

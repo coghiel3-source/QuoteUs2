@@ -182,7 +182,7 @@ export default function TermsPage() {
             <p>
               QuoteUs.ca<br />
               Email: <a href="mailto:info@quoteus.ca">info@quoteus.ca</a><br />
-              Website: <a href="https://www.quoteus.ca" target="_blank" rel="noopener noreferrer">https://www.quoteus.ca</a>
+              Website: <a href="https://quoteus.ca" target="_blank" rel="noopener noreferrer">https://quoteus.ca</a>
             </p>
 
             <h2>16. Refunds, Processing Fees, and Payments</h2>

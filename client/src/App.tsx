@@ -43,6 +43,9 @@ const ServiceSignPage = lazy(() => import("@/pages/ServiceSign"));
 const RgPaymentSuccessPage = lazy(() => import("@/pages/RgPaymentSuccess"));
 const CustomerPortalPage = lazy(() => import("@/pages/CustomerPortal"));
 const InvoiceSignPage = lazy(() => import("@/pages/InvoiceSign"));
+const ProfilePage = lazy(() => import("@/pages/Profile"));
+const ForgotPasswordPage = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPassword"));
 
 function AppRoutes() {
   return (
@@ -77,6 +80,9 @@ function AppRoutes() {
             <Route path="/admin" component={AdminCRMPage} />
             <Route path="/broker/credits" component={BrokerCreditsPage} />
             <Route path="/login" component={LoginPage} />
+            <Route path="/profile" component={ProfilePage} />
+            <Route path="/forgot-password" component={ForgotPasswordPage} />
+            <Route path="/reset-password" component={ResetPasswordPage} />
             <Route path="/ad-preview/:token" component={AdPreviewPage} />
             <Route path="/rent-guarantee" component={RentGuaranteePage} />
             <Route path="/rent-guarantee-guide" component={RentGuaranteeGuidePage} />
