@@ -47,7 +47,7 @@ function fmtCAD(cents: number) {
 }
 
 // ── Invoice Print Template (rendered off-screen for PDF capture) ────────────
-const InvoiceTemplate = forwardRef<HTMLDivElement, {
+export const InvoiceTemplate = forwardRef<HTMLDivElement, {
   invoice: Partial<RgInvoice> & {
     invoiceNumber: string;
     monthlyRentCents: number;
@@ -78,9 +78,9 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
       }}
     >
       {/* Header */}
-      <div style={{ background: "#1e3a5f", color: "white", padding: "32px 40px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ background: "#1e3a5f", color: "white", padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "72px", width: "auto" }} />
+          <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "56px", width: "auto" }} />
           <div>
             <div style={{ fontSize: "22px", fontWeight: "700", letterSpacing: "-0.5px" }}>QuoteUs.ca</div>
             <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "4px" }}>Rent Guarantee</div>
@@ -100,9 +100,9 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
       </div>
 
       {/* Body */}
-      <div style={{ padding: "32px 40px" }}>
+      <div style={{ padding: "20px 32px" }}>
         {/* Parties */}
-        <div style={{ display: "flex", gap: "32px", marginBottom: "32px" }}>
+        <div style={{ display: "flex", gap: "20px", marginBottom: "18px" }}>
           <div style={{ flex: 1, background: "#f8fafc", borderRadius: "8px", padding: "20px", border: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px", color: "#94a3b8", marginBottom: "10px", fontWeight: "600" }}>Prepared For</div>
             <div style={{ fontWeight: "700", fontSize: "16px", color: "#1e293b" }}>{invoice.landlordName || "—"}</div>
@@ -116,7 +116,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
         </div>
 
         {/* Plan Options */}
-        <div style={{ marginBottom: "28px" }}>
+        <div style={{ marginBottom: "16px" }}>
           <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "#94a3b8", marginBottom: "12px", fontWeight: "600" }}>Plan Options</div>
           <table style={{ width: "100%", borderCollapse: "collapse", borderRadius: "8px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
             <thead>
@@ -167,7 +167,7 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
         <div dangerouslySetInnerHTML={{ __html: renderRgEligibilityHtml() }} />
 
         {/* Disclaimer */}
-        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
+        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
           <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "14px 18px", marginBottom: "16px" }}>
             <div style={{ fontWeight: "700", fontSize: "12px", color: "#92400e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>Disclaimer</div>
             <p style={{ fontSize: "12px", color: "#78350f", lineHeight: "1.7", margin: 0 }}>
@@ -305,12 +305,12 @@ export default function InvoiceGenerator({
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      // Eligibility can extend the invoice beyond one A4 page. Keep all content.
+      // Fit the complete invoice on one A4 page without cropping or stretching.
+      // Long optional notes can increase the capture height, so scale uniformly.
       const pageHeight = pdf.internal.pageSize.getHeight();
-      for (let offset = 0; offset < pdfHeight; offset += pageHeight) {
-        if (offset > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, -offset, pdfWidth, pdfHeight);
-      }
+      const scale = Math.min(1, pageHeight / pdfHeight);
+      const imageWidth = pdfWidth * scale;
+      pdf.addImage(imgData, "PNG", (pdfWidth - imageWidth) / 2, 0, imageWidth, pdfHeight * scale);
       const fileName = `${inv?.invoiceNumber || savedInvoice?.invoiceNumber || "invoice"}.pdf`;
       pdf.save(fileName);
       toast({ title: "PDF downloaded", description: fileName });

@@ -34,8 +34,17 @@ test("PDF, email and signing views put eligibility before the disclaimer and hid
   }
 });
 
-test("PDF generation includes extra pages instead of clipping the expanded invoice", () => {
+test("eligibility groups sit side by side in equal top-aligned columns", () => {
+  const html = renderRgEligibilityHtml();
+  assert.match(html, /table-layout:fixed/);
+  assert.equal((html.match(/width:50%;vertical-align:top/g) || []).length, 2);
+  assert.ok(html.indexOf("For new tenants") < html.indexOf("</td>"));
+  assert.ok(html.indexOf("For existing tenants") > html.indexOf("</td>"));
+});
+
+test("PDF generation fits the complete invoice onto one page without cropping", () => {
   const source = readFileSync("client/src/components/InvoiceGenerator.tsx", "utf8");
-  assert.match(source, /offset < pdfHeight/);
-  assert.match(source, /pdf\.addPage\(\)/);
+  assert.match(source, /Math\.min\(1, pageHeight \/ pdfHeight\)/);
+  assert.doesNotMatch(source, /pdf\.addPage\(\)/);
+  assert.match(source, /imageWidth, pdfHeight \* scale/);
 });

@@ -22,3 +22,9 @@ Customer-facing Rent Guarantee invoices must show dollar amounts without a prici
 **Why:** The user requested amount-only invoices and explicit eligibility disclosure; this is a presentation rule, not a change to underlying rates or deduction calculations.
 
 **How to apply:** Keep PDF, email, and online invoice review consistent. The eligibility requirement that rent not exceed 45% of gross household income remains visible; it is not a pricing rate.
+
+Arrange new-tenant and existing-tenant eligibility side by side and keep the invoice PDF to a single page without removing requirements.
+
+**Why:** The user explicitly requested a compact, single-page invoice rather than the expanded multi-page version.
+
+**How to apply:** Prefer compact spacing and equal-width eligibility columns; retain the disclaimer and all eligibility copy.
