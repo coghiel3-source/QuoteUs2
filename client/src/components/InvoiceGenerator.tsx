@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { renderRgEligibilityHtml } from "@shared/rgInvoiceEligibility";
 
 interface RgInvoice {
   id: string;
@@ -45,12 +46,8 @@ function fmtCAD(cents: number) {
   return `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function fmtPct(pct: string | number) {
-  return `${parseFloat(String(pct)).toFixed(2)}%`;
-}
-
 // ── Invoice Print Template (rendered off-screen for PDF capture) ────────────
-const InvoiceTemplate = forwardRef<HTMLDivElement, {
+export const InvoiceTemplate = forwardRef<HTMLDivElement, {
   invoice: Partial<RgInvoice> & {
     invoiceNumber: string;
     monthlyRentCents: number;
@@ -81,9 +78,9 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
       }}
     >
       {/* Header */}
-      <div style={{ background: "#1e3a5f", color: "white", padding: "32px 40px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ background: "#1e3a5f", color: "white", padding: "20px 32px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "72px", width: "auto" }} />
+          <img src="/mascot.png" alt="QuoteUs Mascot" style={{ height: "56px", width: "auto" }} />
           <div>
             <div style={{ fontSize: "22px", fontWeight: "700", letterSpacing: "-0.5px" }}>QuoteUs.ca</div>
             <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "4px" }}>Rent Guarantee</div>
@@ -103,9 +100,9 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
       </div>
 
       {/* Body */}
-      <div style={{ padding: "32px 40px" }}>
+      <div style={{ padding: "20px 32px" }}>
         {/* Parties */}
-        <div style={{ display: "flex", gap: "32px", marginBottom: "32px" }}>
+        <div style={{ display: "flex", gap: "20px", marginBottom: "18px" }}>
           <div style={{ flex: 1, background: "#f8fafc", borderRadius: "8px", padding: "20px", border: "1px solid #e2e8f0" }}>
             <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px", color: "#94a3b8", marginBottom: "10px", fontWeight: "600" }}>Prepared For</div>
             <div style={{ fontWeight: "700", fontSize: "16px", color: "#1e293b" }}>{invoice.landlordName || "—"}</div>
@@ -119,13 +116,12 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
         </div>
 
         {/* Plan Options */}
-        <div style={{ marginBottom: "28px" }}>
+        <div style={{ marginBottom: "16px" }}>
           <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px", color: "#94a3b8", marginBottom: "12px", fontWeight: "600" }}>Plan Options</div>
           <table style={{ width: "100%", borderCollapse: "collapse", borderRadius: "8px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
             <thead>
               <tr style={{ background: "#f1f5f9" }}>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Plan</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Rate</th>
                 <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Premium</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "11px", textTransform: "uppercase", color: "#64748b", fontWeight: "600", borderBottom: "1px solid #e2e8f0" }}>Billing Frequency</th>
               </tr>
@@ -135,9 +131,6 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
                 <td style={{ padding: "18px 16px", borderBottom: "1px solid #e2e8f0" }}>
                   <div style={{ fontWeight: "700", fontSize: "15px", color: "#1d4ed8" }}>Annual Plan</div>
                   <div style={{ fontSize: "12px", color: "#3b82f6", marginTop: "3px" }}>Best value — save vs monthly</div>
-                </td>
-                <td style={{ padding: "18px 16px", color: "#374151", borderBottom: "1px solid #e2e8f0" }}>
-                  {fmtPct(invoice.annualRatePct)} of annual rent
                 </td>
                 <td style={{ padding: "18px 16px", textAlign: "right", borderBottom: "1px solid #e2e8f0" }}>
                   <div style={{ fontWeight: "700", fontSize: "20px", color: "#1d4ed8" }}>{fmtCAD(invoice.annualAmountCents)}</div>
@@ -150,9 +143,6 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
                 <td style={{ padding: "18px 16px" }}>
                   <div style={{ fontWeight: "700", fontSize: "15px", color: "#15803d" }}>Monthly Plan</div>
                   <div style={{ fontSize: "12px", color: "#16a34a", marginTop: "3px" }}>Flexible month-to-month</div>
-                </td>
-                <td style={{ padding: "18px 16px", color: "#374151" }}>
-                  {fmtPct(invoice.monthlyRatePct)} of monthly rent
                 </td>
                 <td style={{ padding: "18px 16px", textAlign: "right" }}>
                   <div style={{ fontWeight: "700", fontSize: "20px", color: "#15803d" }}>{fmtCAD(invoice.monthlyAmountCents)}<span style={{ fontSize: "13px", fontWeight: "400" }}>/mo</span></div>
@@ -174,8 +164,10 @@ const InvoiceTemplate = forwardRef<HTMLDivElement, {
           </div>
         )}
 
+        <div dangerouslySetInnerHTML={{ __html: renderRgEligibilityHtml() }} />
+
         {/* Disclaimer */}
-        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
+        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
           <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "14px 18px", marginBottom: "16px" }}>
             <div style={{ fontWeight: "700", fontSize: "12px", color: "#92400e", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>Disclaimer</div>
             <p style={{ fontSize: "12px", color: "#78350f", lineHeight: "1.7", margin: 0 }}>
@@ -313,7 +305,12 @@ export default function InvoiceGenerator({
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      // Fit the complete invoice on one A4 page without cropping or stretching.
+      // Long optional notes can increase the capture height, so scale uniformly.
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const scale = Math.min(1, pageHeight / pdfHeight);
+      const imageWidth = pdfWidth * scale;
+      pdf.addImage(imgData, "PNG", (pdfWidth - imageWidth) / 2, 0, imageWidth, pdfHeight * scale);
       const fileName = `${inv?.invoiceNumber || savedInvoice?.invoiceNumber || "invoice"}.pdf`;
       pdf.save(fileName);
       toast({ title: "PDF downloaded", description: fileName });
@@ -514,7 +511,7 @@ export default function InvoiceGenerator({
                 <div className="px-5 py-4 bg-blue-50 flex items-center gap-4">
                   <div className="flex-1">
                     <div className="font-bold text-blue-700 text-sm">Annual Plan</div>
-                    <div className="text-xs text-blue-500 mt-0.5">{fmtPct(annualRatePct)} of annual rent · One lump-sum payment</div>
+                    <div className="text-xs text-blue-500 mt-0.5">One lump-sum payment</div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-blue-700 text-xl">{fmtCAD(annualAmountCents)}</div>
@@ -524,7 +521,7 @@ export default function InvoiceGenerator({
                 <div className="px-5 py-4 bg-green-50 flex items-center gap-4">
                   <div className="flex-1">
                     <div className="font-bold text-green-700 text-sm">Monthly Plan</div>
-                    <div className="text-xs text-green-600 mt-0.5">{fmtPct(monthlyRatePct)} of monthly rent · Paid each month</div>
+                    <div className="text-xs text-green-600 mt-0.5">Paid each month</div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-green-700 text-xl">{fmtCAD(monthlyAmountCents)}<span className="text-sm font-normal">/mo</span></div>

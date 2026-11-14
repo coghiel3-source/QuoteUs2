@@ -130,6 +130,17 @@ test("Express HTTP fallback uses actual paths, redirects bare index and excludes
     const index = await fetch(`${origin}/index.html?source=test`, { redirect: "manual" });
     assert.equal(index.status, 301);
     assert.equal(index.headers.get("location"), "/");
+    for (const path of ["/Travel", "/travel/", "/RENT-GUARANTEE///"]) {
+      const normalized = await fetch(`${origin}${path}?source=test`, { redirect: "manual" });
+      assert.equal(normalized.status, 301);
+      assert.equal(normalized.headers.get("location"), path.replace(/\/+$/, "").toLowerCase() + "?source=test");
+    }
+    for (const path of ["/profile", "/forgot-password", "/reset-password"]) {
+      const account = await fetch(`${origin}${path}`);
+      assert.equal(account.status, 200);
+      assert.equal(account.headers.get("x-robots-tag"), "noindex, nofollow");
+    }
+    assert.equal((await fetch(`${origin}/still-missing/`, { redirect: "manual" })).status, 404);
   } finally {
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     fs.rmSync(dir, { recursive: true, force: true });

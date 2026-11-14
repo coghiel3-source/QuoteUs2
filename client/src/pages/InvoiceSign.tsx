@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import { CheckCircle2, Loader2, FileText, AlertTriangle } from "lucide-react";
+import { renderRgEligibilityHtml } from "@shared/rgInvoiceEligibility";
 
 function fmtCAD(cents: number) {
   return `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-function fmtPct(pct: string | number) {
-  return `${parseFloat(String(pct)).toFixed(2)}%`;
 }
 
 interface Invoice {
@@ -168,7 +166,6 @@ export default function InvoiceSign() {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-4 py-3 text-left text-xs text-gray-500 font-semibold border-b border-gray-200">Plan</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-semibold border-b border-gray-200">Rate</th>
                   <th className="px-4 py-3 text-right text-xs text-gray-500 font-semibold border-b border-gray-200">Premium</th>
                   <th className="px-4 py-3 text-left text-xs text-gray-500 font-semibold border-b border-gray-200">Billing</th>
                 </tr>
@@ -179,7 +176,6 @@ export default function InvoiceSign() {
                     <div className="font-bold text-blue-700 text-sm">Annual Plan</div>
                     <div className="text-xs text-blue-500 mt-0.5">Best value — save vs monthly</div>
                   </td>
-                  <td className="px-4 py-4 text-gray-700 text-sm border-b border-gray-200">{fmtPct(invoice.annualRatePct)} of annual rent</td>
                   <td className="px-4 py-4 text-right border-b border-gray-200">
                     <div className="font-bold text-xl text-blue-700">{fmtCAD(invoice.annualAmountCents)}</div>
                     <div className="text-xs text-gray-400 mt-0.5">{fmtCAD(annualMonthly)}/mo equiv.</div>
@@ -191,7 +187,6 @@ export default function InvoiceSign() {
                     <div className="font-bold text-green-700 text-sm">Monthly Plan</div>
                     <div className="text-xs text-green-600 mt-0.5">Flexible month-to-month</div>
                   </td>
-                  <td className="px-4 py-4 text-gray-700 text-sm">{fmtPct(invoice.monthlyRatePct)} of monthly rent</td>
                   <td className="px-4 py-4 text-right">
                     <div className="font-bold text-xl text-green-700">{fmtCAD(invoice.monthlyAmountCents)}<span className="text-sm font-normal">/mo</span></div>
                     <div className="text-xs text-gray-400 mt-0.5">{fmtCAD(monthlyAnnual)}/yr total</div>
@@ -211,6 +206,8 @@ export default function InvoiceSign() {
               </div>
             </div>
           )}
+
+          <div className="px-8 py-4 border-b" dangerouslySetInnerHTML={{ __html: renderRgEligibilityHtml() }} />
 
           {/* Disclaimer */}
           <div className="px-8 py-4 border-b">

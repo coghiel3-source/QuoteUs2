@@ -10,3 +10,21 @@ For Rent Guarantee → Pricing → Annual, preserve the existing Total % input a
 The user subsequently requested the same calculation for monthly pricing. At $2,150 monthly rent, Total 4.5% = $96.75 and RG 4.5% = $96.75; monthly deduction is $193.50.
 
 **How to apply:** Keep both breakdowns and payment defaults consistent with these sums. Preserve the existing storage mapping (Total % = RG rate + stored commission) so saving/reopening does not progressively increase rates.
+
+Admins must be able to manually set percentages starting at 0%, including existing locations.
+
+**Why:** The user explicitly requested removing the minimum percentage restriction. Zero is intentional, not a missing value.
+
+**How to apply:** Do not replace saved zero rates with global defaults. Total and RG inputs may independently be zero; the legacy saved difference may therefore be negative even though actual percentage inputs and deduction amounts are nonnegative.
+
+Customer-facing Rent Guarantee invoices must show dollar amounts without a pricing rate column or pricing percentages. Include the supplied new/existing tenant eligibility explanation above the disclaimer.
+
+**Why:** The user requested amount-only invoices and explicit eligibility disclosure; this is a presentation rule, not a change to underlying rates or deduction calculations.
+
+**How to apply:** Keep PDF, email, and online invoice review consistent. The eligibility requirement that rent not exceed 45% of gross household income remains visible; it is not a pricing rate.
+
+Arrange new-tenant and existing-tenant eligibility side by side and keep the invoice PDF to a single page without removing requirements.
+
+**Why:** The user explicitly requested a compact, single-page invoice rather than the expanded multi-page version.
+
+**How to apply:** Prefer compact spacing and equal-width eligibility columns; retain the disclaimer and all eligibility copy.

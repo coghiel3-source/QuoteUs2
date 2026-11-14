@@ -69,6 +69,15 @@ export const redirectIndexHtml: RequestHandler = (req, res, next) => {
   if (req.path === "/index.html" && (req.method === "GET" || req.method === "HEAD")) {
     return res.redirect(301, "/");
   }
+  // Only normalize known public pages. Missing pages and token routes retain
+  // their own status and casing rather than becoming soft 404s.
+  if (req.method === "GET" || req.method === "HEAD") {
+    const canonicalPath = req.path.replace(/\/+$/, "").toLowerCase() || "/";
+    if (req.path !== canonicalPath && Object.prototype.hasOwnProperty.call(publicPages, canonicalPath)) {
+      const query = req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : "";
+      return res.redirect(301, canonicalPath + query);
+    }
+  }
   next();
 };
 
