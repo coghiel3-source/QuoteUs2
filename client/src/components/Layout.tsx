@@ -80,6 +80,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/pet", label: "Pet" },
     { href: "/mortgage", label: "Mortgage" },
     { href: "/rent-guarantee", label: "Rent Guarantee" },
+    { href: "/guides", label: "Guides & Tools" },
     { href: "/compare", label: "Compare" },
   ];
 

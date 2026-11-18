@@ -34,11 +34,7 @@ export const RENT_CLOCK_PROVINCES: readonly ProvinceConfig[] = [
   },
 ];
 
-export const CLOCK_DISCLOSURE = "*One-day payment is a proposed campaign claim, not a confirmed benefit. Timing depends on approved product terms and claim requirements. This is not a live tribunal data feed.";
+export const CLOCK_DISCLOSURE = "This is an illustrative scenario, not a live tribunal data feed or a prediction of how long an individual case will take.";
 export const CALCULATOR_DISCLOSURE = "A planning scenario, not a forecast of tribunal wait times or a coverage calculation. Does not include legal fees, damage or other expenses.";
 export const FOOTER_DISCLOSURE = "QuoteUs.ca acts as an intermediary, not an insurer. Product availability, tenant eligibility, limits, exclusions, fees and payout timing are governed by the applicable agreement. The Rent Clock is an illustrative educational comparison; no live wait-time feed is connected. Not available in Quebec.";
 export const RENT_GUARANTEE_URL = "https://quoteus.ca/rent-guarantee";
-export const RENT_CLOCK_SEO = {
-  title: "The Rent Clock | QuoteUs.ca Rent Guarantee",
-  description: "Explore The Rent Clock, an illustrative tribunal comparison for Ontario, British Columbia and Alberta. Calculate potential unpaid rent and review QuoteUs.ca Rent Guarantee options.",
-};

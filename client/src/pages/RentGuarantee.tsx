@@ -301,7 +301,11 @@ export default function RentGuaranteePage() {
        </section>
 
       {/* ── Quote Form ───────────────────────────────────── */}
-      <div id="landlord-form" className="container mx-auto max-w-3xl px-4 mt-10">
+      <div id="landlord-form" className="container mx-auto max-w-3xl px-4 mt-10 scroll-mt-24">
+        <div className="mb-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
+          <a href="/guides#guides-landlord" className="text-primary underline underline-offset-4">See landlord guides and tools</a>
+          <a href="/rent-clock" className="text-primary underline underline-offset-4">Use the unpaid rent calculator</a>
+        </div>
         <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="text-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Request Your Rent Guarantee Quote</h2>
           <p className="text-muted-foreground mt-2 text-sm">Fill in your details below and a specialist will be in touch within 1 business day.</p>

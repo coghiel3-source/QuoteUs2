@@ -9,8 +9,6 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
-.env
-.env.local
-.env.production
 
 /dist-export/*.zip
+config.bat

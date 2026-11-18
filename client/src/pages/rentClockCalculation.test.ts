@@ -58,7 +58,8 @@ test("province config includes only ON BC AB, honest illustrative/pending data a
   assert.equal(RENT_CLOCK_PROVINCES[0].sourceUrl, "https://tribunalsontario.ca/ltb/");
   assert.equal(RENT_CLOCK_PROVINCES[1].sourceUrl, "https://www2.gov.bc.ca/gov/content/housing-tenancy/residential-tenancies");
   assert.equal(RENT_CLOCK_PROVINCES[2].sourceUrl, "https://www.alberta.ca/residential-tenancy-dispute-resolution-service");
-  assert.ok(CLOCK_DISCLOSURE.includes("not a confirmed benefit"));
+  assert.match(CLOCK_DISCLOSURE, /illustrative scenario.*not a live tribunal data feed/);
+  assert.doesNotMatch(CLOCK_DISCLOSURE, /one.day|payout target/i);
   assert.equal(RENT_GUARANTEE_URL, "https://quoteus.ca/rent-guarantee");
 });
 

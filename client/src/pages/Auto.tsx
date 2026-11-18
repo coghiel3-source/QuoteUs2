@@ -351,7 +351,8 @@ export default function AutoPage() {
           </div>
         </section>
 
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <p className="mb-4 text-sm"><a href="/guides#guides-auto" className="text-primary underline underline-offset-4">See Ontario auto insurance guides and tools</a></p>
+        <form id="auto-quote-form" className="scroll-mt-24" onSubmit={form.handleSubmit(onSubmit)}>
           <div className="space-y-8">
             
             {/* Primary Driver Section */}

@@ -20,7 +20,9 @@ test("build contains real content and navigation for every public route, and not
     if (route === "/rent-clock") {
       assert.match(pages[route], /href="https:\/\/quoteus\.ca\/"/);
       assert.match(pages[route], /href="https:\/\/quoteus\.ca\/privacy"/);
-      assert.match(pages[route], /Proposed, not confirmed/);
+      assert.match(pages[route], /Unpaid Rent Calculator/);
+      assert.match(pages[route], /\$2,500 per month × 1 unit × 4 months = \$10,000/);
+      assert.doesNotMatch(pages[route], /one.day|campaign target|subject to confirmation/i);
     } else {
       assert.match(pages[route], /href="\/auto"/);
       assert.match(pages[route], /href="\/privacy"/);
@@ -40,6 +42,22 @@ test("private and missing routes never receive content even if supplied", () => 
 
 test("rendered content is inserted literally, not interpreted as replacement syntax", () => {
   assert.ok(renderPageHtml(template, "/", "<h1>$& $' $`</h1>").html.includes("<h1>$& $' $`</h1>"));
+});
+
+test("the resource centre links to existing resources and quote form targets in initial HTML", () => {
+  const guides = pages["/guides"];
+  assert.match(guides, /Ontario Auto Insurance/);
+  assert.match(guides, /Landlord Rent Guarantee/);
+  for (const href of ["/auto#auto-quote-form", "/rent-guarantee#landlord-form", "/rent-guarantee-guide", "/rent-clock"]) {
+    assert.ok(guides.includes(`href="${href}"`), href);
+  }
+  assert.match(pages["/auto"], /id="auto-quote-form"/);
+  assert.match(pages["/auto"], /href="\/guides#guides-auto"/);
+  assert.match(pages["/rent-guarantee"], /id="landlord-form"/);
+  assert.match(pages["/rent-guarantee"], /href="\/guides#guides-landlord"/);
+  assert.match(pages["/rent-guarantee"], /href="\/rent-clock"/);
+  assert.match(pages["/"], /href="\/guides"/);
+  assert.equal(renderPageHtml(template, "/guides/ontario-auto-insurance-g2-licence").status, 404);
 });
 
 test("production static handler serves public HTML and preserves route boundaries", async () => {
