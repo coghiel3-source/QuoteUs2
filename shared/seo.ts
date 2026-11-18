@@ -3,7 +3,8 @@ export const SEO_IMAGE = `${SEO_ORIGIN}/opengraph.jpg`;
 
 // Only routes with actual public pages belong here (and in the sitemap).
 export const publicPages: Record<string, { title: string; description: string }> = {
-  "/rent-clock": { title: "The Rent Clock | QuoteUs.ca Rent Guarantee", description: "Explore an illustrative tribunal comparison for Canadian landlords. Calculate potential unpaid rent and review QuoteUs.ca Rent Guarantee options." },
+  "/rent-clock": { title: "Unpaid Rent Calculator for Landlords | QuoteUs.ca", description: "Estimate potential unpaid rent using monthly rent, affected units and months missed. Explore illustrative scenarios and check Rent Guarantee eligibility." },
+  "/guides": { title: "Ontario Insurance & Landlord Guides | QuoteUs.ca", description: "Find Ontario auto quote resources, the landlord Rent Guarantee guide, and an unpaid rent calculator to help you decide what to do next." },
   "/": { title: "Insurance Quotes in Ontario & Rent Guarantee | QuoteUs.ca", description: "Explore auto, home, tenant and business insurance quotes, plus rent guarantee options for landlords. Tell QuoteUs.ca what you need to get started." },
   "/auto": { title: "Auto Insurance Quotes in Ontario | QuoteUs.ca", description: "Looking for auto insurance in Ontario? Share your vehicle and driving details to explore coverage options through QuoteUs.ca. Request a quote online." },
   "/home-insurance": { title: "Home Insurance Quote | QuoteUs.ca", description: "Protect your Ontario home. Request home insurance coverage for your most valuable asset." },

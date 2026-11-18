@@ -112,7 +112,7 @@
 .rc-province-label { display: block; font-size: 12px; margin-bottom: 7px; color: #d6e6dc; }
 .rc-clock select { color: #f7faf5; background: #1a4037; border: 1px solid #527264; border-radius: 9px; padding: 12px; width: 100%; cursor: pointer; }
 .rc-clock select option { background: #1a4037; }
-.rc-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-block: 20px; }
+.rc-comparison { margin-block: 20px; }
 .rc-counter { border: 1px solid #36574b; border-radius: 13px; padding: 17px 15px; display: flex; flex-direction: column; align-items: flex-start; }
 .rc-counter.target { background: var(--rc-lime); color: var(--rc-forest); border-color: var(--rc-lime); }
 .rc-counter-title { font-size: 12px; font-weight: 600; min-height: 39px; line-height: 1.5; }

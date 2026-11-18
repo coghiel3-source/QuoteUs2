@@ -1,5 +1,6 @@
 - [RG pricing](annual-rg-pricing.md) — annual and monthly Total amounts add to RG amounts for Total Deduction; preserve saved rate mapping.
-- [Rent Clock claims](rent-clock-claims.md) — campaign comparisons are illustrative; one-day payout is unconfirmed and disclosures must remain visible in embeds.
+- [Rent Clock claims](rent-clock-claims.md) — wait scenarios are illustrative; omit unconfirmed one-day payouts from all public views, including embeds.
+- [Organic guide launch](organic-guide-launch.md) — publish only approved guides with real reviewer and date; treat completed organic quotes as the primary outcome.
 - [Self-hosting off Replit](self-hosting-dependencies.md) — what runs anywhere vs needs own keys (Stripe) vs breaks (Object Storage sidecar) when hosting QuoteUs on a 3rd-party server.
 - [Stripe Basil API quirks](stripe-basil-api-quirks.md) — pinned Basil version removed Invoice.payment_intent; read it via expanded invoice.payments, and dev can't exercise Stripe paths (no keys).
 - [App auth model](app-auth-model.md) — email login has NO server session; admin/rep endpoints authorize via client-sent actorId (spoofable, codebase-wide); passport req.user only exists for Google OAuth.

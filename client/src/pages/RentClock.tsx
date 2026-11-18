@@ -32,12 +32,6 @@ export function RentClockWidget({ province, onProvinceChange }: { province: Prov
           <span className="rc-counter-label">{config.days === null ? "data not connected" : "days of waiting"}</span>
           <span className="rc-status">{config.status}</span>
         </div>
-        <div className="rc-counter target">
-          <p className="rc-counter-title">QuoteUs payout campaign target*</p>
-          <span className="rc-number">1</span>
-          <span className="rc-counter-label">day · subject to confirmation</span>
-          <span className="rc-target-note">Proposed, not confirmed</span>
-        </div>
       </div>
       <p className="rc-clock-explanation">{config.explanation}</p>
       <p className="rc-clock-disclosure">{CLOCK_DISCLOSURE}</p>
@@ -51,8 +45,8 @@ export function RentClockWidget({ province, onProvinceChange }: { province: Prov
 
 const faqs = [
   {
-    question: "Does QuoteUs.ca guarantee payment in one day?",
-    answer: "No. The one-day counter is a proposed campaign target, not a confirmed benefit or contractual promise. Payment timing depends on approved product terms, eligibility and claim requirements. Review the applicable agreement for confirmed terms.",
+    question: "Where can I check the payment terms?",
+    answer: "Payment timing depends on approved product terms, eligibility and claim requirements. Review the applicable agreement for confirmed terms.",
   },
   {
     question: "Are the tribunal numbers live?",
@@ -125,7 +119,7 @@ export default function RentClockPage() {
           <section className="rc-hero" aria-labelledby="rc-hero-title">
             <div>
               <p className="rc-eyebrow">RENT GUARANTEE · ON / BC / AB</p>
-              <h1 id="rc-hero-title">Rent stops.<br /><span>Your bills don’t.</span></h1>
+              <h1 id="rc-hero-title">Unpaid Rent Calculator <span>for Landlords</span></h1>
               <div className="rc-hero-story">
                 <p>Explore protection for eligible unpaid rent. Check whether your rental qualifies, then review the terms.</p>
                 <img src="/mascot.png" width="1024" height="1536" alt="The friendly QuoteUs.ca raccoon mascot" fetchPriority="high" />
@@ -141,7 +135,7 @@ export default function RentClockPage() {
           </section>
           <section className="rc-section" id="rent-exposure" aria-labelledby="rc-exposure-title">
             <div className="rc-exposure-intro">
-              <div><h2 id="rc-exposure-title">What could unpaid rent cost you?</h2><p>Adjust the numbers to see your planning scenario—not a coverage estimate.</p></div>
+              <div><h2 id="rc-exposure-title">What could unpaid rent cost you?</h2><p>Multiply monthly rent per unit by the number of affected units and the number of months without rent. For example, $2,500 per month × 1 unit × 4 months = $10,000 in potential unpaid rent. This is a planning scenario, not a coverage estimate.</p></div>
             </div>
             <div className="rc-calculator">
               <div className="rc-controls" onChange={useCalculator}>

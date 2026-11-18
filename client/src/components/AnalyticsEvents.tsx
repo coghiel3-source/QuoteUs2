@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { insuranceRoutes, trackEvent } from "@/lib/analytics";
+import { trackQuoteFunnel } from "@/lib/googleTagManager";
 
 const publicPages = new Set([
   "/", "/about", "/contact", "/compare", "/privacy", "/terms",
@@ -26,6 +27,7 @@ export default function AnalyticsEvents() {
       } else if (insuranceRoutes[path] && form.closest("main")) {
         startedForms.add(form);
         trackEvent("quote_started", { insurance_type: insuranceRoutes[path] });
+        trackQuoteFunnel("quote_started", path);
       }
     };
     const onClick = (event: MouseEvent) => {

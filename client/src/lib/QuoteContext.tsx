@@ -3,6 +3,7 @@ import { apiRequest } from './api';
 import { trackEvent } from '@/lib/analytics';
 import { isRentClockReferral, trackRentClock } from "./rentClockAnalytics";
 import { trackGoogleAdsLead } from "./googleAds";
+import { trackQuoteFunnel } from "./googleTagManager";
 
 function safeTrackEvent(...args: Parameters<typeof trackEvent>) {
   try {
@@ -144,6 +145,7 @@ export function QuoteProvider({ children }: { children: ReactNode }) {
 
       postSucceeded = true;
       trackGoogleAdsLead(newQuote.id);
+      if (!isGeneralContact) trackQuoteFunnel("quote_submitted", window.location.pathname);
       if (quoteData.type === "Rent Guarantee" && isRentClockReferral()) trackRentClock("application_submitted");
       safeTrackEvent(submissionEvents.submitted, submissionProperties);
 

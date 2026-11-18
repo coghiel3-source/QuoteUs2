@@ -26,6 +26,7 @@ import ContactPage from "@/pages/Contact";
 import RentGuaranteePage from "@/pages/RentGuarantee";
 import RentGuaranteeGuidePage from "@/pages/RentGuaranteeGuide";
 import RentClockPage from "@/pages/RentClock";
+import GuidesPage from "@/pages/Guides";
 import { SeoNavigation } from "@/hooks/use-seo";
 
 // Account, payment, and token pages are loaded only on the client. They must
@@ -86,6 +87,7 @@ function AppRoutes() {
             <Route path="/ad-preview/:token" component={AdPreviewPage} />
             <Route path="/rent-guarantee" component={RentGuaranteePage} />
             <Route path="/rent-guarantee-guide" component={RentGuaranteeGuidePage} />
+            <Route path="/guides" component={GuidesPage} />
             <Route path="/customer-portal/success" component={CustomerPortalPage} />
             <Route path="/customer-portal" component={CustomerPortalPage} />
             <Route path="/rep" component={() => <RepDashboardPage />} />
